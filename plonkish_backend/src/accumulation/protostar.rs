@@ -133,9 +133,9 @@ where
         }
     }
 
-    // why make a tuple of witness poly? *lhs += (r, rhs)
-    // here cross_term_poly are ej*X^j, where X^j are powers of r
-    // self.e_poly += (&power_of_r, poly), why this is a tuple not a product
+    // why make a tuple of witness poly? *lhs += (r, rhs) ?
+    // here cross_term_poly are ej*X^j, where X^j are powers of r ?
+    // self.e_poly += (&power_of_r, poly) = ej*X^j, why this is a tuple not a product? maybe no need for product 
     fn fold_uncompressed(
         &mut self,
         rhs: &Self,
@@ -286,7 +286,7 @@ where
         };
     }
 
-    // compressed e_sum -> E = E + alpha*ej , ej are field elements so just inner product, use all powers of r except first why?
+    // compressed e_sum -> E = E + alpha*ej , ej are field elements so just inner product, use all powers of r except first since [1,d-1]
     // zeta_cross_term_comm -> E'_j = comm(e'_j), j = [1, d-1] , these error terms are for low degree acc which only run for two powers of alpha
     // 
     fn fold_compressed(

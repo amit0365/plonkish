@@ -1,6 +1,6 @@
 use crate::{
     accumulation::{
-        protostar::ProtostarStrategy::{Compressing, NoCompressing},
+        protostar::ProtostarStrategy::{Compressing, NoCompressing, CompressingWithSqrtPowers},
         PlonkishNark, PlonkishNarkInstance,
     },
     backend::PlonkishBackend,
@@ -33,12 +33,12 @@ pub enum ProtostarStrategy {
     Compressing = 1,
     // TODO:
     // Compressing verification with square-root optimization applied as described in 2023/620 section 3.5
-    // CompressingWithSqrtPowers = 3,
+    CompressingWithSqrtPowers = 2,
 }
 
 impl From<usize> for ProtostarStrategy {
     fn from(strategy: usize) -> Self {
-        [NoCompressing, Compressing][strategy]
+        [NoCompressing, Compressing, CompressingWithSqrtPowers][strategy]
     }
 }
 
@@ -133,6 +133,9 @@ where
         }
     }
 
+    // why make a tuple of witness poly? *lhs += (r, rhs)
+    // here cross_term_poly are ej*X^j, where X^j are powers of r
+    // self.e_poly += (&power_of_r, poly), why this is a tuple not a product
     fn fold_uncompressed(
         &mut self,
         rhs: &Self,
@@ -215,6 +218,7 @@ where
             compressed_e_sum: match strategy {
                 NoCompressing => None,
                 Compressing => Some(F::ZERO),
+                CompressingWithSqrtPowers => Some(F::ZERO),
             },
         }
     }
@@ -255,10 +259,15 @@ where
             compressed_e_sum: match strategy {
                 NoCompressing => None,
                 Compressing => Some(F::ZERO),
+                CompressingWithSqrtPowers => Some(F::ZERO),
             },
         }
     }
 
+    // cross_term_comms - Ej = comm(ej), j = [1, d-1] 
+    // d+1 powers of r required so, take(cross_term_comms.len() + 2)
+    // self.u += &(rhs.u * r); this seems to be step 6 by acc prover where alpha = r, but why extra two powers? 
+    // seems instances are mi which are nark witness, and witness_commit are Ci which are nark instances
     fn fold_uncompressed(&mut self, rhs: &Self, cross_term_comms: &[C], r: &F)
     where
         C: AdditiveCommitment<F>,
@@ -277,6 +286,9 @@ where
         };
     }
 
+    // compressed e_sum -> E = E + alpha*ej , ej are field elements so just inner product, use all powers of r except first why?
+    // zeta_cross_term_comm -> E'_j = comm(e'_j), j = [1, d-1] , these error terms are for low degree acc which only run for two powers of alpha
+    // 
     fn fold_compressed(
         &mut self,
         rhs: &Self,
@@ -308,7 +320,42 @@ where
             ],
         );
     }
+
+    fn fold_compressed_sqrt(
+        &mut self,
+        rhs: &Self,
+        zeta_cross_term_comm: &C,
+        compressed_cross_term_sums: &[F],
+        r: &F,
+    ) where
+        C: AdditiveCommitment<F>,
+    {
+        let one = F::ONE;
+        let powers_of_r = powers(*r)
+            .take(compressed_cross_term_sums.len().max(1) + 2)
+            .collect_vec();
+        izip_eq!(&mut self.instances, &rhs.instances)
+            .for_each(|(lhs, rhs)| izip_eq!(lhs, rhs).for_each(|(lhs, rhs)| *lhs += &(*rhs * r)));
+        izip_eq!(&mut self.witness_comms, &rhs.witness_comms)
+            .for_each(|(lhs, rhs)| *lhs = C::sum_with_scalar([&one, r], [lhs, rhs]));
+        izip_eq!(&mut self.challenges, &rhs.challenges).for_each(|(lhs, rhs)| *lhs += &(*rhs * r));
+        self.u += &(rhs.u * r);
+        self.e_comm = {
+            let comms = [&self.e_comm, zeta_cross_term_comm, &rhs.e_comm];
+            C::sum_with_scalar(&powers_of_r[..3], comms)
+        };
+        *self.compressed_e_sum.as_mut().unwrap() += &inner_product(
+            &powers_of_r[1..],
+            chain![
+                compressed_cross_term_sums,
+                [rhs.compressed_e_sum.as_ref().unwrap()]
+            ],
+        );
+    }
+
 }
+
+
 
 impl<F, Comm> ProtostarAccumulatorInstance<F, Comm>
 where

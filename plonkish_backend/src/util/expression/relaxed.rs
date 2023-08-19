@@ -134,6 +134,7 @@ pub(crate) fn relaxed_expression<F: PrimeField>(
     products: &[Product<F>],
     u: usize,
 ) -> Expression<F> {
+    // d might the folding degree? check folding degree function
     let folding_degree = folding_degree(products);
     let powers_of_u = iter::successors(Some(Expression::<F>::one()), |power_of_u| {
         Some(power_of_u * Expression::Challenge(u))

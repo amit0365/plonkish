@@ -184,6 +184,7 @@ where
             };
 
             let powers_of_zeta = builtin_witness_poly_offset + circuit_info.lookups.len() * 3;
+            // same as products in uncompressed
             let compressed_products = {
                 let mut constraints = iter::empty()
                     .chain(circuit_info.constraints.iter())
@@ -225,11 +226,12 @@ where
             let u = num_folding_challenges;
             let relexed_compressed_constraint = relaxed_expression(&compressed_products, u);
             let relexed_zeta_constraint = {
+                // +1 to include the extra challenge zeta. else same as uncompressed
                 let e = powers_of_zeta + num_permutation_z_polys + 1;
                 relaxed_expression(&zeta_products, u)
                     - Expression::Polynomial(Query::new(e, Rotation::cur()))
             };
-
+            
             (
                 num_builtin_witness_polys,
                 alpha_prime_offset,
@@ -404,3 +406,4 @@ fn powers_of_zeta_constraint<F: PrimeField>(zeta: usize, powers_of_zeta: usize) 
 
     powers_of_zeta_next - (l_0 + l_last * zeta + (one - (l_0 + l_last)) * powers_of_zeta * zeta)
 }
+

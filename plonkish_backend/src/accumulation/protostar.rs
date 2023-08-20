@@ -266,7 +266,6 @@ where
 
     // cross_term_comms - Ej = comm(ej), j = [1, d-1] 
     // d+1 powers of r required so, take(cross_term_comms.len() + 2)
-    // self.u += &(rhs.u * r); this seems to be step 6 by acc prover where alpha = r, but why extra two powers? 
     // seems instances are mi which are nark witness, and witness_commit are Ci which are nark instances
     fn fold_uncompressed(&mut self, rhs: &Self, cross_term_comms: &[C], r: &F)
     where
@@ -288,7 +287,7 @@ where
 
     // compressed e_sum -> E = E + alpha*ej , ej are field elements so just inner product, use all powers of r except first since [1,d-1]
     // zeta_cross_term_comm -> E'_j = comm(e'_j), j = [1, d-1] , these error terms are for low degree acc which only run for two powers of alpha
-    // 
+    // self.u += &(rhs.u * r); this seems to be step 6 by acc prover where alpha = r, would need only r[..2] but why one extra power r[..3]? 
     fn fold_compressed(
         &mut self,
         rhs: &Self,

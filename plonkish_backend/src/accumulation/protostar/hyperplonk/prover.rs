@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use std::{borrow::Cow, hash::Hash, iter};
+//use halo2_proofs::poly::domain::lagrange_from_vec;
 
 pub(crate) fn lookup_h_polys<F: PrimeField + Hash>(
     compressed_polys: &[[MultilinearPolynomial<F>; 2]],
@@ -125,6 +126,8 @@ where
         .map(MultilinearPolynomial::new)
         .collect_vec()
 }
+
+
 
 pub(super) fn evaluate_compressed_cross_term_sums<F, Pcs>(
     cross_term_expressions: &[Expression<F>],

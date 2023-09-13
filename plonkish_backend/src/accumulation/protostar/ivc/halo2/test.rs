@@ -24,9 +24,10 @@ use crate::{
             TwoChainCurve,
         },
         chain,
+        start_timer,
         test::seeded_std_rng,
         transcript::InMemoryTranscript,
-        DeserializeOwned, Itertools, Serialize,
+        DeserializeOwned, Itertools, Serialize, end_timer,
     },
 };
 use halo2_curves::{
@@ -38,6 +39,7 @@ use halo2_proofs::{
     plonk::{Circuit, ConstraintSystem, Error},
 };
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
+// use log::{info, error};
 
 #[derive(Clone, Debug, Default)]
 struct TrivialCircuit<C> {
@@ -233,7 +235,7 @@ struct PrimaryAggregationCircuit {
     last_instance: Value<[grumpkin::Fr; 2]>,
     proof: Value<Vec<u8>>,
     secondary_aggregation_vp:
-        HyperPlonkVerifierParam<grumpkin::Fr, MultilinearHyrax<grumpkin::G1Affine>>,
+    HyperPlonkVerifierParam<grumpkin::Fr, MultilinearHyrax<grumpkin::G1Affine>>,
     secondary_aggregation_instances: Value<Vec<grumpkin::Fr>>,
     secondary_aggregation_proof: Value<Vec<u8>>,
 }
@@ -386,6 +388,7 @@ where
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
+    let timer = start_timer(|| format!("run_protostar_hyperplonk_ivc"));
     let primary_num_vars = num_vars;
     let primary_atp = strawman::accumulation_transcript_param();
     let secondary_num_vars = num_vars;
@@ -480,6 +483,7 @@ where
         )
     };
     assert_eq!(result, Ok(()));
+    end_timer(timer);
 
     (
         ivc_vp,
@@ -528,7 +532,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
     >(NUM_VARS, NUM_STEPS);
-
+    let timer = start_timer(|| format!("run_secondary_agg_circuit"));
     let (secondary_aggregation_vp, secondary_aggregation_instances, secondary_aggregation_proof) = {
         let mut circuit = SecondaryAggregationCircuit {
             vp_digest: fe_to_fe(ivc_vp.vp_digest),
@@ -550,7 +554,8 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             circuit.instances[1 + 2 * ivc_vp.secondary_arity],
             secondary_last_instances[1]
         );
-
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_prove_secondary_agg"));
         type HyraxHyperPlonk = HyperPlonk<MultilinearHyrax<grumpkin::G1Affine>>;
         let circuit = Halo2Circuit::new::<HyraxHyperPlonk>(17, circuit);
         let circuit_info = circuit.circuit_info().unwrap();
@@ -563,16 +568,19 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             HyraxHyperPlonk::prove(&pp, &circuit, &mut transcript, seeded_std_rng()).unwrap();
             transcript.into_proof()
         };
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_verify_secondary_agg"));
         let result = {
             let mut transcript = strawman::PoseidonTranscript::from_proof(dtp, proof.as_slice());
             HyraxHyperPlonk::verify(&vp, circuit.instances(), &mut transcript, seeded_std_rng())
         };
         assert_eq!(result, Ok(()));
-
+        end_timer(timer);
         (vp, circuit.instances().to_vec(), proof)
+    
     };
 
-    {
+    {   let timer = start_timer(|| format!("run_primary_agg_circuit"));
         let mut circuit = PrimaryAggregationCircuit {
             vp_digest: fe_to_fe(ivc_vp.vp_digest),
             vp: ivc_vp.secondary_vp.clone(),
@@ -591,6 +599,8 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             ),
             secondary_aggregation_proof: Value::known(secondary_aggregation_proof),
         };
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_prove_primary_agg"));
         circuit.instances = InstanceExtractor::extract(&circuit)
             .unwrap()
             .into_iter()
@@ -609,12 +619,15 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             GeminiHyperPlonk::prove(&pp, &circuit, &mut transcript, seeded_std_rng()).unwrap();
             transcript.into_proof()
         };
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_verify_primary_agg"));
         let result = {
             let mut transcript = strawman::PoseidonTranscript::from_proof(dtp, proof.as_slice());
             GeminiHyperPlonk::verify(&vp, circuit.instances(), &mut transcript, seeded_std_rng())
         };
         assert_eq!(result, Ok(()));
-
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_final_pairing_check"));
         let pairing_acc =
             &circuit.instances()[0][circuit.instances()[0].len() - 4 * strawman::NUM_LIMBS..];
         let [lhs_x, lhs_y, rhs_x, rhs_y] = [0, 1, 2, 3].map(|idx| {
@@ -630,6 +643,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             (&lhs, &(-ivc_vp.primary_vp.vp.pcs.g2()).into()),
             (&rhs, &ivc_vp.primary_vp.vp.pcs.s_g2().into()),
         ]));
+        end_timer(timer);
     }
 }
 

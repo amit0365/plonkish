@@ -1,3 +1,4 @@
+// refactor these to use crates from snark
 use crate::{
     accumulation::{
         protostar::{
@@ -60,6 +61,7 @@ type AssignedPlonkishNarkInstance<AssignedScalar, AssignedEcPoint> =
 type AssignedProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint> =
     ProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint>;
 
+// todo replace these with appropriate fn in halo2-lib (halo2-ecc)
 pub trait TwoChainCurveInstruction<C: TwoChainCurve>: Clone + Debug {
     type Config: Clone + Debug;
     type Assigned: Clone + Debug;

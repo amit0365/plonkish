@@ -18,6 +18,7 @@ use crate::{
         AdditiveCommitment, PolynomialCommitmentScheme,
     },
     poly::multilinear::MultilinearPolynomial,
+    sha256::{BlockWord, Sha256, Table16Chip, Table16Config,BLOCK_SIZE},
     util::{
         arithmetic::{
             fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
@@ -31,7 +32,7 @@ use crate::{
     },
 };
 use halo2_curves::{
-    bn256::{self, Bn256},
+    bn256::{self, Bn256, Fr},
     grumpkin,
 };
 use halo2_proofs::{
@@ -39,6 +40,7 @@ use halo2_proofs::{
     plonk::{Circuit, ConstraintSystem, Error},
 };
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
+use rand::RngCore;
 // use log::{info, error};
 
 #[derive(Clone, Debug, Default)]
@@ -87,6 +89,7 @@ where
     type HashChip = strawman::Chip<C>;
     type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
 
+    #[allow(clippy::type_complexity)]
     fn configs(
         config: Self::Config,
     ) -> (
@@ -140,6 +143,182 @@ where
     }
 }
 
+#[derive(Clone, Debug, Default)]
+struct Sha256Circuit<C> {
+    step_idx: usize,
+    _marker: PhantomData<C>,
+}
+
+impl<C> Circuit<C::Scalar> for Sha256Circuit<C>
+where
+    C: CurveAffine,
+    C::Scalar: FromUniformBytes<64>,
+{
+    type Config = (strawman::Config<C::Scalar>,Table16Config<C::Scalar>);
+    type FloorPlanner = SimpleFloorPlanner;
+
+    fn without_witnesses(&self) -> Self {
+        Self::default()
+    }
+
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        (strawman::Config::<C::Scalar>::configure::<C>(meta),Table16Chip::<C::Scalar>::configure(meta))
+    }
+
+    fn synthesize(&self,
+        config: Self::Config,
+        mut layouter: impl Layouter<C::Scalar>,
+    ) -> Result<(), Error> {
+        Table16Chip::load(config.1.clone(), &mut layouter)?;
+        let table16_chip = Table16Chip::<C::Scalar>::construct(config.1);
+
+        // Test vector: "abc"
+        let test_input = [
+            BlockWord(Value::known(0b01100001011000100110001110000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000000000)),
+            BlockWord(Value::known(0b00000000000000000000000000011000)),
+        ];
+
+        // Create a message of length 31 blocks
+        let mut input = Vec::with_capacity(31 * BLOCK_SIZE);
+        for _ in 0..31 {
+            input.extend_from_slice(&test_input);
+        }
+
+        Sha256::digest(table16_chip, layouter.namespace(|| "'abc' * 2"), &input)?;
+
+        Ok(())
+    }
+}
+
+
+impl<C> CircuitExt<C::Scalar> for Sha256Circuit<C>
+where
+    C: CurveAffine,
+    C::Scalar: FromUniformBytes<64>,
+{   
+    fn instances(&self) -> Vec<Vec<C::Scalar>> {
+        Vec::new()
+    }
+}
+
+//what should go inside here?
+impl<C: TwoChainCurve> StepCircuit<C> for Sha256Circuit<C>
+where
+    C::Base: PrimeFieldBits,
+    C::Scalar: FromUniformBytes<64> + PrimeFieldBits,
+{
+    type TccChip = strawman::Chip<C>;
+    type HashChip = strawman::Chip<C>;
+    type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
+
+    fn configs(
+        config: Self::Config,
+    ) -> (
+        <Self::TccChip as TwoChainCurveInstruction<C>>::Config,
+        <Self::HashChip as HashInstruction<C>>::Config,
+        <Self::TranscriptChip as TranscriptInstruction<C>>::Config,
+    ) {
+        (
+            config.0.clone(),
+            config.0.poseidon_spec.clone(),
+            config.0.poseidon_spec,
+        )
+    }
+
+    fn arity() -> usize {
+        0
+    }
+
+    fn initial_input(&self) -> &[C::Scalar] {
+        &[]
+    }
+
+    fn input(&self) -> &[C::Scalar] {
+        &[]
+    }
+
+    fn output(&self) -> &[C::Scalar] {
+        &[]
+    }
+
+    fn step_idx(&self) -> usize {
+        self.step_idx
+    }
+
+    fn next(&mut self) {
+        self.step_idx += 1;
+    }
+
+    fn synthesize(
+        &self,
+        _: Self::Config,
+        _: impl Layouter<C::Scalar>,
+    ) -> Result<
+        (
+            Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            Vec<AssignedCell<C::Scalar, C::Scalar>>,
+        ),
+        Error,
+    > {
+        Ok((Vec::new(), Vec::new()))
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct NonTrivialTestCircuit<F: PrimeField> {
+  num_cons: usize,
+  _p: PhantomData<F>,
+}
+
+impl<F> NonTrivialTestCircuit<F>
+where
+  F: PrimeField,
+{
+  pub fn new(num_cons: usize) -> Self {
+    Self {
+      num_cons,
+      _p: PhantomData,
+    }
+  }
+}
+impl<F> StepCircuit<F> for NonTrivialTestCircuit<F>
+where
+  F: PrimeField,
+{
+  fn arity(&self) -> usize {
+    1
+  }
+
+  fn synthesize<CS: ConstraintSystem<F>>(
+    &self,
+    cs: &mut CS,
+    z: &[AllocatedNum<F>],
+  ) -> Result<Vec<AllocatedNum<F>>, SynthesisError> {
+    // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
+    let mut x = z[0].clone();
+    let mut y = x.clone();
+    for i in 0..self.num_cons {
+      y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
+      x = y.clone();
+    }
+    Ok(vec![y])
+  }
+}
+
 #[derive(Clone)]
 struct SecondaryAggregationCircuit {
     vp_digest: grumpkin::Fr,
@@ -186,6 +365,7 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
             chip.clone(),
             self.proof.clone(),
         );
+        let timer = start_timer(|| format!("secondary_agg_aggregate_gemini_kzg_ivc"));
         let (num_steps, initial_input, output, h, lhs, rhs) = aggregator.aggregate_gemini_kzg_ivc(
             &mut layouter,
             self.num_steps,
@@ -194,6 +374,7 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
             self.acc.clone(),
             &mut transcript,
         )?;
+        end_timer(timer);
 
         let zero = chip.assign_constant(&mut layouter, grumpkin::Fr::ZERO)?;
         chip.constrain_equal(&mut layouter, lhs.is_identity(), &zero)?;
@@ -274,6 +455,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
             chip.clone(),
             self.proof.clone(),
         );
+        let timer = start_timer(|| format!("primary_agg_verify_ipa_grumpkin_ivc_with_last_nark"));
         let (primary_num_steps, primary_initial_input, primary_output, h_ohs_from_last_nark) =
             aggregator.verify_ipa_grumpkin_ivc_with_last_nark(
                 &mut layouter,
@@ -284,6 +466,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
                 self.last_instance,
                 &mut transcript,
             )?;
+            end_timer(timer);
 
         let (secondary_initial_input, secondary_output, pairing_acc) = {
             let mut transcript = strawman::PoseidonTranscriptChip::new(
@@ -291,6 +474,8 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
                 chip.clone(),
                 self.secondary_aggregation_proof.clone(),
             );
+
+            let timer = start_timer(|| format!("primary_agg_verify_hyrax_hyperplonk"));
             let secondary_aggregation_instance = chip.verify_hyrax_hyperplonk(
                 &mut layouter,
                 &self.secondary_aggregation_vp,
@@ -299,6 +484,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
                     .map(Vec::as_slice),
                 &mut transcript,
             )?;
+            end_timer(timer);
 
             let secondary_num_steps =
                 chip.fit_base_in_scalar(&mut layouter, &secondary_aggregation_instance[0])?;
@@ -388,12 +574,11 @@ where
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
-    let timer = start_timer(|| format!("run_protostar_hyperplonk_ivc"));
+    let timer = start_timer(|| format!("run_protostar_hyperplonk_ivc_sha256"));
     let primary_num_vars = num_vars;
     let primary_atp = strawman::accumulation_transcript_param();
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
-
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
         P1,
@@ -405,7 +590,7 @@ where
     >(
         primary_num_vars,
         primary_atp,
-        TrivialCircuit::default(),
+        TrivialCircuit::default(),//Sha256Circuit::default(),
         secondary_num_vars,
         secondary_atp,
         TrivialCircuit::default(),
@@ -532,8 +717,8 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
     >(NUM_VARS, NUM_STEPS);
-    let timer = start_timer(|| format!("run_secondary_agg_circuit"));
     let (secondary_aggregation_vp, secondary_aggregation_instances, secondary_aggregation_proof) = {
+        let timer = start_timer(|| format!("run_secondary_agg_circuit"));
         let mut circuit = SecondaryAggregationCircuit {
             vp_digest: fe_to_fe(ivc_vp.vp_digest),
             vp: ivc_vp.primary_vp.clone(),
@@ -545,6 +730,8 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             acc: Value::known(primary_acc.unwrap_comm()),
             proof: Value::known(primary_proof),
         };
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_secondary_agg_circuit_instance_extractor"));
         circuit.instances = InstanceExtractor::extract(&circuit)
             .unwrap()
             .into_iter()
@@ -555,7 +742,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             secondary_last_instances[1]
         );
         end_timer(timer);
-        let timer = start_timer(|| format!("run_prove_secondary_agg"));
+        let timer = start_timer(|| format!("run_prove_secondary_agg_preprocess"));
         type HyraxHyperPlonk = HyperPlonk<MultilinearHyrax<grumpkin::G1Affine>>;
         let circuit = Halo2Circuit::new::<HyraxHyperPlonk>(17, circuit);
         let circuit_info = circuit.circuit_info().unwrap();
@@ -563,6 +750,8 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
         let param = HyraxHyperPlonk::setup(&circuit_info, seeded_std_rng()).unwrap();
         let (pp, vp) = HyraxHyperPlonk::preprocess(&param, &circuit_info).unwrap();
         let dtp = strawman::decider_transcript_param();
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_prove_secondary_agg_prove"));
         let proof = {
             let mut transcript = strawman::PoseidonTranscript::new(dtp.clone());
             HyraxHyperPlonk::prove(&pp, &circuit, &mut transcript, seeded_std_rng()).unwrap();
@@ -600,20 +789,28 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             secondary_aggregation_proof: Value::known(secondary_aggregation_proof),
         };
         end_timer(timer);
-        let timer = start_timer(|| format!("run_prove_primary_agg"));
+        let timer = start_timer(|| format!("run_prove_primary_agg_instance_extractor"));
         circuit.instances = InstanceExtractor::extract(&circuit)
             .unwrap()
             .into_iter()
             .next()
             .unwrap();
-
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_prove_primary_agg_preprocess_input_halo2_circuit_new"));
         type GeminiHyperPlonk = HyperPlonk<Gemini<UnivariateKzg<Bn256>>>;
         let circuit = Halo2Circuit::new::<GeminiHyperPlonk>(21, circuit);
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_prove_primary_agg_preprocess_input_halo2_circuit_info"));
         let circuit_info = circuit.circuit_info().unwrap();
-
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_prove_primary_agg_preprocess_hyperplonk_setup"));
         let param = GeminiHyperPlonk::setup(&circuit_info, seeded_std_rng()).unwrap();
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_prove_primary_agg_preprocess_hyperplonk_preprocess"));
         let (pp, vp) = GeminiHyperPlonk::preprocess(&param, &circuit_info).unwrap();
         let dtp = strawman::decider_transcript_param();
+        end_timer(timer);
+        let timer = start_timer(|| format!("run_prove_primary_agg_prove"));
         let proof = {
             let mut transcript = strawman::PoseidonTranscript::new(dtp.clone());
             GeminiHyperPlonk::prove(&pp, &circuit, &mut transcript, seeded_std_rng()).unwrap();

@@ -1,0 +1,183 @@
+   Compiling plonkish_backend v0.1.0 (/Users/ak36/Desktop/halo2p/plonkish/plonkish_backend)
+warning: unused import: `Fr`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:35:26
+   |
+35 |     bn256::{self, Bn256, Fr},
+   |                          ^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `rand::RngCore`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:43:5
+   |
+43 | use rand::RngCore;
+   |     ^^^^^^^^^^^^^
+
+warning: unused imports: `CurveAffine`, `FromUniformBytes`, `MultiMillerLoop`, `PrimeFieldBits`, `TwoChainCurve`, `fe_to_fe`
+  --> plonkish_backend/src/sha256.rs:16:9
+   |
+16 |         fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |         ^^^^^^^^  ^^^^^^^^^^^         ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+17 |         TwoChainCurve,
+   |         ^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+  --> plonkish_backend/src/sha256/table16/compression.rs:12:5
+   |
+12 | use halo2_curves::bn256::Fr;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+  --> plonkish_backend/src/sha256/table16/compression/compression_util.rs:13:5
+   |
+13 | use halo2_curves::bn256::Fr;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/compression/subregion_digest.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `CurveAffine`, `Field`, `FromUniformBytes`, `MultiMillerLoop`, `PrimeFieldBits`, `TwoChainCurve`, `fe_to_fe`
+  --> plonkish_backend/src/sha256/table16/compression/subregion_digest.rs:10:9
+   |
+10 |         fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |         ^^^^^^^^  ^^^^^^^^^^^  ^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+11 |         TwoChainCurve,
+   |         ^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/compression/subregion_initial.rs:9:5
+  |
+9 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/compression/subregion_main.rs:5:5
+  |
+5 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `hash::Hash`
+ --> plonkish_backend/src/sha256/table16/message_schedule.rs:2:23
+  |
+2 | use std::{fmt::Debug, hash::Hash, marker::PhantomData};
+  |                       ^^^^^^^^^^
+
+warning: unused imports: `CurveAffine`, `Field`, `FromUniformBytes`, `MultiMillerLoop`, `PrimeFieldBits`, `TwoChainCurve`, `fe_to_fe`
+  --> plonkish_backend/src/sha256/table16/message_schedule.rs:11:5
+   |
+11 |     fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |     ^^^^^^^^  ^^^^^^^^^^^  ^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+12 |     TwoChainCurve,
+   |     ^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/message_schedule/schedule_util.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/message_schedule/subregion1.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/message_schedule/subregion2.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Field`, `FromUniformBytes`, `MultiMillerLoop`, `PrimeFieldBits`, `TwoChainCurve`, `fe_to_fe`
+  --> plonkish_backend/src/sha256/table16/message_schedule/subregion3.rs:11:9
+   |
+11 |         fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |         ^^^^^^^^               ^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+12 |         TwoChainCurve,
+   |         ^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/spread_table.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `arithmetic::Field`
+ --> plonkish_backend/src/sha256/table16/gates.rs:2:20
+  |
+2 | use halo2_proofs::{arithmetic::Field, plonk::Expression};
+  |                    ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `CurveAffine`
+  --> plonkish_backend/src/sha256/table16/message_schedule/subregion3.rs:11:19
+   |
+11 |         fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |                   ^^^^^^^^^^^
+
+warning: unused variable: `timer`
+    --> plonkish_backend/src/accumulation/protostar/ivc/halo2.rs:3040:13
+     |
+3040 |         let timer = start_timer(|| format!("run_verify_ipa_grumpkin_ivc_reduce_decider"));
+     |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_timer`
+     |
+     = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `root`
+   --> plonkish_backend/src/sha256/table16.rs:502:13
+    |
+502 |         let root = root
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_root`
+
+warning: unused variable: `circuit`
+   --> plonkish_backend/src/sha256/table16.rs:506:13
+    |
+506 |         let circuit = MyCircuit {};
+    |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_circuit`
+
+warning: fields `c` and `d` are never read
+  --> plonkish_backend/src/sha256/table16/message_schedule/subregion1.rs:18:5
+   |
+14 | pub struct Subregion1Word<F:PrimeField> {
+   |            -------------- fields in this struct
+...
+18 |     c: AssignedBits<11,F>,
+   |     ^
+19 |     d: AssignedBits<14,F>,
+   |     ^
+   |
+   = note: `Subregion1Word` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
+warning: fields `d` and `g` are never read
+  --> plonkish_backend/src/sha256/table16/message_schedule/subregion2.rs:19:5
+   |
+14 | pub struct Subregion2Word<F:PrimeField> {
+   |            -------------- fields in this struct
+...
+19 |     d: AssignedBits<7,F>,
+   |     ^
+...
+22 |     g: AssignedBits<13,F>,
+   |     ^
+   |
+   = note: `Subregion2Word` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `tag` is never read
+  --> plonkish_backend/src/sha256/table16/spread_table.rs:71:9
+   |
+70 | pub(super) struct SpreadVar<F:PrimeField, const DENSE: usize, const SPREAD: usize> {
+   |                   --------- field in this struct
+71 |     pub tag: Value<u8>,
+   |         ^^^
+   |
+   = note: `SpreadVar` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: constant `ZK` is never used
+   --> plonkish_backend/src/sha256/table16.rs:454:11
+    |
+454 |     const ZK: bool = true;
+    |           ^^
+

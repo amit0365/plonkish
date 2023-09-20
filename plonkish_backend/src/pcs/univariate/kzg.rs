@@ -10,7 +10,7 @@ use crate::{
         chain, izip, izip_eq,
         parallel::parallelize,
         transcript::{TranscriptRead, TranscriptWrite},
-        Deserialize, DeserializeOwned, Itertools, Serialize,
+        Deserialize, DeserializeOwned, Itertools, Serialize, start_timer,end_timer,
     },
     Error,
 };
@@ -176,13 +176,15 @@ where
         let s = M::Scalar::random(rng);
 
         let g1 = M::G1Affine::generator();
+        let timer = start_timer(|| format!("powers_of_s_g1"));
         let powers_of_s_g1 = {
             let powers_of_s_g1 = powers(s).take(poly_size).collect_vec();
             let window_size = window_size(poly_size);
             let window_table = window_table(window_size, g1);
+            let timer = start_timer(|| format!("kzg_fixed_base_msm_powers_of_s_g1-{}",powers_of_s_g1.len()));
             let powers_of_s_projective =
                 fixed_base_msm(window_size, &window_table, &powers_of_s_g1);
-
+            end_timer(timer);
             let mut powers_of_s_g1 = vec![M::G1Affine::identity(); powers_of_s_projective.len()];
             parallelize(&mut powers_of_s_g1, |(powers_of_s_g1, starts)| {
                 M::G1::batch_normalize(
@@ -192,15 +194,18 @@ where
             });
             powers_of_s_g1
         };
+        end_timer(timer);
 
         let g2 = M::G2Affine::generator();
+        let timer = start_timer(|| format!("powers_of_s_g2"));
         let powers_of_s_g2 = {
             let powers_of_s_g2 = powers(s).take(poly_size).collect_vec();
             let window_size = window_size(poly_size);
             let window_table = window_table(window_size, g2);
+            let timer = start_timer(|| format!("kzg_fixed_base_msm_powers_of_s_g2-{}",powers_of_s_g2.len()));
             let powers_of_s_projective =
                 fixed_base_msm(window_size, &window_table, &powers_of_s_g2);
-
+            end_timer(timer);
             let mut powers_of_s_g2 = vec![M::G2Affine::identity(); powers_of_s_projective.len()];
             parallelize(&mut powers_of_s_g2, |(powers_of_s_g2, starts)| {
                 M::G2::batch_normalize(
@@ -210,6 +215,7 @@ where
             });
             powers_of_s_g2
         };
+        end_timer(timer);
 
         Ok(Self::Param {
             powers_of_s_g1,

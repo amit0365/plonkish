@@ -3,7 +3,7 @@ use crate::{
     util::{
         arithmetic::{BatchInvert, Field},
         expression::{Expression, Query, Rotation},
-        Itertools,
+        Itertools, start_timer, end_timer,
     },
 };
 use halo2_proofs::{
@@ -175,8 +175,11 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             row_mapping,
             ..
         } = self;
+        let timer = start_timer(|| format!("circuit_info_without_preprocess"));
         let mut circuit_info = self.circuit_info_without_preprocess()?;
+        end_timer(timer);
 
+        let timer = start_timer(|| format!("permutation_column_idx"));
         let num_instances = instances.iter().map(Vec::len).collect_vec();
         let column_idx = column_idx(cs);
         let permutation_column_idx = cs
@@ -188,6 +191,9 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 (key, column_idx[&key])
             })
             .collect();
+        end_timer(timer);
+
+        let timer = start_timer(|| format!("preprocess_collector"));
         let mut preprocess_collector = PreprocessCollector {
             k: *k,
             num_instances,
@@ -196,6 +202,8 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             selectors: vec![vec![false; 1 << k]; cs.num_selectors()],
             row_mapping,
         };
+        end_timer(timer);
+
 
         C::FloorPlanner::synthesize(
             &mut preprocess_collector,
@@ -205,6 +213,7 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         )
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
+        let timer = start_timer(|| format!("circuit_info_preprocess_polys_batch_invert"));
         circuit_info.preprocess_polys = iter::empty()
             .chain(batch_invert_assigned(preprocess_collector.fixeds))
             .chain(preprocess_collector.selectors.into_iter().map(|selectors| {
@@ -214,7 +223,10 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                     .collect()
             }))
             .collect();
+        end_timer(timer);
+        let timer = start_timer(|| format!("circuit_info_preprocess_polys_into_cycles"));
         circuit_info.permutations = preprocess_collector.permutation.into_cycles();
+        end_timer(timer);
 
         Ok(circuit_info)
     }

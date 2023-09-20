@@ -90,8 +90,13 @@ where
 
         let num_vars = circuit_info.k;
         let poly_size = 1 << num_vars;
+        let timer = start_timer(|| format!("hyperplonk_setup_batch_size"));
         let batch_size = batch_size(circuit_info);
-        Pcs::setup(poly_size, batch_size, rng)
+        end_timer(timer);
+        let timer = start_timer(|| format!("hyperplonk_setup_pcs_setup"));
+        let pcs_setup = Pcs::setup(poly_size, batch_size, rng);
+        end_timer(timer);
+        pcs_setup
     }
 
     fn preprocess(
@@ -105,6 +110,7 @@ where
         let batch_size = batch_size(circuit_info);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, poly_size, batch_size)?;
 
+        let timer = start_timer(|| format!("hyperplonk_preprocess_compute_preprocessed_comms"));
         // Compute preprocesses comms
         let preprocess_polys = circuit_info
             .preprocess_polys
@@ -113,7 +119,9 @@ where
             .map(MultilinearPolynomial::new)
             .collect_vec();
         let preprocess_comms = Pcs::batch_commit(&pcs_pp, &preprocess_polys)?;
+        end_timer(timer);
 
+        let timer = start_timer(|| format!("hyperplonk_preprocess_compute_permutation_polys_and_comms"));
         // Compute permutation polys and comms
         let permutation_polys = permutation_polys(
             num_vars,
@@ -121,7 +129,9 @@ where
             &circuit_info.permutations,
         );
         let permutation_comms = Pcs::batch_commit(&pcs_pp, &permutation_polys)?;
-
+        end_timer(timer);
+        
+        let timer = start_timer(|| format!("hyperplonk_preprocess_compose_virtualPolynomialInfo"));
         // Compose `VirtualPolynomialInfo`
         let (num_permutation_z_polys, expression) = compose(circuit_info);
         let vp = HyperPlonkVerifierParam {
@@ -140,6 +150,9 @@ where
                 .zip(permutation_comms.clone())
                 .collect(),
         };
+        end_timer(timer);
+
+        let timer = start_timer(|| format!("hyperplonk_preprocess_hyperPlonkProverParam"));
         let pp = HyperPlonkProverParam {
             pcs: pcs_pp,
             num_instances: circuit_info.num_instances.clone(),
@@ -158,6 +171,7 @@ where
                 .collect(),
             permutation_comms,
         };
+        end_timer(timer);
         Ok((pp, vp))
     }
 

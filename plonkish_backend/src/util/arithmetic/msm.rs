@@ -17,6 +17,7 @@ pub fn window_table<C: CurveAffine>(window_size: usize, generator: C) -> Vec<Vec
     let scalar_size = C::Scalar::NUM_BITS as usize;
     let num_windows = div_ceil(scalar_size, window_size);
     let mut table = vec![vec![C::identity(); (1 << window_size) - 1]; num_windows];
+    let _timer = start_timer(|| format!("window_table",));
     parallelize(&mut table, |(table, start)| {
         for (table, idx) in table.iter_mut().zip(start..) {
             let offset = generator * C::Scalar::from(2).pow_vartime([(window_size * idx) as u64]);
@@ -71,6 +72,7 @@ pub fn fixed_base_msm<'a, C: CurveAffine>(
 ) -> Vec<C::Curve> {
     let window_mask = (1 << window_size) - 1;
     let scalars = scalars.into_iter().collect_vec();
+    let _timer = start_timer(|| format!("fixed_base_msm-{}", scalars.len()));
     let mut outputs = vec![C::Curve::identity(); scalars.len()];
     parallelize(&mut outputs, |(outputs, start)| {
         for (output, scalar) in outputs.iter_mut().zip(scalars[start..].iter()) {

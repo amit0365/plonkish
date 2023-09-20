@@ -12,7 +12,7 @@ use crate::{
         arithmetic::{div_ceil, variable_base_msm, Curve, CurveAffine, Group},
         parallel::parallelize,
         transcript::{TranscriptRead, TranscriptWrite},
-        Deserialize, DeserializeOwned, Itertools, Serialize,
+        Deserialize, DeserializeOwned, Itertools, Serialize, start_timer,end_timer,
     },
     Error,
 };
@@ -174,7 +174,9 @@ where
         validate_input("commit", pp.num_vars(), [poly], None)?;
 
         let row_len = pp.row_len();
+        let timer = start_timer(|| format!("hyrax_commit_poly_evals"));
         let scalars = poly.evals();
+        end_timer(timer);
         let comm_projective = {
             let mut comm = vec![C::CurveExt::identity(); pp.num_chunks()];
             parallelize(&mut comm, |(comm, start)| {
@@ -185,7 +187,10 @@ where
             comm
         };
         let mut comm = vec![C::identity(); pp.num_chunks()];
+
+        let timer = start_timer(|| format!("hyrax_commit_batch_normalize"));
         C::CurveExt::batch_normalize(&comm_projective, &mut comm);
+        end_timer(timer);
 
         Ok(MultilinearHyraxCommitment(comm))
     }

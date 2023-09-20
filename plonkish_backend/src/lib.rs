@@ -7,8 +7,9 @@ pub mod pcs;
 pub mod piop;
 pub mod poly;
 pub mod util;
-
+pub mod sha256;
 pub use halo2_curves;
+pub mod sha_circuit;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Error {

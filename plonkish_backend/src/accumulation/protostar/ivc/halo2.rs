@@ -1054,6 +1054,7 @@ where
         step_circuit: Sc,
         avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
     ) -> Self {
+        // check why default used here?
         let config = Self::configure(&mut Default::default());
         let (tcc_config, hash_config, transcript_config) = Sc::configs(config);
         let tcc_chip = Sc::TccChip::new(tcc_config);
@@ -2373,7 +2374,6 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
             self.fixed_base_msm_secondary(layouter, bases, &scalars)?
         };
         self.constrain_equal_secondary(layouter, &out, &g_k)?;
-
         Ok(())
     }
 
@@ -2403,8 +2403,10 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
             .flatten()
             .collect_vec();
         let comm = comm.iter().map(|(comm, scalar)| (*comm, scalar));
-
-        self.verify_ipa(layouter, vp.ipa(), comm, lo, eval, transcript)
+        let timer = start_timer(|| format!("verify_hyrax_hyperplonk_verify_hyrax_verify_ipa"));
+        let output = self.verify_ipa(layouter, vp.ipa(), comm, lo, eval, transcript);
+        end_timer(timer);
+        output
     }
 
     fn verify_hyrax_hyperplonk(
@@ -2515,11 +2517,15 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
             .chain(lookup_m_comms)
             .chain(lookup_h_permutation_z_comms)
             .collect_vec();
-
+        
+        let timer = start_timer(|| format!("verify_hyrax_hyperplonk_pcs_batch_verify"));
         let (comm, point, eval) =
             self.multilinear_pcs_batch_verify(layouter, &comms, &points, &evals, transcript)?;
+        end_timer(timer);
 
+        let timer = start_timer(|| format!("verify_hyrax_hyperplonk_verify_hyrax"));
         self.verify_hyrax(layouter, &vp.pcs, &comm, &point, &eval, transcript)?;
+        end_timer(timer);
 
         Ok(instances.into_iter().next().unwrap())
     }
@@ -2842,11 +2848,16 @@ where
         Error,
     > {
         let tcc_chip = &self.tcc_chip;
+        let timer = start_timer(|| format!("secondary_agg_aggregate_gemini_kzg_ivc_reduce_decider"));
         let (num_steps, initial_input, output, h, comms, points, evals) =
             self.reduce_decider(layouter, num_steps, initial_input, output, acc, transcript)?;
+        end_timer(timer);
+        let timer = start_timer(|| format!("secondary_agg_aggregate_gemini_kzg_ivc_pcs_batch_verify"));
         let (comm, point, eval) =
             tcc_chip.multilinear_pcs_batch_verify(layouter, &comms, &points, &evals, transcript)?;
-
+        end_timer(timer);
+        let timer = start_timer(|| format!("secondary_agg_aggregate_gemini_kzg_ivc_algo_like_hyperplonk"));
+        //wtf? some proving algo like hyperplonk??
         let (fs, points, evals) = {
             let num_vars = point.len();
             let fs = transcript.read_commitments(layouter, num_vars - 1)?;
@@ -2991,7 +3002,7 @@ where
 
         let lhs = tcc_chip.variable_base_msm_secondary(layouter, bases, &scalars)?;
         let rhs = pi;
-
+        end_timer(timer);
         Ok((num_steps, initial_input, output, h, lhs, rhs))
     }
 }
@@ -3026,6 +3037,7 @@ where
         Error,
     > {
         let tcc_chip = &self.tcc_chip;
+        let timer = start_timer(|| format!("run_verify_ipa_grumpkin_ivc_reduce_decider"));
         let (num_steps, initial_input, output, comms, points, evals, h_ohs_from_last_nark) = self
             .reduce_decider_with_last_nark(
             layouter,
@@ -3039,9 +3051,9 @@ where
         let (comm, point, eval) =
             tcc_chip.multilinear_pcs_batch_verify(layouter, &comms, &points, &evals, transcript)?;
         let comm = comm.iter().map(|(comm, scalar)| (*comm, scalar));
-
+        let timer = start_timer(|| format!("run_verify_ipa_grumpkin_ivc_ipa"));
         tcc_chip.verify_ipa(layouter, &self.vp.vp.pcs, comm, &point, &eval, transcript)?;
-
+        end_timer(timer);
         Ok((num_steps, initial_input, output, h_ohs_from_last_nark))
     }
 }

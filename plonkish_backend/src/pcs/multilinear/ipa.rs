@@ -11,7 +11,7 @@ use crate::{
         chain, izip_eq,
         parallel::parallelize,
         transcript::{TranscriptRead, TranscriptWrite},
-        Deserialize, DeserializeOwned, Itertools, Serialize,
+        Deserialize, DeserializeOwned, Itertools, Serialize, start_timer,end_timer,
     },
     Error,
 };
@@ -99,6 +99,7 @@ where
         assert!(poly_size.is_power_of_two());
         let num_vars = poly_size.ilog2() as usize;
 
+        let timer = start_timer(|| format!("multilinear_ipa_g_parallel_hash__to_curve"));
         let g_projective = {
             let mut g = vec![C::Curve::identity(); poly_size];
             parallelize(&mut g, |(g, start)| {
@@ -111,7 +112,9 @@ where
             });
             g
         };
+        end_timer(timer);
 
+        let timer = start_timer(|| format!("multilinear_ipa_g_parallel_batch_normalise"));
         let g = {
             let mut g = vec![C::identity(); poly_size];
             parallelize(&mut g, |(g, start)| {
@@ -119,9 +122,12 @@ where
             });
             g
         };
+        end_timer(timer);
 
+        let timer = start_timer(|| format!("multilinear_ipa_final_hash_h"));
         let hasher = C::CurveExt::hash_to_curve("MultilinearIpa::setup");
         let h = hasher(&[1]).to_affine();
+        end_timer(timer);
 
         Ok(Self::Param { num_vars, g, h })
     }

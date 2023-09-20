@@ -1,5 +1,7 @@
 ## IVC without agg - 5s
-
+    const NUM_VARS: usize = 14;
+    const NUM_STEPS: usize = 3;
+    
 ## IVC with agg - 140s
 
     run_secondary_agg_circuit - 72.333µs
@@ -31,6 +33,87 @@
 
 ### IVC without agg - deep analysis
 
+primary_agg_instance_extractor ............................. 13.451s
+
+   primary_agg_verify_ipa_grumpkin_ivc_with_last_nark
+        reduce_decider ............................8.640s
+            ipa .........................8.052s
+
+   primary_agg_verify_hyrax_hyperplonk.....................................3.278s
+··   verify_hyrax_hyperplonk_pcs_batch_verify ..............................244.745ms
+··     verify_hyrax_hyperplonk_verify_hyrax ..................................2.656s
+····     verify_hyrax_hyperplonk_verify_hyrax_verify_ipa .....................2.323s
+
+
+primary_agg_preprocess ......55.816s
+
+    input_halo2_circuit .................20s
+        same steps as extractor ................ 13.5s
+        circuit_info?
+
+    hyperplonk_setup ....................24s
+        powers of g1 ....................................7.85s
+            window_table .....................................4s
+            kzg_fixed_base_msm_powers_of_s_g1-2097152 ........3.220s
+
+        powers of g2 ....................................15.7s
+            window_table .....................................5s
+            kzg_fixed_base_msm_powers_of_s_g2-2097152 ........10.575s
+
+        
+    hyperplonk_preprocess ...............9s
+        compute_preprocessed_comms...............4.56s
+            17 variable_base_msm-2097152 .....3s
+
+        compute_permutation_polys_and_comms......4.146s
+            7 variable_base_msm-2097152 ..... 3s
+
+
+primary_agg_prove .......... 56s
+
+    witness collector ................ 16s  
+        (same steps as extractor)
+    7 variable_base_msm-2097152 ...... 2s
+    permutation_z_polys-8 ............ 1.325s
+    4 variable_base_msm-2097152 ...... 10.5s
+    sum_check_prove-21-5 ............. 5.544s
+
+    pcs_batch_open ...................... 20s
+        6 variable_base_msm-2097152 ............ 15s 
+        other low msms take .................... 4s
+        merged poly ............................ 755.520ms
+        sum_check_prove-21-2 ................... 307.051ms
+
+
+
+## Nova comparison
+
+### SHA256
+
+    Message Length: 64
+        Prove Time  ......... 2.5564s.
+        Verify Time ........ 77.407ms.
+        size ............... 9970 bytes
+
+    Message Length: 128
+        Prove Time  ......... 4.5065s.
+        Verify Time ........ 142.14ms.
+        size ............... 10268 bytes
+
+    Message Length: 256
+        Prove Time ......... 8.2349s.
+        Verify Time ........ 280.85ms.
+        size ............... 10557 bytes
+
+
+CompressedSNARK-Prove - x^2 = y for 3 steps
+    StepCircuitSize:    22949
+    time:              1.5770 s 
+    size:             9671 bytes 
+
+
+
+------
 prove_decider-primary-14 and prove_decider_with_last_nark-secondary-14
     two instances of sum_check_prove-14-5/sum_check_prove-14-2
         sum_check_prove_round-0 takes 30ms while for later iterations decay exponentially -- 2 instances in each branch

@@ -11,7 +11,7 @@ use crate::{
         chain, izip_eq,
         parallel::parallelize,
         transcript::{TranscriptRead, TranscriptWrite},
-        Deserialize, DeserializeOwned, Itertools, Serialize, start_timer,end_timer,
+        Deserialize, DeserializeOwned, Itertools, Serialize, start_timer, end_timer,
     },
     Error,
 };
@@ -304,6 +304,7 @@ where
             xi_invs
         };
         let eval_prime = xi_0 * eval;
+        
         let c_k = variable_base_msm(
             chain![&xi_invs, &xis, Some(&eval_prime)],
             chain![&ls, &rs, Some(vp.h())],

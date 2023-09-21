@@ -31,7 +31,7 @@
 
         
 
-### IVC without agg - deep analysis
+### IVC with agg - deep analysis
 
 primary_agg_instance_extractor ............................. 13.451s
 
@@ -88,8 +88,46 @@ primary_agg_prove .......... 56s
 
 ## Nova comparison
 
-### SHA256
 
+### Protostar 
+#### Trivial Circuit - 0 constraints
+
+    Without Aggregation
+
+        primary acc using prove_steps Hyperplonk<Gemini<UnivariateKzg<Bn256>>>
+        secondary acc using prove steps Hyperplonk<MultilinearIpa<grumpkin::G1Affine>>
+
+        primary_proof .............. 7104 bytes, pairing proofs should be smaller?
+            Hyperplonk<Gemini<UnivariateKzg<Bn256>>> 
+                prove_decider ...... 475.822ms
+
+        secondary_proof ............ 8448 bytes
+            Hyperplonk<MultilinearIpa<grumpkin::G1Affine>>
+                prove_decider_with_last_nark ................. 1.431s
+                    pcs_batch_open-46 ................................. 915.468ms
+                        msm and sumcheck take 250ms, missing?
+
+    With Aggregation 
+        secondary_agg_proof 32416 -- is this bc of non-native ops
+        primary_agg_proof 10208
+
+    
+
+### NOVA 
+
+TrivialTestCircuit
+    prove time ............ 1.0716 s
+    size .................. 9347 bytes
+        primary_proof ..... 4488 bytes
+        secondaryproof..... 4491 bytes
+    verify .................38.393 ms
+
+StepCircuit - compute x^2 = y repeatedly for 22949 times for 3 steps
+    stepCircuitSize:    22949
+    time:              1.5770 s 
+    size:             9671 bytes 
+
+SHA256
     Message Length: 64
         Prove Time  ......... 2.5564s.
         Verify Time ........ 77.407ms.
@@ -106,10 +144,7 @@ primary_agg_prove .......... 56s
         size ............... 10557 bytes
 
 
-CompressedSNARK-Prove - x^2 = y for 3 steps
-    StepCircuitSize:    22949
-    time:              1.5770 s 
-    size:             9671 bytes 
+
 
 
 

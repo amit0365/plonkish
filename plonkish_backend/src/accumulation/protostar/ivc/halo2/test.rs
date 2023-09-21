@@ -143,181 +143,181 @@ where
     }
 }
 
-#[derive(Clone, Debug, Default)]
-struct Sha256Circuit<C> {
-    step_idx: usize,
-    _marker: PhantomData<C>,
-}
+//#[derive(Clone, Debug, Default)]
+// struct Sha256Circuit<C> {
+//     step_idx: usize,
+//     _marker: PhantomData<C>,
+// }
 
-impl<C> Circuit<C::Scalar> for Sha256Circuit<C>
-where
-    C: CurveAffine,
-    C::Scalar: FromUniformBytes<64>,
-{
-    type Config = (strawman::Config<C::Scalar>,Table16Config<C::Scalar>);
-    type FloorPlanner = SimpleFloorPlanner;
+// impl<C> Circuit<C::Scalar> for Sha256Circuit<C>
+// where
+//     C: CurveAffine,
+//     C::Scalar: FromUniformBytes<64>,
+// {
+//     type Config = (strawman::Config<C::Scalar>,Table16Config<C::Scalar>);
+//     type FloorPlanner = SimpleFloorPlanner;
 
-    fn without_witnesses(&self) -> Self {
-        Self::default()
-    }
+//     fn without_witnesses(&self) -> Self {
+//         Self::default()
+//     }
 
-    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        (strawman::Config::<C::Scalar>::configure::<C>(meta),Table16Chip::<C::Scalar>::configure(meta))
-    }
+//     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+//         (strawman::Config::<C::Scalar>::configure::<C>(meta),Table16Chip::<C::Scalar>::configure(meta))
+//     }
 
-    fn synthesize(&self,
-        config: Self::Config,
-        mut layouter: impl Layouter<C::Scalar>,
-    ) -> Result<(), Error> {
-        Table16Chip::load(config.1.clone(), &mut layouter)?;
-        let table16_chip = Table16Chip::<C::Scalar>::construct(config.1);
+//     fn synthesize(&self,
+//         config: Self::Config,
+//         mut layouter: impl Layouter<C::Scalar>,
+//     ) -> Result<(), Error> {
+//         Table16Chip::load(config.1.clone(), &mut layouter)?;
+//         let table16_chip = Table16Chip::<C::Scalar>::construct(config.1);
 
-        // Test vector: "abc"
-        let test_input = [
-            BlockWord(Value::known(0b01100001011000100110001110000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000000000)),
-            BlockWord(Value::known(0b00000000000000000000000000011000)),
-        ];
+//         // Test vector: "abc"
+//         let test_input = [
+//             BlockWord(Value::known(0b01100001011000100110001110000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000000000)),
+//             BlockWord(Value::known(0b00000000000000000000000000011000)),
+//         ];
 
-        // Create a message of length 31 blocks
-        let mut input = Vec::with_capacity(31 * BLOCK_SIZE);
-        for _ in 0..31 {
-            input.extend_from_slice(&test_input);
-        }
+//         // Create a message of length 31 blocks
+//         let mut input = Vec::with_capacity(31 * BLOCK_SIZE);
+//         for _ in 0..31 {
+//             input.extend_from_slice(&test_input);
+//         }
 
-        Sha256::digest(table16_chip, layouter.namespace(|| "'abc' * 2"), &input)?;
+//         Sha256::digest(table16_chip, layouter.namespace(|| "'abc' * 2"), &input)?;
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
 
 
-impl<C> CircuitExt<C::Scalar> for Sha256Circuit<C>
-where
-    C: CurveAffine,
-    C::Scalar: FromUniformBytes<64>,
-{   
-    fn instances(&self) -> Vec<Vec<C::Scalar>> {
-        Vec::new()
-    }
-}
+// impl<C> CircuitExt<C::Scalar> for Sha256Circuit<C>
+// where
+//     C: CurveAffine,
+//     C::Scalar: FromUniformBytes<64>,
+// {   
+//     fn instances(&self) -> Vec<Vec<C::Scalar>> {
+//         Vec::new()
+//     }
+// }
 
-//what should go inside here?
-impl<C: TwoChainCurve> StepCircuit<C> for Sha256Circuit<C>
-where
-    C::Base: PrimeFieldBits,
-    C::Scalar: FromUniformBytes<64> + PrimeFieldBits,
-{
-    type TccChip = strawman::Chip<C>;
-    type HashChip = strawman::Chip<C>;
-    type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
+// //what should go inside here?
+// impl<C: TwoChainCurve> StepCircuit<C> for Sha256Circuit<C>
+// where
+//     C::Base: PrimeFieldBits,
+//     C::Scalar: FromUniformBytes<64> + PrimeFieldBits,
+// {
+//     type TccChip = strawman::Chip<C>;
+//     type HashChip = strawman::Chip<C>;
+//     type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
 
-    fn configs(
-        config: Self::Config,
-    ) -> (
-        <Self::TccChip as TwoChainCurveInstruction<C>>::Config,
-        <Self::HashChip as HashInstruction<C>>::Config,
-        <Self::TranscriptChip as TranscriptInstruction<C>>::Config,
-    ) {
-        (
-            config.0.clone(),
-            config.0.poseidon_spec.clone(),
-            config.0.poseidon_spec,
-        )
-    }
+//     fn configs(
+//         config: Self::Config,
+//     ) -> (
+//         <Self::TccChip as TwoChainCurveInstruction<C>>::Config,
+//         <Self::HashChip as HashInstruction<C>>::Config,
+//         <Self::TranscriptChip as TranscriptInstruction<C>>::Config,
+//     ) {
+//         (
+//             config.0.clone(),
+//             config.0.poseidon_spec.clone(),
+//             config.0.poseidon_spec,
+//         )
+//     }
 
-    fn arity() -> usize {
-        0
-    }
+//     fn arity() -> usize {
+//         0
+//     }
 
-    fn initial_input(&self) -> &[C::Scalar] {
-        &[]
-    }
+//     fn initial_input(&self) -> &[C::Scalar] {
+//         &[]
+//     }
 
-    fn input(&self) -> &[C::Scalar] {
-        &[]
-    }
+//     fn input(&self) -> &[C::Scalar] {
+//         &[]
+//     }
 
-    fn output(&self) -> &[C::Scalar] {
-        &[]
-    }
+//     fn output(&self) -> &[C::Scalar] {
+//         &[]
+//     }
 
-    fn step_idx(&self) -> usize {
-        self.step_idx
-    }
+//     fn step_idx(&self) -> usize {
+//         self.step_idx
+//     }
 
-    fn next(&mut self) {
-        self.step_idx += 1;
-    }
+//     fn next(&mut self) {
+//         self.step_idx += 1;
+//     }
 
-    fn synthesize(
-        &self,
-        _: Self::Config,
-        _: impl Layouter<C::Scalar>,
-    ) -> Result<
-        (
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
-        ),
-        Error,
-    > {
-        Ok((Vec::new(), Vec::new()))
-    }
-}
+//     fn synthesize(
+//         &self,
+//         _: Self::Config,
+//         _: impl Layouter<C::Scalar>,
+//     ) -> Result<
+//         (
+//             Vec<AssignedCell<C::Scalar, C::Scalar>>,
+//             Vec<AssignedCell<C::Scalar, C::Scalar>>,
+//         ),
+//         Error,
+//     > {
+//         Ok((Vec::new(), Vec::new()))
+//     }
+// }
 
-#[derive(Clone, Debug, Default)]
-struct NonTrivialTestCircuit<F: PrimeField> {
-  num_cons: usize,
-  _p: PhantomData<F>,
-}
+// #[derive(Clone, Debug, Default)]
+// struct NonTrivialTestCircuit<F: PrimeField> {
+//   num_cons: usize,
+//   _p: PhantomData<F>,
+// }
 
-impl<F> NonTrivialTestCircuit<F>
-where
-  F: PrimeField,
-{
-  pub fn new(num_cons: usize) -> Self {
-    Self {
-      num_cons,
-      _p: PhantomData,
-    }
-  }
-}
-impl<F> StepCircuit<F> for NonTrivialTestCircuit<F>
-where
-  F: PrimeField,
-{
-  fn arity(&self) -> usize {
-    1
-  }
+// impl<F> NonTrivialTestCircuit<F>
+// where
+//   F: PrimeField,
+// {
+//   pub fn new(num_cons: usize) -> Self {
+//     Self {
+//       num_cons,
+//       _p: PhantomData,
+//     }
+//   }
+// }
+// impl<F> StepCircuit<F> for NonTrivialTestCircuit<F>
+// where
+//   F: PrimeField,
+// {
+//   fn arity(&self) -> usize {
+//     1
+//   }
 
-  fn synthesize<CS: ConstraintSystem<F>>(
-    &self,
-    cs: &mut CS,
-    z: &[AllocatedNum<F>],
-  ) -> Result<Vec<AllocatedNum<F>>, SynthesisError> {
-    // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
-    let mut x = z[0].clone();
-    let mut y = x.clone();
-    for i in 0..self.num_cons {
-      y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
-      x = y.clone();
-    }
-    Ok(vec![y])
-  }
-}
+//   fn synthesize<CS: ConstraintSystem<F>>(
+//     &self,
+//     cs: &mut CS,
+//     z: &[AllocatedNum<F>],
+//   ) -> Result<Vec<AllocatedNum<F>>, SynthesisError> {
+//     // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
+//     let mut x = z[0].clone();
+//     let mut y = x.clone();
+//     for i in 0..self.num_cons {
+//       y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
+//       x = y.clone();
+//     }
+//     Ok(vec![y])
+//   }
+// }
 
 #[derive(Clone)]
 struct SecondaryAggregationCircuit {
@@ -574,7 +574,7 @@ where
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
-    let timer = start_timer(|| format!("run_protostar_hyperplonk_ivc_sha256"));
+    let timer = start_timer(|| format!("run_ivc_preprocess"));
     let primary_num_vars = num_vars;
     let primary_atp = strawman::accumulation_transcript_param();
     let secondary_num_vars = num_vars;
@@ -597,7 +597,9 @@ where
         seeded_std_rng(),
     )
     .unwrap();
+    end_timer(timer);
 
+    let timer = start_timer(|| format!("run_ivc_prove_steps"));
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
         &ivc_pp,
         &mut primary_circuit,
@@ -606,10 +608,15 @@ where
         seeded_std_rng(),
     )
     .unwrap();
+    end_timer(timer);
+
+    println!("primary_acc_instance x {:?} w {:?} c {:?} ", primary_acc.instance.instances.len(), primary_acc.instance.witness_comms.len(), primary_acc.instance.challenges.len());
+    println!("secondary_acc_instance x {:?} w {:?} c {:?} ", secondary_acc.instance.instances.len(), secondary_acc.instance.witness_comms.len(), secondary_acc.instance.challenges.len());
 
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();
 
+    let timer = start_timer(|| format!("run_ivc_prove_decider"));
     let (
         primary_acc,
         primary_initial_input,
@@ -669,6 +676,10 @@ where
     };
     assert_eq!(result, Ok(()));
     end_timer(timer);
+
+    println!("primary_proof {:?}",primary_proof.len());
+    println!("secondary_proof {:?}",secondary_proof.len());
+
 
     (
         ivc_vp,
@@ -758,6 +769,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             transcript.into_proof()
         };
         end_timer(timer);
+
         let timer = start_timer(|| format!("run_verify_secondary_agg"));
         let result = {
             let mut transcript = strawman::PoseidonTranscript::from_proof(dtp, proof.as_slice());
@@ -768,6 +780,9 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
         (vp, circuit.instances().to_vec(), proof)
     
     };
+
+    println!("secondary_aggregation_proof {:?}",secondary_aggregation_proof.len());
+
 
     {   let timer = start_timer(|| format!("run_primary_agg_circuit"));
         let mut circuit = PrimaryAggregationCircuit {
@@ -817,6 +832,8 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             transcript.into_proof()
         };
         end_timer(timer);
+        println!("primary_agg_proof {:?}",proof.len());
+
         let timer = start_timer(|| format!("run_verify_primary_agg"));
         let result = {
             let mut transcript = strawman::PoseidonTranscript::from_proof(dtp, proof.as_slice());

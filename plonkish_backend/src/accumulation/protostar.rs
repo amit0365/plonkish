@@ -10,9 +10,9 @@ use crate::{
         arithmetic::{inner_product, powers, CurveAffine, Field},
         chain,
         expression::Expression,
-        izip, izip_eq,
+        izip, izip_eq, start_timer,
         transcript::Transcript,
-        Deserialize, Itertools, Serialize,
+        Deserialize, Itertools, Serialize, end_timer,
     },
     Error,
 };
@@ -124,13 +124,16 @@ where
     }
 
     fn from_nark(strategy: ProtostarStrategy, k: usize, nark: PlonkishNark<F, Pcs>) -> Self {
+        let timer = start_timer(|| format!("prove_acc_from_nark_init_acc_from_nark"));
         let witness_polys = nark.witness_polys;
-        Self {
+        let result = Self {
             instance: ProtostarAccumulatorInstance::from_nark(strategy, nark.instance),
             witness_polys,
             e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]),
             _marker: PhantomData,
-        }
+        };
+        end_timer(timer);
+        result
     }
 
     fn fold_uncompressed(

@@ -2857,7 +2857,7 @@ where
             tcc_chip.multilinear_pcs_batch_verify(layouter, &comms, &points, &evals, transcript)?;
         end_timer(timer);
         let timer = start_timer(|| format!("secondary_agg_aggregate_gemini_kzg_ivc_algo_like_hyperplonk"));
-        //wtf? some proving algo like hyperplonk??
+        //kzg open and verify
         let (fs, points, evals) = {
             let num_vars = point.len();
             let fs = transcript.read_commitments(layouter, num_vars - 1)?;

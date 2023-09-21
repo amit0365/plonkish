@@ -33,6 +33,34 @@
 
 ### IVC with agg - deep analysis
 
+secondary_agg_instance_extractor .................1s                             ......180ms?
+    aggregate_gemini_kzg_reduce_decider ...............357.087ms
+    aggregate_gemini_kzg_pcs_batch_verify .............227.408ms
+    aggregate_gemini_kzg_verify_kzg ...................225.905ms
+
+// lot of msms due to hyrax
+run_prove_secondary_agg_preprocess ...............4s                              .......350ms?
+    same process as extractor ......................... 1s
+    hyperplonk_setup_pcs_setup .........................140.507ms
+
+    hyperplonk_preprocess
+        compute_preprocessed_comms .................... 1.6s
+            500 variable_base_msm-4096 
+        
+        compute_permutation_polys_and_comms ........... 800ms
+            240 variable_base_msm-4096  
+
+
+run_prove_secondary_agg_prove ....................5s
+    witness_collector(same steps as extractor) .........1s
+
+    350 variable_base_msm-4096 .........................
+
+    pcs_batch_open-41 ..................................1s
+        100 msm and sum_check
+
+    
+
 primary_agg_instance_extractor ............................. 13.451s
 
    primary_agg_verify_ipa_grumpkin_ivc_with_last_nark
@@ -107,8 +135,12 @@ primary_agg_prove .......... 56s
                     pcs_batch_open-46 ................................. 915.468ms
                         msm and sumcheck take 250ms, missing?
 
+
     With Aggregation 
-        secondary_agg_proof 32416 -- is this bc of non-native ops
+
+        secondary_agg_proof 32416 - bc of non-native ops, 
+                                    using logn ipa proof size should be smaller
+                                    
         primary_agg_proof 10208
 
     
@@ -127,7 +159,9 @@ StepCircuit - compute x^2 = y repeatedly for 22949 times for 3 steps
     time:              1.5770 s 
     size:             9671 bytes 
 
+
 SHA256
+
     Message Length: 64
         Prove Time  ......... 2.5564s.
         Verify Time ........ 77.407ms.

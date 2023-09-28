@@ -1,0 +1,407 @@
+   Compiling plonkish_backend v0.1.0 (/Users/ak36/Desktop/halo2p/plonkish/plonkish_backend)
+warning: unused imports: `BLOCK_SIZE`, `BlockWord`, `Sha256`, `Table16Chip`, `Table16Config`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:21:14
+   |
+21 |     sha256::{BlockWord, Sha256, Table16Chip, Table16Config,BLOCK_SIZE},
+   |              ^^^^^^^^^  ^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^^^ ^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `Fr`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:35:26
+   |
+35 |     bn256::{self, Bn256, Fr},
+   |                          ^^
+
+warning: unused import: `halo2_wrong_v2::maingate`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:38:5
+   |
+38 | use halo2_wrong_v2::maingate;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Any`, `Assigned`, `Challenge`, `Expression`, `Fixed`, `FloorPlanner`, `Instance`, `self`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:45:9
+   |
+45 |         self, Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem,
+   |         ^^^^          ^^^  ^^^^^^^^              ^^^^^^^^^
+46 |         Error, Fixed, FloorPlanner, Instance, Selector, Expression,
+   |                ^^^^^  ^^^^^^^^^^^^  ^^^^^^^^            ^^^^^^^^^^
+
+warning: unused imports: `Scalar`, `arithmetic`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:48:20
+   |
+48 | use pasta_curves::{arithmetic, pallas::{Scalar, self}, vesta};
+   |                    ^^^^^^^^^^           ^^^^^^
+
+warning: unused import: `rand::RngCore`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:51:5
+   |
+51 | use rand::RngCore;
+   |     ^^^^^^^^^^^^^
+
+warning: unused import: `self::strawman::Config`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:53:5
+   |
+53 | use self::strawman::Config;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `CurveAffine`, `FromUniformBytes`, `MultiMillerLoop`, `PrimeFieldBits`, `TwoChainCurve`, `fe_to_fe`
+  --> plonkish_backend/src/sha256.rs:16:9
+   |
+16 |         fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |         ^^^^^^^^  ^^^^^^^^^^^         ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+17 |         TwoChainCurve,
+   |         ^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+  --> plonkish_backend/src/sha256/table16/compression.rs:12:5
+   |
+12 | use halo2_curves::bn256::Fr;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+  --> plonkish_backend/src/sha256/table16/compression/compression_util.rs:13:5
+   |
+13 | use halo2_curves::bn256::Fr;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/compression/subregion_digest.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `CurveAffine`, `Field`, `FromUniformBytes`, `MultiMillerLoop`, `PrimeFieldBits`, `TwoChainCurve`, `fe_to_fe`
+  --> plonkish_backend/src/sha256/table16/compression/subregion_digest.rs:10:9
+   |
+10 |         fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |         ^^^^^^^^  ^^^^^^^^^^^  ^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+11 |         TwoChainCurve,
+   |         ^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/compression/subregion_initial.rs:9:5
+  |
+9 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/compression/subregion_main.rs:5:5
+  |
+5 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `hash::Hash`
+ --> plonkish_backend/src/sha256/table16/message_schedule.rs:2:23
+  |
+2 | use std::{fmt::Debug, hash::Hash, marker::PhantomData};
+  |                       ^^^^^^^^^^
+
+warning: unused imports: `CurveAffine`, `Field`, `FromUniformBytes`, `MultiMillerLoop`, `PrimeFieldBits`, `TwoChainCurve`, `fe_to_fe`
+  --> plonkish_backend/src/sha256/table16/message_schedule.rs:11:5
+   |
+11 |     fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |     ^^^^^^^^  ^^^^^^^^^^^  ^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+12 |     TwoChainCurve,
+   |     ^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/message_schedule/schedule_util.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/message_schedule/subregion1.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/message_schedule/subregion2.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Field`, `FromUniformBytes`, `MultiMillerLoop`, `PrimeFieldBits`, `TwoChainCurve`, `fe_to_fe`
+  --> plonkish_backend/src/sha256/table16/message_schedule/subregion3.rs:11:9
+   |
+11 |         fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |         ^^^^^^^^               ^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+12 |         TwoChainCurve,
+   |         ^^^^^^^^^^^^^
+
+warning: unused import: `halo2_curves::bn256::Fr`
+ --> plonkish_backend/src/sha256/table16/spread_table.rs:8:5
+  |
+8 | use halo2_curves::bn256::Fr;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Blake2bRead`, `Blake2bWrite`, `Challenge255`, `create_proof`, `keygen_pk`, `keygen_vk`, `poly::commitment::Params`, `verify_proof`
+ --> plonkish_backend/src/sha_circuit.rs:4:9
+  |
+4 |         create_proof, keygen_pk, keygen_vk, verify_proof, Circuit, ConstraintSystem, Error,
+  |         ^^^^^^^^^^^^  ^^^^^^^^^  ^^^^^^^^^  ^^^^^^^^^^^^
+5 |     },
+6 |     poly::commitment::Params,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+7 |     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
+  |                  ^^^^^^^^^^^  ^^^^^^^^^^^^  ^^^^^^^^^^^^
+
+warning: unused import: `rand::rngs::OsRng`
+ --> plonkish_backend/src/sha_circuit.rs:9:5
+  |
+9 | use rand::rngs::OsRng;
+  |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `EqAffine`
+  --> plonkish_backend/src/sha_circuit.rs:10:35
+   |
+10 | use halo2_curves::pasta::{pallas, EqAffine};
+   |                                   ^^^^^^^^
+
+warning: unused import: `arithmetic::Field`
+ --> plonkish_backend/src/sha256/table16/gates.rs:2:20
+  |
+2 | use halo2_proofs::{arithmetic::Field, plonk::Expression};
+  |                    ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Assignment`
+  --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:45:38
+   |
+45 |         self, Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem,
+   |                                      ^^^^^^^^^^
+
+warning: unused import: `CurveAffine`
+  --> plonkish_backend/src/sha256/table16/message_schedule/subregion3.rs:11:19
+   |
+11 |         fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits,
+   |                   ^^^^^^^^^^^
+
+warning: unused variable: `b`
+   --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:204:9
+    |
+204 |         b: F 
+    |         ^ help: if this is intentional, prefix it with an underscore: `_b`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `timer`
+    --> plonkish_backend/src/accumulation/protostar/ivc/halo2.rs:3040:13
+     |
+3040 |         let timer = start_timer(|| format!("run_verify_ipa_grumpkin_ivc_reduce_decider"));
+     |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_timer`
+
+warning: fields `selector`, `a`, and `b` are never read
+   --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:159:5
+    |
+158 |  struct FunctionConfig {
+    |         -------------- fields in this struct
+159 |     selector: Selector,
+    |     ^^^^^^^^
+160 |     a: Column<Advice>,
+    |     ^
+161 |     b: Column<Advice>,
+    |     ^
+    |
+    = note: `FunctionConfig` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` on by default
+
+warning: struct `FunctionChip` is never constructed
+   --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:164:9
+    |
+164 |  struct FunctionChip<F: Field> {
+    |         ^^^^^^^^^^^^
+
+warning: fields `step_idx`, `initial_input`, `input`, and `output` are never read
+   --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:230:5
+    |
+225 | struct NonTrivialCircuit<'a, C> 
+    |        ----------------- fields in this struct
+...
+230 |     step_idx: usize,
+    |     ^^^^^^^^
+231 |     initial_input: &'a [C::Scalar],
+    |     ^^^^^^^^^^^^^
+232 |     input: &'a [C::Scalar],
+    |     ^^^^^
+233 |     output: &'a [C::Scalar],
+    |     ^^^^^^
+    |
+    = note: `NonTrivialCircuit` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: associated function `construct` is never used
+   --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:170:12
+    |
+170 |     pub fn construct(config: FunctionConfig) -> Self {
+    |            ^^^^^^^^^
+
+warning: associated function `configure` is never used
+   --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:174:12
+    |
+174 |     pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
+    |            ^^^^^^^^^
+
+warning: associated function `assign` is never used
+   --> plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:199:12
+    |
+199 |     pub fn assign(
+    |            ^^^^^^
+
+warning: fields `c` and `d` are never read
+  --> plonkish_backend/src/sha256/table16/message_schedule/subregion1.rs:18:5
+   |
+14 | pub struct Subregion1Word<F:PrimeField> {
+   |            -------------- fields in this struct
+...
+18 |     c: AssignedBits<11,F>,
+   |     ^
+19 |     d: AssignedBits<14,F>,
+   |     ^
+   |
+   = note: `Subregion1Word` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: fields `d` and `g` are never read
+  --> plonkish_backend/src/sha256/table16/message_schedule/subregion2.rs:19:5
+   |
+14 | pub struct Subregion2Word<F:PrimeField> {
+   |            -------------- fields in this struct
+...
+19 |     d: AssignedBits<7,F>,
+   |     ^
+...
+22 |     g: AssignedBits<13,F>,
+   |     ^
+   |
+   = note: `Subregion2Word` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `tag` is never read
+  --> plonkish_backend/src/sha256/table16/spread_table.rs:71:9
+   |
+70 | pub(super) struct SpreadVar<F:PrimeField, const DENSE: usize, const SPREAD: usize> {
+   |                   --------- field in this struct
+71 |     pub tag: Value<u8>,
+   |         ^^^
+   |
+   = note: `SpreadVar` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: `plonkish_backend` (lib test) generated 38 warnings
+    Finished release [optimized] target(s) in 52.04s
+     Running unittests src/lib.rs (/Users/ak36/Desktop/halo2p/plonkish/target/release/deps/plonkish_backend-26237430b1154ed5)
+
+running 1 test
+Start:   run_ivc_preprocess
+··Start:   multilinear_ipa_g_parallel_hash__to_curve
+··End:     multilinear_ipa_g_parallel_hash__to_curve ...............................63.238ms
+··Start:   multilinear_ipa_g_parallel_batch_normalise
+··End:     multilinear_ipa_g_parallel_batch_normalise ..............................678.042µs
+··Start:   multilinear_ipa_final_hash_h
+··End:     multilinear_ipa_final_hash_h ............................................33.584µs
+··Start:   multilinear_ipa_g_parallel_hash__to_curve
+··End:     multilinear_ipa_g_parallel_hash__to_curve ...............................58.950ms
+··Start:   multilinear_ipa_g_parallel_batch_normalise
+··End:     multilinear_ipa_g_parallel_batch_normalise ..............................849.083µs
+··Start:   multilinear_ipa_final_hash_h
+··End:     multilinear_ipa_final_hash_h ............................................32.208µs
+··Start:   hyperplonk_preprocess_compute_preprocessed_comms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................781.000µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................660.584µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................701.792µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................577.875µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................565.958µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................573.708µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................676.000µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................647.500µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................574.875µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................597.375µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................559.542µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................712.708µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................604.542µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................573.042µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................577.417µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................631.542µs
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................609.583µs
+··End:     hyperplonk_preprocess_compute_preprocessed_comms ........................12.064ms
+··Start:   hyperplonk_preprocess_compute_permutation_polys_and_comms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................2.466ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................3.657ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................3.507ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................3.509ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................3.362ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................3.854ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................4.230ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................3.512ms
+··End:     hyperplonk_preprocess_compute_permutation_polys_and_comms ...............29.386ms
+··Start:   hyperplonk_preprocess_compose_virtualPolynomialInfo
+··End:     hyperplonk_preprocess_compose_virtualPolynomialInfo .....................72.916µs
+··Start:   hyperplonk_preprocess_hyperPlonkProverParam
+··End:     hyperplonk_preprocess_hyperPlonkProverParam .............................1.709µs
+··Start:   circuit_info_without_preprocess
+··End:     circuit_info_without_preprocess .........................................593.666µs
+··Start:   permutation_column_idx
+··End:     permutation_column_idx ..................................................1.666µs
+··Start:   preprocess_collector
+··End:     preprocess_collector ....................................................1.181ms
+scalar_mul_secondary_output: Ep { x: 0x0000000000000000000000000000000000000000000000000000000000000000, y: 0x0000000000000000000000000000000000000000000000000000000000000000, z: 0x0000000000000000000000000000000000000000000000000000000000000000 }
+scalar_mul_secondary_bit_first: Witness { id: 3854, value: Value { inner: Some(0x0000000000000000000000000000000000000000000000000000000000000001) } }
+scalar_mul_secondary_base_ec_point: Value { inner: None }
+value Infinity
+thread 'accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc_pallas' panicked at 'assertion failed: `(left == right)`
+  left: `0`,
+ right: `1`', /Users/ak36/.cargo/registry/src/github.com-1ecc6299db9ec823/subtle-2.5.0/src/lib.rs:703:9
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/fc594f15669680fa70d255faec3ca3fb507c3405/library/std/src/panicking.rs:575:5
+   1: core::panicking::panic_fmt
+             at /rustc/fc594f15669680fa70d255faec3ca3fb507c3405/library/core/src/panicking.rs:64:14
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed
+   4: plonkish_backend::accumulation::protostar::ivc::halo2::test::strawman::x_y_is_identity
+   5: <plonkish_backend::accumulation::protostar::ivc::halo2::test::strawman::Chip<C> as plonkish_backend::accumulation::protostar::ivc::halo2::TwoChainCurveInstruction<C>>::assign_witness_secondary
+   6: <plonkish_backend::accumulation::protostar::ivc::halo2::test::strawman::Chip<C> as plonkish_backend::accumulation::protostar::ivc::halo2::TwoChainCurveInstruction<C>>::scalar_mul_secondary
+   7: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+   8: plonkish_backend::accumulation::protostar::ivc::halo2::ProtostarAccumulationVerifier<C,TccChip>::fold_accumulator_from_nark
+   9: plonkish_backend::accumulation::protostar::ivc::halo2::ProtostarAccumulationVerifier<C,TccChip>::verify_accumulation_from_nark
+  10: <plonkish_backend::accumulation::protostar::ivc::halo2::RecursiveCircuit<C,Sc> as halo2_proofs::plonk::circuit::Circuit<<C as group::prime::PrimeCurveAffine>::Scalar>>::synthesize
+  11: <plonkish_backend::frontend::halo2::Halo2Circuit<F,C> as plonkish_backend::backend::PlonkishCircuit<F>>::circuit_info
+  12: plonkish_backend::accumulation::protostar::ivc::halo2::preprocess
+  13: core::ops::function::FnOnce::call_once
+  14: core::ops::function::FnOnce::call_once
+             at /rustc/fc594f15669680fa70d255faec3ca3fb507c3405/library/core/src/ops/function.rs:507:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+End:     run_ivc_preprocess ........................................................416.856ms
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc_pallas ... FAILED
+
+failures:
+
+failures:
+    accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc_pallas
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 62 filtered out; finished in 0.42s
+
+error: test failed, to rerun pass `-p plonkish_backend --lib`

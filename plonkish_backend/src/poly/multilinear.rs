@@ -643,6 +643,7 @@ mod test {
             Itertools,
         },
     };
+
     use halo2_curves::bn256::Fr;
     use rand::{rngs::OsRng, RngCore};
     use std::iter;

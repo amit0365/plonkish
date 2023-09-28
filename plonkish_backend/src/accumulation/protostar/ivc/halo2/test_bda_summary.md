@@ -141,7 +141,7 @@ primary_agg_prove .......... 56s
         secondary_agg_proof 32416 - bc of non-native ops, 
                                     using logn ipa proof size should be smaller
                                     
-        primary_agg_proof 10208
+        primary_agg_proof 10208  30ms
 
     
 
@@ -158,6 +158,19 @@ StepCircuit - compute x^2 = y repeatedly for 22949 times for 3 steps
     stepCircuitSize:    22949
     time:              1.5770 s 
     size:             9671 bytes 
+
+//arm64 
+TrivialTestCircuit
+    Prove: 2.8526s.
+    PrimarySNARK_encoded: 4488 bytes.
+    SecondarySNARK_encoded: 4491 bytes.
+    Verify: 100.02ms. 
+
+    StepCircuitSize-22949
+    Prove: 4.3164 s
+
+
+                      
 
 
 SHA256
@@ -178,6 +191,16 @@ SHA256
         size ............... 10557 bytes
 
 
+//arm64
+
+    Message Length: 64
+        Prove Time: 72.499ms.
+
+    Message Length: 128
+        Prove Time: 94.022ms.
+
+    Message Length: 256
+        Prove Time: 100.90ms.
 
 
 

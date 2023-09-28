@@ -51,6 +51,10 @@ use std::{
     iter,
     marker::PhantomData,
 };
+use halo2_ecc::{
+    fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip},
+    bigint::{CRTInteger, FixedCRTInteger, ProperCrtUint},
+};
 
 #[cfg(test)]
 mod test;
@@ -66,7 +70,6 @@ pub trait TwoChainCurveInstruction<C: TwoChainCurve>: Clone + Debug {
     type Config: Clone + Debug;
     type Assigned: Clone + Debug;
     type AssignedBase: Clone + Debug;
-    type AssignedPrimary: Clone + Debug;
     type AssignedSecondary: Clone + Debug;
 
     fn new(config: Self::Config) -> Self;
@@ -537,7 +540,7 @@ pub trait TranscriptInstruction<C: TwoChainCurve>: Debug {
     }
 }
 
-pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> {
+pub trait StepCircuit<C: TwoChainCurve>: Debug + CircuitExt<C::Scalar> {
     type TccChip: TwoChainCurveInstruction<C>;
     type HashChip: HashInstruction<C, TccChip = Self::TccChip>;
     type TranscriptChip: TranscriptInstruction<C, TccChip = Self::TccChip>;

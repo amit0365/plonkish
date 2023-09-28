@@ -35,12 +35,22 @@ use halo2_curves::{
     bn256::{self, Bn256, Fr},
     grumpkin,
 };
+use halo2_wrong_v2::maingate;
 use halo2_proofs::{
+    // arithmetic::Field,
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
-    plonk::{Circuit, ConstraintSystem, Error},
-};
+    dev::CircuitGates,
+    poly::Rotation,
+    plonk::{
+        self, Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem,
+        Error, Fixed, FloorPlanner, Instance, Selector, Expression,
+    }};
+use pasta_curves::{arithmetic, pallas::{Scalar, self}, vesta};
+
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
 use rand::RngCore;
+
+use self::strawman::Config;
 // use log::{info, error};
 
 #[derive(Clone, Debug, Default)]
@@ -143,7 +153,212 @@ where
     }
 }
 
-//#[derive(Clone, Debug, Default)]
+
+#[derive(Debug, Clone)]
+ struct FunctionConfig {
+    selector: Selector,
+    a: Column<Advice>,
+    b: Column<Advice>,
+}
+
+ struct FunctionChip<F: Field> {
+    config: FunctionConfig,
+    _marker: PhantomData<F>,
+}
+
+impl<F: Field> FunctionChip<F> {
+    pub fn construct(config: FunctionConfig) -> Self {
+        Self { config, _marker: PhantomData }
+    }
+
+    pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
+        // advice colns are defined separately in config so use meta.advice_column like the syntax in selector
+        let a = meta.advice_column(); // reference to self.config.advice[0] used below
+        let b = meta.advice_column();
+        let selector = meta.selector(); 
+
+        // defining custom gate with logic
+        meta.create_gate("b = a",|meta|{
+            let s = meta.query_selector(selector);
+            let a = meta.query_advice(a, Rotation::cur());
+            let b = meta.query_advice(b, Rotation::cur());
+
+            vec![s * (b - a)]
+
+        });
+
+        // instantiate empty circuit
+        FunctionConfig { 
+            selector,
+            a,
+            b
+        }
+         
+    }
+
+    pub fn assign(
+        &self, 
+        mut layouter: 
+        impl Layouter<F>, 
+        a: F, 
+        b: F 
+    ) -> Result<AssignedCell<F, F>, Error> {
+
+        layouter.assign_region(
+            || "b = a", 
+            |mut region| {  
+
+                self.config.selector.enable(&mut region, 0)?;
+
+                region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
+
+                let b = a;
+
+                region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))
+
+            },
+        )
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct NonTrivialCircuit<'a, C> 
+where
+    C: CurveAffine,
+    C::Scalar: FromUniformBytes<64>,
+{
+    step_idx: usize,
+    initial_input: &'a [C::Scalar],
+    input: &'a [C::Scalar],
+    output: &'a [C::Scalar],
+}
+
+// impl<C> NonTrivialCircuit<'_, C>
+// where
+//     C: CurveAffine,
+//     C::Scalar: FromUniformBytes<64>,
+// {
+//     pub fn new<'a>(initial_input: &'a [C::Scalar]) -> Self {
+//         Self { 
+//             step_idx: 0, 
+//             initial_input: initial_input, 
+//             input: initial_input, 
+//             output: initial_input
+//         }
+//     }
+// }
+
+// impl<C> Circuit<C::Scalar> for NonTrivialCircuit<'_, C>
+// where
+//     C: CurveAffine,
+//     C::Scalar: FromUniformBytes<64>,
+// {
+//     type Config = (strawman::Config<C::Scalar>,FunctionConfig);
+//     type FloorPlanner = SimpleFloorPlanner;
+
+//     fn without_witnesses(&self) -> Self {
+//         self.clone()
+//     }
+
+//     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+//         (strawman::Config::configure::<C>(meta),FunctionChip::configure(meta))
+//     }
+
+//     fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<C::Scalar>) -> Result<(), Error> {
+//         // fix this
+//         let chip = FunctionChip::construct(config.1);
+//         chip.assign(layouter, self.input[0], self.output[0])?;
+
+//         Ok(())
+//     }
+// }
+
+// impl<C> CircuitExt<C::Scalar> for NonTrivialCircuit<'_, C>
+// where
+//     C: CurveAffine,
+//     C::Scalar: FromUniformBytes<64>,
+// {
+//     fn instances(&self) -> Vec<Vec<C::Scalar>> {
+//         Vec::new()
+//     }
+// }
+
+
+// impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<'_, C>
+// where
+//     C::Base: PrimeFieldBits,
+//     C::Scalar: FromUniformBytes<64> + PrimeFieldBits,
+// {
+//     type TccChip = strawman::Chip<C>;
+//     type HashChip = strawman::Chip<C>;
+//     type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
+
+//     #[allow(clippy::type_complexity)]
+//     fn configs(
+//         config: Self::Config,
+//     ) -> (
+//         <Self::TccChip as TwoChainCurveInstruction<C>>::Config,
+//         <Self::HashChip as HashInstruction<C>>::Config,
+//         <Self::TranscriptChip as TranscriptInstruction<C>>::Config,
+//     ) {
+//         (
+//             config.0.clone(),
+//             config.0.poseidon_spec.clone(),
+//             config.0.poseidon_spec,
+//         )
+//     }
+
+//     fn arity() -> usize {
+//         1
+//     }
+
+//     fn initial_input(&self) -> &[C::Scalar] {
+//         self.initial_input
+//     }
+
+//     fn input(&self) -> &[C::Scalar] {
+//         self.input
+//     }
+
+//     fn output(&self) -> &[C::Scalar] {
+//         self.output
+//     }
+
+//     fn step_idx(&self) -> usize {
+//         self.step_idx
+//     }
+
+//     fn next(&mut self) {
+//         self.step_idx += 1;
+//     }
+
+//     fn synthesize(
+//         &self,
+//         _: Self::Config,
+//         _: impl Layouter<C::Scalar>,
+//     ) -> Result<
+//         (
+//             Vec<AssignedCell<C::Scalar, C::Scalar>>,
+//             Vec<AssignedCell<C::Scalar, C::Scalar>>,
+//         ),
+//         Error,
+//     > {
+//         // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
+//         // let mut x = z[0].clone();
+//         // let mut y = x.clone();
+//         // for i in 0..self.num_cons {
+//         // y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
+//         // x = y.clone();
+//         // }
+
+//         //self.synthesize(config, layouter);
+
+//         Ok((Vec::new(), Vec::new()))
+
+//     }
+// }
+
+// #[derive(Clone, Debug, Default)]
 // struct Sha256Circuit<C> {
 //     step_idx: usize,
 //     _marker: PhantomData<C>,
@@ -278,46 +493,6 @@ where
 //     }
 // }
 
-// #[derive(Clone, Debug, Default)]
-// struct NonTrivialTestCircuit<F: PrimeField> {
-//   num_cons: usize,
-//   _p: PhantomData<F>,
-// }
-
-// impl<F> NonTrivialTestCircuit<F>
-// where
-//   F: PrimeField,
-// {
-//   pub fn new(num_cons: usize) -> Self {
-//     Self {
-//       num_cons,
-//       _p: PhantomData,
-//     }
-//   }
-// }
-// impl<F> StepCircuit<F> for NonTrivialTestCircuit<F>
-// where
-//   F: PrimeField,
-// {
-//   fn arity(&self) -> usize {
-//     1
-//   }
-
-//   fn synthesize<CS: ConstraintSystem<F>>(
-//     &self,
-//     cs: &mut CS,
-//     z: &[AllocatedNum<F>],
-//   ) -> Result<Vec<AllocatedNum<F>>, SynthesisError> {
-//     // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
-//     let mut x = z[0].clone();
-//     let mut y = x.clone();
-//     for i in 0..self.num_cons {
-//       y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
-//       x = y.clone();
-//     }
-//     Ok(vec![y])
-//   }
-// }
 
 #[derive(Clone)]
 struct SecondaryAggregationCircuit {
@@ -590,7 +765,7 @@ where
     >(
         primary_num_vars,
         primary_atp,
-        TrivialCircuit::default(),//Sha256Circuit::default(),
+        TrivialCircuit::default(), //NonTrivialCircuit::new(&[C::Scalar::ONE]), //Sha256Circuit::default(),
         secondary_num_vars,
         secondary_atp,
         TrivialCircuit::default(),
@@ -610,8 +785,11 @@ where
     .unwrap();
     end_timer(timer);
 
-    println!("primary_acc_instance x {:?} w {:?} c {:?} ", primary_acc.instance.instances.len(), primary_acc.instance.witness_comms.len(), primary_acc.instance.challenges.len());
-    println!("secondary_acc_instance x {:?} w {:?} c {:?} ", secondary_acc.instance.instances.len(), secondary_acc.instance.witness_comms.len(), secondary_acc.instance.challenges.len());
+    // let gates = CircuitGates::collect::<bn256::Fr, StepCircuit<bn256::Fr>>();
+    // println!("trivial_circuit_gates output: {}", gates);
+
+    // println!("primary_acc_instance x {:?} w {:?} c {:?} ", primary_acc.instance.instances.len(), primary_acc.instance.witness_comms.len(), primary_acc.instance.challenges.len());
+    // println!("secondary_acc_instance x {:?} w {:?} c {:?} ", secondary_acc.instance.instances.len(), secondary_acc.instance.witness_comms.len(), secondary_acc.instance.challenges.len());
 
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();
@@ -680,7 +858,6 @@ where
     println!("primary_proof {:?}",primary_proof.len());
     println!("secondary_proof {:?}",secondary_proof.len());
 
-
     (
         ivc_vp,
         num_steps,
@@ -696,6 +873,7 @@ where
     )
 }
 
+#[cfg(test_special)]
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 14;
@@ -704,6 +882,17 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
         bn256::G1Affine,
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
+    >(NUM_VARS, NUM_STEPS);
+}
+
+#[test]
+fn gemini_kzg_ipa_protostar_hyperplonk_ivc_vesta() {
+    const NUM_VARS: usize = 14;
+    const NUM_STEPS: usize = 3;
+    run_protostar_hyperplonk_ivc::<
+        vesta::Affine,
+        MultilinearIpa<vesta::Affine>,
+        MultilinearIpa<pallas::Affine>,
     >(NUM_VARS, NUM_STEPS);
 }
 
@@ -758,6 +947,11 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
         let circuit = Halo2Circuit::new::<HyraxHyperPlonk>(17, circuit);
         let circuit_info = circuit.circuit_info().unwrap();
 
+        let gates = CircuitGates::collect::<grumpkin::Fr, SecondaryAggregationCircuit>();
+        println!("secondary_agg_circuit_gates output: {}", gates);
+        println!("secondary_agg_circuit_max_degree {:?}",circuit.circuit_info_without_preprocess().unwrap().max_degree);
+        println!("secondary_agg_circuit_constraints {:?}",circuit.circuit_info_without_preprocess().unwrap().constraints);
+
         let param = HyraxHyperPlonk::setup(&circuit_info, seeded_std_rng()).unwrap();
         let (pp, vp) = HyraxHyperPlonk::preprocess(&param, &circuit_info).unwrap();
         let dtp = strawman::decider_transcript_param();
@@ -783,7 +977,6 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
 
     println!("secondary_aggregation_proof {:?}",secondary_aggregation_proof.len());
 
-
     {   let timer = start_timer(|| format!("run_primary_agg_circuit"));
         let mut circuit = PrimaryAggregationCircuit {
             vp_digest: fe_to_fe(ivc_vp.vp_digest),
@@ -804,6 +997,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
             secondary_aggregation_proof: Value::known(secondary_aggregation_proof),
         };
         end_timer(timer);
+
         let timer = start_timer(|| format!("run_prove_primary_agg_instance_extractor"));
         circuit.instances = InstanceExtractor::extract(&circuit)
             .unwrap()
@@ -818,6 +1012,25 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
         let timer = start_timer(|| format!("run_prove_primary_agg_preprocess_input_halo2_circuit_info"));
         let circuit_info = circuit.circuit_info().unwrap();
         end_timer(timer);
+
+         let gates = CircuitGates::collect::<bn256::Fr, PrimaryAggregationCircuit>();
+         println!("primary_agg_circuit_gates output: {}", gates);
+        //  assert_eq!(
+        //      format!("{}", gates),
+        //      r#####"R1CS constraint:
+        //  - R1CS:
+        //    S0 * (A0@0 * A1@0 - A2@0)
+        //  Total gates: 1
+        //  Total custom constraint polynomials: 1
+        //  Total negations: 1
+        //  Total additions: 1
+        //  Total multiplications: 2
+        //  "#####,
+        //  );
+         
+        println!("primary_agg_circuit_max_degree {:?}",circuit.circuit_info_without_preprocess().unwrap().max_degree);
+        println!("primary_agg_circuit_constraints {:?}",circuit.circuit_info_without_preprocess().unwrap().constraints);
+
         let timer = start_timer(|| format!("run_prove_primary_agg_preprocess_hyperplonk_setup"));
         let param = GeminiHyperPlonk::setup(&circuit_info, seeded_std_rng()).unwrap();
         end_timer(timer);
@@ -888,6 +1101,7 @@ mod strawman {
             Itertools,
         },
     };
+    use halo2_ecc::bigint::ProperCrtUint;
     use halo2_proofs::{
         circuit::{AssignedCell, Layouter, Value},
         plonk::{Column, ConstraintSystem, Error, Instance},
@@ -1317,8 +1531,7 @@ mod strawman {
     impl<C: TwoChainCurve> TwoChainCurveInstruction<C> for Chip<C> {
         type Config = Config<C::Scalar>;
         type Assigned = Witness<C::Scalar>;
-        type AssignedBase = AssignedBase<C::Base, C::Scalar>;
-        type AssignedPrimary = Vec<Witness<C::Scalar>>;
+        type AssignedBase = ProperCrtUint<C::Scalar>;
         type AssignedSecondary = AssignedEcPoint<C::Secondary>;
 
         fn new(config: Self::Config) -> Self {
@@ -1627,6 +1840,10 @@ mod strawman {
             let one = collector.register_constant(C::Scalar::ONE);
             let [x, y, is_identity] = witness
                 .as_ref()
+                .map(|value| {
+                    println!("value {:?}", value);  // This prints the value
+                    value
+                })
                 .map(x_y_is_identity)
                 .transpose_array()
                 .map(|value| collector.new_witness(value));
@@ -1717,9 +1934,13 @@ mod strawman {
         ) -> Result<Self::AssignedSecondary, Error> {
             // TODO
             let mut out = C::Secondary::identity().to_curve();
+            println!("scalar_mul_secondary_output: {:?}", out);
+            println!("scalar_mul_secondary_bit_first: {:?}", le_bits[0]);
+            println!("scalar_mul_secondary_base_ec_point: {:?}", base.ec_point);
             for bit in le_bits.iter().rev() {
                 bit.value().zip(base.ec_point).map(|(bit, ec_point)| {
                     out = out.double();
+                    println!("scalar_mul_secondary_one: {:?}", C::Scalar::ONE);
                     if bit == C::Scalar::ONE {
                         out += ec_point;
                     }

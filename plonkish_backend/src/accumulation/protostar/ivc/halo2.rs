@@ -41,6 +41,14 @@ use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value},
     plonk::{Circuit, ConstraintSystem, Error},
 };
+use halo2_base::Context;
+pub use halo2_curves::{
+    group::{
+        ff::{BatchInvert, FromUniformBytes, PrimeFieldBits},
+        Curve, Group,
+    },
+    Coordinates, CurveAffine, CurveExt,
+};
 use rand::RngCore;
 use std::{
     borrow::{Borrow, BorrowMut, Cow},
@@ -64,7 +72,6 @@ pub trait TwoChainCurveInstruction<C: TwoChainCurve>: Clone + Debug {
     type Config: Clone + Debug;
     type Assigned: Clone + Debug;
     type AssignedBase: Clone + Debug;
-    type AssignedPrimary: Clone + Debug;
     type AssignedSecondary: Clone + Debug;
 
     fn new(config: Self::Config) -> Self;
@@ -256,28 +263,17 @@ pub trait TwoChainCurveInstruction<C: TwoChainCurve>: Clone + Debug {
 
     fn powers_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        base: &Self::AssignedBase,
+        ctx: &mut impl Layouter<C::Scalar>,
+        x: &Self::AssignedBase,
         n: usize,
-    ) -> Result<Vec<Self::AssignedBase>, Error> {
-        Ok(match n {
-            0 => Vec::new(),
-            1 => vec![self.assign_constant_base(layouter, C::Base::ONE)?],
-            2 => vec![
-                self.assign_constant_base(layouter, C::Base::ONE)?,
-                base.clone(),
-            ],
-            _ => {
-                let mut powers = Vec::with_capacity(n);
-                powers.push(self.assign_constant_base(layouter, C::Base::ONE)?);
-                powers.push(base.clone());
-                for _ in 0..n - 2 {
-                    powers.push(self.mul_base(layouter, powers.last().unwrap(), base)?);
-                }
-                powers
-            }
-        })
-    }
+    ) -> Result<Vec<Self::AssignedBase>, Error>;
+
+    fn powers_base_axiom(
+        &self,
+        ctx: &mut Context<C::Scalar>,
+        x: &Self::AssignedBase,
+        n: usize,
+    ) -> Result<Vec<Self::AssignedBase>, Error>;
 
     fn squares_base(
         &self,
@@ -1687,6 +1683,7 @@ where
 }
 
 trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
+
     fn hornor(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,

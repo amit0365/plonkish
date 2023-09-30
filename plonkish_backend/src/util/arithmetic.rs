@@ -33,7 +33,7 @@ pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
 
 impl<M> MultiMillerLoop for M where M: pairing::MultiMillerLoop + Debug + Sync {}
 
-pub trait TwoChainCurve: CurveAffine {
+pub trait TwoChainCurve:CurveAffine {
     type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;
 }
 

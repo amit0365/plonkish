@@ -232,8 +232,7 @@ struct PrimaryAggregationCircuit {
     acc_before_last: Value<ProtostarAccumulatorInstance<grumpkin::Fr, grumpkin::G1Affine>>,
     last_instance: Value<[grumpkin::Fr; 2]>,
     proof: Value<Vec<u8>>,
-    secondary_aggregation_vp:
-        HyperPlonkVerifierParam<grumpkin::Fr, MultilinearHyrax<grumpkin::G1Affine>>,
+    secondary_aggregation_vp: HyperPlonkVerifierParam<grumpkin::Fr, MultilinearHyrax<grumpkin::G1Affine>>,
     secondary_aggregation_instances: Value<Vec<grumpkin::Fr>>,
     secondary_aggregation_proof: Value<Vec<u8>>,
 }
@@ -660,6 +659,7 @@ mod strawman {
             Itertools,
         },
     };
+    use halo2_base::{gates::RangeChip, Context};
     use halo2_proofs::{
         circuit::{AssignedCell, Layouter, Value},
         plonk::{Column, ConstraintSystem, Error, Instance},
@@ -673,6 +673,14 @@ mod strawman {
         maingate::{config::MainGate, operations::Collector, Gate},
         Composable, Scaled, Witness,
     };
+
+    use halo2_ecc::{
+        fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip},
+        bigint::{CRTInteger, FixedCRTInteger, ProperCrtUint},
+    };
+
+    use halo2_base::gates::{circuit::builder::BaseCircuitBuilder, RangeChip,flex_gate::{GateChip, GateInstructions}};
+
     use std::{
         cell::RefCell,
         collections::BTreeMap,
@@ -688,6 +696,7 @@ mod strawman {
     pub const NUM_LIMB_BITS: usize = 65;
     const NUM_SUBLIMBS: usize = 5;
     const NUM_LOOKUPS: usize = 1;
+    pub const LOOKUP_BITS = 8;
 
     const T: usize = 5;
     const RATE: usize = 4;
@@ -876,6 +885,7 @@ mod strawman {
         pub main_gate: MainGate<F, NUM_LOOKUPS>,
         pub instance: Column<Instance>,
         pub poseidon_spec: Spec<F, T, RATE>,
+        pub range: RangeChip<F>,
     }
 
     impl<F: FromUniformBytes<64> + Ord> Config<F> {
@@ -898,10 +908,12 @@ mod strawman {
             let instance = meta.instance_column();
             meta.enable_equality(instance);
             let poseidon_spec = Spec::new(R_F, R_P);
+            let range = BaseCircuitBuilder::new(true).use_lookup_bits(8).range_chip();
             Self {
                 main_gate,
                 instance,
                 poseidon_spec,
+                range,
             }
         }
     }
@@ -911,6 +923,7 @@ mod strawman {
     pub struct Chip<C: CurveAffine> {
         rns: Rns<C::Base, C::Scalar, NUM_LIMBS, NUM_LIMB_BITS, NUM_SUBLIMBS>,
         pub main_gate: MainGate<C::Scalar, NUM_LOOKUPS>,
+        pub base_chip: FpChip<C::Scalar, C::Base>,
         pub collector: Rc<RefCell<Collector<C::Scalar>>>,
         pub cell_map: Rc<RefCell<BTreeMap<u32, AssignedCell<C::Scalar, C::Scalar>>>>,
         pub instance: Column<Instance>,
@@ -1089,14 +1102,14 @@ mod strawman {
     impl<C: TwoChainCurve> TwoChainCurveInstruction<C> for Chip<C> {
         type Config = Config<C::Scalar>;
         type Assigned = Witness<C::Scalar>;
-        type AssignedBase = AssignedBase<C::Base, C::Scalar>;
-        type AssignedPrimary = Vec<Witness<C::Scalar>>;
+        type AssignedBase = ProperCrtUint<C::Scalar>;
         type AssignedSecondary = AssignedEcPoint<C::Secondary>;
 
         fn new(config: Self::Config) -> Self {
             Chip {
                 rns: Rns::construct(),
                 main_gate: config.main_gate,
+                base_chip: FpChip::<C::Scalar,C::Base>::new(&config.range, NUM_LIMB_BITS, NUM_LIMBS),
                 collector: Default::default(),
                 cell_map: Default::default(),
                 instance: config.instance,
@@ -1225,142 +1238,143 @@ mod strawman {
             Ok(collector.mul(lhs, rhs))
         }
 
-        fn constrain_equal_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            lhs: &Self::AssignedBase,
-            rhs: &Self::AssignedBase,
-        ) -> Result<(), Error> {
-            lhs.scalar
-                .value()
-                .zip(rhs.scalar.value())
-                .assert_if_known(|(lhs, rhs)| lhs == rhs);
-            let collector = &mut self.collector.borrow_mut();
-            let mut integer_chip = IntegerChip::new(collector, &self.rns);
-            integer_chip.assert_equal(&lhs.scalar, &rhs.scalar);
-            Ok(())
-        }
+        // fn constrain_equal_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     lhs: &Self::AssignedBase,
+        //     rhs: &Self::AssignedBase,
+        // ) -> Result<(), Error> {
+        //     lhs.scalar
+        //         .value()
+        //         .zip(rhs.scalar.value())
+        //         .assert_if_known(|(lhs, rhs)| lhs == rhs);
+        //     let collector = &mut self.collector.borrow_mut();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.rns);
+        //     integer_chip.assert_equal(&lhs.scalar, &rhs.scalar);
+        //     Ok(())
+        // }
 
-        fn assign_constant_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            constant: C::Base,
-        ) -> Result<Self::AssignedBase, Error> {
-            let collector = &mut self.collector.borrow_mut();
-            let mut integer_chip = IntegerChip::new(collector, &self.rns);
-            let scalar = integer_chip.register_constant(constant);
-            let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-            Ok(AssignedBase { scalar, limbs })
-        }
+        // fn assign_constant_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     constant: C::Base,
+        // ) -> Result<Self::AssignedBase, Error> {
+        //     let collector = &mut self.collector.borrow_mut();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.rns);
+        //     let scalar = integer_chip.register_constant(constant);
+        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
+        //     Ok(AssignedBase { scalar, limbs })
+        // }
 
-        fn assign_witness_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            witness: Value<C::Base>,
-        ) -> Result<Self::AssignedBase, Error> {
-            let collector = &mut self.collector.borrow_mut();
-            let mut integer_chip = IntegerChip::new(collector, &self.rns);
-            let scalar = integer_chip.range(self.rns.from_fe(witness), Range::Remainder);
-            let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-            Ok(AssignedBase { scalar, limbs })
-        }
+        // fn assign_witness_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     witness: Value<C::Base>,
+        // ) -> Result<Self::AssignedBase, Error> {
+        //     let collector = &mut self.collector.borrow_mut();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.rns);
+        //     let scalar = integer_chip.range(self.rns.from_fe(witness), Range::Remainder);
+        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
+        //     Ok(AssignedBase { scalar, limbs })
+        // }
 
-        fn assert_if_known_base(
-            &self,
-            value: &Self::AssignedBase,
-            f: impl FnOnce(&C::Base) -> bool,
-        ) {
-            value.scalar.value().assert_if_known(f)
-        }
+        // fn assert_if_known_base(
+        //     &self,
+        //     value: &Self::AssignedBase,
+        //     f: impl FnOnce(&C::Base) -> bool,
+        // ) {
+        //     value.scalar.value().assert_if_known(f)
+        // }
 
-        fn select_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            condition: &Self::Assigned,
-            when_true: &Self::AssignedBase,
-            when_false: &Self::AssignedBase,
-        ) -> Result<Self::AssignedBase, Error> {
-            let collector = &mut self.collector.borrow_mut();
-            let mut integer_chip = IntegerChip::new(collector, &self.rns);
-            let scalar = integer_chip.select(&when_true.scalar, &when_false.scalar, condition);
-            let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-            Ok(AssignedBase { scalar, limbs })
-        }
+        // fn select_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     condition: &Self::Assigned,
+        //     when_true: &Self::AssignedBase,
+        //     when_false: &Self::AssignedBase,
+        // ) -> Result<Self::AssignedBase, Error> {
+        //     let collector = &mut self.collector.borrow_mut();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.rns);
+        //     let scalar = integer_chip.select(&when_true.scalar, &when_false.scalar, condition);
+        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
+        //     Ok(AssignedBase { scalar, limbs })
+        // }
 
-        fn fit_base_in_scalar(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            value: &Self::AssignedBase,
-        ) -> Result<Self::Assigned, Error> {
-            Ok(integer_to_native(
-                &self.rns,
-                &mut self.collector.borrow_mut(),
-                &value.scalar,
-                NUM_HASH_BITS,
-            ))
-        }
+        // fn fit_base_in_scalar(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     value: &Self::AssignedBase,
+        // ) -> Result<Self::Assigned, Error> {
+        //     Ok(integer_to_native(
+        //         &self.rns,
+        //         &mut self.collector.borrow_mut(),
+        //         &value.scalar,
+        //         NUM_HASH_BITS,
+        //     ))
+        // }
 
-        fn to_repr_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            value: &Self::AssignedBase,
-        ) -> Result<Vec<Self::Assigned>, Error> {
-            Ok(value.limbs.clone())
-        }
+        // fn to_repr_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     value: &Self::AssignedBase,
+        // ) -> Result<Vec<Self::Assigned>, Error> {
+        //     Ok(value.limbs.clone())
+        // }
 
-        fn add_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            lhs: &Self::AssignedBase,
-            rhs: &Self::AssignedBase,
-        ) -> Result<Self::AssignedBase, Error> {
-            let collector = &mut self.collector.borrow_mut();
-            let mut integer_chip = IntegerChip::new(collector, &self.rns);
-            let scalar = integer_chip.add(&lhs.scalar, &rhs.scalar);
-            let scalar = integer_chip.reduce(&scalar);
-            let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-            Ok(AssignedBase { scalar, limbs })
-        }
+        // fn add_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     lhs: &Self::AssignedBase,
+        //     rhs: &Self::AssignedBase,
+        // ) -> Result<Self::AssignedBase, Error> {
+        //     let collector = &mut self.collector.borrow_mut();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.rns);
+        //     let scalar = integer_chip.add(&lhs.scalar, &rhs.scalar);
+        //     let scalar = integer_chip.reduce(&scalar);
+        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
+        //     Ok(AssignedBase { scalar, limbs })
+        // }
 
-        fn sub_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            lhs: &Self::AssignedBase,
-            rhs: &Self::AssignedBase,
-        ) -> Result<Self::AssignedBase, Error> {
-            let collector = &mut self.collector.borrow_mut();
-            let mut integer_chip = IntegerChip::new(collector, &self.rns);
-            let scalar = integer_chip.sub(&lhs.scalar, &rhs.scalar);
-            let scalar = integer_chip.reduce(&scalar);
-            let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-            Ok(AssignedBase { scalar, limbs })
-        }
+        // fn sub_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     lhs: &Self::AssignedBase,
+        //     rhs: &Self::AssignedBase,
+        // ) -> Result<Self::AssignedBase, Error> {
+        //     let collector = &mut self.collector.borrow_mut();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.rns);
+        //     let scalar = integer_chip.sub(&lhs.scalar, &rhs.scalar);
+        //     let scalar = integer_chip.reduce(&scalar);
+        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
+        //     Ok(AssignedBase { scalar, limbs })
+        // }
 
-        fn mul_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            lhs: &Self::AssignedBase,
-            rhs: &Self::AssignedBase,
-        ) -> Result<Self::AssignedBase, Error> {
-            let collector = &mut self.collector.borrow_mut();
-            let mut integer_chip = IntegerChip::new(collector, &self.rns);
-            let scalar = integer_chip.mul(&lhs.scalar, &rhs.scalar);
-            let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-            Ok(AssignedBase { scalar, limbs })
-        }
+        // fn mul_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     lhs: &Self::AssignedBase,
+        //     rhs: &Self::AssignedBase,
+        // ) -> Result<Self::AssignedBase, Error> {
+        //     let collector = &mut self.collector.borrow_mut();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.rns);
+        //     let scalar = integer_chip.mul(&lhs.scalar, &rhs.scalar);
+        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
+        //     Ok(AssignedBase { scalar, limbs })
+        // }
 
-        fn div_incomplete_base(
-            &self,
-            _: &mut impl Layouter<C::Scalar>,
-            lhs: &Self::AssignedBase,
-            rhs: &Self::AssignedBase,
-        ) -> Result<Self::AssignedBase, Error> {
-            let collector = &mut self.collector.borrow_mut();
-            let mut integer_chip = IntegerChip::new(collector, &self.rns);
-            let scalar = integer_chip.div_incomplete(&lhs.scalar, &rhs.scalar);
-            let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-            Ok(AssignedBase { scalar, limbs })
-        }
+        // fn div_incomplete_base(
+        //     &self,
+        //     _: &mut impl Layouter<C::Scalar>,
+        //     lhs: &Self::AssignedBase,
+        //     rhs: &Self::AssignedBase,
+        // ) -> Result<Self::AssignedBase, Error> {
+        //     let collector = &mut self.collector.borrow_mut();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.rns);
+        //     let scalar = integer_chip.div_incomplete(&lhs.scalar, &rhs.scalar);
+        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
+        //     Ok(AssignedBase { scalar, limbs })
+        // }
+
 
         fn constrain_equal_secondary(
             &self,

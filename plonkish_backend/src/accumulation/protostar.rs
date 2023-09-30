@@ -1,6 +1,6 @@
 use crate::{
     accumulation::{
-        protostar::ProtostarStrategy::{Compressing, NoCompressing, CompressingWithSqrtPowers},
+        protostar::ProtostarStrategy::{Compressing, NoCompressing},
         PlonkishNark, PlonkishNarkInstance,
     },
     backend::PlonkishBackend,
@@ -33,12 +33,12 @@ pub enum ProtostarStrategy {
     Compressing = 1,
     // TODO:
     // Compressing verification with square-root optimization applied as described in 2023/620 section 3.5
-    CompressingWithSqrtPowers = 2,
+    //CompressingWithSqrtPowers = 2,
 }
 
 impl From<usize> for ProtostarStrategy {
     fn from(strategy: usize) -> Self {
-        [NoCompressing, Compressing, CompressingWithSqrtPowers][strategy]
+        [NoCompressing, Compressing][strategy]
     }
 }
 
@@ -218,7 +218,7 @@ where
             compressed_e_sum: match strategy {
                 NoCompressing => None,
                 Compressing => Some(F::ZERO),
-                CompressingWithSqrtPowers => Some(F::ZERO),
+                //CompressingWithSqrtPowers => Some(F::ZERO),
             },
         }
     }
@@ -259,7 +259,7 @@ where
             compressed_e_sum: match strategy {
                 NoCompressing => None,
                 Compressing => Some(F::ZERO),
-                CompressingWithSqrtPowers => Some(F::ZERO),
+                //CompressingWithSqrtPowers => Some(F::ZERO),
             },
         }
     }
@@ -320,37 +320,37 @@ where
         );
     }
 
-    fn fold_compressed_sqrt(
-        &mut self,
-        rhs: &Self,
-        zeta_cross_term_comm: &C,
-        compressed_cross_term_sums: &[F],
-        r: &F,
-    ) where
-        C: AdditiveCommitment<F>,
-    {
-        let one = F::ONE;
-        let powers_of_r = powers(*r)
-            .take(compressed_cross_term_sums.len().max(1) + 2)
-            .collect_vec();
-        izip_eq!(&mut self.instances, &rhs.instances)
-            .for_each(|(lhs, rhs)| izip_eq!(lhs, rhs).for_each(|(lhs, rhs)| *lhs += &(*rhs * r)));
-        izip_eq!(&mut self.witness_comms, &rhs.witness_comms)
-            .for_each(|(lhs, rhs)| *lhs = C::sum_with_scalar([&one, r], [lhs, rhs]));
-        izip_eq!(&mut self.challenges, &rhs.challenges).for_each(|(lhs, rhs)| *lhs += &(*rhs * r));
-        self.u += &(rhs.u * r);
-        self.e_comm = {
-            let comms = [&self.e_comm, zeta_cross_term_comm, &rhs.e_comm];
-            C::sum_with_scalar(&powers_of_r[..3], comms)
-        };
-        *self.compressed_e_sum.as_mut().unwrap() += &inner_product(
-            &powers_of_r[1..],
-            chain![
-                compressed_cross_term_sums,
-                [rhs.compressed_e_sum.as_ref().unwrap()]
-            ],
-        );
-    }
+    // fn fold_compressed_sqrt(
+    //     &mut self,
+    //     rhs: &Self,
+    //     zeta_cross_term_comm: &C,
+    //     compressed_cross_term_sums: &[F],
+    //     r: &F,
+    // ) where
+    //     C: AdditiveCommitment<F>,
+    // {
+    //     let one = F::ONE;
+    //     let powers_of_r = powers(*r)
+    //         .take(compressed_cross_term_sums.len().max(1) + 2)
+    //         .collect_vec();
+    //     izip_eq!(&mut self.instances, &rhs.instances)
+    //         .for_each(|(lhs, rhs)| izip_eq!(lhs, rhs).for_each(|(lhs, rhs)| *lhs += &(*rhs * r)));
+    //     izip_eq!(&mut self.witness_comms, &rhs.witness_comms)
+    //         .for_each(|(lhs, rhs)| *lhs = C::sum_with_scalar([&one, r], [lhs, rhs]));
+    //     izip_eq!(&mut self.challenges, &rhs.challenges).for_each(|(lhs, rhs)| *lhs += &(*rhs * r));
+    //     self.u += &(rhs.u * r);
+    //     self.e_comm = {
+    //         let comms = [&self.e_comm, zeta_cross_term_comm, &rhs.e_comm];
+    //         C::sum_with_scalar(&powers_of_r[..3], comms)
+    //     };
+    //     *self.compressed_e_sum.as_mut().unwrap() += &inner_product(
+    //         &powers_of_r[1..],
+    //         chain![
+    //             compressed_cross_term_sums,
+    //             [rhs.compressed_e_sum.as_ref().unwrap()]
+    //         ],
+    //     );
+    // }
 
 }
 

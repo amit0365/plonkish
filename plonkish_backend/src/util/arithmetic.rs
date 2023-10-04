@@ -5,7 +5,7 @@ use halo2_curves::{
     pasta::{pallas, vesta},
 };
 use num_integer::Integer;
-use std::{borrow::Borrow, fmt::Debug, iter};
+use std::{borrow::Borrow, fmt::Debug, iter, hash::Hash};
 
 mod bh;
 mod msm;
@@ -21,6 +21,10 @@ pub use halo2_curves::{
     Coordinates, CurveAffine, CurveExt,
 };
 pub use msm::{fixed_base_msm, variable_base_msm, window_size, window_table};
+use halo2_base::{
+    gates::flex_gate::{GateChip, GateInstructions},
+    utils::{CurveAffineExt, ScalarField, BigPrimeField},
+};
 
 pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
     fn pairings_product_is_identity(terms: &[(&Self::G1Affine, &Self::G2Prepared)]) -> bool {
@@ -33,25 +37,33 @@ pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
 
 impl<M> MultiMillerLoop for M where M: pairing::MultiMillerLoop + Debug + Sync {}
 
-pub trait TwoChainCurve:CurveAffine {
+
+
+pub trait OverridenCurveAffine: CurveAffine
+where
+    <Self as CurveAffine>::ScalarExt: BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
+{
+}
+
+pub trait TwoChainCurve: OverridenCurveAffine {
     type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;
 }
 
-impl TwoChainCurve for bn256::G1Affine {
-    type Secondary = grumpkin::G1Affine;
-}
+// impl TwoChainCurve for bn256::G1Affine {
+//     type Secondary = grumpkin::G1Affine;
+// }
 
-impl TwoChainCurve for grumpkin::G1Affine {
-    type Secondary = bn256::G1Affine;
-}
+// impl TwoChainCurve for grumpkin::G1Affine {
+//     type Secondary = bn256::G1Affine;
+// }
 
-impl TwoChainCurve for pallas::Affine {
-    type Secondary = vesta::Affine;
-}
+// impl TwoChainCurve for pallas::Affine {
+//     type Secondary = vesta::Affine;
+// }
 
-impl TwoChainCurve for vesta::Affine {
-    type Secondary = pallas::Affine;
-}
+// impl TwoChainCurve for vesta::Affine {
+//     type Secondary = pallas::Affine;
+// }
 
 pub fn horner<F: Field>(coeffs: &[F], x: &F) -> F {
     coeffs

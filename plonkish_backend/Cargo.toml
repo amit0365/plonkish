@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 halo2_curves = { git = "https://github.com/privacy-scaling-explorations/halo2curves", tag = "0.3.3", package = "halo2curves", features = ["derive_serde"] }
-pasta_curves = { version = "0.5.0", features = ["serde"] }
 generic-array = { version = "0.14.7", features = ["serde"] }
 bitvec = "1.0.1"
 itertools = "0.10.5"

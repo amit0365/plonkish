@@ -12,14 +12,12 @@ mod msm;
 
 pub use bh::BooleanHypercube;
 pub use bitvec::field::BitField;
-pub use halo2_curves::{
-    group::{
+pub use halo2_curves::{group::{
         ff::{BatchInvert, Field, FromUniformBytes, PrimeField, PrimeFieldBits},
         prime::PrimeCurveAffine,
-        Curve, Group,
-    },
-    Coordinates, CurveAffine, CurveExt,
-};
+        Curve, Group},
+        CurveAffine,Coordinates,CurveExt
+    };
 pub use msm::{fixed_base_msm, variable_base_msm, window_size, window_table};
 use halo2_base::{
     gates::flex_gate::{GateChip, GateInstructions},
@@ -41,13 +39,28 @@ impl<M> MultiMillerLoop for M where M: pairing::MultiMillerLoop + Debug + Sync {
 
 pub trait OverridenCurveAffine: CurveAffine
 where
-    <Self as CurveAffine>::ScalarExt: BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
-{
-}
+    <Self as CurveAffine>::ScalarExt: PrimeField + FromUniformBytes<64>,
+    <Self as CurveAffine>::Base: PrimeField + FromUniformBytes<64>,
+{}
 
-pub trait TwoChainCurve: OverridenCurveAffine {
+// impl<C> OverridenCurveAffine for C::ScalarExt
+// where
+//     C: CurveAffine + BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
+// {}
+
+pub trait TwoChainCurve: CurveAffine {
     type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;
 }
+
+// pub trait OverridenTwoChainCurve: TwoChainCurve + OverridenCurveAffine 
+// where
+//     <Self as CurveAffine>::ScalarExt: BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
+//     <Self as CurveAffine>::Base: BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
+// {}
+
+
+// impl OverridenCurveAffine for bn256::G1Affine{}
+// impl OverridenCurveAffine for grumpkin::G1Affine{}
 
 // impl TwoChainCurve for bn256::G1Affine {
 //     type Secondary = grumpkin::G1Affine;

@@ -27,7 +27,7 @@ use crate::{
     util::{
         arithmetic::{
             barycentric_weights, fe_to_fe, fe_truncated_from_le_bytes, powers, steps,
-            BooleanHypercube, Field, MultiMillerLoop, PrimeCurveAffine, PrimeField, TwoChainCurve,
+            BooleanHypercube, Field, MultiMillerLoop, PrimeCurveAffine, PrimeField, TwoChainCurve
         },
         chain, end_timer,
         expression::{CommonPolynomial, Expression, Query, Rotation},
@@ -68,7 +68,8 @@ type AssignedPlonkishNarkInstance<AssignedScalar, AssignedEcPoint> =
 type AssignedProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint> =
     ProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint>;
 
-pub trait TwoChainCurveInstruction<C: TwoChainCurve>: Clone + Debug {
+pub trait TwoChainCurveInstruction<C:TwoChainCurve>: Clone + Debug 
+{
     type Config: Clone + Debug;
     type Assigned: Clone + Debug;
     type AssignedBase: Clone + Debug;

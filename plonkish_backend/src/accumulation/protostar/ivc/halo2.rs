@@ -41,7 +41,11 @@ use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value},
     plonk::{Circuit, ConstraintSystem, Error},
 };
-use halo2_base::Context;
+use halo2_base::{Context,
+    gates::{circuit::builder::{GateThreadBuilder, RangeCircuitBuilder}, 
+            flex_gate::{GateChip, GateInstructions}},
+    utils::{CurveAffineExt, ScalarField, BigPrimeField},
+};
 pub use halo2_curves::{
     group::{
         ff::{BatchInvert, FromUniformBytes, PrimeFieldBits},
@@ -69,6 +73,10 @@ type AssignedProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint> =
     ProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint>;
 
 pub trait TwoChainCurveInstruction<C:TwoChainCurve>: Clone + Debug 
+where
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
 {
     type Config: Clone + Debug;
     type Assigned: Clone + Debug;
@@ -262,14 +270,14 @@ pub trait TwoChainCurveInstruction<C:TwoChainCurve>: Clone + Debug
         self.div_incomplete_base(layouter, &one, value)
     }
 
-    fn powers_base(
-        &self,
-        ctx: &mut impl Layouter<C::Scalar>,
-        x: &Self::AssignedBase,
-        n: usize,
-    ) -> Result<Vec<Self::AssignedBase>, Error>;
+    // fn powers_base(
+    //     &self,
+    //     ctx: &mut impl Layouter<C::Scalar>,
+    //     x: &Self::AssignedBase,
+    //     n: usize,
+    // ) -> Result<Vec<Self::AssignedBase>, Error>;
 
-    fn powers_base_axiom(
+    fn powers_base(
         &self,
         ctx: &mut Context<C::Scalar>,
         x: &Self::AssignedBase,
@@ -385,7 +393,12 @@ pub trait TwoChainCurveInstruction<C:TwoChainCurve>: Clone + Debug
         Self::AssignedBase: 'b;
 }
 
-pub trait HashInstruction<C: TwoChainCurve>: Clone + Debug {
+pub trait HashInstruction<C: TwoChainCurve>: Clone + Debug 
+where
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
+{
     const NUM_HASH_BITS: usize;
 
     type Param: Clone + Debug;
@@ -418,7 +431,13 @@ pub trait HashInstruction<C: TwoChainCurve>: Clone + Debug {
     ) -> Result<<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned, Error>;
 }
 
-pub trait TranscriptInstruction<C: TwoChainCurve>: Debug {
+pub trait TranscriptInstruction<C: TwoChainCurve>: Debug 
+where
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
+
+{
     type Config: Clone + Debug;
     type TccChip: TwoChainCurveInstruction<C>;
     type Challenge: Clone
@@ -531,7 +550,12 @@ pub trait TranscriptInstruction<C: TwoChainCurve>: Debug {
     }
 }
 
-pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> {
+pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> 
+where
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
+{
     type TccChip: TwoChainCurveInstruction<C>;
     type HashChip: HashInstruction<C, TccChip = Self::TccChip>;
     type TranscriptChip: TranscriptInstruction<C, TccChip = Self::TccChip>;
@@ -571,7 +595,12 @@ pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> {
     >;
 }
 
-pub struct ProtostarAccumulationVerifier<C: TwoChainCurve, TccChip> {
+pub struct ProtostarAccumulationVerifier<C: TwoChainCurve, TccChip> 
+where
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
+{
     avp: ProtostarAccumulationVerifierParam<C::Scalar>,
     tcc_chip: TccChip,
     _marker: PhantomData<C>,
@@ -581,6 +610,9 @@ impl<C, TccChip> ProtostarAccumulationVerifier<C, TccChip>
 where
     C: TwoChainCurve,
     TccChip: TwoChainCurveInstruction<C>,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
 {
     pub fn new(avp: ProtostarAccumulationVerifierParam<C::Scalar>, tcc_chip: TccChip) -> Self {
         Self {
@@ -728,6 +760,7 @@ where
     pub fn verify_accumulation_from_nark(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             TccChip::AssignedBase,
             TccChip::AssignedSecondary,
@@ -768,7 +801,7 @@ where
             for num_powers in num_powers_of_challenge.iter() {
                 let challenge = transcript.squeeze_challenge(layouter)?;
                 let powers_of_challenges =
-                    tcc_chip.powers_base(layouter, challenge.as_ref(), *num_powers + 1)?;
+                    tcc_chip.powers_base(ctx, challenge.as_ref(), *num_powers + 1)?;
                 challenges.extend(powers_of_challenges.into_iter().skip(1));
             }
         }
@@ -796,6 +829,7 @@ where
 
         let (r_nark, acc_prime) = self.fold_accumulator_from_nark(
             layouter,
+            ctx,
             acc,
             &nark,
             &cross_term_comms,
@@ -813,6 +847,7 @@ where
     fn fold_accumulator_from_nark(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             TccChip::AssignedBase,
             TccChip::AssignedSecondary,
@@ -836,7 +871,7 @@ where
             ..
         } = self.avp;
 
-        let powers_of_r = tcc_chip.powers_base(layouter, r, num_cross_terms + 1)?;
+        let powers_of_r = tcc_chip.powers_base(ctx, r, num_cross_terms + 1)?;
 
         let r_nark = {
             let instances = nark
@@ -990,6 +1025,9 @@ pub struct RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
     Sc: StepCircuit<C>,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
 {
     is_primary: bool,
     step_circuit: Sc,
@@ -1009,6 +1047,9 @@ impl<C, Sc> RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
     Sc: StepCircuit<C>,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
 {
     pub const DUMMY_H: C::Scalar = C::Scalar::ZERO;
 
@@ -1133,6 +1174,7 @@ where
     fn synthesize_accumulation_verifier(
         &self,
         mut layouter: impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         input: &[AssignedCell<C::Scalar, C::Scalar>],
         output: &[AssignedCell<C::Scalar, C::Scalar>],
     ) -> Result<(), Error> {
@@ -1183,7 +1225,7 @@ where
             let proof = self.incoming_proof.clone();
             let transcript =
                 &mut Sc::TranscriptChip::new(transcript_config.clone(), tcc_chip.clone(), proof);
-            acc_verifier.verify_accumulation_from_nark(layouter, &acc, instances, transcript)?
+            acc_verifier.verify_accumulation_from_nark(layouter, ctx, &acc, instances, transcript)?
         };
 
         let acc_prime = {
@@ -1230,6 +1272,9 @@ impl<C, Sc> Circuit<C::Scalar> for RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
     Sc: StepCircuit<C>,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
 {
     type Config = Sc::Config;
     type FloorPlanner = Sc::FloorPlanner;
@@ -1262,7 +1307,10 @@ where
     ) -> Result<(), Error> {
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
-        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
+        let mut builder = GateThreadBuilder::mock();
+        //let ctx = &mut builder;
+        // ctx: &mut Context<C::Scalar>;
+        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &mut builder, &input, &output)?;
         Ok(())
     }
 }
@@ -1271,6 +1319,8 @@ impl<C, Sc> CircuitExt<C::Scalar> for RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
     Sc: StepCircuit<C>,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
 {
     fn instances(&self) -> Vec<Vec<C::Scalar>> {
         let mut instances = vec![vec![Self::DUMMY_H; 2]];
@@ -1288,6 +1338,9 @@ where
     HyperPlonk<P2>: PlonkishBackend<C::Base>,
     AT1: InMemoryTranscript,
     AT2: InMemoryTranscript,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
 {
     primary_pp: ProtostarProverParam<C::Scalar, HyperPlonk<P1>>,
     primary_atp: AT1::Param,
@@ -1302,6 +1355,9 @@ where
     C: TwoChainCurve,
     HyperPlonk<P1>: PlonkishBackend<C::Scalar>,
     HyperPlonk<P2>: PlonkishBackend<C::Base>,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
 {
     vp_digest: C::Scalar,
     primary_vp: ProtostarVerifierParam<C::Scalar, HyperPlonk<P1>>,
@@ -1318,6 +1374,9 @@ where
     C: TwoChainCurve,
     HyperPlonk<P1>: PlonkishBackend<C::Scalar>,
     HyperPlonk<P2>: PlonkishBackend<C::Base>,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
 {
     pub fn primary_arity(&self) -> usize {
         self.primary_arity
@@ -1355,8 +1414,8 @@ pub fn preprocess<C, P1, P2, S1, S2, AT1, AT2>(
 >
 where
     C: TwoChainCurve,
-    C::Scalar: Hash + Serialize + DeserializeOwned,
-    C::Base: Hash + Serialize + DeserializeOwned,
+    C::Scalar: Hash + Serialize + DeserializeOwned + BigPrimeField,
+    C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField,
     P1: PolynomialCommitmentScheme<
         C::ScalarExt,
         Polynomial = MultilinearPolynomial<C::Scalar>,
@@ -1373,6 +1432,7 @@ where
     S2: StepCircuit<C::Secondary>,
     AT1: InMemoryTranscript,
     AT2: InMemoryTranscript,
+
 {
     assert_eq!(S1::HashChip::NUM_HASH_BITS, S2::HashChip::NUM_HASH_BITS);
 
@@ -1454,8 +1514,8 @@ pub fn prove_steps<C, P1, P2, S1, S2, AT1, AT2>(
 >
 where
     C: TwoChainCurve,
-    C::Scalar: Hash + Serialize + DeserializeOwned,
-    C::Base: Hash + Serialize + DeserializeOwned,
+    C::Scalar: Hash + Serialize + DeserializeOwned + BigPrimeField,
+    C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField,
     P1: PolynomialCommitmentScheme<
         C::ScalarExt,
         Polynomial = MultilinearPolynomial<C::Scalar>,
@@ -1476,6 +1536,7 @@ where
     AT2: TranscriptRead<P2::CommitmentChunk, C::Base>
         + TranscriptWrite<P2::CommitmentChunk, C::Base>
         + InMemoryTranscript,
+
 {
     let mut primary_acc = Protostar::<HyperPlonk<P1>>::init_accumulator(&ivc_pp.primary_pp)?;
     let mut secondary_acc = Protostar::<HyperPlonk<P2>>::init_accumulator(&ivc_pp.secondary_pp)?;
@@ -1564,8 +1625,8 @@ pub fn prove_decider<C, P1, P2, AT1, AT2>(
 ) -> Result<(), crate::Error>
 where
     C: TwoChainCurve,
-    C::Scalar: Hash + Serialize + DeserializeOwned,
-    C::Base: Hash + Serialize + DeserializeOwned,
+    C::Scalar: Hash + Serialize + DeserializeOwned + BigPrimeField,
+    C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField,
     P1: PolynomialCommitmentScheme<
         C::ScalarExt,
         Polynomial = MultilinearPolynomial<C::Scalar>,
@@ -1580,6 +1641,7 @@ where
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
     AT1: InMemoryTranscript,
     AT2: InMemoryTranscript,
+
 {
     let timer = start_timer(|| format!("prove_decider-primary-{}", ivc_pp.primary_pp.pp.num_vars));
     Protostar::<HyperPlonk<P1>>::prove_decider(
@@ -1623,8 +1685,8 @@ pub fn verify_decider<C, P1, P2, H1, H2>(
 ) -> Result<(), crate::Error>
 where
     C: TwoChainCurve,
-    C::Scalar: Hash + Serialize + DeserializeOwned,
-    C::Base: Hash + Serialize + DeserializeOwned,
+    C::Scalar: Hash + Serialize + DeserializeOwned + BigPrimeField,
+    C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField,
     P1: PolynomialCommitmentScheme<
         C::ScalarExt,
         Polynomial = MultilinearPolynomial<C::Scalar>,
@@ -1639,6 +1701,7 @@ where
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
     H1: HashInstruction<C>,
     H2: HashInstruction<C::Secondary>,
+
 {
     if H1::hash_state(
         &ivc_vp.primary_hp,
@@ -1683,15 +1746,22 @@ where
     Ok(())
 }
 
-trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
+trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> 
+where
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
+
+{
 
     fn hornor(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         coeffs: &[Self::AssignedBase],
         x: &Self::AssignedBase,
-    ) -> Result<Self::AssignedBase, Error> {
-        let powers_of_x = self.powers_base(layouter, x, coeffs.len())?;
+    ) -> Result<Self::AssignedBase, Error> 
+    {
+        let powers_of_x = self.powers_base(ctx, x, coeffs.len())?;
         self.inner_product_base(layouter, coeffs, &powers_of_x)
     }
 
@@ -1984,6 +2054,7 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
     fn verify_sum_check<const IS_MSG_EVALS: bool>(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         num_vars: usize,
         degree: usize,
         sum: &Self::AssignedBase,
@@ -2021,7 +2092,7 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
                     x.last().unwrap(),
                 )?);
             } else {
-                sum = Cow::Owned(self.hornor(layouter, &msg, x.last().unwrap())?);
+                sum = Cow::Owned(self.hornor(layouter, ctx, &msg, x.last().unwrap())?);
             }
         }
 
@@ -2033,6 +2104,7 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
     fn verify_sum_check_and_query(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         num_vars: usize,
         expression: &Expression<C::Base>,
         sum: &Self::AssignedBase,
@@ -2050,7 +2122,7 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
         let degree = expression.degree();
 
         let (x_eval, x) =
-            self.verify_sum_check::<true>(layouter, num_vars, degree, sum, transcript)?;
+            self.verify_sum_check::<true>(layouter, ctx, num_vars, degree, sum, transcript)?;
 
         let pcs_query = {
             let mut used_query = expression.used_query();
@@ -2193,6 +2265,7 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
     fn multilinear_pcs_batch_verify<'a, Comm>(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         comms: &'a [Comm],
         points: &[Vec<Self::AssignedBase>],
         evals: &[Evaluation<Self::AssignedBase>],
@@ -2204,7 +2277,8 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
             Self::AssignedBase,
         ),
         Error,
-    > {
+    > 
+    {
         let num_vars = points[0].len();
 
         let ell = evals.len().next_power_of_two().ilog2() as usize;
@@ -2222,7 +2296,7 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
             evals.iter().map(Evaluation::value),
         )?;
         let (g_prime_eval, x) =
-            self.verify_sum_check::<false>(layouter, num_vars, 2, &tilde_gs_sum, transcript)?;
+            self.verify_sum_check::<false>(layouter, ctx, num_vars, 2, &tilde_gs_sum, transcript)?;
         let eq_xy_evals = points
             .iter()
             .map(|point| self.eq_xy_eval(layouter, &x, point))
@@ -2349,7 +2423,8 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
         point: &[Self::AssignedBase],
         eval: &Self::AssignedBase,
         transcript: &mut impl TranscriptInstruction<C, TccChip = Self>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error> 
+    {
         let (lo, hi) = point.split_at(vp.row_num_vars());
         let scalars = self.eq_xy_coeffs(layouter, hi)?;
 
@@ -2374,13 +2449,15 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
     fn verify_hyrax_hyperplonk(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         vp: &HyperPlonkVerifierParam<C::Base, MultilinearHyrax<C::Secondary>>,
         instances: Value<&[C::Base]>,
         transcript: &mut impl TranscriptInstruction<C, TccChip = Self>,
     ) -> Result<Vec<Self::AssignedBase>, Error>
     where
-        C::Base: Serialize + DeserializeOwned,
-        C::Secondary: Serialize + DeserializeOwned,
+        C::Scalar: Serialize + DeserializeOwned ,
+        C::Base: Serialize + DeserializeOwned ,
+        C::Secondary: Serialize + DeserializeOwned ,
     {
         assert_eq!(vp.num_instances.len(), 1);
         let instances = vec![instances
@@ -2437,6 +2514,7 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
         let zero = self.assign_constant_base(layouter, C::Base::ZERO)?;
         let (points, evals) = self.verify_sum_check_and_query(
             layouter,
+            ctx,
             vp.num_vars,
             &vp.expression,
             &zero,
@@ -2481,7 +2559,7 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
             .collect_vec();
 
         let (comm, point, eval) =
-            self.multilinear_pcs_batch_verify(layouter, &comms, &points, &evals, transcript)?;
+            self.multilinear_pcs_batch_verify(layouter, ctx, &comms, &points, &evals, transcript)?;
 
         self.verify_hyrax(layouter, &vp.pcs, &comm, &point, &eval, transcript)?;
 
@@ -2492,7 +2570,11 @@ trait ProtostarHyperPlonkUtil<C: TwoChainCurve>: TwoChainCurveInstruction<C> {
 impl<C, I> ProtostarHyperPlonkUtil<C> for I
 where
     C: TwoChainCurve,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
     I: TwoChainCurveInstruction<C>,
+
+
 {
 }
 
@@ -2500,8 +2582,12 @@ where
 pub struct ProtostarIvcAggregator<C, Pcs, TccChip, HashChip>
 where
     C: TwoChainCurve,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
     HyperPlonk<Pcs>: PlonkishBackend<C::Base>,
     HashChip: HashInstruction<C>,
+
+
 {
     vp_digest: C::Scalar,
     vp: ProtostarVerifierParam<C::Base, HyperPlonk<Pcs>>,
@@ -2514,12 +2600,15 @@ where
 impl<C, Pcs, TccChip, HashChip> ProtostarIvcAggregator<C, Pcs, TccChip, HashChip>
 where
     C: TwoChainCurve,
+    C::ScalarExt: BigPrimeField,
+    C::Base: BigPrimeField,
     Pcs: PolynomialCommitmentScheme<C::Base>,
     Pcs::Commitment: AsRef<C::Secondary>,
     HyperPlonk<Pcs>:
         PlonkishBackend<C::Base, VerifierParam = HyperPlonkVerifierParam<C::Base, Pcs>>,
     TccChip: TwoChainCurveInstruction<C>,
     HashChip: HashInstruction<C, TccChip = TccChip>,
+
 {
     pub fn new(
         vp_digest: C::Scalar,
@@ -2592,6 +2681,7 @@ where
     fn reduce_decider_inner(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             TccChip::AssignedBase,
             TccChip::AssignedSecondary,
@@ -2635,6 +2725,7 @@ where
         };
         let (points, evals) = tcc_chip.verify_sum_check_and_query(
             layouter,
+            ctx,
             self.vp.vp.num_vars,
             &self.vp.vp.expression,
             &claimed_sum,
@@ -2680,6 +2771,7 @@ where
     pub fn reduce_decider(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2706,7 +2798,7 @@ where
         let (num_steps, initial_input, output, h) =
             self.hash_state(layouter, num_steps, initial_input, output, &acc)?;
 
-        let (comms, points, evals) = self.reduce_decider_inner(layouter, &acc, transcript)?;
+        let (comms, points, evals) = self.reduce_decider_inner(layouter, ctx, &acc, transcript)?;
 
         Ok((num_steps, initial_input, output, h, comms, points, evals))
     }
@@ -2716,6 +2808,7 @@ where
     pub fn reduce_decider_with_last_nark(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2747,6 +2840,7 @@ where
                 .transpose_array();
             acc_verifier.verify_accumulation_from_nark(
                 layouter,
+                ctx,
                 &acc_before_last,
                 instances,
                 transcript,
@@ -2761,7 +2855,7 @@ where
             tcc_chip.fit_base_in_scalar(layouter, &last_nark.instances[0][1])?;
         tcc_chip.constrain_equal(layouter, &h, &h_from_last_nark)?;
 
-        let (comms, points, evals) = self.reduce_decider_inner(layouter, &acc, transcript)?;
+        let (comms, points, evals) = self.reduce_decider_inner(layouter, ctx, &acc, transcript)?;
 
         Ok((
             num_steps,
@@ -2778,17 +2872,21 @@ where
 impl<C, M, TccChip, HashChip> ProtostarIvcAggregator<C, Gemini<UnivariateKzg<M>>, TccChip, HashChip>
 where
     C: TwoChainCurve,
+    C::Scalar: BigPrimeField,
+    C::Base: BigPrimeField,
     M: MultiMillerLoop<Scalar = C::Base, G1Affine = C::Secondary>,
     M::G1Affine: Serialize + DeserializeOwned,
     M::G2Affine: Serialize + DeserializeOwned,
     M::Scalar: Hash + Serialize + DeserializeOwned,
     TccChip: TwoChainCurveInstruction<C>,
     HashChip: HashInstruction<C, TccChip = TccChip>,
+
 {
     #[allow(clippy::type_complexity)]
     pub fn aggregate_gemini_kzg_ivc(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2807,9 +2905,9 @@ where
     > {
         let tcc_chip = &self.tcc_chip;
         let (num_steps, initial_input, output, h, comms, points, evals) =
-            self.reduce_decider(layouter, num_steps, initial_input, output, acc, transcript)?;
+            self.reduce_decider(layouter, ctx, num_steps, initial_input, output, acc, transcript)?;
         let (comm, point, eval) =
-            tcc_chip.multilinear_pcs_batch_verify(layouter, &comms, &points, &evals, transcript)?;
+            tcc_chip.multilinear_pcs_batch_verify(layouter, ctx, &comms, &points, &evals, transcript)?;
 
         let (fs, points, evals) = {
             let num_vars = point.len();
@@ -2866,8 +2964,8 @@ where
         let z = transcript.squeeze_challenge(layouter)?;
 
         let max_set_len = sets.iter().map(|set| set.polys.len()).max().unwrap();
-        let powers_of_beta = tcc_chip.powers_base(layouter, beta.as_ref(), max_set_len)?;
-        let powers_of_gamma = tcc_chip.powers_base(layouter, gamma.as_ref(), sets.len())?;
+        let powers_of_beta = tcc_chip.powers_base(ctx, beta.as_ref(), max_set_len)?;
+        let powers_of_gamma = tcc_chip.powers_base(ctx, gamma.as_ref(), sets.len())?;
 
         let vanishing_diff_evals = sets
             .iter()
@@ -2964,16 +3062,19 @@ impl<C, TccChip, HashChip>
     ProtostarIvcAggregator<C, MultilinearIpa<C::Secondary>, TccChip, HashChip>
 where
     C: TwoChainCurve,
-    C::Secondary: Serialize + DeserializeOwned,
-    C::Base: Hash + Serialize + DeserializeOwned,
+    C::Scalar: BigPrimeField,
+    C::Secondary: Serialize + DeserializeOwned + BigPrimeField,
+    C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField,
     TccChip: TwoChainCurveInstruction<C>,
     HashChip: HashInstruction<C, TccChip = TccChip>,
+
 {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     pub fn verify_ipa_grumpkin_ivc_with_last_nark(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
+        ctx: &mut Context<C::Scalar>,
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2988,11 +3089,13 @@ where
             TccChip::Assigned,
         ),
         Error,
-    > {
+    > 
+    {
         let tcc_chip = &self.tcc_chip;
         let (num_steps, initial_input, output, comms, points, evals, h_ohs_from_last_nark) = self
             .reduce_decider_with_last_nark(
             layouter,
+            ctx,
             num_steps,
             initial_input,
             output,
@@ -3001,7 +3104,7 @@ where
             transcript,
         )?;
         let (comm, point, eval) =
-            tcc_chip.multilinear_pcs_batch_verify(layouter, &comms, &points, &evals, transcript)?;
+            tcc_chip.multilinear_pcs_batch_verify(layouter, ctx, &comms, &points, &evals, transcript)?;
         let comm = comm.iter().map(|(comm, scalar)| (*comm, scalar));
 
         tcc_chip.verify_ipa(layouter, &self.vp.vp.pcs, comm, &point, &eval, transcript)?;

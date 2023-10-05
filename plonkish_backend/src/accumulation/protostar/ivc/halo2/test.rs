@@ -29,10 +29,10 @@ use crate::{
         DeserializeOwned, Itertools, Serialize,
     },
 };
-use halo2_curves::{
-    bn256::{self, Bn256},
-    grumpkin,
+use halo2_base::halo2_proofs::
+    halo2curves::{bn256, grumpkin, pasta::{pallas, vesta},
 };
+
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
     plonk::{Circuit, ConstraintSystem, Error},

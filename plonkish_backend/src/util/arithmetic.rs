@@ -1,8 +1,7 @@
 use crate::util::{BigUint, Itertools};
 use halo2_curves::{
-    bn256, grumpkin,
+    //bn256, grumpkin,
     pairing::{self, MillerLoopResult},
-    pasta::{pallas, vesta},
 };
 use num_integer::Integer;
 use std::{borrow::Borrow, fmt::Debug, iter, hash::Hash};
@@ -23,6 +22,9 @@ use halo2_base::{
     gates::flex_gate::{GateChip, GateInstructions},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
+use halo2_base::halo2_proofs::
+    halo2curves::{bn256, grumpkin, pasta::{pallas, vesta},
+};
 
 pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
     fn pairings_product_is_identity(terms: &[(&Self::G1Affine, &Self::G2Prepared)]) -> bool {
@@ -35,22 +37,24 @@ pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
 
 impl<M> MultiMillerLoop for M where M: pairing::MultiMillerLoop + Debug + Sync {}
 
-
-
 pub trait OverridenCurveAffine: CurveAffine
 where
-    <Self as CurveAffine>::ScalarExt: PrimeField + FromUniformBytes<64>,
-    <Self as CurveAffine>::Base: PrimeField + FromUniformBytes<64>,
+    <Self as CurveAffine>::ScalarExt: BigPrimeField,
+    <Self as CurveAffine>::Base: BigPrimeField,
 {}
+
+pub trait TwoChainCurve: OverridenCurveAffine 
+where
+    <Self as CurveAffine>::ScalarExt: BigPrimeField,
+    <Self as CurveAffine>::Base: BigPrimeField,
+{
+    type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;
+}
 
 // impl<C> OverridenCurveAffine for C::ScalarExt
 // where
 //     C: CurveAffine + BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
 // {}
-
-pub trait TwoChainCurve: CurveAffine {
-    type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;
-}
 
 // pub trait OverridenTwoChainCurve: TwoChainCurve + OverridenCurveAffine 
 // where
@@ -59,16 +63,18 @@ pub trait TwoChainCurve: CurveAffine {
 // {}
 
 
-// impl OverridenCurveAffine for bn256::G1Affine{}
-// impl OverridenCurveAffine for grumpkin::G1Affine{}
+impl OverridenCurveAffine for bn256::G1Affine{}
+impl OverridenCurveAffine for grumpkin::G1Affine{}
 
-// impl TwoChainCurve for bn256::G1Affine {
-//     type Secondary = grumpkin::G1Affine;
-// }
+impl TwoChainCurve for bn256::G1Affine 
+{
+    type Secondary = grumpkin::G1Affine;
+}
 
-// impl TwoChainCurve for grumpkin::G1Affine {
-//     type Secondary = bn256::G1Affine;
-// }
+impl TwoChainCurve for grumpkin::G1Affine 
+{
+    type Secondary = bn256::G1Affine;
+}
 
 // impl TwoChainCurve for pallas::Affine {
 //     type Secondary = vesta::Affine;

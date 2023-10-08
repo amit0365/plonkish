@@ -134,7 +134,7 @@ pub(super) mod test {
             transcript::{InMemoryTranscript, Keccak256Transcript},
         },
     };
-    use halo2_curves::bn256::Fr;
+    use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
     use std::ops::Range;
 
     pub fn run_sum_check<S: SumCheck<Fr>>(
@@ -195,7 +195,7 @@ pub(super) mod test {
         ($impl:ty) => {
             #[test]
             fn sum_check_lagrange() {
-                use halo2_curves::bn256::Fr;
+                use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
                 use $crate::{
                     piop::sum_check::test::run_zero_check,
                     poly::multilinear::MultilinearPolynomial,
@@ -246,7 +246,7 @@ pub(super) mod test {
 
             #[test]
             fn sum_check_rotation() {
-                use halo2_curves::bn256::Fr;
+                use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
                 use std::iter;
                 use $crate::{
                     piop::sum_check::test::run_zero_check,
@@ -298,7 +298,7 @@ pub(super) mod test {
 
             #[test]
             fn sum_check_vanilla_plonk() {
-                use halo2_curves::bn256::Fr;
+                use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
                 use $crate::{
                     backend::hyperplonk::util::{
                         rand_vanilla_plonk_assignment, vanilla_plonk_expression,
@@ -324,7 +324,7 @@ pub(super) mod test {
 
             #[test]
             fn sum_check_vanilla_plonk_with_lookup() {
-                use halo2_curves::bn256::Fr;
+                use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
                 use $crate::{
                     backend::hyperplonk::util::{
                         rand_vanilla_plonk_with_lookup_assignment,

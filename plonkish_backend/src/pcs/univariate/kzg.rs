@@ -3,9 +3,8 @@ use crate::{
     poly::univariate::{CoefficientBasis, UnivariatePolynomial},
     util::{
         arithmetic::{
-            barycentric_interpolate, barycentric_weights, fixed_base_msm, inner_product, powers,
-            variable_base_msm, window_size, window_table, Curve, CurveAffine, Field,
-            MultiMillerLoop, PrimeCurveAffine,
+            barycentric_interpolate, barycentric_weights, fixed_base_msm, inner_product, powers, MultiMillerLoop,
+            variable_base_msm, window_size, window_table, Curve, CurveAffine, Field, PrimeCurveAffine,
         },
         chain, izip, izip_eq,
         parallel::parallelize,
@@ -13,6 +12,9 @@ use crate::{
         Deserialize, DeserializeOwned, Itertools, Serialize,
     },
     Error,
+};
+use halo2_base::halo2_proofs::
+    halo2curves::{bn256, grumpkin, pasta::{pallas, vesta},
 };
 use rand::RngCore;
 use std::{collections::BTreeSet, marker::PhantomData, ops::Neg, slice};
@@ -569,7 +571,7 @@ mod test {
             Itertools,
         },
     };
-    use halo2_curves::bn256::{Bn256, Fr};
+    use halo2_base::halo2_proofs::halo2curves::bn256::{Bn256, Fr};
     use rand::{rngs::OsRng, Rng};
     use std::iter;
 

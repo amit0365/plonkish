@@ -6,7 +6,9 @@ use crate::{
     },
     Error,
 };
-use halo2_curves::{bn256, grumpkin, pasta};
+use halo2_base::halo2_proofs::
+    halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{self,pallas, vesta},
+};
 use std::{
     fmt::Debug,
     io::{self, Cursor},

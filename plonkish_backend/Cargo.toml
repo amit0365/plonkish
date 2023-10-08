@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-halo2_curves = { git = "https://github.com/privacy-scaling-explorations/halo2curves", tag = "0.3.3", package = "halo2curves", features = ["derive_serde"] }
 generic-array = { version = "0.14.7", features = ["serde"] }
 bitvec = "1.0.1"
 itertools = "0.10.5"
@@ -17,7 +16,7 @@ sha3 = "0.10.6"
 poseidon = { git = "https://github.com/han0110/poseidon", branch = "feature/with-spec" }
 
 # Use halo2-base as non-optional dependency because it re-exports halo2_proofs, halo2curves, and poseidon, using different repos based on feature flag "halo2-axiom" or "halo2-pse"
-halo2-base = { git = "https://github.com/axiom-crypto/halo2-lib.git", branch = "community-edition", default-features = false }
+halo2-base = { path = "/Users/ak36/Desktop/axiom/halo2-lib/halo2-base", default-features = false }
 
 halo2-ecc = { git = "https://github.com/axiom-crypto/halo2-lib.git", branch = "community-edition", default-features = false, optional = false }
 
@@ -39,7 +38,7 @@ pprof = { version = "0.11.0", features = ["criterion", "flamegraph"] }
 halo2_wrong_v2 = { git = "https://github.com/han0110/halo2wrong.git", branch = "feature/for-benchmark-v2", package = "halo2wrong" }
 
 [features]
-default = ["parallel", "frontend-halo2", "halo2-axiom"]
+default = ["parallel", "frontend-halo2", "halo2-pse"]
 halo2-pse = ["halo2-base/halo2-pse", "halo2-ecc/halo2-pse"]
 test_special = []
 halo2-axiom = ["halo2-base/halo2-axiom", "halo2-ecc/halo2-axiom"]

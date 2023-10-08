@@ -8,7 +8,7 @@ pub mod piop;
 pub mod poly;
 pub mod util;
 
-pub use halo2_curves;
+pub use halo2_base::halo2_proofs::halo2curves;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Error {

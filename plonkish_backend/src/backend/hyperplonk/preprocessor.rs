@@ -210,7 +210,7 @@ pub(crate) mod test {
         },
         util::expression::{Expression, Query, Rotation},
     };
-    use halo2_curves::bn256::Fr;
+    use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
     use std::array;
 
     #[test]

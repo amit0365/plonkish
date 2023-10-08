@@ -42,13 +42,13 @@ use halo2_proofs::{
     plonk::{Circuit, ConstraintSystem, Error},
 };
 use halo2_base::{Context,
-    gates::{circuit::builder::{GateThreadBuilder, RangeCircuitBuilder}, 
-            flex_gate::{GateChip, GateInstructions}},
+    gates::{circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
+            flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager}},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
-pub use halo2_curves::{
+pub use halo2_base::halo2_proofs::halo2curves::{
     group::{
-        ff::{BatchInvert, FromUniformBytes, PrimeFieldBits},
+        ff::{FromUniformBytes, PrimeFieldBits},
         Curve, Group,
     },
     Coordinates, CurveAffine, CurveExt,
@@ -87,33 +87,33 @@ where
 
     fn to_assigned(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         assigned: &AssignedCell<C::Scalar, C::Scalar>,
     ) -> Result<Self::Assigned, Error>;
 
     fn constrain_instance(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         value: &Self::Assigned,
         row: usize,
     ) -> Result<(), Error>;
 
     fn constrain_equal(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::Assigned,
         rhs: &Self::Assigned,
     ) -> Result<(), Error>;
 
     fn assign_constant(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         constant: C::Scalar,
     ) -> Result<Self::Assigned, Error>;
 
     fn assign_witness(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         witness: Value<C::Scalar>,
     ) -> Result<Self::Assigned, Error>;
 
@@ -121,7 +121,7 @@ where
 
     fn select(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         condition: &Self::Assigned,
         when_true: &Self::Assigned,
         when_false: &Self::Assigned,
@@ -129,48 +129,48 @@ where
 
     fn is_equal(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::Assigned,
         rhs: &Self::Assigned,
     ) -> Result<Self::Assigned, Error>;
 
     fn add(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::Assigned,
         rhs: &Self::Assigned,
     ) -> Result<Self::Assigned, Error>;
 
     fn sub(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::Assigned,
         rhs: &Self::Assigned,
     ) -> Result<Self::Assigned, Error>;
 
     fn mul(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::Assigned,
         rhs: &Self::Assigned,
     ) -> Result<Self::Assigned, Error>;
 
     fn constrain_equal_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::AssignedBase,
         rhs: &Self::AssignedBase,
     ) -> Result<(), Error>;
 
     fn assign_constant_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         constant: C::Base,
     ) -> Result<Self::AssignedBase, Error>;
 
     fn assign_witness_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         witness: Value<C::Base>,
     ) -> Result<Self::AssignedBase, Error>;
 
@@ -178,7 +178,7 @@ where
 
     fn select_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         condition: &Self::Assigned,
         when_true: &Self::AssignedBase,
         when_false: &Self::AssignedBase,
@@ -186,107 +186,100 @@ where
 
     fn fit_base_in_scalar(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         value: &Self::AssignedBase,
     ) -> Result<Self::Assigned, Error>;
 
     fn to_repr_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         value: &Self::AssignedBase,
     ) -> Result<Vec<Self::Assigned>, Error>;
 
     fn add_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::AssignedBase,
         rhs: &Self::AssignedBase,
     ) -> Result<Self::AssignedBase, Error>;
 
     fn sub_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::AssignedBase,
         rhs: &Self::AssignedBase,
     ) -> Result<Self::AssignedBase, Error>;
 
     fn neg_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         value: &Self::AssignedBase,
     ) -> Result<Self::AssignedBase, Error> {
-        let zero = self.assign_constant_base(layouter, C::Base::ZERO)?;
-        self.sub_base(layouter, &zero, value)
+        let zero = self.assign_constant_base(builder, C::Base::ZERO)?;
+        self.sub_base(builder, &zero, value)
     }
 
     fn sum_base<'a>(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         values: impl IntoIterator<Item = &'a Self::AssignedBase>,
     ) -> Result<Self::AssignedBase, Error>
     where
         Self::AssignedBase: 'a,
     {
         values.into_iter().fold(
-            self.assign_constant_base(layouter, C::Base::ZERO),
-            |acc, value| self.add_base(layouter, &acc?, value),
+            self.assign_constant_base(builder, C::Base::ZERO),
+            |acc, value| self.add_base(builder, &acc?, value),
         )
     }
 
     fn product_base<'a>(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         values: impl IntoIterator<Item = &'a Self::AssignedBase>,
     ) -> Result<Self::AssignedBase, Error>
     where
         Self::AssignedBase: 'a,
     {
         values.into_iter().fold(
-            self.assign_constant_base(layouter, C::Base::ONE),
-            |acc, value| self.mul_base(layouter, &acc?, value),
+            self.assign_constant_base(builder, C::Base::ONE),
+            |acc, value| self.mul_base(builder, &acc?, value),
         )
     }
 
     fn mul_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::AssignedBase,
         rhs: &Self::AssignedBase,
     ) -> Result<Self::AssignedBase, Error>;
 
     fn div_incomplete_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::AssignedBase,
         rhs: &Self::AssignedBase,
     ) -> Result<Self::AssignedBase, Error>;
 
     fn invert_incomplete_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         value: &Self::AssignedBase,
     ) -> Result<Self::AssignedBase, Error> {
-        let one = self.assign_constant_base(layouter, C::Base::ONE)?;
-        self.div_incomplete_base(layouter, &one, value)
+        let one = self.assign_constant_base(builder, C::Base::ONE)?;
+        self.div_incomplete_base(builder, &one, value)
     }
-
-    // fn powers_base(
-    //     &self,
-    //     ctx: &mut impl Layouter<C::Scalar>,
-    //     x: &Self::AssignedBase,
-    //     n: usize,
-    // ) -> Result<Vec<Self::AssignedBase>, Error>;
 
     fn powers_base(
         &self,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         x: &Self::AssignedBase,
         n: usize,
     ) -> Result<Vec<Self::AssignedBase>, Error>;
 
     fn squares_base(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         base: &Self::AssignedBase,
         n: usize,
     ) -> Result<Vec<Self::AssignedBase>, Error> {
@@ -298,7 +291,7 @@ where
                 squares.push(base.clone());
                 for _ in 0..n - 1 {
                     squares.push(self.mul_base(
-                        layouter,
+                        builder,
                         squares.last().unwrap(),
                         squares.last().unwrap(),
                     )?);
@@ -310,7 +303,7 @@ where
 
     fn inner_product_base<'a, 'b>(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: impl IntoIterator<Item = &'a Self::AssignedBase>,
         rhs: impl IntoIterator<Item = &'b Self::AssignedBase>,
     ) -> Result<Self::AssignedBase, Error>
@@ -318,30 +311,30 @@ where
         Self::AssignedBase: 'a + 'b,
     {
         let products = izip_eq!(lhs, rhs)
-            .map(|(lhs, rhs)| self.mul_base(layouter, lhs, rhs))
+            .map(|(lhs, rhs)| self.mul_base(builder, lhs, rhs))
             .collect_vec();
         products
             .into_iter()
-            .reduce(|acc, output| self.add_base(layouter, &acc?, &output?))
+            .reduce(|acc, output| self.add_base(builder, &acc?, &output?))
             .unwrap()
     }
 
     fn constrain_equal_secondary(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::AssignedSecondary,
         rhs: &Self::AssignedSecondary,
     ) -> Result<(), Error>;
 
     fn assign_constant_secondary(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         constant: C::Secondary,
     ) -> Result<Self::AssignedSecondary, Error>;
 
     fn assign_witness_secondary(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         witness: Value<C::Secondary>,
     ) -> Result<Self::AssignedSecondary, Error>;
 
@@ -353,7 +346,7 @@ where
 
     fn select_secondary(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         condition: &Self::Assigned,
         when_true: &Self::AssignedSecondary,
         when_false: &Self::AssignedSecondary,
@@ -361,36 +354,32 @@ where
 
     fn add_secondary(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         lhs: &Self::AssignedSecondary,
         rhs: &Self::AssignedSecondary,
     ) -> Result<Self::AssignedSecondary, Error>;
 
     fn scalar_mul_secondary(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         base: &Self::AssignedSecondary,
         scalar_le_bits: &[Self::Assigned],
     ) -> Result<Self::AssignedSecondary, Error>;
 
-    fn fixed_base_msm_secondary<'a, 'b>(
+    fn fixed_base_msm_secondary(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        bases: impl IntoIterator<Item = &'a C::Secondary>,
-        scalars: impl IntoIterator<Item = &'b Self::AssignedBase>,
-    ) -> Result<Self::AssignedSecondary, Error>
-    where
-        Self::AssignedBase: 'b;
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        bases: &[C::Secondary],
+        scalars: Vec<Vec<Self::AssignedBase>>,
+    ) -> Result<Self::AssignedSecondary, Error>;
 
-    fn variable_base_msm_secondary<'a, 'b>(
+    fn variable_base_msm_secondary(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        bases: impl IntoIterator<Item = &'a Self::AssignedSecondary>,
-        scalars: impl IntoIterator<Item = &'b Self::AssignedBase>,
-    ) -> Result<Self::AssignedSecondary, Error>
-    where
-        Self::AssignedSecondary: 'a,
-        Self::AssignedBase: 'b;
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        bases: &[C::Secondary],
+        scalars: Vec<Vec<Self::AssignedBase>>,
+    ) -> Result<Self::AssignedSecondary, Error>;
+
 }
 
 pub trait HashInstruction<C: TwoChainCurve>: Clone + Debug 
@@ -419,7 +408,7 @@ where
     #[allow(clippy::type_complexity)]
     fn hash_assigned_state(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         vp_digest: &<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned,
         step_idx: &<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned,
         initial_input: &[<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned],
@@ -459,21 +448,21 @@ where
 
     fn challenge_to_le_bits(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         scalar: &Self::Challenge,
     ) -> Result<Vec<<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned>, Error>;
 
     fn squeeze_challenge(
         &mut self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
     ) -> Result<Self::Challenge, Error>;
 
     fn squeeze_challenges(
         &mut self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         n: usize,
     ) -> Result<Vec<Self::Challenge>, Error> {
-        (0..n).map(|_| self.squeeze_challenge(layouter)).collect()
+        (0..n).map(|_| self.squeeze_challenge(builder)).collect()
     }
 
     fn common_field_element(
@@ -490,15 +479,15 @@ where
 
     fn read_field_element(
         &mut self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
     ) -> Result<<Self::TccChip as TwoChainCurveInstruction<C>>::AssignedBase, Error>;
 
     fn read_field_elements(
         &mut self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         n: usize,
     ) -> Result<Vec<<Self::TccChip as TwoChainCurveInstruction<C>>::AssignedBase>, Error> {
-        (0..n).map(|_| self.read_field_element(layouter)).collect()
+        (0..n).map(|_| self.read_field_element(builder)).collect()
     }
 
     fn common_commitment(
@@ -517,15 +506,15 @@ where
 
     fn read_commitment(
         &mut self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
     ) -> Result<<Self::TccChip as TwoChainCurveInstruction<C>>::AssignedSecondary, Error>;
 
     fn read_commitments(
         &mut self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         n: usize,
     ) -> Result<Vec<<Self::TccChip as TwoChainCurveInstruction<C>>::AssignedSecondary>, Error> {
-        (0..n).map(|_| self.read_commitment(layouter)).collect()
+        (0..n).map(|_| self.read_commitment(builder)).collect()
     }
 
     #[allow(clippy::type_complexity)]
@@ -624,7 +613,7 @@ where
 
     pub fn assign_default_accumulator(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
     ) -> Result<
         AssignedProtostarAccumulatorInstance<TccChip::AssignedBase, TccChip::AssignedSecondary>,
         Error,
@@ -635,25 +624,25 @@ where
         let instances = num_instances
             .iter()
             .map(|num_instances| {
-                iter::repeat_with(|| tcc_chip.assign_constant_base(layouter, C::Base::ZERO))
+                iter::repeat_with(|| tcc_chip.assign_constant_base(builder, C::Base::ZERO))
                     .take(*num_instances)
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
         let witness_comms = iter::repeat_with(|| {
-            tcc_chip.assign_constant_secondary(layouter, C::Secondary::identity())
+            tcc_chip.assign_constant_secondary(builder, C::Secondary::identity())
         })
         .take(self.avp.num_folding_witness_polys())
         .try_collect::<_, Vec<_>, _>()?;
         let challenges =
-            iter::repeat_with(|| tcc_chip.assign_constant_base(layouter, C::Base::ZERO))
+            iter::repeat_with(|| tcc_chip.assign_constant_base(builder, C::Base::ZERO))
                 .take(self.avp.num_folding_challenges())
                 .try_collect::<_, Vec<_>, _>()?;
-        let u = tcc_chip.assign_constant_base(layouter, C::Base::ZERO)?;
-        let e_comm = tcc_chip.assign_constant_secondary(layouter, C::Secondary::identity())?;
+        let u = tcc_chip.assign_constant_base(builder, C::Base::ZERO)?;
+        let e_comm = tcc_chip.assign_constant_secondary(builder, C::Secondary::identity())?;
         let compressed_e_sum = match self.avp.strategy {
             NoCompressing => None,
-            Compressing => Some(tcc_chip.assign_constant_base(layouter, C::Base::ZERO)?),
+            Compressing => Some(tcc_chip.assign_constant_base(builder, C::Base::ZERO)?),
         };
 
         Ok(ProtostarAccumulatorInstance {
@@ -668,7 +657,7 @@ where
 
     pub fn assign_accumulator(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         acc: Value<&ProtostarAccumulatorInstance<C::Base, C::Secondary>>,
     ) -> Result<
         AssignedProtostarAccumulatorInstance<TccChip::AssignedBase, TccChip::AssignedSecondary>,
@@ -688,7 +677,7 @@ where
                 instances
                     .transpose_vec(*num_instances)
                     .into_iter()
-                    .map(|instance| tcc_chip.assign_witness_base(layouter, instance.copied()))
+                    .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied()))
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
@@ -696,21 +685,21 @@ where
             .map(|acc| &acc.witness_comms)
             .transpose_vec(avp.num_folding_witness_polys())
             .into_iter()
-            .map(|witness_comm| tcc_chip.assign_witness_secondary(layouter, witness_comm.copied()))
+            .map(|witness_comm| tcc_chip.assign_witness_secondary(builder, witness_comm.copied()))
             .try_collect::<_, Vec<_>, _>()?;
         let challenges = acc
             .map(|acc| &acc.challenges)
             .transpose_vec(avp.num_folding_challenges())
             .into_iter()
-            .map(|challenge| tcc_chip.assign_witness_base(layouter, challenge.copied()))
+            .map(|challenge| tcc_chip.assign_witness_base(builder, challenge.copied()))
             .try_collect::<_, Vec<_>, _>()?;
-        let u = tcc_chip.assign_witness_base(layouter, acc.map(|acc| &acc.u).copied())?;
-        let e_comm = tcc_chip.assign_witness_secondary(layouter, acc.map(|acc| acc.e_comm))?;
+        let u = tcc_chip.assign_witness_base(builder, acc.map(|acc| &acc.u).copied())?;
+        let e_comm = tcc_chip.assign_witness_secondary(builder, acc.map(|acc| acc.e_comm))?;
         let compressed_e_sum = match avp.strategy {
             NoCompressing => None,
             Compressing => Some(
                 tcc_chip
-                    .assign_witness_base(layouter, acc.map(|acc| acc.compressed_e_sum.unwrap()))?,
+                    .assign_witness_base(builder, acc.map(|acc| acc.compressed_e_sum.unwrap()))?,
             ),
         };
 
@@ -726,7 +715,7 @@ where
 
     fn assign_accumulator_from_r_nark(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         r: &TccChip::AssignedBase,
         r_nark: AssignedPlonkishNarkInstance<TccChip::AssignedBase, TccChip::AssignedSecondary>,
     ) -> Result<
@@ -740,10 +729,10 @@ where
             witness_comms,
         } = r_nark;
         let u = r.clone();
-        let e_comm = tcc_chip.assign_constant_secondary(layouter, C::Secondary::identity())?;
+        let e_comm = tcc_chip.assign_constant_secondary(builder, C::Secondary::identity())?;
         let compressed_e_sum = match self.avp.strategy {
             NoCompressing => None,
-            Compressing => Some(tcc_chip.assign_constant_base(layouter, C::Base::ZERO)?),
+            Compressing => Some(tcc_chip.assign_constant_base(builder, C::Base::ZERO)?),
         };
 
         Ok(ProtostarAccumulatorInstance {
@@ -759,8 +748,7 @@ where
     #[allow(clippy::type_complexity)]
     pub fn verify_accumulation_from_nark(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             TccChip::AssignedBase,
             TccChip::AssignedSecondary,
@@ -786,7 +774,7 @@ where
 
         let instances = instances
             .into_iter()
-            .map(|instance| tcc_chip.assign_witness_base(layouter, instance.copied()))
+            .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied()))
             .try_collect::<_, Vec<_>, _>()?;
         for instance in instances.iter() {
             transcript.common_field_element(instance)?;
@@ -797,11 +785,11 @@ where
         for (num_witness_polys, num_powers_of_challenge) in
             num_witness_polys.iter().zip_eq(num_challenges.iter())
         {
-            witness_comms.extend(transcript.read_commitments(layouter, *num_witness_polys)?);
+            witness_comms.extend(transcript.read_commitments(builder, *num_witness_polys)?);
             for num_powers in num_powers_of_challenge.iter() {
-                let challenge = transcript.squeeze_challenge(layouter)?;
+                let challenge = transcript.squeeze_challenge(builder)?;
                 let powers_of_challenges =
-                    tcc_chip.powers_base(ctx, challenge.as_ref(), *num_powers + 1)?;
+                    tcc_chip.powers_base(builder, challenge.as_ref(), *num_powers + 1)?;
                 challenges.extend(powers_of_challenges.into_iter().skip(1));
             }
         }
@@ -811,25 +799,24 @@ where
 
         let (cross_term_comms, compressed_cross_term_sums) = match strategy {
             NoCompressing => {
-                let cross_term_comms = transcript.read_commitments(layouter, *num_cross_terms)?;
+                let cross_term_comms = transcript.read_commitments(builder, *num_cross_terms)?;
 
                 (cross_term_comms, None)
             }
             Compressing => {
-                let zeta_cross_term_comm = vec![transcript.read_commitment(layouter)?];
+                let zeta_cross_term_comm = vec![transcript.read_commitment(builder)?];
                 let compressed_cross_term_sums =
-                    transcript.read_field_elements(layouter, *num_cross_terms)?;
+                    transcript.read_field_elements(builder, *num_cross_terms)?;
 
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
 
-        let r = transcript.squeeze_challenge(layouter)?;
-        let r_le_bits = transcript.challenge_to_le_bits(layouter, &r)?;
+        let r = transcript.squeeze_challenge(builder)?;
+        let r_le_bits = transcript.challenge_to_le_bits(builder, &r)?;
 
         let (r_nark, acc_prime) = self.fold_accumulator_from_nark(
-            layouter,
-            ctx,
+            builder,
             acc,
             &nark,
             &cross_term_comms,
@@ -837,7 +824,7 @@ where
             r.as_ref(),
             &r_le_bits,
         )?;
-        let acc_r_nark = self.assign_accumulator_from_r_nark(layouter, r.as_ref(), r_nark)?;
+        let acc_r_nark = self.assign_accumulator_from_r_nark(builder, r.as_ref(), r_nark)?;
 
         Ok((nark, acc_r_nark, acc_prime))
     }
@@ -846,8 +833,7 @@ where
     #[allow(clippy::type_complexity)]
     fn fold_accumulator_from_nark(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             TccChip::AssignedBase,
             TccChip::AssignedSecondary,
@@ -871,7 +857,7 @@ where
             ..
         } = self.avp;
 
-        let powers_of_r = tcc_chip.powers_base(ctx, r, num_cross_terms + 1)?;
+        let powers_of_r = tcc_chip.powers_base(builder, r, num_cross_terms + 1)?;
 
         let r_nark = {
             let instances = nark
@@ -880,19 +866,19 @@ where
                 .map(|instances| {
                     instances
                         .iter()
-                        .map(|instance| tcc_chip.mul_base(layouter, r, instance))
+                        .map(|instance| tcc_chip.mul_base(builder, r, instance))
                         .try_collect::<_, Vec<_>, _>()
                 })
                 .try_collect::<_, Vec<_>, _>()?;
             let witness_comms = nark
                 .witness_comms
                 .iter()
-                .map(|comm| tcc_chip.scalar_mul_secondary(layouter, comm, r_le_bits))
+                .map(|comm| tcc_chip.scalar_mul_secondary(builder, comm, r_le_bits))
                 .try_collect::<_, Vec<_>, _>()?;
             let challenges = nark
                 .challenges
                 .iter()
-                .map(|challenge| tcc_chip.mul_base(layouter, r, challenge))
+                .map(|challenge| tcc_chip.mul_base(builder, r, challenge))
                 .try_collect::<_, Vec<_>, _>()?;
             AssignedPlonkishNarkInstance {
                 instances,
@@ -905,24 +891,24 @@ where
             let instances = izip_eq!(&acc.instances, &r_nark.instances)
                 .map(|(lhs, rhs)| {
                     izip_eq!(lhs, rhs)
-                        .map(|(lhs, rhs)| tcc_chip.add_base(layouter, lhs, rhs))
+                        .map(|(lhs, rhs)| tcc_chip.add_base(builder, lhs, rhs))
                         .try_collect::<_, Vec<_>, _>()
                 })
                 .try_collect::<_, Vec<_>, _>()?;
             let witness_comms = izip_eq!(&acc.witness_comms, &r_nark.witness_comms)
-                .map(|(lhs, rhs)| tcc_chip.add_secondary(layouter, lhs, rhs))
+                .map(|(lhs, rhs)| tcc_chip.add_secondary(builder, lhs, rhs))
                 .try_collect::<_, Vec<_>, _>()?;
             let challenges = izip_eq!(&acc.challenges, &r_nark.challenges)
-                .map(|(lhs, rhs)| tcc_chip.add_base(layouter, lhs, rhs))
+                .map(|(lhs, rhs)| tcc_chip.add_base(builder, lhs, rhs))
                 .try_collect::<_, Vec<_>, _>()?;
-            let u = tcc_chip.add_base(layouter, &acc.u, r)?;
+            let u = tcc_chip.add_base(builder, &acc.u, r)?;
             let e_comm = if cross_term_comms.is_empty() {
                 acc.e_comm.clone()
             } else {
                 let mut e_comm = cross_term_comms.last().unwrap().clone();
                 for item in cross_term_comms.iter().rev().skip(1).chain([&acc.e_comm]) {
-                    e_comm = tcc_chip.scalar_mul_secondary(layouter, &e_comm, r_le_bits)?;
-                    e_comm = tcc_chip.add_secondary(layouter, &e_comm, item)?;
+                    e_comm = tcc_chip.scalar_mul_secondary(builder, &e_comm, r_le_bits)?;
+                    e_comm = tcc_chip.add_secondary(builder, &e_comm, item)?;
                 }
                 e_comm
             };
@@ -930,12 +916,12 @@ where
                 NoCompressing => None,
                 Compressing => {
                     let rhs = tcc_chip.inner_product_base(
-                        layouter,
+                        builder,
                         &powers_of_r[1..],
                         compressed_cross_term_sums.unwrap(),
                     )?;
                     Some(tcc_chip.add_base(
-                        layouter,
+                        builder,
                         acc.compressed_e_sum.as_ref().unwrap(),
                         &rhs,
                     )?)
@@ -957,7 +943,7 @@ where
 
     fn select_accumulator(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         condition: &TccChip::Assigned,
         when_true: &AssignedProtostarAccumulatorInstance<
             TccChip::AssignedBase,
@@ -977,24 +963,24 @@ where
             .map(|(when_true, when_false)| {
                 izip_eq!(when_true, when_false)
                     .map(|(when_true, when_false)| {
-                        tcc_chip.select_base(layouter, condition, when_true, when_false)
+                        tcc_chip.select_base(builder, condition, when_true, when_false)
                     })
                     .try_collect()
             })
             .try_collect()?;
         let witness_comms = izip_eq!(&when_true.witness_comms, &when_false.witness_comms)
             .map(|(when_true, when_false)| {
-                tcc_chip.select_secondary(layouter, condition, when_true, when_false)
+                tcc_chip.select_secondary(builder, condition, when_true, when_false)
             })
             .try_collect()?;
         let challenges = izip_eq!(&when_true.challenges, &when_false.challenges)
             .map(|(when_true, when_false)| {
-                tcc_chip.select_base(layouter, condition, when_true, when_false)
+                tcc_chip.select_base(builder, condition, when_true, when_false)
             })
             .try_collect()?;
-        let u = tcc_chip.select_base(layouter, condition, &when_true.u, &when_false.u)?;
+        let u = tcc_chip.select_base(builder, condition, &when_true.u, &when_false.u)?;
         let e_comm = tcc_chip.select_secondary(
-            layouter,
+            builder,
             condition,
             &when_true.e_comm,
             &when_false.e_comm,
@@ -1002,7 +988,7 @@ where
         let compressed_e_sum = match self.avp.strategy {
             NoCompressing => None,
             Compressing => Some(tcc_chip.select_base(
-                layouter,
+                builder,
                 condition,
                 when_true.compressed_e_sum.as_ref().unwrap(),
                 when_false.compressed_e_sum.as_ref().unwrap(),
@@ -1117,18 +1103,18 @@ where
 
     fn check_initial_condition(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         is_base_case: &<Sc::TccChip as TwoChainCurveInstruction<C>>::Assigned,
         initial_input: &[<Sc::TccChip as TwoChainCurveInstruction<C>>::Assigned],
         input: &[<Sc::TccChip as TwoChainCurveInstruction<C>>::Assigned],
     ) -> Result<(), Error> {
         let tcc_chip = &self.tcc_chip;
-        let zero = tcc_chip.assign_constant(layouter, C::Scalar::ZERO)?;
+        let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
 
         for (lhs, rhs) in input.iter().zip(initial_input.iter()) {
-            let lhs = tcc_chip.select(layouter, is_base_case, lhs, &zero)?;
-            let rhs = tcc_chip.select(layouter, is_base_case, rhs, &zero)?;
-            tcc_chip.constrain_equal(layouter, &lhs, &rhs)?;
+            let lhs = tcc_chip.select(builder, is_base_case, lhs, &zero)?;
+            let rhs = tcc_chip.select(builder, is_base_case, rhs, &zero)?;
+            tcc_chip.constrain_equal(builder, &lhs, &rhs)?;
         }
 
         Ok(())
@@ -1138,7 +1124,7 @@ where
     #[allow(clippy::type_complexity)]
     fn check_state_hash(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         is_base_case: Option<&<Sc::TccChip as TwoChainCurveInstruction<C>>::Assigned>,
         h: &<Sc::TccChip as TwoChainCurveInstruction<C>>::Assigned,
         vp_digest: &<Sc::TccChip as TwoChainCurveInstruction<C>>::Assigned,
@@ -1154,7 +1140,7 @@ where
         let hash_chip = &self.hash_chip;
         let lhs = h;
         let rhs = hash_chip.hash_assigned_state(
-            layouter,
+            builder,
             vp_digest,
             step_idx,
             initial_input,
@@ -1162,19 +1148,18 @@ where
             acc,
         )?;
         let rhs = if let Some(is_base_case) = is_base_case {
-            let dummy_h = tcc_chip.assign_constant(layouter, Self::DUMMY_H)?;
-            tcc_chip.select(layouter, is_base_case, &dummy_h, &rhs)?
+            let dummy_h = tcc_chip.assign_constant(builder, Self::DUMMY_H)?;
+            tcc_chip.select(builder, is_base_case, &dummy_h, &rhs)?
         } else {
             rhs
         };
-        tcc_chip.constrain_equal(layouter, lhs, &rhs)?;
+        tcc_chip.constrain_equal(builder, lhs, &rhs)?;
         Ok(())
     }
 
     fn synthesize_accumulation_verifier(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         input: &[AssignedCell<C::Scalar, C::Scalar>],
         output: &[AssignedCell<C::Scalar, C::Scalar>],
     ) -> Result<(), Error> {
@@ -1185,39 +1170,37 @@ where
             ..
         } = &self;
 
-        let layouter = &mut layouter;
-
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
 
-        let zero = tcc_chip.assign_constant(layouter, C::Scalar::ZERO)?;
-        let one = tcc_chip.assign_constant(layouter, C::Scalar::ONE)?;
-        let vp_digest = tcc_chip.assign_witness(layouter, Value::known(avp.vp_digest))?;
+        let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
+        let one = tcc_chip.assign_constant(builder, C::Scalar::ONE)?;
+        let vp_digest = tcc_chip.assign_witness(builder, Value::known(avp.vp_digest))?;
         let step_idx = tcc_chip.assign_witness(
-            layouter,
+            builder,
             Value::known(C::Scalar::from(self.step_circuit.step_idx() as u64)),
         )?;
-        let step_idx_plus_one = tcc_chip.add(layouter, &step_idx, &one)?;
+        let step_idx_plus_one = tcc_chip.add(builder, &step_idx, &one)?;
         let initial_input = self
             .step_circuit
             .initial_input()
             .iter()
-            .map(|value| tcc_chip.assign_witness(layouter, Value::known(*value)))
+            .map(|value| tcc_chip.assign_witness(builder, Value::known(*value)))
             .try_collect::<_, Vec<_>, _>()?;
         let input = input
             .iter()
-            .map(|assigned| tcc_chip.to_assigned(layouter, assigned))
+            .map(|assigned| tcc_chip.to_assigned(builder, assigned))
             .try_collect::<_, Vec<_>, _>()?;
         let output = output
             .iter()
-            .map(|assigned| tcc_chip.to_assigned(layouter, assigned))
+            .map(|assigned| tcc_chip.to_assigned(builder, assigned))
             .try_collect::<_, Vec<_>, _>()?;
 
-        let is_base_case = tcc_chip.is_equal(layouter, &step_idx, &zero)?;
-        let h_prime = tcc_chip.assign_witness(layouter, self.h_prime)?;
+        let is_base_case = tcc_chip.is_equal(builder, &step_idx, &zero)?;
+        let h_prime = tcc_chip.assign_witness(builder, self.h_prime)?;
 
-        self.check_initial_condition(layouter, &is_base_case, &initial_input, &input)?;
+        self.check_initial_condition(builder, &is_base_case, &initial_input, &input)?;
 
-        let acc = acc_verifier.assign_accumulator(layouter, self.acc.as_ref())?;
+        let acc = acc_verifier.assign_accumulator(builder, self.acc.as_ref())?;
 
         let (nark, acc_r_nark, acc_prime) = {
             let instances =
@@ -1225,23 +1208,23 @@ where
             let proof = self.incoming_proof.clone();
             let transcript =
                 &mut Sc::TranscriptChip::new(transcript_config.clone(), tcc_chip.clone(), proof);
-            acc_verifier.verify_accumulation_from_nark(layouter, ctx, &acc, instances, transcript)?
+            acc_verifier.verify_accumulation_from_nark(builder, &acc, instances, transcript)?
         };
 
         let acc_prime = {
             let acc_default = if self.is_primary {
-                acc_verifier.assign_default_accumulator(layouter)?
+                acc_verifier.assign_default_accumulator(builder)?
             } else {
                 acc_r_nark
             };
-            acc_verifier.select_accumulator(layouter, &is_base_case, &acc_default, &acc_prime)?
+            acc_verifier.select_accumulator(builder, &is_base_case, &acc_default, &acc_prime)?
         };
 
-        let h_from_incoming = tcc_chip.fit_base_in_scalar(layouter, &nark.instances[0][0])?;
-        let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(layouter, &nark.instances[0][1])?;
+        let h_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][0])?;
+        let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][1])?;
 
         self.check_state_hash(
-            layouter,
+            builder,
             Some(&is_base_case),
             &h_from_incoming,
             &vp_digest,
@@ -1251,7 +1234,7 @@ where
             &acc,
         )?;
         self.check_state_hash(
-            layouter,
+            builder,
             None,
             &h_prime,
             &vp_digest,
@@ -1261,8 +1244,8 @@ where
             &acc_prime,
         )?;
 
-        tcc_chip.constrain_instance(layouter, &h_ohs_from_incoming, 0)?;
-        tcc_chip.constrain_instance(layouter, &h_prime, 1)?;
+        tcc_chip.constrain_instance(builder, &h_ohs_from_incoming, 0)?;
+        tcc_chip.constrain_instance(builder, &h_prime, 1)?;
 
         Ok(())
     }
@@ -1307,10 +1290,12 @@ where
     ) -> Result<(), Error> {
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
-        let mut builder = GateThreadBuilder::mock();
-        //let ctx = &mut builder;
-        // ctx: &mut Context<C::Scalar>;
-        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &mut builder, &input, &output)?;
+
+        let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
+        .use_k(8)
+        .use_lookup_bits(9);
+        //self.synthesize_accumulation_verifier(layouter.namespace(|| ""), builder.main(), &input, &output)?;
+        self.synthesize_accumulation_verifier(builder, &input, &output)?;
         Ok(())
     }
 }
@@ -1755,23 +1740,23 @@ where
 
     fn hornor(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         coeffs: &[Self::AssignedBase],
         x: &Self::AssignedBase,
     ) -> Result<Self::AssignedBase, Error> 
     {
-        let powers_of_x = self.powers_base(ctx, x, coeffs.len())?;
-        self.inner_product_base(layouter, coeffs, &powers_of_x)
+        let powers_of_x = self.powers_base(builder, x, coeffs.len())?;
+        self.inner_product_base(builder, coeffs, &powers_of_x)
     }
 
     fn barycentric_weights(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         points: &[Self::AssignedBase],
     ) -> Result<Vec<Self::AssignedBase>, Error> {
         if points.len() == 1 {
-            return Ok(vec![self.assign_constant_base(layouter, C::Base::ONE)?]);
+            return Ok(vec![self.assign_constant_base(builder, C::Base::ONE)?]);
         }
         points
             .iter()
@@ -1781,18 +1766,18 @@ where
                     .iter()
                     .enumerate()
                     .filter_map(|(i, point_i)| {
-                        (i != j).then(|| self.sub_base(layouter, point_j, point_i))
+                        (i != j).then(|| self.sub_base(builder, point_j, point_i))
                     })
                     .try_collect::<_, Vec<_>, _>()?;
-                let weight_inv = self.product_base(layouter, &diffs)?;
-                self.invert_incomplete_base(layouter, &weight_inv)
+                let weight_inv = self.product_base(builder, &diffs)?;
+                self.invert_incomplete_base(builder, &weight_inv)
             })
             .collect()
     }
 
     fn barycentric_interpolate(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         weights: &[Self::AssignedBase],
         points: &[Self::AssignedBase],
         evals: &[Self::AssignedBase],
@@ -1801,21 +1786,21 @@ where
         let (coeffs, sum_inv) = {
             let coeffs = izip_eq!(weights, points)
                 .map(|(weight, point)| {
-                    let coeff = self.sub_base(layouter, x, point)?;
-                    self.div_incomplete_base(layouter, weight, &coeff)
+                    let coeff = self.sub_base(builder, x, point)?;
+                    self.div_incomplete_base(builder, weight, &coeff)
                 })
                 .try_collect::<_, Vec<_>, _>()?;
-            let sum = self.sum_base(layouter, &coeffs)?;
-            let sum_inv = self.invert_incomplete_base(layouter, &sum)?;
+            let sum = self.sum_base(builder, &coeffs)?;
+            let sum_inv = self.invert_incomplete_base(builder, &sum)?;
             (coeffs, sum_inv)
         };
-        let numer = self.inner_product_base(layouter, &coeffs, evals)?;
-        self.mul_base(layouter, &numer, &sum_inv)
+        let numer = self.inner_product_base(builder, &coeffs, evals)?;
+        self.mul_base(builder, &numer, &sum_inv)
     }
 
     fn rotation_eval_points(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         x: &[Self::AssignedBase],
         one_minus_x: &[Self::AssignedBase],
         rotation: Rotation,
@@ -1824,8 +1809,8 @@ where
             return Ok(vec![x.to_vec()]);
         }
 
-        let zero = self.assign_constant_base(layouter, C::Base::ZERO)?;
-        let one = self.assign_constant_base(layouter, C::Base::ONE)?;
+        let zero = self.assign_constant_base(builder, C::Base::ZERO)?;
+        let one = self.assign_constant_base(builder, C::Base::ONE)?;
         let distance = rotation.distance();
         let num_x = x.len() - distance;
         let points = if rotation < Rotation::cur() {
@@ -1881,7 +1866,7 @@ where
 
     fn rotation_eval(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         x: &[Self::AssignedBase],
         rotation: Rotation,
         evals_for_rotation: &[Self::AssignedBase],
@@ -1925,9 +1910,9 @@ where
                                 if bit {
                                     std::mem::swap(&mut eval_0, &mut eval_1);
                                 }
-                                let diff = self.sub_base(layouter, eval_1, eval_0)?;
-                                let diff_x_i = self.mul_base(layouter, &diff, x_i)?;
-                                self.add_base(layouter, &diff_x_i, eval_0)
+                                let diff = self.sub_base(builder, eval_1, eval_0)?;
+                                let diff_x_i = self.mul_base(builder, &diff, x_i)?;
+                                self.add_base(builder, &diff_x_i, eval_0)
                             })
                             .try_collect::<_, Vec<_>, _>()
                             .map(Into::into)
@@ -1939,17 +1924,17 @@ where
 
     fn eq_xy_coeffs(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         y: &[Self::AssignedBase],
     ) -> Result<Vec<Self::AssignedBase>, Error> {
-        let mut evals = vec![self.assign_constant_base(layouter, C::Base::ONE)?];
+        let mut evals = vec![self.assign_constant_base(builder, C::Base::ONE)?];
 
         for y_i in y.iter().rev() {
             evals = evals
                 .iter()
                 .map(|eval| {
-                    let hi = self.mul_base(layouter, eval, y_i)?;
-                    let lo = self.sub_base(layouter, eval, &hi)?;
+                    let hi = self.mul_base(builder, eval, y_i)?;
+                    let lo = self.sub_base(builder, eval, &hi)?;
                     Ok([lo, hi])
                 })
                 .try_collect::<_, Vec<_>, Error>()?
@@ -1963,27 +1948,27 @@ where
 
     fn eq_xy_eval(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         x: &[Self::AssignedBase],
         y: &[Self::AssignedBase],
     ) -> Result<Self::AssignedBase, Error> {
         let terms = izip_eq!(x, y)
             .map(|(x, y)| {
-                let one = self.assign_constant_base(layouter, C::Base::ONE)?;
-                let xy = self.mul_base(layouter, x, y)?;
-                let two_xy = self.add_base(layouter, &xy, &xy)?;
-                let two_xy_plus_one = self.add_base(layouter, &two_xy, &one)?;
-                let x_plus_y = self.add_base(layouter, x, y)?;
-                self.sub_base(layouter, &two_xy_plus_one, &x_plus_y)
+                let one = self.assign_constant_base(builder, C::Base::ONE)?;
+                let xy = self.mul_base(builder, x, y)?;
+                let two_xy = self.add_base(builder, &xy, &xy)?;
+                let two_xy_plus_one = self.add_base(builder, &two_xy, &one)?;
+                let x_plus_y = self.add_base(builder, x, y)?;
+                self.sub_base(builder, &two_xy_plus_one, &x_plus_y)
             })
             .try_collect::<_, Vec<_>, _>()?;
-        self.product_base(layouter, &terms)
+        self.product_base(builder, &terms)
     }
 
     #[allow(clippy::too_many_arguments)]
     fn evaluate(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         expression: &Expression<C::Base>,
         identity_eval: &Self::AssignedBase,
         lagrange_evals: &BTreeMap<i32, Self::AssignedBase>,
@@ -1993,7 +1978,7 @@ where
     ) -> Result<Self::AssignedBase, Error> {
         let mut evaluate = |expression| {
             self.evaluate(
-                layouter,
+                builder,
                 expression,
                 identity_eval,
                 lagrange_evals,
@@ -2003,7 +1988,7 @@ where
             )
         };
         match expression {
-            Expression::Constant(scalar) => self.assign_constant_base(layouter, *scalar),
+            Expression::Constant(scalar) => self.assign_constant_base(builder, *scalar),
             Expression::CommonPolynomial(poly) => match poly {
                 CommonPolynomial::Identity => Ok(identity_eval.clone()),
                 CommonPolynomial::Lagrange(i) => Ok(lagrange_evals[i].clone()),
@@ -2016,22 +2001,22 @@ where
             Expression::Challenge(index) => Ok(challenges[*index].clone()),
             Expression::Negated(a) => {
                 let a = evaluate(a)?;
-                self.neg_base(layouter, &a)
+                self.neg_base(builder, &a)
             }
             Expression::Sum(a, b) => {
                 let a = evaluate(a)?;
                 let b = evaluate(b)?;
-                self.add_base(layouter, &a, &b)
+                self.add_base(builder, &a, &b)
             }
             Expression::Product(a, b) => {
                 let a = evaluate(a)?;
                 let b = evaluate(b)?;
-                self.mul_base(layouter, &a, &b)
+                self.mul_base(builder, &a, &b)
             }
             Expression::Scaled(a, scalar) => {
                 let a = evaluate(a)?;
-                let scalar = self.assign_constant_base(layouter, *scalar)?;
-                self.mul_base(layouter, &a, &scalar)
+                let scalar = self.assign_constant_base(builder, *scalar)?;
+                self.mul_base(builder, &a, &scalar)
             }
             Expression::DistributePowers(exprs, scalar) => {
                 assert!(!exprs.is_empty());
@@ -2041,20 +2026,20 @@ where
                 let scalar = evaluate(scalar)?;
                 let exprs = exprs.iter().map(evaluate).try_collect::<_, Vec<_>, _>()?;
                 let mut scalars = Vec::with_capacity(exprs.len());
-                scalars.push(self.assign_constant_base(layouter, C::Base::ONE)?);
+                scalars.push(self.assign_constant_base(builder, C::Base::ONE)?);
                 scalars.push(scalar);
                 for _ in 2..exprs.len() {
-                    scalars.push(self.mul_base(layouter, &scalars[1], scalars.last().unwrap())?);
+                    scalars.push(self.mul_base(builder, &scalars[1], scalars.last().unwrap())?);
                 }
-                self.inner_product_base(layouter, &scalars, &exprs)
+                self.inner_product_base(builder, &scalars, &exprs)
             }
         }
     }
 
     fn verify_sum_check<const IS_MSG_EVALS: bool>(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         num_vars: usize,
         degree: usize,
         sum: &Self::AssignedBase,
@@ -2063,36 +2048,36 @@ where
         let points = steps(C::Base::ZERO).take(degree + 1).collect_vec();
         let weights = barycentric_weights(&points)
             .into_iter()
-            .map(|weight| self.assign_constant_base(layouter, weight))
+            .map(|weight| self.assign_constant_base(builder, weight))
             .try_collect::<_, Vec<_>, _>()?;
         let points = points
             .into_iter()
-            .map(|point| self.assign_constant_base(layouter, point))
+            .map(|point| self.assign_constant_base(builder, point))
             .try_collect::<_, Vec<_>, _>()?;
 
         let mut sum = Cow::Borrowed(sum);
         let mut x = Vec::with_capacity(num_vars);
         for _ in 0..num_vars {
-            let msg = transcript.read_field_elements(layouter, degree + 1)?;
-            x.push(transcript.squeeze_challenge(layouter)?.as_ref().clone());
+            let msg = transcript.read_field_elements(builder, degree + 1)?;
+            x.push(transcript.squeeze_challenge(builder)?.as_ref().clone());
 
             let sum_from_evals = if IS_MSG_EVALS {
-                self.add_base(layouter, &msg[0], &msg[1])?
+                self.add_base(builder, &msg[0], &msg[1])?
             } else {
-                self.sum_base(layouter, chain![[&msg[0], &msg[0]], &msg[1..]])?
+                self.sum_base(builder, chain![[&msg[0], &msg[0]], &msg[1..]])?
             };
-            self.constrain_equal_base(layouter, &sum, &sum_from_evals)?;
+            self.constrain_equal_base(builder, &sum, &sum_from_evals)?;
 
             if IS_MSG_EVALS {
                 sum = Cow::Owned(self.barycentric_interpolate(
-                    layouter,
+                    builder,
                     &weights,
                     &points,
                     &msg,
                     x.last().unwrap(),
                 )?);
             } else {
-                sum = Cow::Owned(self.hornor(layouter, ctx, &msg, x.last().unwrap())?);
+                sum = Cow::Owned(self.hornor(builder,  &msg, x.last().unwrap())?);
             }
         }
 
@@ -2103,8 +2088,8 @@ where
     #[allow(clippy::type_complexity)]
     fn verify_sum_check_and_query(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         num_vars: usize,
         expression: &Expression<C::Base>,
         sum: &Self::AssignedBase,
@@ -2122,7 +2107,7 @@ where
         let degree = expression.degree();
 
         let (x_eval, x) =
-            self.verify_sum_check::<true>(layouter, ctx, num_vars, degree, sum, transcript)?;
+            self.verify_sum_check::<true>(builder,  num_vars, degree, sum, transcript)?;
 
         let pcs_query = {
             let mut used_query = expression.used_query();
@@ -2133,9 +2118,9 @@ where
             .iter()
             .map(|query| {
                 let evals_for_rotation =
-                    transcript.read_field_elements(layouter, 1 << query.rotation().distance())?;
+                    transcript.read_field_elements(builder, 1 << query.rotation().distance())?;
                 let eval = self.rotation_eval(
-                    layouter,
+                    builder,
                     x.as_ref(),
                     query.rotation(),
                     &evals_for_rotation,
@@ -2146,10 +2131,10 @@ where
             .into_iter()
             .unzip::<_, _, Vec<_>, Vec<_>>();
 
-        let one = self.assign_constant_base(layouter, C::Base::ONE)?;
+        let one = self.assign_constant_base(builder, C::Base::ONE)?;
         let one_minus_x = x
             .iter()
-            .map(|x_i| self.sub_base(layouter, &one, x_i))
+            .map(|x_i| self.sub_base(builder, &one, x_i))
             .try_collect::<_, Vec<_>, _>()?;
 
         let (lagrange_evals, query_evals) = {
@@ -2176,7 +2161,7 @@ where
                 .map(|i| {
                     let b = bh[i.rem_euclid(1 << num_vars as i32) as usize];
                     let eval = self.product_base(
-                        layouter,
+                        builder,
                         (0..num_vars).map(|idx| {
                             if b.nth_bit(idx) {
                                 &x[idx]
@@ -2203,7 +2188,7 @@ where
                             .collect_vec()
                     };
                     let eval = self.inner_product_base(
-                        layouter,
+                        builder,
                         &instances[query.poly()],
                         is.iter().map(|i| lagrange_evals.get(i).unwrap()),
                     )?;
@@ -2219,14 +2204,14 @@ where
         let identity_eval = {
             let powers_of_two = powers(C::Base::ONE.double())
                 .take(x.len())
-                .map(|power_of_two| self.assign_constant_base(layouter, power_of_two))
+                .map(|power_of_two| self.assign_constant_base(builder, power_of_two))
                 .try_collect::<_, Vec<_>, Error>()?;
-            self.inner_product_base(layouter, &powers_of_two, &x)?
+            self.inner_product_base(builder, &powers_of_two, &x)?
         };
-        let eq_xy_eval = self.eq_xy_eval(layouter, &x, y)?;
+        let eq_xy_eval = self.eq_xy_eval(builder, &x, y)?;
 
         let eval = self.evaluate(
-            layouter,
+            builder,
             expression,
             &identity_eval,
             &lagrange_evals,
@@ -2235,14 +2220,14 @@ where
             challenges,
         )?;
 
-        self.constrain_equal_base(layouter, &x_eval, &eval)?;
+        self.constrain_equal_base(builder, &x_eval, &eval)?;
 
         let points = pcs_query
             .iter()
             .map(Query::rotation)
             .collect::<BTreeSet<_>>()
             .into_iter()
-            .map(|rotation| self.rotation_eval_points(layouter, &x, &one_minus_x, rotation))
+            .map(|rotation| self.rotation_eval_points(builder, &x, &one_minus_x, rotation))
             .try_collect::<_, Vec<_>, _>()?
             .into_iter()
             .flatten()
@@ -2264,8 +2249,8 @@ where
     #[allow(clippy::type_complexity)]
     fn multilinear_pcs_batch_verify<'a, Comm>(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         comms: &'a [Comm],
         points: &[Vec<Self::AssignedBase>],
         evals: &[Evaluation<Self::AssignedBase>],
@@ -2283,23 +2268,23 @@ where
 
         let ell = evals.len().next_power_of_two().ilog2() as usize;
         let t = transcript
-            .squeeze_challenges(layouter, ell)?
+            .squeeze_challenges(builder, ell)?
             .iter()
             .map(AsRef::as_ref)
             .cloned()
             .collect_vec();
 
-        let eq_xt = self.eq_xy_coeffs(layouter, &t)?;
+        let eq_xt = self.eq_xy_coeffs(builder, &t)?;
         let tilde_gs_sum = self.inner_product_base(
-            layouter,
+            builder,
             &eq_xt[..evals.len()],
             evals.iter().map(Evaluation::value),
         )?;
         let (g_prime_eval, x) =
-            self.verify_sum_check::<false>(layouter, ctx, num_vars, 2, &tilde_gs_sum, transcript)?;
+            self.verify_sum_check::<false>(builder,  num_vars, 2, &tilde_gs_sum, transcript)?;
         let eq_xy_evals = points
             .iter()
-            .map(|point| self.eq_xy_eval(layouter, &x, point))
+            .map(|point| self.eq_xy_eval(builder, &x, point))
             .try_collect::<_, Vec<_>, _>()?;
 
         let g_prime_comm = {
@@ -2307,10 +2292,10 @@ where
                 Ok::<_, Error>(BTreeMap::<_, _>::new()),
                 |scalars, (eval, eq_xt_i)| {
                     let mut scalars = scalars?;
-                    let scalar = self.mul_base(layouter, &eq_xy_evals[eval.point()], eq_xt_i)?;
+                    let scalar = self.mul_base(builder, &eq_xy_evals[eval.point()], eq_xt_i)?;
                     match scalars.entry(eval.poly()) {
                         Entry::Occupied(mut entry) => {
-                            *entry.get_mut() = self.add_base(layouter, entry.get(), &scalar)?;
+                            *entry.get_mut() = self.add_base(builder, entry.get(), &scalar)?;
                         }
                         Entry::Vacant(entry) => {
                             entry.insert(scalar);
@@ -2330,7 +2315,7 @@ where
 
     fn verify_ipa<'a>(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         vp: &MultilinearIpaParams<C::Secondary>,
         comm: impl IntoIterator<Item = (&'a Self::AssignedSecondary, &'a Self::AssignedBase)>,
         point: &[Self::AssignedBase],
@@ -2341,47 +2326,47 @@ where
         Self::AssignedSecondary: 'a,
         Self::AssignedBase: 'a,
     {
-        let xi_0 = transcript.squeeze_challenge(layouter)?.as_ref().clone();
+        let xi_0 = transcript.squeeze_challenge(builder)?.as_ref().clone();
 
         let (ls, rs, xis) = iter::repeat_with(|| {
             Ok::<_, Error>((
-                transcript.read_commitment(layouter)?,
-                transcript.read_commitment(layouter)?,
-                transcript.squeeze_challenge(layouter)?.as_ref().clone(),
+                transcript.read_commitment(builder)?,
+                transcript.read_commitment(builder)?,
+                transcript.squeeze_challenge(builder)?.as_ref().clone(),
             ))
         })
         .take(point.len())
         .try_collect::<_, Vec<_>, _>()?
         .into_iter()
         .multiunzip::<(Vec<_>, Vec<_>, Vec<_>)>();
-        let g_k = transcript.read_commitment(layouter)?;
-        let c = transcript.read_field_element(layouter)?;
+        let g_k = transcript.read_commitment(builder)?;
+        let c = transcript.read_field_element(builder)?;
 
         let xi_invs = xis
             .iter()
-            .map(|xi| self.invert_incomplete_base(layouter, xi))
+            .map(|xi| self.invert_incomplete_base(builder, xi))
             .try_collect::<_, Vec<_>, _>()?;
-        let eval_prime = self.mul_base(layouter, &xi_0, eval)?;
+        let eval_prime = self.mul_base(builder, &xi_0, eval)?;
 
         let h_eval = {
-            let one = self.assign_constant_base(layouter, C::Base::ONE)?;
+            let one = self.assign_constant_base(builder, C::Base::ONE)?;
             let terms = izip_eq!(point, xis.iter().rev())
                 .map(|(point, xi)| {
-                    let point_xi = self.mul_base(layouter, point, xi)?;
-                    let neg_point = self.neg_base(layouter, point)?;
-                    self.sum_base(layouter, [&one, &neg_point, &point_xi])
+                    let point_xi = self.mul_base(builder, point, xi)?;
+                    let neg_point = self.neg_base(builder, point)?;
+                    self.sum_base(builder, [&one, &neg_point, &point_xi])
                 })
                 .try_collect::<_, Vec<_>, _>()?;
-            self.product_base(layouter, &terms)?
+            self.product_base(builder, &terms)?
         };
         let h_coeffs = {
-            let one = self.assign_constant_base(layouter, C::Base::ONE)?;
+            let one = self.assign_constant_base(builder, C::Base::ONE)?;
             let mut coeff = vec![one];
 
             for xi in xis.iter().rev() {
                 let extended = coeff
                     .iter()
-                    .map(|coeff| self.mul_base(layouter, coeff, xi))
+                    .map(|coeff| self.mul_base(builder, coeff, xi))
                     .try_collect::<_, Vec<_>, _>()?;
                 coeff.extend(extended);
             }
@@ -2389,35 +2374,35 @@ where
             coeff
         };
 
-        let neg_c = self.neg_base(layouter, &c)?;
+        let neg_c = self.neg_base(builder, &c)?;
         let h_scalar = {
-            let mut tmp = self.mul_base(layouter, &neg_c, &h_eval)?;
-            tmp = self.mul_base(layouter, &tmp, &xi_0)?;
-            self.add_base(layouter, &tmp, &eval_prime)?
+            let mut tmp = self.mul_base(builder, &neg_c, &h_eval)?;
+            tmp = self.mul_base(builder, &tmp, &xi_0)?;
+            self.add_base(builder, &tmp, &eval_prime)?
         };
-        let identity = self.assign_constant_secondary(layouter, C::Secondary::identity())?;
+        let identity = self.assign_constant_secondary(builder, C::Secondary::identity())?;
         let out = {
-            let h = self.assign_constant_secondary(layouter, *vp.h())?;
+            let h = self.assign_constant_secondary(builder, *vp.h())?;
             let (mut bases, mut scalars) = comm.into_iter().unzip::<_, _, Vec<_>, Vec<_>>();
             bases.extend(chain![&ls, &rs, [&h, &g_k]]);
             scalars.extend(chain![&xi_invs, &xis, [&h_scalar, &neg_c]]);
-            self.variable_base_msm_secondary(layouter, bases, scalars)?
+            self.variable_base_msm_secondary(builder, bases, scalars)?
         };
-        self.constrain_equal_secondary(layouter, &out, &identity)?;
+        self.constrain_equal_secondary(builder, &out, &identity)?;
 
         let out = {
             let bases = vp.g();
             let scalars = h_coeffs;
-            self.fixed_base_msm_secondary(layouter, bases, &scalars)?
+            self.fixed_base_msm_secondary(builder, bases, &scalars)?
         };
-        self.constrain_equal_secondary(layouter, &out, &g_k)?;
+        self.constrain_equal_secondary(builder, &out, &g_k)?;
 
         Ok(())
     }
 
     fn verify_hyrax(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         vp: &MultilinearHyraxParams<C::Secondary>,
         comm: &[(&Vec<Self::AssignedSecondary>, Self::AssignedBase)],
         point: &[Self::AssignedBase],
@@ -2426,14 +2411,14 @@ where
     ) -> Result<(), Error> 
     {
         let (lo, hi) = point.split_at(vp.row_num_vars());
-        let scalars = self.eq_xy_coeffs(layouter, hi)?;
+        let scalars = self.eq_xy_coeffs(builder, hi)?;
 
         let comm = comm
             .iter()
             .map(|(comm, rhs)| {
                 let scalars = scalars
                     .iter()
-                    .map(|lhs| self.mul_base(layouter, lhs, rhs))
+                    .map(|lhs| self.mul_base(builder, lhs, rhs))
                     .try_collect::<_, Vec<_>, _>()?;
                 Ok::<_, Error>(izip_eq!(*comm, scalars))
             })
@@ -2443,13 +2428,13 @@ where
             .collect_vec();
         let comm = comm.iter().map(|(comm, scalar)| (*comm, scalar));
 
-        self.verify_ipa(layouter, vp.ipa(), comm, lo, eval, transcript)
+        self.verify_ipa(builder, vp.ipa(), comm, lo, eval, transcript)
     }
 
     fn verify_hyrax_hyperplonk(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         vp: &HyperPlonkVerifierParam<C::Base, MultilinearHyrax<C::Secondary>>,
         instances: Value<&[C::Base]>,
         transcript: &mut impl TranscriptInstruction<C, TccChip = Self>,
@@ -2463,7 +2448,7 @@ where
         let instances = vec![instances
             .transpose_vec(vp.num_instances[0])
             .into_iter()
-            .map(|instance| self.assign_witness_base(layouter, instance.copied()))
+            .map(|instance| self.assign_witness_base(builder, instance.copied()))
             .try_collect::<_, Vec<_>, _>()?];
 
         transcript.common_field_elements(&instances[0])?;
@@ -2474,36 +2459,36 @@ where
             vp.num_witness_polys.iter().zip_eq(vp.num_challenges.iter())
         {
             witness_comms.extend(
-                iter::repeat_with(|| transcript.read_commitments(layouter, vp.pcs.num_chunks()))
+                iter::repeat_with(|| transcript.read_commitments(builder, vp.pcs.num_chunks()))
                     .take(*num_polys)
                     .try_collect::<_, Vec<_>, _>()?,
             );
             challenges.extend(
                 transcript
-                    .squeeze_challenges(layouter, *num_challenges)?
+                    .squeeze_challenges(builder, *num_challenges)?
                     .iter()
                     .map(AsRef::as_ref)
                     .cloned(),
             );
         }
 
-        let beta = transcript.squeeze_challenge(layouter)?.as_ref().clone();
+        let beta = transcript.squeeze_challenge(builder)?.as_ref().clone();
 
         let lookup_m_comms =
-            iter::repeat_with(|| transcript.read_commitments(layouter, vp.pcs.num_chunks()))
+            iter::repeat_with(|| transcript.read_commitments(builder, vp.pcs.num_chunks()))
                 .take(vp.num_lookups)
                 .try_collect::<_, Vec<_>, _>()?;
 
-        let gamma = transcript.squeeze_challenge(layouter)?.as_ref().clone();
+        let gamma = transcript.squeeze_challenge(builder)?.as_ref().clone();
 
         let lookup_h_permutation_z_comms =
-            iter::repeat_with(|| transcript.read_commitments(layouter, vp.pcs.num_chunks()))
+            iter::repeat_with(|| transcript.read_commitments(builder, vp.pcs.num_chunks()))
                 .take(vp.num_lookups + vp.num_permutation_z_polys)
                 .try_collect::<_, Vec<_>, _>()?;
 
-        let alpha = transcript.squeeze_challenge(layouter)?.as_ref().clone();
+        let alpha = transcript.squeeze_challenge(builder)?.as_ref().clone();
         let y = transcript
-            .squeeze_challenges(layouter, vp.num_vars)?
+            .squeeze_challenges(builder, vp.num_vars)?
             .iter()
             .map(AsRef::as_ref)
             .cloned()
@@ -2511,10 +2496,10 @@ where
 
         challenges.extend([beta, gamma, alpha]);
 
-        let zero = self.assign_constant_base(layouter, C::Base::ZERO)?;
+        let zero = self.assign_constant_base(builder, C::Base::ZERO)?;
         let (points, evals) = self.verify_sum_check_and_query(
-            layouter,
-            ctx,
+            builder,
+            
             vp.num_vars,
             &vp.expression,
             &zero,
@@ -2525,7 +2510,7 @@ where
         )?;
 
         let dummy_comm = vec![
-            self.assign_constant_secondary(layouter, C::Secondary::identity())?;
+            self.assign_constant_secondary(builder, C::Secondary::identity())?;
             vp.pcs.num_chunks()
         ];
         let preprocess_comms = vp
@@ -2534,7 +2519,7 @@ where
             .map(|comm| {
                 comm.0
                     .iter()
-                    .map(|c| self.assign_constant_secondary(layouter, *c))
+                    .map(|c| self.assign_constant_secondary(builder, *c))
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
@@ -2545,7 +2530,7 @@ where
                 comm.1
                      .0
                     .iter()
-                    .map(|c| self.assign_constant_secondary(layouter, *c))
+                    .map(|c| self.assign_constant_secondary(builder, *c))
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
@@ -2559,9 +2544,9 @@ where
             .collect_vec();
 
         let (comm, point, eval) =
-            self.multilinear_pcs_batch_verify(layouter, ctx, &comms, &points, &evals, transcript)?;
+            self.multilinear_pcs_batch_verify(builder,  &comms, &points, &evals, transcript)?;
 
-        self.verify_hyrax(layouter, &vp.pcs, &comm, &point, &eval, transcript)?;
+        self.verify_hyrax(builder, &vp.pcs, &comm, &point, &eval, transcript)?;
 
         Ok(instances.into_iter().next().unwrap())
     }
@@ -2630,7 +2615,7 @@ where
     #[allow(clippy::type_complexity)]
     fn hash_state(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2650,23 +2635,23 @@ where
         let tcc_chip = &self.tcc_chip;
         let hash_chip = &self.hash_chip;
 
-        let vp_digest = tcc_chip.assign_constant(layouter, self.vp_digest)?;
+        let vp_digest = tcc_chip.assign_constant(builder, self.vp_digest)?;
         let num_steps = tcc_chip.assign_witness(
-            layouter,
+            builder,
             num_steps.map(|num_steps| C::Scalar::from(num_steps as u64)),
         )?;
         let initial_input = initial_input
             .transpose_vec(self.arity)
             .into_iter()
-            .map(|input| tcc_chip.assign_witness(layouter, input))
+            .map(|input| tcc_chip.assign_witness(builder, input))
             .try_collect::<_, Vec<_>, _>()?;
         let output = output
             .transpose_vec(self.arity)
             .into_iter()
-            .map(|input| tcc_chip.assign_witness(layouter, input))
+            .map(|input| tcc_chip.assign_witness(builder, input))
             .try_collect::<_, Vec<_>, _>()?;
         let h = hash_chip.hash_assigned_state(
-            layouter,
+            builder,
             &vp_digest,
             &num_steps,
             &initial_input,
@@ -2680,8 +2665,8 @@ where
     #[allow(clippy::type_complexity)]
     fn reduce_decider_inner(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         acc: &AssignedProtostarAccumulatorInstance<
             TccChip::AssignedBase,
             TccChip::AssignedSecondary,
@@ -2700,14 +2685,14 @@ where
 
         transcript.absorb_accumulator(acc)?;
 
-        let beta = transcript.squeeze_challenge(layouter)?;
-        let gamma = transcript.squeeze_challenge(layouter)?;
+        let beta = transcript.squeeze_challenge(builder)?;
+        let gamma = transcript.squeeze_challenge(builder)?;
 
         let permutation_z_comms =
-            transcript.read_commitments(layouter, vp.num_permutation_z_polys)?;
+            transcript.read_commitments(builder, vp.num_permutation_z_polys)?;
 
-        let alpha = transcript.squeeze_challenge(layouter)?;
-        let y = transcript.squeeze_challenges(layouter, vp.num_vars)?;
+        let alpha = transcript.squeeze_challenge(builder)?;
+        let y = transcript.squeeze_challenges(builder, vp.num_vars)?;
 
         let challenges = chain![
             &acc.challenges,
@@ -2721,11 +2706,11 @@ where
         let claimed_sum = if let Some(compressed_e_sum) = acc.compressed_e_sum.as_ref() {
             Cow::Borrowed(compressed_e_sum)
         } else {
-            Cow::Owned(tcc_chip.assign_constant_base(layouter, C::Base::ZERO)?)
+            Cow::Owned(tcc_chip.assign_constant_base(builder, C::Base::ZERO)?)
         };
         let (points, evals) = tcc_chip.verify_sum_check_and_query(
-            layouter,
-            ctx,
+            builder,
+            
             self.vp.vp.num_vars,
             &self.vp.vp.expression,
             &claimed_sum,
@@ -2736,16 +2721,16 @@ where
         )?;
 
         let builtin_witness_poly_offset = vp.num_witness_polys.iter().sum::<usize>();
-        let dummy_comm = tcc_chip.assign_constant_secondary(layouter, C::Secondary::identity())?;
+        let dummy_comm = tcc_chip.assign_constant_secondary(builder, C::Secondary::identity())?;
         let preprocess_comms = vp
             .preprocess_comms
             .iter()
-            .map(|comm| tcc_chip.assign_constant_secondary(layouter, *comm.as_ref()))
+            .map(|comm| tcc_chip.assign_constant_secondary(builder, *comm.as_ref()))
             .try_collect::<_, Vec<_>, _>()?;
         let permutation_comms = vp
             .permutation_comms
             .iter()
-            .map(|(_, comm)| tcc_chip.assign_constant_secondary(layouter, *comm.as_ref()))
+            .map(|(_, comm)| tcc_chip.assign_constant_secondary(builder, *comm.as_ref()))
             .try_collect::<_, Vec<_>, _>()?;
         let comms = chain![
             iter::repeat(&dummy_comm)
@@ -2770,8 +2755,8 @@ where
     #[allow(clippy::type_complexity)]
     pub fn reduce_decider(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2793,12 +2778,12 @@ where
         let avp = ProtostarAccumulationVerifierParam::from(&self.vp);
         let acc_verifier = ProtostarAccumulationVerifier::new(avp, tcc_chip.clone());
 
-        let acc = acc_verifier.assign_accumulator(layouter, acc.as_ref())?;
+        let acc = acc_verifier.assign_accumulator(builder, acc.as_ref())?;
 
         let (num_steps, initial_input, output, h) =
-            self.hash_state(layouter, num_steps, initial_input, output, &acc)?;
+            self.hash_state(builder, num_steps, initial_input, output, &acc)?;
 
-        let (comms, points, evals) = self.reduce_decider_inner(layouter, ctx, &acc, transcript)?;
+        let (comms, points, evals) = self.reduce_decider_inner(builder,  &acc, transcript)?;
 
         Ok((num_steps, initial_input, output, h, comms, points, evals))
     }
@@ -2807,8 +2792,8 @@ where
     #[allow(clippy::type_complexity)]
     pub fn reduce_decider_with_last_nark(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2832,15 +2817,15 @@ where
         let acc_verifier = ProtostarAccumulationVerifier::new(avp, tcc_chip.clone());
 
         let acc_before_last =
-            acc_verifier.assign_accumulator(layouter, acc_before_last.as_ref())?;
+            acc_verifier.assign_accumulator(builder, acc_before_last.as_ref())?;
         let (last_nark, _, acc) = {
             let instances = last_instance
                 .as_ref()
                 .map(|instances| [&instances[0], &instances[1]])
                 .transpose_array();
             acc_verifier.verify_accumulation_from_nark(
-                layouter,
-                ctx,
+                builder,
+                
                 &acc_before_last,
                 instances,
                 transcript,
@@ -2848,14 +2833,14 @@ where
         };
 
         let (num_steps, initial_input, output, h) =
-            self.hash_state(layouter, num_steps, initial_input, output, &acc_before_last)?;
+            self.hash_state(builder, num_steps, initial_input, output, &acc_before_last)?;
 
-        let h_from_last_nark = tcc_chip.fit_base_in_scalar(layouter, &last_nark.instances[0][0])?;
+        let h_from_last_nark = tcc_chip.fit_base_in_scalar(builder, &last_nark.instances[0][0])?;
         let h_ohs_from_last_nark =
-            tcc_chip.fit_base_in_scalar(layouter, &last_nark.instances[0][1])?;
-        tcc_chip.constrain_equal(layouter, &h, &h_from_last_nark)?;
+            tcc_chip.fit_base_in_scalar(builder, &last_nark.instances[0][1])?;
+        tcc_chip.constrain_equal(builder, &h, &h_from_last_nark)?;
 
-        let (comms, points, evals) = self.reduce_decider_inner(layouter, ctx, &acc, transcript)?;
+        let (comms, points, evals) = self.reduce_decider_inner(builder,  &acc, transcript)?;
 
         Ok((
             num_steps,
@@ -2885,8 +2870,7 @@ where
     #[allow(clippy::type_complexity)]
     pub fn aggregate_gemini_kzg_ivc(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2905,36 +2889,36 @@ where
     > {
         let tcc_chip = &self.tcc_chip;
         let (num_steps, initial_input, output, h, comms, points, evals) =
-            self.reduce_decider(layouter, ctx, num_steps, initial_input, output, acc, transcript)?;
+            self.reduce_decider(builder, num_steps, initial_input, output, acc, transcript)?;
         let (comm, point, eval) =
-            tcc_chip.multilinear_pcs_batch_verify(layouter, ctx, &comms, &points, &evals, transcript)?;
+            tcc_chip.multilinear_pcs_batch_verify(builder, &comms, &points, &evals, transcript)?;
 
         let (fs, points, evals) = {
             let num_vars = point.len();
-            let fs = transcript.read_commitments(layouter, num_vars - 1)?;
+            let fs = transcript.read_commitments(builder, num_vars - 1)?;
 
-            let beta = transcript.squeeze_challenge(layouter)?;
-            let squares_of_beta = tcc_chip.squares_base(layouter, beta.as_ref(), num_vars)?;
+            let beta = transcript.squeeze_challenge(builder)?;
+            let squares_of_beta = tcc_chip.squares_base(builder, beta.as_ref(), num_vars)?;
 
-            let evals = transcript.read_field_elements(layouter, num_vars)?;
+            let evals = transcript.read_field_elements(builder, num_vars)?;
 
-            let one = tcc_chip.assign_constant_base(layouter, C::Base::ONE)?;
-            let two = tcc_chip.assign_constant_base(layouter, C::Base::ONE.double())?;
+            let one = tcc_chip.assign_constant_base(builder, C::Base::ONE)?;
+            let two = tcc_chip.assign_constant_base(builder, C::Base::ONE.double())?;
             let eval_0 = evals.iter().zip(&squares_of_beta).zip(&point).rev().fold(
                 Ok::<_, Error>(eval),
                 |eval_pos, ((eval_neg, sqaure_of_beta), x_i)| {
                     let eval_pos = eval_pos?;
-                    let mut tmp = tcc_chip.sub_base(layouter, &one, x_i)?;
-                    tmp = tcc_chip.mul_base(layouter, &tmp, sqaure_of_beta)?;
+                    let mut tmp = tcc_chip.sub_base(builder, &one, x_i)?;
+                    tmp = tcc_chip.mul_base(builder, &tmp, sqaure_of_beta)?;
                     let numer = {
-                        let mut numer_lhs = tcc_chip.mul_base(layouter, &two, sqaure_of_beta)?;
-                        numer_lhs = tcc_chip.mul_base(layouter, &numer_lhs, &eval_pos)?;
-                        let mut numer_rhs = tcc_chip.sub_base(layouter, &tmp, x_i)?;
-                        numer_rhs = tcc_chip.mul_base(layouter, &numer_rhs, eval_neg)?;
-                        tcc_chip.sub_base(layouter, &numer_lhs, &numer_rhs)?
+                        let mut numer_lhs = tcc_chip.mul_base(builder, &two, sqaure_of_beta)?;
+                        numer_lhs = tcc_chip.mul_base(builder, &numer_lhs, &eval_pos)?;
+                        let mut numer_rhs = tcc_chip.sub_base(builder, &tmp, x_i)?;
+                        numer_rhs = tcc_chip.mul_base(builder, &numer_rhs, eval_neg)?;
+                        tcc_chip.sub_base(builder, &numer_lhs, &numer_rhs)?
                     };
-                    let denom = tcc_chip.add_base(layouter, &tmp, x_i)?;
-                    tcc_chip.div_incomplete_base(layouter, &numer, &denom)
+                    let denom = tcc_chip.add_base(builder, &tmp, x_i)?;
+                    tcc_chip.div_incomplete_base(builder, &numer, &denom)
                 },
             )?;
 
@@ -2946,7 +2930,7 @@ where
                 [squares_of_beta[0].clone()],
                 squares_of_beta
                     .iter()
-                    .map(|sqaure_of_beta| tcc_chip.neg_base(layouter, sqaure_of_beta))
+                    .map(|sqaure_of_beta| tcc_chip.neg_base(builder, sqaure_of_beta))
                     .try_collect::<_, Vec<_>, _>()?
             ]
             .collect_vec();
@@ -2956,16 +2940,16 @@ where
 
         let (sets, superset) = eval_sets(&evals);
 
-        let beta = transcript.squeeze_challenge(layouter)?;
-        let gamma = transcript.squeeze_challenge(layouter)?;
+        let beta = transcript.squeeze_challenge(builder)?;
+        let gamma = transcript.squeeze_challenge(builder)?;
 
-        let q = transcript.read_commitment(layouter)?;
+        let q = transcript.read_commitment(builder)?;
 
-        let z = transcript.squeeze_challenge(layouter)?;
+        let z = transcript.squeeze_challenge(builder)?;
 
         let max_set_len = sets.iter().map(|set| set.polys.len()).max().unwrap();
-        let powers_of_beta = tcc_chip.powers_base(ctx, beta.as_ref(), max_set_len)?;
-        let powers_of_gamma = tcc_chip.powers_base(ctx, gamma.as_ref(), sets.len())?;
+        let powers_of_beta = tcc_chip.powers_base(builder, beta.as_ref(), max_set_len)?;
+        let powers_of_gamma = tcc_chip.powers_base(builder, gamma.as_ref(), sets.len())?;
 
         let vanishing_diff_evals = sets
             .iter()
@@ -2973,39 +2957,39 @@ where
                 let diffs = set
                     .diffs
                     .iter()
-                    .map(|idx| tcc_chip.sub_base(layouter, z.as_ref(), &points[*idx]))
+                    .map(|idx| tcc_chip.sub_base(builder, z.as_ref(), &points[*idx]))
                     .try_collect::<_, Vec<_>, _>()?;
-                tcc_chip.product_base(layouter, &diffs)
+                tcc_chip.product_base(builder, &diffs)
             })
             .try_collect::<_, Vec<_>, _>()?;
-        let normalizer = tcc_chip.invert_incomplete_base(layouter, &vanishing_diff_evals[0])?;
+        let normalizer = tcc_chip.invert_incomplete_base(builder, &vanishing_diff_evals[0])?;
         let normalized_scalars = izip_eq!(&powers_of_gamma, &vanishing_diff_evals)
             .map(|(power_of_gamma, vanishing_diff_eval)| {
-                tcc_chip.product_base(layouter, [&normalizer, vanishing_diff_eval, power_of_gamma])
+                tcc_chip.product_base(builder, [&normalizer, vanishing_diff_eval, power_of_gamma])
             })
             .try_collect::<_, Vec<_>, _>()?;
         let superset_eval = {
             let diffs = superset
                 .iter()
-                .map(|idx| tcc_chip.sub_base(layouter, z.as_ref(), &points[*idx]))
+                .map(|idx| tcc_chip.sub_base(builder, z.as_ref(), &points[*idx]))
                 .try_collect::<_, Vec<_>, _>()?;
-            tcc_chip.product_base(layouter, &diffs)?
+            tcc_chip.product_base(builder, &diffs)?
         };
         let q_scalar = {
-            let neg_superset_eval = tcc_chip.neg_base(layouter, &superset_eval)?;
-            tcc_chip.mul_base(layouter, &neg_superset_eval, &normalizer)?
+            let neg_superset_eval = tcc_chip.neg_base(builder, &superset_eval)?;
+            tcc_chip.mul_base(builder, &neg_superset_eval, &normalizer)?
         };
         let comm_scalars = sets.iter().zip(&normalized_scalars).fold(
             Ok::<_, Error>(vec![
                 tcc_chip
-                    .assign_constant_base(layouter, C::Base::ZERO)?;
+                    .assign_constant_base(builder, C::Base::ZERO)?;
                 fs.len() + 1
             ]),
             |scalars, (set, coeff)| {
                 let mut scalars = scalars?;
                 for (poly, power_of_beta) in izip!(&set.polys, &powers_of_beta) {
-                    let scalar = tcc_chip.mul_base(layouter, coeff, power_of_beta)?;
-                    scalars[*poly] = tcc_chip.add_base(layouter, &scalars[*poly], &scalar)?;
+                    let scalar = tcc_chip.mul_base(builder, coeff, power_of_beta)?;
+                    scalars[*poly] = tcc_chip.add_base(builder, &scalars[*poly], &scalar)?;
                 }
                 Ok(scalars)
             },
@@ -3018,13 +3002,13 @@ where
                     .iter()
                     .map(|idx| points[*idx].clone())
                     .collect_vec();
-                let weights = tcc_chip.barycentric_weights(layouter, &points)?;
+                let weights = tcc_chip.barycentric_weights(builder, &points)?;
                 let r_evals = set
                     .evals
                     .iter()
                     .map(|evals| {
                         tcc_chip.barycentric_interpolate(
-                            layouter,
+                            builder,
                             &weights,
                             &points,
                             evals,
@@ -3032,17 +3016,17 @@ where
                         )
                     })
                     .try_collect::<_, Vec<_>, _>()?;
-                tcc_chip.inner_product_base(layouter, &powers_of_beta[..r_evals.len()], &r_evals)
+                tcc_chip.inner_product_base(builder, &powers_of_beta[..r_evals.len()], &r_evals)
             })
             .try_collect::<_, Vec<_>, _>()?;
-        let eval = tcc_chip.inner_product_base(layouter, &normalized_scalars, &r_evals)?;
+        let eval = tcc_chip.inner_product_base(builder, &normalized_scalars, &r_evals)?;
 
-        let pi = transcript.read_commitment(layouter)?;
+        let pi = transcript.read_commitment(builder)?;
 
         let pi_scalar = z.as_ref().clone();
-        let g_scalar = tcc_chip.neg_base(layouter, &eval)?;
+        let g_scalar = tcc_chip.neg_base(builder, &eval)?;
 
-        let g = tcc_chip.assign_constant_secondary(layouter, self.vp.vp.pcs.g1())?;
+        let g = tcc_chip.assign_constant_secondary(builder, self.vp.vp.pcs.g1())?;
 
         let (mut bases, mut scalars) = comm.into_iter().unzip::<_, _, Vec<_>, Vec<_>>();
         bases.extend(chain![&fs, [&q, &pi, &g]]);
@@ -3051,7 +3035,7 @@ where
             [q_scalar, pi_scalar, g_scalar]
         ]);
 
-        let lhs = tcc_chip.variable_base_msm_secondary(layouter, bases, &scalars)?;
+        let lhs = tcc_chip.variable_base_msm_secondary(builder, bases, &scalars)?;
         let rhs = pi;
 
         Ok((num_steps, initial_input, output, h, lhs, rhs))
@@ -3063,7 +3047,7 @@ impl<C, TccChip, HashChip>
 where
     C: TwoChainCurve,
     C::Scalar: BigPrimeField,
-    C::Secondary: Serialize + DeserializeOwned + BigPrimeField,
+    C::Secondary: Serialize + DeserializeOwned, //+ BigPrimeField,
     C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField,
     TccChip: TwoChainCurveInstruction<C>,
     HashChip: HashInstruction<C, TccChip = TccChip>,
@@ -3073,8 +3057,8 @@ where
     #[allow(clippy::type_complexity)]
     pub fn verify_ipa_grumpkin_ivc_with_last_nark(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
-        ctx: &mut Context<C::Scalar>,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -3094,8 +3078,8 @@ where
         let tcc_chip = &self.tcc_chip;
         let (num_steps, initial_input, output, comms, points, evals, h_ohs_from_last_nark) = self
             .reduce_decider_with_last_nark(
-            layouter,
-            ctx,
+            builder,
+            
             num_steps,
             initial_input,
             output,
@@ -3104,10 +3088,10 @@ where
             transcript,
         )?;
         let (comm, point, eval) =
-            tcc_chip.multilinear_pcs_batch_verify(layouter, ctx, &comms, &points, &evals, transcript)?;
+            tcc_chip.multilinear_pcs_batch_verify(builder,  &comms, &points, &evals, transcript)?;
         let comm = comm.iter().map(|(comm, scalar)| (*comm, scalar));
 
-        tcc_chip.verify_ipa(layouter, &self.vp.vp.pcs, comm, &point, &eval, transcript)?;
+        tcc_chip.verify_ipa(builder, &self.vp.vp.pcs, comm, &point, &eval, transcript)?;
 
         Ok((num_steps, initial_input, output, h_ohs_from_last_nark))
     }

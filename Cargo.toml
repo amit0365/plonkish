@@ -1,5 +1,5 @@
 [workspace]
-members = ["benchmark", "plonkish_backend"]
+members = ["plonkish_backend"]
 resolver = "1"
 
 [profile.flamegraph]

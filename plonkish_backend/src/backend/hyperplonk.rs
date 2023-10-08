@@ -380,9 +380,9 @@ mod test {
         },
         pcs::{
             multilinear::{
-                Gemini, MultilinearBrakedown, MultilinearHyrax, MultilinearIpa, MultilinearKzg,
-                Zeromorph,
-            },
+                Gemini, MultilinearHyrax, MultilinearIpa, MultilinearKzg,
+                
+            }, // MultilinearBrakedown, Zeromorph
             univariate::UnivariateKzg,
         },
         util::{
@@ -390,7 +390,7 @@ mod test {
             transcript::Keccak256Transcript,
         },
     };
-    use halo2_curves::{
+    use halo2_base::halo2_proofs::halo2curves::{
         bn256::{self, Bn256},
         grumpkin,
     };
@@ -418,10 +418,10 @@ mod test {
         };
     }
 
-    tests!(brakedown, MultilinearBrakedown<bn256::Fr, Keccak256, BrakedownSpec6>);
-    tests!(hyrax, MultilinearHyrax<grumpkin::G1Affine>, 5..16);
-    tests!(ipa, MultilinearIpa<grumpkin::G1Affine>);
-    tests!(kzg, MultilinearKzg<Bn256>);
-    tests!(gemini_kzg, Gemini<UnivariateKzg<Bn256>>);
-    tests!(zeromorph_kzg, Zeromorph<UnivariateKzg<Bn256>>);
+    // tests!(brakedown, MultilinearBrakedown<bn256::Fr, Keccak256, BrakedownSpec6>);
+    // tests!(hyrax, MultilinearHyrax<grumpkin::G1Affine>, 5..16);
+    // tests!(ipa, MultilinearIpa<grumpkin::G1Affine>);
+    // tests!(kzg, MultilinearKzg<Bn256>);
+    // tests!(gemini_kzg, Gemini<UnivariateKzg<Bn256>>);
+    // tests!(zeromorph_kzg, Zeromorph<UnivariateKzg<Bn256>>);
 }

@@ -367,7 +367,7 @@ pub mod halo2_wrong {
             frontend::halo2::chip::halo2_wrong::PoseidonChip,
             util::{hash::poseidon::Poseidon, Itertools},
         };
-        use halo2_curves::bn256::Fr;
+        use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
         use halo2_proofs::circuit::Value;
         use halo2_wrong_v2::{maingate::operations::Collector, Composable};
 

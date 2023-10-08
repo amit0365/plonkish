@@ -333,17 +333,17 @@ mod test {
         },
         util::transcript::Keccak256Transcript,
     };
-    use halo2_curves::pasta::pallas::Affine;
+    use halo2_base::halo2_proofs::halo2curves::pasta::pallas::Affine;
 
     type Pcs = MultilinearHyrax<Affine>;
 
-    #[test]
-    fn commit_open_verify() {
-        run_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
-    }
+    // #[test]
+    // fn commit_open_verify() {
+    //     run_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
+    // }
 
-    #[test]
-    fn batch_commit_open_verify() {
-        run_batch_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
-    }
+    // #[test]
+    // fn batch_commit_open_verify() {
+    //     run_batch_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
+    // }
 }

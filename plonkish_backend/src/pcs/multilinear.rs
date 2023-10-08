@@ -4,16 +4,16 @@ use crate::{
     Error,
 };
 
-mod brakedown;
+// mod brakedown;
 mod gemini;
 mod hyrax;
 mod ipa;
 mod kzg;
-mod zeromorph;
+// mod zeromorph;
 
-pub use brakedown::{
-    MultilinearBrakedown, MultilinearBrakedownCommitment, MultilinearBrakedownParams,
-};
+// pub use brakedown::{
+//     MultilinearBrakedown, MultilinearBrakedownCommitment, MultilinearBrakedownParams,
+// };
 pub use gemini::Gemini;
 pub use hyrax::{MultilinearHyrax, MultilinearHyraxCommitment, MultilinearHyraxParams};
 pub use ipa::{MultilinearIpa, MultilinearIpaCommitment, MultilinearIpaParams};
@@ -21,7 +21,7 @@ pub use kzg::{
     MultilinearKzg, MultilinearKzgCommitment, MultilinearKzgParams, MultilinearKzgProverParams,
     MultilinearKzgVerifierParams,
 };
-pub use zeromorph::{Zeromorph, ZeromorphKzgProverParam, ZeromorphKzgVerifierParam};
+// pub use zeromorph::{Zeromorph, ZeromorphKzgProverParam, ZeromorphKzgVerifierParam};
 
 fn validate_input<'a, F: Field>(
     function: &str,

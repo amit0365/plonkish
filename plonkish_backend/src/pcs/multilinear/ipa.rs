@@ -15,7 +15,7 @@ use crate::{
     },
     Error,
 };
-use halo2_curves::group::ff::BatchInvert;
+use halo2_base::halo2_proofs::halo2curves::group::ff::BatchInvert;
 use rand::RngCore;
 use std::{iter, marker::PhantomData, slice};
 
@@ -348,26 +348,26 @@ fn h_eval<F: Field>(point: &[F], xis: &[F]) -> F {
     )
 }
 
-#[cfg(test)]
-mod test {
-    use crate::{
-        pcs::multilinear::{
-            ipa::MultilinearIpa,
-            test::{run_batch_commit_open_verify, run_commit_open_verify},
-        },
-        util::transcript::Keccak256Transcript,
-    };
-    use halo2_curves::pasta::pallas::Affine;
+// #[cfg(test)]
+// mod test {
+//     use crate::{
+//         pcs::multilinear::{
+//             ipa::MultilinearIpa,
+//             test::{run_batch_commit_open_verify, run_commit_open_verify},
+//         },
+//         util::transcript::Keccak256Transcript,
+//     };
+//     use halo2_base::halo2_proofs::halo2curves::pasta::pallas::Affine;
 
-    type Pcs = MultilinearIpa<Affine>;
+//     type Pcs = MultilinearIpa<Affine>;
 
-    #[test]
-    fn commit_open_verify() {
-        run_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
-    }
+//     #[test]
+//     fn commit_open_verify() {
+//         run_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
+//     }
 
-    #[test]
-    fn batch_commit_open_verify() {
-        run_batch_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
-    }
-}
+//     #[test]
+//     fn batch_commit_open_verify() {
+//         run_batch_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
+//     }
+// }

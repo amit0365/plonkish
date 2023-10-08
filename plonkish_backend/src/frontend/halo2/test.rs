@@ -8,7 +8,7 @@ use crate::{
     pcs::multilinear::MultilinearKzg,
     util::transcript::Keccak256Transcript,
 };
-use halo2_curves::bn256::{Bn256, Fr};
+use halo2_base::halo2_proofs::halo2curves::bn256::{Bn256, Fr};
 use rand::rngs::OsRng;
 
 #[test]

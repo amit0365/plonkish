@@ -1,8 +1,8 @@
 use crate::util::{BigUint, Itertools};
-use halo2_curves::{
-    //bn256, grumpkin,
-    pairing::{self, MillerLoopResult},
-};
+// use halo2_curves::{
+//     //bn256, grumpkin,
+//     pairing::{self, MillerLoopResult},
+// };
 use num_integer::Integer;
 use std::{borrow::Borrow, fmt::Debug, iter, hash::Hash};
 
@@ -11,20 +11,25 @@ mod msm;
 
 pub use bh::BooleanHypercube;
 pub use bitvec::field::BitField;
-pub use halo2_curves::{group::{
+// use halo2_base::halo2_proofs::
+//     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
+// };
+pub use halo2_base::halo2_proofs::halo2curves::{
+    group::{
         ff::{BatchInvert, Field, FromUniformBytes, PrimeField, PrimeFieldBits},
         prime::PrimeCurveAffine,
         Curve, Group},
-        CurveAffine,Coordinates,CurveExt
+    CurveAffine,Coordinates,CurveExt, pairing::{self, MillerLoopResult}, bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta}
     };
 pub use msm::{fixed_base_msm, variable_base_msm, window_size, window_table};
 use halo2_base::{
     gates::flex_gate::{GateChip, GateInstructions},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
-use halo2_base::halo2_proofs::
-    halo2curves::{bn256, grumpkin, pasta::{pallas, vesta},
-};
+// use halo2_base::halo2_proofs::
+//     halo2curves::{pairing::{self}, bn256, grumpkin, pasta,
+// };
+//use pairing::{Engine, MillerLoopResult, MultiMillerLoop, PairingCurveAffine};
 
 pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
     fn pairings_product_is_identity(terms: &[(&Self::G1Affine, &Self::G2Prepared)]) -> bool {

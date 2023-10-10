@@ -44,6 +44,8 @@ use halo2_proofs::{
 };
 //use halo2_ecc::bn254::pairing;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From};
+use std::{mem, rc::Rc};
+
 
 #[derive(Clone, Debug, Default)]
 struct TrivialCircuit<C> {
@@ -82,14 +84,14 @@ where
     }
 }
 
-impl<C: TwoChainCurve> StepCircuit<C> for TrivialCircuit<C>
+impl<'a, C: TwoChainCurve> StepCircuit<'a, C> for TrivialCircuit<C>
 where
     C::Base: BigPrimeField + PrimeFieldBits,
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
-    type TccChip = strawman::Chip<C>;
-    type HashChip = strawman::Chip<C>;
-    type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
+    type TccChip = strawman::Chip<'a, C>;
+    type HashChip = strawman::Chip<'a, C>;
+    type TranscriptChip = strawman::PoseidonTranscriptChip<'a, C>;
 
     fn configs(
         config: Self::Config,
@@ -135,12 +137,12 @@ where
         _: impl Layouter<C::Scalar>,
     ) -> Result<
         (
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            // Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            // Vec<AssignedCell<C::Scalar, C::Scalar>>,
         ),
         Error,
     > {
-        Ok((Vec::new(), Vec::new()))
+        Ok(())
     }
 }
 
@@ -183,6 +185,9 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
         .use_k(8)
         .use_lookup_bits(9);
 
+        let pool = mem::take(builder.pool(0));
+
+
         let aggregator = ProtostarIvcAggregator::new(
             self.vp_digest,
             self.vp.clone(),
@@ -198,8 +203,7 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
         );
 
         let (num_steps, initial_input, output, h, lhs, rhs) = aggregator.aggregate_gemini_kzg_ivc(
-            &mut layouter,
-            builder.main(0),
+            &mut pool,
             self.num_steps,
             self.initial_input.clone(),
             self.output.clone(),
@@ -207,9 +211,9 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
             &mut transcript,
         )?;
 
-        let zero = chip.assign_constant(&mut layouter, grumpkin::Fr::ZERO)?;
-        chip.constrain_equal(&mut layouter, lhs.is_identity(), &zero)?;
-        chip.constrain_equal(&mut layouter, rhs.is_identity(), &zero)?;
+        // let zero = chip.assign_constant(&mut pool, grumpkin::Fr::ZERO)?;
+        // chip.constrain_equal(&mut pool, lhs.is_identity(), &zero)?;
+        // chip.constrain_equal(&mut pool, rhs.is_identity(), &zero)?;
 
         let cell_map = chip.layout_and_clear(&mut layouter)?;
         for (idx, witness) in chain![
@@ -277,6 +281,9 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
             .use_k(8)
             .use_lookup_bits(9);
 
+        let pool = mem::take(builder.pool(0));
+
+
         let aggregator = ProtostarIvcAggregator::new(
             self.vp_digest,
             self.vp.clone(),
@@ -293,8 +300,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
 
         let (primary_num_steps, primary_initial_input, primary_output, h_ohs_from_last_nark) =
             aggregator.verify_ipa_grumpkin_ivc_with_last_nark(
-                &mut layouter,
-                builder.main(0),
+                &mut pool,
                 self.num_steps,
                 self.initial_input.clone(),
                 self.output.clone(),
@@ -310,8 +316,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
                 self.secondary_aggregation_proof.clone(),
             );
             let secondary_aggregation_instance = chip.verify_hyrax_hyperplonk(
-                &mut layouter,
-                builder.main(0),
+                &mut pool,
                 &self.secondary_aggregation_vp,
                 self.secondary_aggregation_instances
                     .as_ref()
@@ -320,20 +325,19 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
             )?;
 
             let secondary_num_steps =
-                chip.fit_base_in_scalar(&mut layouter, &secondary_aggregation_instance[0])?;
-            chip.constrain_equal(&mut layouter, &primary_num_steps, &secondary_num_steps)?;
+                chip.fit_base_in_scalar(&secondary_aggregation_instance[0])?;
+            chip.constrain_equal(&mut pool, &primary_num_steps, &secondary_num_steps)?;
 
             let h = chip.fit_base_in_scalar(
-                &mut layouter,
                 &secondary_aggregation_instance[1 + 2 * self.secondary_arity],
             )?;
-            chip.constrain_equal(&mut layouter, &h_ohs_from_last_nark, &h)?;
+            chip.constrain_equal(&mut pool, &h_ohs_from_last_nark, &h)?;
 
             let iter = &mut secondary_aggregation_instance.iter();
             let mut instances = |skip: usize, take: usize| {
                 iter.skip(skip)
                     .take(take)
-                    .map(|base| chip.to_repr_base(&mut layouter, base))
+                    .map(|base| chip.to_repr_base(base))
                     .try_collect::<_, Vec<_>, _>()
             };
             (
@@ -376,8 +380,8 @@ fn run_protostar_hyperplonk_ivc<C, P1, P2>(
         C,
         P1,
         P2,
-        <strawman::Chip<C> as HashInstruction<C>>::Param,
-        <strawman::Chip<C::Secondary> as HashInstruction<C::Secondary>>::Param,
+        <strawman::Chip<'static, C> as HashInstruction<C>>::Param,
+        <strawman::Chip<'static, C::Secondary> as HashInstruction<C::Secondary>>::Param,
     >,
     usize,
     Vec<C::Scalar>,
@@ -691,21 +695,32 @@ mod strawman {
             Itertools,
         },
     };
-    use halo2_base::{Context, utils::{BigPrimeField, ScalarField}, 
-        halo2_proofs::plonk::Assigned};
 
+    use halo2_base::{
+        Context,
+        utils::{BigPrimeField, ScalarField, CurveAffineExt},
+        QuantumCell::{Constant, Existing, Witness, WitnessFraction},
+        halo2_proofs::plonk::Assigned,
+        AssignedValue,
+        gates::{
+            circuit::builder::{BaseCircuitBuilder},
+            RangeChip,
+            flex_gate::{GateChip, GateInstructions},
+        },
+        gates::flex_gate::threads::SinglePhaseCoreManager,
+    };
+    
     use halo2_proofs::{
         circuit::{AssignedCell, Layouter, Value},
         plonk::{Column, ConstraintSystem, Error, Instance},
     };
-
+    
     use halo2_ecc::{
         fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip, Selectable},
         bigint::{CRTInteger, FixedCRTInteger, ProperCrtUint},
-        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip},
+        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip},
     };
-    use halo2_base::gates::flex_gate::threads::SinglePhaseCoreManager;
-    use halo2_base::gates::{circuit::builder::BaseCircuitBuilder, RangeChip,flex_gate::{GateChip, GateInstructions}};
+    
 
     use std::{
         cell::RefCell,
@@ -909,7 +924,6 @@ mod strawman {
 
     #[derive(Clone, Debug)]
     pub struct Config<F: ScalarField> {
-        pub main_gate: MainGate<F, NUM_LOOKUPS>,
         pub instance: Column<Instance>,
         pub poseidon_spec: Spec<F, T, RATE>,
         pub range: RangeChip<F>,
@@ -917,27 +931,11 @@ mod strawman {
 
     impl<F: FromUniformBytes<64> + Ord + From<bool> + Hash> Config<F> {
         pub fn configure<C: CurveAffine<ScalarExt = F>>(meta: &mut ConstraintSystem<F>) -> Self {
-            // let rns =
-            //     Rns::<C::Base, C::Scalar, NUM_LIMBS, NUM_LIMB_BITS, NUM_SUBLIMBS>::construct();
-            // let overflow_bit_lens = rns.overflow_lengths();
-            // let composition_bit_len = IntegerChip::<
-            //     C::Base,
-            //     C::Scalar,
-            //     NUM_LIMBS,
-            //     NUM_LIMB_BITS,
-            //     NUM_SUBLIMBS,
-            // >::sublimb_bit_len();
-            // let main_gate = MainGate::<_, NUM_LOOKUPS>::configure(
-            //     meta,
-            //     vec![composition_bit_len],
-            //     overflow_bit_lens,
-            // );
             let instance = meta.instance_column();
             meta.enable_equality(instance);
             let poseidon_spec = Spec::new(R_F, R_P);
             let range = BaseCircuitBuilder::new(true).use_lookup_bits(8).range_chip();
             Self {
-                main_gate,
                 instance,
                 poseidon_spec,
                 range,
@@ -947,28 +945,42 @@ mod strawman {
 
     #[allow(clippy::type_complexity)]
     #[derive(Clone, Debug)]
-    pub struct Chip<C: OverridenCurveAffine> 
+    pub struct Chip<'range, C: CurveAffine> 
     where
         C::Scalar: BigPrimeField,
         C::Base: BigPrimeField,
     {
-        // rns: Rns<C::Base, C::Scalar, NUM_LIMBS, NUM_LIMB_BITS, NUM_SUBLIMBS>,
-        // pub main_gate: MainGate<C::Scalar, NUM_LOOKUPS>,
         pub gate_chip: GateChip<C::Scalar>,
-        pub base_chip: FpChip<C::Scalar, C::Base>,
-        pub ecc_chip: EccChip<C::Scalar, FpChip<C::Scalar, C::Base>>,
-        // pub collector: Rc<RefCell<Collector<C::Scalar>>>,
-        // pub cell_map: Rc<RefCell<BTreeMap<u32, AssignedCell<C::Scalar, C::Scalar>>>>,
+        pub base_chip: &'range FpChip<'range, C::Scalar, C::Base>,
+        pub ecc_chip: &'range EccChip<'range, C::Scalar, NativeFieldChip<'range, C::Scalar>>,
         pub instance: Column<Instance>,
         poseidon_spec: Spec<C::Scalar, T, RATE>,
         _marker: PhantomData<C>,
     }
 
-    impl<C: TwoChainCurve> Chip<C> 
-    where
-        C::Scalar: BigPrimeField,
-        C::Base: BigPrimeField,
-    {
+    // impl<C: TwoChainCurve> Chip<'_, C> 
+    // where
+    //     C::Scalar: BigPrimeField,
+    //     C::Base: BigPrimeField,
+    // {}
+
+    // impl<C: CurveAffine> EcPoint<C::Scalar,ProperCrtUint<C::Scalar>> 
+    //     where
+    //     C::Scalar: BigPrimeField,
+    //     C::Base: BigPrimeField,
+    // {}
+
+    // impl<C: TwoChainCurve> EccChip<'chip, F, FC>
+    // where
+    //     C::Scalar: BigPrimeField,
+    //     C::Base: BigPrimeField,
+    // {}
+
+    // impl<C: TwoChainCurve> Chip<C> 
+    // where
+    //     C::Scalar: BigPrimeField,
+    //     C::Base: BigPrimeField,
+    // {}
         // #[allow(clippy::type_complexity)]
         // pub fn layout_and_clear(
         //     &self,
@@ -1070,7 +1082,7 @@ mod strawman {
         //         is_identity: *value.is_identity(),
         //     }
         // }
-    }
+    //}
 
     // #[derive(Clone)]
     // pub struct AssignedBase<F: PrimeField, N: PrimeField> {
@@ -1140,25 +1152,21 @@ mod strawman {
     //     }
     // }
 
-    impl<C: TwoChainCurve> TwoChainCurveInstruction<C> for Chip<C> 
+    impl<'range, C: TwoChainCurve> TwoChainCurveInstruction<C> for Chip<'range, C> 
     where
-        C::Scalar: PrimeField<Repr = [u8; 32]> + From<bool> + FromUniformBytes<64> + Hash,
-        C::Base: PrimeField<Repr = [u8; 32]> + From<bool> + FromUniformBytes<64> + Hash,
+        C::Scalar: BigPrimeField, //PrimeField<Repr = [u8; 32]> + From<bool> + FromUniformBytes<64> + Hash,
+        C::Base: BigPrimeField, //PrimeField<Repr = [u8; 32]> + From<bool> + FromUniformBytes<64> + Hash,
     {
         type Config = Config<C::Scalar>;
-        type Assigned = Assigned<C::Scalar>;
+        type Assigned = AssignedValue<C::Scalar>;
         type AssignedBase = ProperCrtUint<C::Scalar>;
-        type AssignedSecondary = EcPoint<C::Secondary::Scalar, <FpChip<C::Secondary::Scalar, C::Secondary::Base> as FieldChip<C::Secondary::Scalar>>::FieldPoint>;
+        type AssignedSecondary = EcPoint<C::Scalar, AssignedValue<C::Scalar>>;
 
         fn new(config: Self::Config) -> Self {
             Chip {
-                // rns: Rns::construct(),
-                // main_gate: config.main_gate,
                 gate_chip: GateChip::default(),
-                base_chip: FpChip::<C::Scalar,C::Base>::new(&config.range, NUM_LIMB_BITS, NUM_LIMBS),
-                ecc_chip: EccChip::new(&FpChip::<C::Secondary::Scalar,C::Secondary::Base>::new(&config.range, NUM_LIMB_BITS, NUM_LIMBS)),
-                // collector: Default::default(),
-                // cell_map: Default::default(),
+                base_chip: &FpChip::<'range, C::Scalar,C::Base>::new(&config.range, NUM_LIMB_BITS, NUM_LIMBS),
+                ecc_chip: &EccChip::new(&NativeFieldChip::<'range, C::Scalar>::new(&config.range)),
                 instance: config.instance,
                 poseidon_spec: config.poseidon_spec,
                 _marker: PhantomData,
@@ -1171,14 +1179,14 @@ mod strawman {
             lhs: &Self::Assigned,
             rhs: &Self::Assigned,
         ) -> Result<(), Error> {
-            Ok(builder.main().constrain_equal(Existing(lhs), Existing(rhs)))
+            Ok(builder.main().constrain_equal(lhs, rhs))
         }
     
         fn assign_constant(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Scalar,
-        ) -> Result<(), Error> {
+        ) -> Result<Self::Assigned, Error> {
             Ok(builder.main().load_constant(constant))
         }
     
@@ -1186,18 +1194,18 @@ mod strawman {
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Scalar,
-        ) -> Result<(), Error> {
+        ) -> Result<Self::Assigned, Error> {
             Ok(builder.main().load_witness(witness))
         }
     
-        fn select(
+        fn select_gatechip(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             condition: &Self::Assigned,
             when_true: &Self::Assigned,
             when_false: &Self::Assigned,
         ) -> Result<Self::Assigned, Error> {
-            Ok(self.gate_chip.select(builder.main(), Existing(when_true), Existing(when_false), Existing(condition)))
+            Ok(GateInstructions::select(&self.gate_chip, builder.main(), Existing(when_true.into()), Existing(when_false.into()), Existing(condition.into())))
         }
     
         fn is_equal(
@@ -1206,7 +1214,7 @@ mod strawman {
             lhs: &Self::Assigned,
             rhs: &Self::Assigned,
         ) -> Result<Self::Assigned, Error> {
-            Ok(self.gate_chip.is_equal(builder.main(), Existing(lhs), Existing(rhs)))
+            Ok(self.gate_chip.is_equal(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
         fn add(
@@ -1215,7 +1223,7 @@ mod strawman {
             lhs: &Self::Assigned,
             rhs: &Self::Assigned,
         ) -> Result<Self::Assigned, Error> {
-            Ok(self.gate_chip.add(builder.main(), Existing(a), Existing(b)))
+            Ok(self.gate_chip.add(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
         fn sub(
@@ -1224,7 +1232,7 @@ mod strawman {
             lhs: &Self::Assigned,
             rhs: &Self::Assigned,
         ) -> Result<Self::Assigned, Error> {
-            Ok(self.gate_chip.sub(builder.main(), Existing(a), Existing(b)))
+            Ok(self.gate_chip.sub(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }  
     
         fn mul(
@@ -1233,7 +1241,7 @@ mod strawman {
             lhs: &Self::Assigned,
             rhs: &Self::Assigned,
         ) -> Result<Self::Assigned, Error> {
-            Ok(self.gate_chip.mul(builder.main(), Existing(a), Existing(b)))
+            Ok(self.gate_chip.mul(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
 
         fn constrain_equal_base(
@@ -1265,11 +1273,11 @@ mod strawman {
         fn select_base(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
-            condition: Assigned<F>,
+            condition: &Self::Assigned,
             when_true: &Self::AssignedBase,
             when_false: &Self::AssignedBase,
         ) -> Result<Self::AssignedBase, Error> {
-            Ok(self.base_chip.select(builder.main(),when_true,when_false,condition))
+            Ok(self.base_chip.select(builder.main(),when_true.clone(),when_false.clone(),*condition))
         }
     
         fn fit_base_in_scalar(
@@ -1283,7 +1291,7 @@ mod strawman {
             &self,
             value: &Self::AssignedBase,
         ) -> Result<Vec<Self::Assigned>, Error> {
-            Ok(value.limbs().clone())
+            Ok(value.limbs().clone().to_vec())
         }
     
         fn add_base(
@@ -1340,11 +1348,10 @@ mod strawman {
             lhs: &Self::AssignedSecondary,
             rhs: &Self::AssignedSecondary,
         ) -> Result<(), Error> {
-            self.ecc_chip.assert_equal(builder.main(), lhs, rhs);
+            self.ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
             Ok(())
         }
 
-        // todo can we replace with unchecked versions
         fn assign_constant_secondary(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1368,7 +1375,7 @@ mod strawman {
             when_true: &Self::AssignedSecondary,
             when_false: &Self::AssignedSecondary,
         ) -> Result<Self::AssignedSecondary, Error> {
-            Ok(self.ecc_chip.select(builder.main(), lhs, rhs, false))
+            Ok(self.ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
 
         fn add_secondary(
@@ -1387,7 +1394,7 @@ mod strawman {
             base: &Self::AssignedSecondary,
             le_bits: &[Self::Assigned],
         ) -> Result<Self::AssignedSecondary, Error> {
-            Ok(self.ecc_chip.scalar_mult(builder.main(), base, le_bits.to_vec(), 8,8))
+            Ok(self.ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), 8,8))
         }
 
         // todo change the inputs where this is used
@@ -1395,23 +1402,27 @@ mod strawman {
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             bases: &[C::Secondary],
-            scalars: Vec<Vec<Self::AssignedBase>>,
+            scalars: Vec<Self::AssignedBase>,
         ) -> Result<Self::AssignedSecondary, Error>{
-            Ok(self.ecc_chip.fixed_base_msm(builder, bases, scalars, 8))
+            let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
+            let max_scalar_bits_per_cell = self.base_chip.limb_bits;
+            Ok(self.ecc_chip.fixed_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_scalar_bits_per_cell))
         }
 
         fn variable_base_msm_secondary(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
-            bases: &[C::Secondary],
-            scalars: Vec<Vec<Self::AssignedBase>>,
+            bases: &[Self::AssignedSecondary],
+            scalars: Vec<Self::AssignedBase>,
         ) -> Result<Self::AssignedSecondary, Error>{
-            Ok(self.ecc_chip.variable_base_msm(builder, bases, scalars, 8))
+            let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
+            let max_bits = self.base_chip.limb_bits;
+            Ok(self.ecc_chip.variable_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_bits))
         }
 
     }
 
-    impl<C: TwoChainCurve> HashInstruction<C> for Chip<C>
+    impl<'a, C: TwoChainCurve> HashInstruction<C> for Chip<'a, C>
     where
         C::Base: BigPrimeField + PrimeFieldBits,
         C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
@@ -1420,42 +1431,42 @@ mod strawman {
 
         type Param = Spec<C::Scalar, T, RATE>;
         type Config = Spec<C::Scalar, T, RATE>;
-        type TccChip = Chip<C>;
+        type TccChip = Chip<'a, C>;
 
         fn new(_: Self::Config, chip: Self::TccChip) -> Self {
             chip
         }
 
-        // fn hash_state<Comm: AsRef<C::Secondary>>(
-        //     spec: &Self::Param,
-        //     vp_digest: C::Scalar,
-        //     step_idx: usize,
-        //     initial_input: &[C::Scalar],
-        //     output: &[C::Scalar],
-        //     acc: &ProtostarAccumulatorInstance<C::Base, Comm>,
-        // ) -> C::Scalar {
-        //     let mut poseidon = Poseidon::new_with_spec(spec.clone());
-        //     let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
-        //     let inputs = iter::empty()
-        //         .chain([vp_digest, C::Scalar::from(step_idx as u64)])
-        //         .chain(initial_input.iter().copied())
-        //         .chain(output.iter().copied())
-        //         .chain(fe_to_limbs(acc.instances[0][0]))
-        //         .chain(fe_to_limbs(acc.instances[0][1]))
-        //         .chain(
-        //             acc.witness_comms
-        //                 .iter()
-        //                 .map(AsRef::as_ref)
-        //                 .flat_map(x_y_is_identity),
-        //         )
-        //         .chain(acc.challenges.iter().copied().flat_map(fe_to_limbs))
-        //         .chain(fe_to_limbs(acc.u))
-        //         .chain(x_y_is_identity(acc.e_comm.as_ref()))
-        //         .chain(acc.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
-        //         .collect_vec();
-        //     poseidon.update(&inputs);
-        //     fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
-        // }
+        fn hash_state<Comm: AsRef<C::Secondary>>(
+            spec: &Self::Param,
+            vp_digest: C::Scalar,
+            step_idx: usize,
+            initial_input: &[C::Scalar],
+            output: &[C::Scalar],
+            acc: &ProtostarAccumulatorInstance<C::Base, Comm>,
+        ) -> C::Scalar {
+            let mut poseidon = Poseidon::new_with_spec(spec.clone());
+            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
+            let inputs = iter::empty()
+                .chain([vp_digest, C::Scalar::from(step_idx as u64)])
+                .chain(initial_input.iter().copied())
+                .chain(output.iter().copied())
+                .chain(fe_to_limbs(acc.instances[0][0]))
+                .chain(fe_to_limbs(acc.instances[0][1]))
+                .chain(
+                    acc.witness_comms
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .flat_map(x_y_is_identity),
+                )
+                .chain(acc.challenges.iter().copied().flat_map(fe_to_limbs))
+                .chain(fe_to_limbs(acc.u))
+                .chain(x_y_is_identity(acc.e_comm.as_ref()))
+                .chain(acc.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
+                .collect_vec();
+            poseidon.update(&inputs);
+            fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
+        }
 
         // fn hash_assigned_state(
         //     &self,
@@ -1500,161 +1511,161 @@ mod strawman {
         // }
     }
 
-    #[derive(Clone, Debug)]
-    pub struct PoseidonTranscriptChip<C: OverridenCurveAffine> 
-    where
-        C::Scalar: BigPrimeField,
-        C::Base: BigPrimeField,
-    {
-        poseidon_chip: PoseidonChip<C::Scalar, T, RATE>,
-        chip: Chip<C>,
-        proof: Value<Cursor<Vec<u8>>>,
-    }
+    // #[derive(Clone, Debug)]
+    // pub struct PoseidonTranscriptChip<'a, C: OverridenCurveAffine> 
+    // where
+    //     C::Scalar: BigPrimeField,
+    //     C::Base: BigPrimeField,
+    // {
+    //     poseidon_chip: PoseidonChip<C::Scalar, T, RATE>,
+    //     chip: Chip<'a, C>,
+    //     proof: Value<Cursor<Vec<u8>>>,
+    // }
 
-    #[derive(Clone)]
-    pub struct Challenge<F: PrimeField, N: PrimeField> {
-        le_bits: Vec<Witness<N>>,
-        scalar: AssignedBase<F, N>,
-    }
+    // #[derive(Clone)]
+    // pub struct Challenge<F: PrimeField, N: PrimeField> {
+    //     le_bits: Vec<AssignedValue<N>>,
+    //     scalar: ProperCrtUint<F, N>,
+    // }
 
-    impl<F: PrimeField, N: PrimeField> Debug for Challenge<F, N> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let mut f = f.debug_struct("Challenge");
-            self.scalar
-                .scalar
-                .value()
-                .map(|scalar| f.field("scalar", &scalar));
-            f.finish()
-        }
-    }
+    // impl<F: PrimeField, N: PrimeField> Debug for Challenge<F, N> {
+    //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    //         let mut f = f.debug_struct("Challenge");
+    //         self.scalar
+    //             .scalar
+    //             .value()
+    //             .map(|scalar| f.field("scalar", &scalar));
+    //         f.finish()
+    //     }
+    // }
 
-    impl<F: PrimeField, N: PrimeField> AsRef<AssignedBase<F, N>> for Challenge<F, N> {
-        fn as_ref(&self) -> &AssignedBase<F, N> {
-            &self.scalar
-        }
-    }
+    // impl<F: PrimeField, N: PrimeField> AsRef<AssignedBase<F, N>> for Challenge<F, N> {
+    //     fn as_ref(&self) -> &AssignedBase<F, N> {
+    //         &self.scalar
+    //     }
+    // }
 
-    impl<C> TranscriptInstruction<C> for PoseidonTranscriptChip<C>
-    where
-        C: TwoChainCurve,
-        C::Base: BigPrimeField + PrimeFieldBits,
-        C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
-    {
-        type Config = Spec<C::Scalar, T, RATE>;
-        type TccChip = Chip<C>;
-        type Challenge = Challenge<C::Base, C::Scalar>;
+    // impl<C: TwoChainCurve> TranscriptInstruction<C> for PoseidonTranscriptChip<C>
+    // where
+    //     C: TwoChainCurve,
+    //     C::Base: BigPrimeField + PrimeFieldBits,
+    //     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
+    // {
+    //     type Config = Spec<C::Scalar, T, RATE>;
+    //     type TccChip = Chip<C>;
+    //     type Challenge = ProperCrtUint<C::Scalar>;
 
-        fn new(spec: Self::Config, chip: Self::TccChip, proof: Value<Vec<u8>>) -> Self {
-            let poseidon_chip = PoseidonChip::from_spec(&mut chip.collector.borrow_mut(), spec);
-            PoseidonTranscriptChip {
-                poseidon_chip,
-                chip,
-                proof: proof.map(Cursor::new),
-            }
-        }
+    //     fn new(spec: Self::Config, chip: Self::TccChip, proof: Value<Vec<u8>>) -> Self {
+    //         let poseidon_chip = C::Base::ONE; //PoseidonChip::from_spec(&mut chip.collector.borrow_mut(), spec);
+    //         PoseidonTranscriptChip {
+    //             poseidon_chip,
+    //             chip,
+    //             proof: proof.map(Cursor::new),
+    //         }
+    //     }
 
-        fn challenge_to_le_bits(
-            &self,
-            challenge: &Self::Challenge,
-        ) -> Result<Vec<Witness<C::Scalar>>, Error> {
-            Ok(challenge.le_bits.clone())
-        }
+    //     fn challenge_to_le_bits(
+    //         &self,
+    //         challenge: &ProperCrtUint<C::Scalar>,
+    //     ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
+    //         Ok(challenge.limbs().clone().to_vec())
+    //     }
 
-        fn common_field_element(
-            &mut self,
-            value: &AssignedBase<C::Base, C::Scalar>,
-        ) -> Result<(), Error> {
-            value
-                .assigned_cells()
-                .for_each(|value| self.poseidon_chip.update(&[*value]));
-            Ok(())
-        }
+    //     fn common_field_element(
+    //         &mut self,
+    //         value: &ProperCrtUint<C::Scalar>,
+    //     ) -> Result<(), Error> {
+    //         // value
+    //         //     .assigned_cells()
+    //         //     .for_each(|value| self.poseidon_chip.update(&[*value]));
+    //         Ok(())
+    //     }
 
-        fn common_commitment(
-            &mut self,
-            value: &AssignedEcPoint<C::Secondary>,
-        ) -> Result<(), Error> {
-            value
-                .assigned_cells()
-                .for_each(|value| self.poseidon_chip.update(&[*value]));
-            Ok(())
-        }
+    //     fn common_commitment(
+    //         &mut self,
+    //         value: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+    //     ) -> Result<(), Error> {
+    //         // value
+    //         //     .assigned_cells()
+    //         //     .for_each(|value| self.poseidon_chip.update(&[*value]));
+    //         Ok(())
+    //     }
 
-        fn read_field_element(
-            &mut self,
-            layouter: &mut impl Layouter<C::Scalar>,
-        ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            let fe = self.proof.as_mut().and_then(|proof| {
-                let mut repr = <C::Base as PrimeField>::Repr::default();
-                if proof.read_exact(repr.as_mut()).is_err() {
-                    return Value::unknown();
-                }
-                C::Base::from_repr_vartime(repr)
-                    .map(Value::known)
-                    .unwrap_or_else(Value::unknown)
-            });
-            let fe = self.chip.assign_witness_base(layouter, fe)?;
-            self.common_field_element(&fe)?;
-            Ok(fe)
-        }
+    //     fn read_field_element(
+    //         &mut self,
+    //         builder: &mut SinglePhaseCoreManager<C::Scalar>,
+    //     ) -> Result<ProperCrtUint<C::Scalar>, Error> {
+    //         let fe = self.proof.as_mut().and_then(|proof| {
+    //             let mut repr = <C::Base as PrimeField>::Repr::default();
+    //             if proof.read_exact(repr.as_mut()).is_err() {
+    //                 return Value::unknown();
+    //             }
+    //             C::Base::from_repr_vartime(repr)
+    //                 .map(Value::known)
+    //                 .unwrap_or_else(Value::unknown)
+    //         });
+    //         let fe = self.chip.assign_witness_base(builder, fe.assign().unwrap())?;
+    //         self.common_field_element(&fe)?;
+    //         Ok(fe)
+    //     }
 
-        fn read_commitment(
-            &mut self,
-            layouter: &mut impl Layouter<C::Scalar>,
-        ) -> Result<AssignedEcPoint<C::Secondary>, Error> {
-            let comm = self.proof.as_mut().and_then(|proof| {
-                let mut reprs = [<C::Scalar as PrimeField>::Repr::default(); 2];
-                for repr in &mut reprs {
-                    if proof.read_exact(repr.as_mut()).is_err() {
-                        return Value::unknown();
-                    }
-                }
-                let [x, y] = reprs.map(|repr| {
-                    C::Scalar::from_repr_vartime(repr)
-                        .map(Value::known)
-                        .unwrap_or_else(Value::unknown)
-                });
-                x.zip(y).and_then(|(x, y)| {
-                    Option::from(C::Secondary::from_xy(x, y))
-                        .map(Value::known)
-                        .unwrap_or_else(Value::unknown)
-                })
-            });
-            let comm = self.chip.assign_witness_secondary(layouter, comm)?;
-            self.common_commitment(&comm)?;
-            Ok(comm)
-        }
+    //     fn read_commitment(
+    //         &mut self,
+    //         builder: &mut SinglePhaseCoreManager<C::Scalar>,
+    //     ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
+    //         let comm = self.proof.as_mut().and_then(|proof| {
+    //             let mut reprs = [<C::Scalar as PrimeField>::Repr::default(); 2];
+    //             for repr in &mut reprs {
+    //                 if proof.read_exact(repr.as_mut()).is_err() {
+    //                     return Value::unknown();
+    //                 }
+    //             }
+    //             let [x, y] = reprs.map(|repr| {
+    //                 C::Scalar::from_repr_vartime(repr)
+    //                     .map(Value::known)
+    //                     .unwrap_or_else(Value::unknown)
+    //             });
+    //             x.zip(y).and_then(|(x, y)| {
+    //                 Option::from(C::Secondary::from_xy(x, y))
+    //                     .map(Value::known)
+    //                     .unwrap_or_else(Value::unknown)
+    //             })
+    //         });
+    //         let comm = self.chip.assign_witness_secondary(builder, comm.assign().unwrap())?;
+    //         self.common_commitment(&comm)?;
+    //         Ok(comm)
+    //     }
 
-        fn squeeze_challenge(
-            &mut self,
-        ) -> Result<Challenge<C::Base, C::Scalar>, Error> {
-            let collector = &mut self.chip.collector.borrow_mut();
-            let (challenge_le_bits, challenge) = {
-                let hash = self.poseidon_chip.squeeze(collector);
-                self.poseidon_chip.update(&[hash]);
+        // fn squeeze_challenge(
+        //     &mut self,
+        // ) -> Result<Challenge<C::Base, C::Scalar>, Error> {
+        //     let collector = &mut self.chip.collector.borrow_mut();
+        //     let (challenge_le_bits, challenge) = {
+        //         let hash = self.poseidon_chip.squeeze(collector);
+        //         self.poseidon_chip.update(&[hash]);
 
-                let challenge_le_bits = to_le_bits_strict(collector, &hash)
-                    .into_iter()
-                    .take(NUM_CHALLENGE_BITS)
-                    .collect_vec();
-                let challenge = from_le_bits(collector, &challenge_le_bits);
+        //         let challenge_le_bits = to_le_bits_strict(collector, &hash)
+        //             .into_iter()
+        //             .take(NUM_CHALLENGE_BITS)
+        //             .collect_vec();
+        //         let challenge = from_le_bits(collector, &challenge_le_bits);
 
-                (challenge_le_bits, challenge)
-            };
+        //         (challenge_le_bits, challenge)
+        //     };
 
-            let mut integer_chip = IntegerChip::new(collector, &self.chip.rns);
-            let limbs = self.chip.rns.from_fe(challenge.value().map(fe_to_fe));
-            let scalar = integer_chip.range(limbs, Range::Remainder);
-            let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
+        //     let mut integer_chip = IntegerChip::new(collector, &self.chip.rns);
+        //     let limbs = self.chip.rns.from_fe(challenge.value().map(fe_to_fe));
+        //     let scalar = integer_chip.range(limbs, Range::Remainder);
+        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
 
-            let scalar_in_base =
-                integer_to_native(&self.chip.rns, collector, &scalar, NUM_CHALLENGE_BITS);
-            collector.equal(&challenge, &scalar_in_base);
+        //     let scalar_in_base =
+        //         integer_to_native(&self.chip.rns, collector, &scalar, NUM_CHALLENGE_BITS);
+        //     collector.equal(&challenge, &scalar_in_base);
 
-            Ok(Challenge {
-                le_bits: challenge_le_bits,
-                scalar: AssignedBase { scalar, limbs },
-            })
-        }
-    }
+        //     Ok(Challenge {
+        //         le_bits: challenge_le_bits,
+        //         scalar: AssignedBase { scalar, limbs },
+        //     })
+        // }
 }
+

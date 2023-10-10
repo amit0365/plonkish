@@ -42,9 +42,10 @@ use halo2_proofs::{
     plonk::{Circuit, ConstraintSystem, Error},
 };
 use halo2_base::{Context,
-    gates::{circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
+    gates::{circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder}, CircuitBuilderStage}, 
             flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager}},
-    utils::{CurveAffineExt, ScalarField, BigPrimeField},
+    utils::{CurveAffineExt, ScalarField, BigPrimeField}, AssignedValue,
+    QuantumCell::{Constant, Existing, Witness, WitnessFraction},
 };
 pub use halo2_base::halo2_proofs::halo2curves::{
     group::{
@@ -62,6 +63,7 @@ use std::{
     iter,
     marker::PhantomData,
 };
+use std::{mem, rc::Rc};
 
 #[cfg(test)]
 mod test;
@@ -72,7 +74,7 @@ type AssignedPlonkishNarkInstance<AssignedScalar, AssignedEcPoint> =
 type AssignedProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint> =
     ProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint>;
 
-pub trait TwoChainCurveInstruction<C:TwoChainCurve>: Clone + Debug 
+pub trait TwoChainCurveInstruction<C: TwoChainCurve>: Clone + Debug 
 where
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
@@ -85,11 +87,11 @@ where
 
     fn new(config: Self::Config) -> Self;
 
-    fn to_assigned(
-        &self,
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        assigned: &AssignedCell<C::Scalar, C::Scalar>,
-    ) -> Result<Self::Assigned, Error>;
+    // fn to_assigned(
+    //     &self,
+    //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
+    //     assigned: &AssignedCell<C::Scalar, C::Scalar>,
+    // ) -> Result<Self::Assigned, Error>;
 
     fn constrain_instance(
         &self,
@@ -114,12 +116,10 @@ where
     fn assign_witness(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        witness: Value<C::Scalar>,
+        witness: C::Scalar,
     ) -> Result<Self::Assigned, Error>;
 
-    fn assert_if_known(&self, value: &Self::Assigned, f: impl FnOnce(&C::Scalar) -> bool);
-
-    fn select(
+    fn select_gatechip(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
         condition: &Self::Assigned,
@@ -171,10 +171,8 @@ where
     fn assign_witness_base(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        witness: Value<C::Base>,
+        witness: C::Base,
     ) -> Result<Self::AssignedBase, Error>;
-
-    fn assert_if_known_base(&self, value: &Self::AssignedBase, f: impl FnOnce(&C::Base) -> bool);
 
     fn select_base(
         &self,
@@ -186,13 +184,11 @@ where
 
     fn fit_base_in_scalar(
         &self,
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         value: &Self::AssignedBase,
     ) -> Result<Self::Assigned, Error>;
 
     fn to_repr_base(
         &self,
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         value: &Self::AssignedBase,
     ) -> Result<Vec<Self::Assigned>, Error>;
 
@@ -273,9 +269,27 @@ where
     fn powers_base(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        x: &Self::AssignedBase,
+        base: &Self::AssignedBase,
         n: usize,
-    ) -> Result<Vec<Self::AssignedBase>, Error>;
+    ) -> Result<Vec<Self::AssignedBase>, Error> {
+        Ok(match n {
+            0 => Vec::new(),
+            1 => vec![self.assign_constant_base(builder, C::Base::ONE)?],
+            2 => vec![
+                self.assign_constant_base(builder, C::Base::ONE)?,
+                base.clone(),
+            ],
+            _ => {
+                let mut powers = Vec::with_capacity(n);
+                powers.push(self.assign_constant_base(builder, C::Base::ONE)?);
+                powers.push(base.clone());
+                for _ in 0..n - 2 {
+                    powers.push(self.mul_base(builder, powers.last().unwrap(), base)?);
+                }
+                powers
+            }
+        })
+    }
 
     fn squares_base(
         &self,
@@ -335,14 +349,8 @@ where
     fn assign_witness_secondary(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        witness: Value<C::Secondary>,
+        witness: C::Secondary,
     ) -> Result<Self::AssignedSecondary, Error>;
-
-    fn assert_if_known_secondary(
-        &self,
-        value: &Self::AssignedSecondary,
-        f: impl FnOnce(&C::Secondary) -> bool,
-    );
 
     fn select_secondary(
         &self,
@@ -370,14 +378,14 @@ where
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
         bases: &[C::Secondary],
-        scalars: Vec<Vec<Self::AssignedBase>>,
+        scalars: Vec<Self::AssignedBase>,
     ) -> Result<Self::AssignedSecondary, Error>;
 
     fn variable_base_msm_secondary(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        bases: &[C::Secondary],
-        scalars: Vec<Vec<Self::AssignedBase>>,
+        bases: &[Self::AssignedSecondary],
+        scalars: Vec<Self::AssignedBase>,
     ) -> Result<Self::AssignedSecondary, Error>;
 
 }
@@ -424,13 +432,10 @@ pub trait TranscriptInstruction<C: TwoChainCurve>: Debug
 where
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
-
-
 {
     type Config: Clone + Debug;
     type TccChip: TwoChainCurveInstruction<C>;
-    type Challenge: Clone
-        + Debug
+    type Challenge: Clone + Debug
         + AsRef<<Self::TccChip as TwoChainCurveInstruction<C>>::AssignedBase>;
 
     fn new(config: Self::Config, chip: Self::TccChip, proof: Value<Vec<u8>>) -> Self;
@@ -539,7 +544,7 @@ where
     }
 }
 
-pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> 
+pub trait StepCircuit<'a, C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> 
 where
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
@@ -577,8 +582,8 @@ where
         layouter: impl Layouter<C::Scalar>,
     ) -> Result<
         (
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            // Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            // Vec<AssignedCell<C::Scalar, C::Scalar>>,
         ),
         Error,
     >;
@@ -677,7 +682,7 @@ where
                 instances
                     .transpose_vec(*num_instances)
                     .into_iter()
-                    .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied()))
+                    .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied().assign().unwrap()))
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
@@ -685,21 +690,21 @@ where
             .map(|acc| &acc.witness_comms)
             .transpose_vec(avp.num_folding_witness_polys())
             .into_iter()
-            .map(|witness_comm| tcc_chip.assign_witness_secondary(builder, witness_comm.copied()))
+            .map(|witness_comm| tcc_chip.assign_witness_secondary(builder, witness_comm.copied().assign().unwrap()))
             .try_collect::<_, Vec<_>, _>()?;
         let challenges = acc
             .map(|acc| &acc.challenges)
             .transpose_vec(avp.num_folding_challenges())
             .into_iter()
-            .map(|challenge| tcc_chip.assign_witness_base(builder, challenge.copied()))
+            .map(|challenge| tcc_chip.assign_witness_base(builder, challenge.copied().assign().unwrap()))
             .try_collect::<_, Vec<_>, _>()?;
-        let u = tcc_chip.assign_witness_base(builder, acc.map(|acc| &acc.u).copied())?;
-        let e_comm = tcc_chip.assign_witness_secondary(builder, acc.map(|acc| acc.e_comm))?;
+        let u = tcc_chip.assign_witness_base(builder, acc.map(|acc| &acc.u).copied().assign().unwrap())?;
+        let e_comm = tcc_chip.assign_witness_secondary(builder, acc.map(|acc| acc.e_comm).assign().unwrap())?;
         let compressed_e_sum = match avp.strategy {
             NoCompressing => None,
             Compressing => Some(
                 tcc_chip
-                    .assign_witness_base(builder, acc.map(|acc| acc.compressed_e_sum.unwrap()))?,
+                    .assign_witness_base(builder, (acc.map(|acc| acc.compressed_e_sum.unwrap())).assign().unwrap())?,
             ),
         };
 
@@ -774,7 +779,7 @@ where
 
         let instances = instances
             .into_iter()
-            .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied()))
+            .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied().assign().unwrap()))
             .try_collect::<_, Vec<_>, _>()?;
         for instance in instances.iter() {
             transcript.common_field_element(instance)?;
@@ -1007,10 +1012,10 @@ where
 }
 
 #[derive(Debug)]
-pub struct RecursiveCircuit<C, Sc>
+pub struct RecursiveCircuit<'a, C, Sc>
 where
     C: TwoChainCurve,
-    Sc: StepCircuit<C>,
+    Sc: StepCircuit<'a, C>,
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
 
@@ -1029,10 +1034,10 @@ where
     incoming_proof: Value<Vec<u8>>,
 }
 
-impl<C, Sc> RecursiveCircuit<C, Sc>
+impl<'a, C, Sc> RecursiveCircuit<'a, C, Sc>
 where
     C: TwoChainCurve,
-    Sc: StepCircuit<C>,
+    Sc: StepCircuit<'a, C>,
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
 
@@ -1112,8 +1117,8 @@ where
         let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
 
         for (lhs, rhs) in input.iter().zip(initial_input.iter()) {
-            let lhs = tcc_chip.select(builder, is_base_case, lhs, &zero)?;
-            let rhs = tcc_chip.select(builder, is_base_case, rhs, &zero)?;
+            let lhs = tcc_chip.select_gatechip(builder, is_base_case, lhs, &zero)?;
+            let rhs = tcc_chip.select_gatechip(builder, is_base_case, rhs, &zero)?;
             tcc_chip.constrain_equal(builder, &lhs, &rhs)?;
         }
 
@@ -1149,7 +1154,7 @@ where
         )?;
         let rhs = if let Some(is_base_case) = is_base_case {
             let dummy_h = tcc_chip.assign_constant(builder, Self::DUMMY_H)?;
-            tcc_chip.select(builder, is_base_case, &dummy_h, &rhs)?
+            tcc_chip.select_gatechip(builder, is_base_case, &dummy_h, &rhs)?
         } else {
             rhs
         };
@@ -1160,8 +1165,8 @@ where
     fn synthesize_accumulation_verifier(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        input: &[AssignedCell<C::Scalar, C::Scalar>],
-        output: &[AssignedCell<C::Scalar, C::Scalar>],
+        input: &[<Sc::TccChip as TwoChainCurveInstruction<C>>::Assigned],
+        output: &[<Sc::TccChip as TwoChainCurveInstruction<C>>::Assigned],
     ) -> Result<(), Error> {
         let Self {
             tcc_chip,
@@ -1174,31 +1179,31 @@ where
 
         let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
         let one = tcc_chip.assign_constant(builder, C::Scalar::ONE)?;
-        let vp_digest = tcc_chip.assign_witness(builder, Value::known(avp.vp_digest))?;
+        let vp_digest = tcc_chip.assign_witness(builder, avp.vp_digest)?;
         let step_idx = tcc_chip.assign_witness(
             builder,
-            Value::known(C::Scalar::from(self.step_circuit.step_idx() as u64)),
+            C::Scalar::from(self.step_circuit.step_idx() as u64),
         )?;
         let step_idx_plus_one = tcc_chip.add(builder, &step_idx, &one)?;
         let initial_input = self
             .step_circuit
             .initial_input()
             .iter()
-            .map(|value| tcc_chip.assign_witness(builder, Value::known(*value)))
+            .map(|value| tcc_chip.assign_witness(builder, *value))
             .try_collect::<_, Vec<_>, _>()?;
-        let input = input
-            .iter()
-            .map(|assigned| tcc_chip.to_assigned(builder, assigned))
-            .try_collect::<_, Vec<_>, _>()?;
-        let output = output
-            .iter()
-            .map(|assigned| tcc_chip.to_assigned(builder, assigned))
-            .try_collect::<_, Vec<_>, _>()?;
+        // let input = input
+        //     .iter()
+        //     .map(|assigned| tcc_chip.to_assigned(builder, assigned))
+        //     .try_collect::<_, Vec<_>, _>()?;
+        // let output = output
+        //     .iter()
+        //     .map(|assigned| tcc_chip.to_assigned(builder, assigned))
+        //     .try_collect::<_, Vec<_>, _>()?;
 
         let is_base_case = tcc_chip.is_equal(builder, &step_idx, &zero)?;
-        let h_prime = tcc_chip.assign_witness(builder, self.h_prime)?;
+        let h_prime = tcc_chip.assign_witness(builder, self.h_prime.assign().unwrap())?;
 
-        self.check_initial_condition(builder, &is_base_case, &initial_input, &input)?;
+        self.check_initial_condition(builder, &is_base_case, &initial_input, input)?;
 
         let acc = acc_verifier.assign_accumulator(builder, self.acc.as_ref())?;
 
@@ -1220,8 +1225,8 @@ where
             acc_verifier.select_accumulator(builder, &is_base_case, &acc_default, &acc_prime)?
         };
 
-        let h_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][0])?;
-        let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][1])?;
+        let h_from_incoming = tcc_chip.fit_base_in_scalar(&nark.instances[0][0])?;
+        let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(&nark.instances[0][1])?;
 
         self.check_state_hash(
             builder,
@@ -1240,7 +1245,7 @@ where
             &vp_digest,
             &step_idx_plus_one,
             &initial_input,
-            &output,
+            output,
             &acc_prime,
         )?;
 
@@ -1251,10 +1256,10 @@ where
     }
 }
 
-impl<C, Sc> Circuit<C::Scalar> for RecursiveCircuit<C, Sc>
+impl<'a, C, Sc> Circuit<C::Scalar> for RecursiveCircuit<'a, C, Sc>
 where
     C: TwoChainCurve,
-    Sc: StepCircuit<C>,
+    Sc: StepCircuit<'a, C>,
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
 
@@ -1288,22 +1293,28 @@ where
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
-        let (input, output) =
-            StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
+        //let (input, output) =
+        StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
 
-        let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
+        let mut builder = BaseCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
         .use_k(8)
         .use_lookup_bits(9);
+
+        let mut pool = mem::take(builder.pool(0));
+
+        let input = vec![self.tcc_chip.assign_constant(&mut pool, C::Scalar::ZERO).unwrap()];
+        let output = vec![self.tcc_chip.assign_constant(&mut pool, C::Scalar::ZERO).unwrap()];
+
         //self.synthesize_accumulation_verifier(layouter.namespace(|| ""), builder.main(), &input, &output)?;
-        self.synthesize_accumulation_verifier(builder, &input, &output)?;
+        self.synthesize_accumulation_verifier(&mut pool, &input.as_slice(), &output.as_slice())?;
         Ok(())
     }
 }
 
-impl<C, Sc> CircuitExt<C::Scalar> for RecursiveCircuit<C, Sc>
+impl<'a, C, Sc> CircuitExt<C::Scalar> for RecursiveCircuit<'a, C, Sc>
 where
     C: TwoChainCurve,
-    Sc: StepCircuit<C>,
+    Sc: StepCircuit<'a, C>,
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
 {
@@ -1374,7 +1385,7 @@ where
 
 #[allow(clippy::type_complexity)]
 #[allow(clippy::too_many_arguments)]
-pub fn preprocess<C, P1, P2, S1, S2, AT1, AT2>(
+pub fn preprocess<'a, C, P1, P2, S1, S2, AT1, AT2>(
     primary_num_vars: usize,
     primary_atp: AT1::Param,
     primary_step_circuit: S1,
@@ -1384,8 +1395,8 @@ pub fn preprocess<C, P1, P2, S1, S2, AT1, AT2>(
     mut rng: impl RngCore,
 ) -> Result<
     (
-        Halo2Circuit<C::Scalar, RecursiveCircuit<C, S1>>,
-        Halo2Circuit<C::Base, RecursiveCircuit<C::Secondary, S2>>,
+        Halo2Circuit<C::Scalar, RecursiveCircuit<'a, C, S1>>,
+        Halo2Circuit<C::Base, RecursiveCircuit<'a, C::Secondary, S2>>,
         ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
         ProtostarIvcVerifierParam<
             C,
@@ -1413,8 +1424,8 @@ where
         CommitmentChunk = C::Secondary,
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
-    S1: StepCircuit<C>,
-    S2: StepCircuit<C::Secondary>,
+    S1: StepCircuit<'a, C>,
+    S2: StepCircuit<'a, C::Secondary>,
     AT1: InMemoryTranscript,
     AT2: InMemoryTranscript,
 
@@ -1483,7 +1494,7 @@ where
 }
 
 #[allow(clippy::type_complexity)]
-pub fn prove_steps<C, P1, P2, S1, S2, AT1, AT2>(
+pub fn prove_steps<'a, C, P1, P2, S1, S2, AT1, AT2>(
     ivc_pp: &ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
     primary_circuit: &mut Halo2Circuit<C::Scalar, RecursiveCircuit<C, S1>>,
     secondary_circuit: &mut Halo2Circuit<C::Base, RecursiveCircuit<C::Secondary, S2>>,
@@ -1513,8 +1524,8 @@ where
         CommitmentChunk = C::Secondary,
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
-    S1: StepCircuit<C>,
-    S2: StepCircuit<C::Secondary>,
+    S1: for<'b> StepCircuit<'b, C>,
+    S2: for<'b> StepCircuit<'b, C::Secondary>,
     AT1: TranscriptRead<P1::CommitmentChunk, C::Scalar>
         + TranscriptWrite<P1::CommitmentChunk, C::Scalar>
         + InMemoryTranscript,
@@ -2361,6 +2372,7 @@ where
         };
         let h_coeffs = {
             let one = self.assign_constant_base(builder, C::Base::ONE)?;
+
             let mut coeff = vec![one];
 
             for xi in xis.iter().rev() {
@@ -2372,6 +2384,21 @@ where
             }
 
             coeff
+
+            // let mut coeff = vec![vec![one]];
+
+            // for xi in xis.iter().rev() {
+            //     let extended = coeff
+            //         .last()
+            //         .unwrap()
+            //         .iter()
+            //         .map(|coeff| self.mul_base(builder, coeff, xi))
+            //         .try_collect::<_, Vec<_>, _>()?;
+            //     coeff.push(extended);
+            // }
+            
+            // coeff
+            
         };
 
         let neg_c = self.neg_base(builder, &c)?;
@@ -2383,17 +2410,26 @@ where
         let identity = self.assign_constant_secondary(builder, C::Secondary::identity())?;
         let out = {
             let h = self.assign_constant_secondary(builder, *vp.h())?;
-            let (mut bases, mut scalars) = comm.into_iter().unzip::<_, _, Vec<_>, Vec<_>>();
+            let (mut bases, mut scalars) = comm.into_iter().map(|(base, scalar)| (base, scalar.clone())).unzip::<_, _, Vec<_>, Vec<_>>();
+
+            scalars.extend((chain![&xi_invs, &xis, [&h_scalar, &neg_c]].map(|scalar| scalar.clone())));
+            // .map(|&scalar| scalar.clone()).collect()
+            // let mut all_scalars = Vec::new();
+            // all_scalars.push(scalars.iter().map(|&x| x.clone()).collect());
+            // all_scalars.push(chain![&xi_invs, &xis, [&h_scalar, &neg_c]].map(|&scalar| scalar.clone()).collect());            
+
             bases.extend(chain![&ls, &rs, [&h, &g_k]]);
-            scalars.extend(chain![&xi_invs, &xis, [&h_scalar, &neg_c]]);
-            self.variable_base_msm_secondary(builder, bases, scalars)?
+            let deref_bases: Vec<_> = bases.iter().map(|&x| x.clone()).collect();
+            //let slice_bases: &[Self::AssignedSecondary] = &deref_bases;            
+
+            self.variable_base_msm_secondary(builder, &deref_bases, scalars)?
         };
         self.constrain_equal_secondary(builder, &out, &identity)?;
 
         let out = {
             let bases = vp.g();
             let scalars = h_coeffs;
-            self.fixed_base_msm_secondary(builder, bases, &scalars)?
+            self.fixed_base_msm_secondary(builder, bases, scalars)?
         };
         self.constrain_equal_secondary(builder, &out, &g_k)?;
 
@@ -2434,7 +2470,6 @@ where
     fn verify_hyrax_hyperplonk(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        
         vp: &HyperPlonkVerifierParam<C::Base, MultilinearHyrax<C::Secondary>>,
         instances: Value<&[C::Base]>,
         transcript: &mut impl TranscriptInstruction<C, TccChip = Self>,
@@ -2448,7 +2483,7 @@ where
         let instances = vec![instances
             .transpose_vec(vp.num_instances[0])
             .into_iter()
-            .map(|instance| self.assign_witness_base(builder, instance.copied()))
+            .map(|instance| self.assign_witness_base(builder, instance.copied().assign().unwrap()))
             .try_collect::<_, Vec<_>, _>()?];
 
         transcript.common_field_elements(&instances[0])?;
@@ -2638,17 +2673,17 @@ where
         let vp_digest = tcc_chip.assign_constant(builder, self.vp_digest)?;
         let num_steps = tcc_chip.assign_witness(
             builder,
-            num_steps.map(|num_steps| C::Scalar::from(num_steps as u64)),
+            (num_steps.map(|num_steps| C::Scalar::from(num_steps as u64))).assign().unwrap(),
         )?;
         let initial_input = initial_input
             .transpose_vec(self.arity)
             .into_iter()
-            .map(|input| tcc_chip.assign_witness(builder, input))
+            .map(|input| tcc_chip.assign_witness(builder, input.assign().unwrap()))
             .try_collect::<_, Vec<_>, _>()?;
         let output = output
             .transpose_vec(self.arity)
             .into_iter()
-            .map(|input| tcc_chip.assign_witness(builder, input))
+            .map(|input| tcc_chip.assign_witness(builder, input.assign().unwrap()))
             .try_collect::<_, Vec<_>, _>()?;
         let h = hash_chip.hash_assigned_state(
             builder,
@@ -2835,9 +2870,9 @@ where
         let (num_steps, initial_input, output, h) =
             self.hash_state(builder, num_steps, initial_input, output, &acc_before_last)?;
 
-        let h_from_last_nark = tcc_chip.fit_base_in_scalar(builder, &last_nark.instances[0][0])?;
+        let h_from_last_nark = tcc_chip.fit_base_in_scalar(&last_nark.instances[0][0])?;
         let h_ohs_from_last_nark =
-            tcc_chip.fit_base_in_scalar(builder, &last_nark.instances[0][1])?;
+            tcc_chip.fit_base_in_scalar(&last_nark.instances[0][1])?;
         tcc_chip.constrain_equal(builder, &h, &h_from_last_nark)?;
 
         let (comms, points, evals) = self.reduce_decider_inner(builder,  &acc, transcript)?;
@@ -3029,13 +3064,17 @@ where
         let g = tcc_chip.assign_constant_secondary(builder, self.vp.vp.pcs.g1())?;
 
         let (mut bases, mut scalars) = comm.into_iter().unzip::<_, _, Vec<_>, Vec<_>>();
-        bases.extend(chain![&fs, [&q, &pi, &g]]);
-        scalars.extend(chain![
-            comm_scalars.into_iter().skip(1),
-            [q_scalar, pi_scalar, g_scalar]
-        ]);
 
-        let lhs = tcc_chip.variable_base_msm_secondary(builder, bases, &scalars)?;
+        scalars.extend(chain![comm_scalars.into_iter().skip(1),[q_scalar, pi_scalar, g_scalar]]);
+
+        // let mut all_scalars = Vec::new();
+        // all_scalars.push(scalars.iter().map(|&x| x.clone()).collect());
+        // all_scalars.push(chain![comm_scalars.into_iter().skip(1),[q_scalar, pi_scalar, g_scalar]].map(|scalar| scalar.clone()).collect());            
+
+        bases.extend(chain![&fs, [&q, &pi, &g]]);
+        let deref_bases: Vec<_> = bases.iter().map(|&x| x.clone()).collect();
+
+        let lhs = tcc_chip.variable_base_msm_secondary(builder, &deref_bases, scalars)?;
         let rhs = pi;
 
         Ok((num_steps, initial_input, output, h, lhs, rhs))
@@ -3079,7 +3118,6 @@ where
         let (num_steps, initial_input, output, comms, points, evals, h_ohs_from_last_nark) = self
             .reduce_decider_with_last_nark(
             builder,
-            
             num_steps,
             initial_input,
             output,

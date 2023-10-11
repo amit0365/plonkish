@@ -37,24 +37,7 @@ use crate::{
         BitIndex, DeserializeOwned, Itertools, Serialize,
     },
 };
-use halo2_proofs::{
-    circuit::{AssignedCell, Layouter, Value},
-    plonk::{Circuit, ConstraintSystem, Error},
-};
-use halo2_base::{Context,
-    gates::{circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder}, CircuitBuilderStage}, 
-            flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager}},
-    utils::{CurveAffineExt, ScalarField, BigPrimeField}, AssignedValue,
-    QuantumCell::{Constant, Existing, Witness, WitnessFraction},
-};
-pub use halo2_base::halo2_proofs::halo2curves::{
-    group::{
-        ff::{FromUniformBytes, PrimeFieldBits},
-        Curve, Group,
-    },
-    Coordinates, CurveAffine, CurveExt,
-};
-use rand::RngCore;
+
 use std::{
     borrow::{Borrow, BorrowMut, Cow},
     collections::{btree_map::Entry, BTreeMap, BTreeSet},
@@ -62,17 +45,53 @@ use std::{
     hash::Hash,
     iter,
     marker::PhantomData,
+    mem,
+    rc::Rc,
 };
-use std::{mem, rc::Rc};
+
+use rand::RngCore;
+
+use halo2_proofs::{
+    circuit::{AssignedCell, Layouter, Value},
+    plonk::{Circuit, ConstraintSystem, Error},
+};
+
+use halo2_base::{
+    Context,
+    gates::{
+        circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder, self}, CircuitBuilderStage},
+        flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager},
+    },
+    utils::{CurveAffineExt, ScalarField, BigPrimeField},
+    QuantumCell::{Constant, Existing, Witness, WitnessFraction},
+    AssignedValue,
+};
+
+use halo2_ecc::{
+    fields::native_fp::NativeFieldChip,
+    fields::fp::FpChip,
+    ecc::EccChip,
+};
+
+use halo2_base::halo2_proofs::halo2curves::{
+    group::{
+        ff::{FromUniformBytes, PrimeFieldBits},
+        Curve, Group,
+    },
+    Coordinates, CurveAffine, CurveExt,
+};
+
+pub const NUM_LIMBS: usize = 4;
+pub const NUM_LIMB_BITS: usize = 65;
 
 #[cfg(test)]
 mod test;
 
-type AssignedPlonkishNarkInstance<AssignedScalar, AssignedEcPoint> =
-    PlonkishNarkInstance<AssignedScalar, AssignedEcPoint>;
+type AssignedPlonkishNarkInstance<AssignedBase, AssignedSecondary> =
+    PlonkishNarkInstance<AssignedBase, AssignedSecondary>;
 
-type AssignedProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint> =
-    ProtostarAccumulatorInstance<AssignedScalar, AssignedEcPoint>;
+type AssignedProtostarAccumulatorInstance<AssignedBase, AssignedSecondary> =
+    ProtostarAccumulatorInstance<AssignedBase, AssignedSecondary>;
 
 pub trait TwoChainCurveInstruction<C: TwoChainCurve>: Clone + Debug 
 where
@@ -85,7 +104,7 @@ where
     type AssignedBase: Clone + Debug;
     type AssignedSecondary: Clone + Debug;
 
-    fn new(config: Self::Config) -> Self;
+    fn new(gate_chip: GateChip<C::Scalar>, base_chip: &FpChip<C::Scalar, C::Base>, ecc_chip: &EccChip<C::Scalar, NativeFieldChip<C::Scalar>>, config: Self::Config) -> Self;
 
     // fn to_assigned(
     //     &self,
@@ -93,12 +112,12 @@ where
     //     assigned: &AssignedCell<C::Scalar, C::Scalar>,
     // ) -> Result<Self::Assigned, Error>;
 
-    fn constrain_instance(
-        &self,
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        value: &Self::Assigned,
-        row: usize,
-    ) -> Result<(), Error>;
+    // fn constrain_instance(
+    //     &self,
+    //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
+    //     value: &Self::Assigned,
+    //     row: usize,
+    // ) -> Result<(), Error>;
 
     fn constrain_equal(
         &self,
@@ -118,6 +137,12 @@ where
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
         witness: C::Scalar,
     ) -> Result<Self::Assigned, Error>;
+
+    fn assign_privates(
+        &self,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        witness: &[C::Scalar],
+    ) -> Result<Vec<Self::Assigned>, Error>;
 
     fn select_gatechip(
         &self,
@@ -428,17 +453,17 @@ where
     ) -> Result<<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned, Error>;
 }
 
-pub trait TranscriptInstruction<C: TwoChainCurve>: Debug 
+pub trait TranscriptInstruction<C: TwoChainCurve>: 
 where
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
 {
     type Config: Clone + Debug;
     type TccChip: TwoChainCurveInstruction<C>;
-    type Challenge: Clone + Debug
+    type Challenge: Clone
         + AsRef<<Self::TccChip as TwoChainCurveInstruction<C>>::AssignedBase>;
 
-    fn new(config: Self::Config, chip: Self::TccChip, proof: Value<Vec<u8>>) -> Self;
+    fn new(ctx: &mut Context<C::Scalar>, config: Self::Config, chip: Self::TccChip, proof: Value<Vec<u8>>) -> Self;
 
     fn dummy_proof(avp: &ProtostarAccumulationVerifierParam<C::Scalar>) -> Vec<u8> {
         let uncompressed_comm_size = C::Scalar::ZERO.to_repr().as_ref().len() * 2;
@@ -453,7 +478,6 @@ where
 
     fn challenge_to_le_bits(
         &self,
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
         scalar: &Self::Challenge,
     ) -> Result<Vec<<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned>, Error>;
 
@@ -575,6 +599,7 @@ where
 
     fn next(&mut self);
 
+    //todo fix this with other synthesizes
     #[allow(clippy::type_complexity)]
     fn synthesize(
         &self,
@@ -818,7 +843,7 @@ where
         };
 
         let r = transcript.squeeze_challenge(builder)?;
-        let r_le_bits = transcript.challenge_to_le_bits(builder, &r)?;
+        let r_le_bits = transcript.challenge_to_le_bits(&r)?;
 
         let (r_nark, acc_prime) = self.fold_accumulator_from_nark(
             builder,
@@ -1049,9 +1074,22 @@ where
         step_circuit: Sc,
         avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
     ) -> Self {
+
+        let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
+        .use_k(8)
+        .use_lookup_bits(9);
+
+        let range = builder.range_chip();
+        let gate_chip = GateChip::<C::Scalar>::new();
+        let base_chip = FpChip::<C::Scalar, C::Base>::new(&range, NUM_LIMB_BITS, NUM_LIMBS);
+        let native_chip = NativeFieldChip::new(&range);
+        let ecc_chip = EccChip::new(&native_chip);
+
+        let mut pool = mem::take(builder.pool(0));
+
         let config = Self::configure(&mut Default::default());
         let (tcc_config, hash_config, transcript_config) = Sc::configs(config);
-        let tcc_chip = Sc::TccChip::new(tcc_config);
+        let tcc_chip = Sc::TccChip::new(gate_chip, &base_chip, &ecc_chip, tcc_config);
         let hash_chip = Sc::HashChip::new(hash_config.clone(), tcc_chip.clone());
         Self {
             is_primary,
@@ -1162,6 +1200,7 @@ where
         Ok(())
     }
 
+    //todo fix this with other synthesizes
     fn synthesize_accumulation_verifier(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1212,7 +1251,7 @@ where
                 [&self.incoming_instances[0], &self.incoming_instances[1]].map(Value::as_ref);
             let proof = self.incoming_proof.clone();
             let transcript =
-                &mut Sc::TranscriptChip::new(transcript_config.clone(), tcc_chip.clone(), proof);
+                &mut Sc::TranscriptChip::new(builder.main(), transcript_config.clone(), tcc_chip.clone(), proof);
             acc_verifier.verify_accumulation_from_nark(builder, &acc, instances, transcript)?
         };
 
@@ -1249,8 +1288,9 @@ where
             &acc_prime,
         )?;
 
-        tcc_chip.constrain_instance(builder, &h_ohs_from_incoming, 0)?;
-        tcc_chip.constrain_instance(builder, &h_prime, 1)?;
+        // todo impl constrain instance these 
+        // tcc_chip.constrain_instance(builder, &h_ohs_from_incoming, 0)?;
+        // tcc_chip.constrain_instance(builder, &h_prime, 1)?;
 
         Ok(())
     }
@@ -1288,6 +1328,7 @@ where
         Sc::configure(meta)
     }
 
+    //todo fix this with other synthesizes
     fn synthesize(
         &self,
         config: Self::Config,
@@ -1296,7 +1337,7 @@ where
         //let (input, output) =
         StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
 
-        let mut builder = BaseCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
+        let mut builder = BaseCircuitBuilder::<C::Scalar>::new(false)
         .use_k(8)
         .use_lookup_bits(9);
 
@@ -2791,7 +2832,6 @@ where
     pub fn reduce_decider(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2828,7 +2868,6 @@ where
     pub fn reduce_decider_with_last_nark(
         &self,
         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        
         num_steps: Value<usize>,
         initial_input: Value<Vec<C::Scalar>>,
         output: Value<Vec<C::Scalar>>,
@@ -2860,7 +2899,6 @@ where
                 .transpose_array();
             acc_verifier.verify_accumulation_from_nark(
                 builder,
-                
                 &acc_before_last,
                 instances,
                 transcript,

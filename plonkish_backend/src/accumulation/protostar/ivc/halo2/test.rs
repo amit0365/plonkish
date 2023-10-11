@@ -38,6 +38,7 @@ use halo2_base::{Context,
             flex_gate::{GateChip, GateInstructions}},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
+use halo2_ecc::{fields::{fp::FpChip, native_fp::NativeFieldChip}, ecc::EccChip};
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
     plonk::{Circuit, ConstraintSystem, Error},
@@ -45,6 +46,8 @@ use halo2_proofs::{
 //use halo2_ecc::bn254::pairing;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From};
 use std::{mem, rc::Rc};
+
+use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS};
 
 
 #[derive(Clone, Debug, Default)]
@@ -131,6 +134,7 @@ where
         self.step_idx += 1;
     }
 
+    //todo fix this with other synthesizes
     fn synthesize(
         &self,
         _: Self::Config,
@@ -171,22 +175,28 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
         strawman::Config::configure::<grumpkin::G1Affine>(meta)
     }
 
+    //todo fix this with other synthesizes
     fn synthesize(
         &self,
         config: Self::Config,
         mut layouter: impl Layouter<grumpkin::Fr>,
     ) -> Result<(), Error> {
 
-        let chip = <strawman::Chip<grumpkin::G1Affine> as TwoChainCurveInstruction<
-            grumpkin::G1Affine,
-        >>::new(config);
-
         let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
         .use_k(8)
         .use_lookup_bits(9);
 
-        let pool = mem::take(builder.pool(0));
+        let mut pool = mem::take(builder.pool(0));
 
+        let range = builder.range_chip();
+        let gate_chip = GateChip::<grumpkin::Fr>::new();
+        let base_chip = FpChip::<grumpkin::Fr, grumpkin::Fq>::new(&range, NUM_LIMB_BITS, NUM_LIMBS);
+        let native_chip = NativeFieldChip::new(&range);
+        let ecc_chip = EccChip::new(&native_chip);
+
+        let chip = <strawman::Chip<grumpkin::G1Affine> as TwoChainCurveInstruction<
+            grumpkin::G1Affine,
+        >>::new(gate_chip, &base_chip, &ecc_chip, config);
 
         let aggregator = ProtostarIvcAggregator::new(
             self.vp_digest,
@@ -197,6 +207,7 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
         );
 
         let mut transcript = strawman::PoseidonTranscriptChip::new(
+            builder.main(0),
             strawman::decider_transcript_param(),
             chip.clone(),
             self.proof.clone(),
@@ -212,20 +223,22 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
         )?;
 
         // let zero = chip.assign_constant(&mut pool, grumpkin::Fr::ZERO)?;
+        // let coords = lhs.coordinates().unwrap();
+        // let lhs_is_identity = (lhs.x().is_zero() & lhs.y().is_zero()).into();
         // chip.constrain_equal(&mut pool, lhs.is_identity(), &zero)?;
         // chip.constrain_equal(&mut pool, rhs.is_identity(), &zero)?;
 
-        let cell_map = chip.layout_and_clear(&mut layouter)?;
-        for (idx, witness) in chain![
-            [num_steps],
-            initial_input,
-            output,
-            [h, *lhs.x(), *lhs.y(), *rhs.x(), *rhs.y()]
-        ]
-        .enumerate()
-        {
-            layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
-        }
+        // let cell_map = chip.layout_and_clear(&mut layouter)?;
+        // for (idx, witness) in chain![
+        //     [num_steps],
+        //     initial_input,
+        //     output,
+        //     [h, *lhs.x(), *lhs.y(), *rhs.x(), *rhs.y()]
+        // ]
+        // .enumerate()
+        // {
+        //     layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
+        // }
 
         Ok(())
     }
@@ -266,14 +279,28 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
     fn configure(meta: &mut ConstraintSystem<bn256::Fr>) -> Self::Config {
         strawman::Config::configure::<bn256::G1Affine>(meta)
     }
-
+    
+    //todo fix this with other synthesizes
     fn synthesize(
         &self,
         config: Self::Config,
         mut layouter: impl Layouter<bn256::Fr>,
     ) -> Result<(), Error> {
+
+        let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
+        .use_k(8)
+        .use_lookup_bits(9);
+
+        let range = builder.range_chip();
+        let gate_chip = GateChip::<bn256::Fr>::new();
+        let base_chip = FpChip::<bn256::Fr, bn256::Fq>::new(&range, NUM_LIMB_BITS, NUM_LIMBS);
+        let native_chip = NativeFieldChip::new(&range);
+        let ecc_chip = EccChip::new(&native_chip);
+
+        let mut pool = mem::take(builder.pool(0));
+
         let chip =
-            <strawman::Chip<bn256::G1Affine> as TwoChainCurveInstruction<bn256::G1Affine>>::new(
+            <strawman::Chip<bn256::G1Affine> as TwoChainCurveInstruction<bn256::G1Affine>>::new(gate_chip, &base_chip, &ecc_chip,
                 config,
             );
 
@@ -281,7 +308,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
             .use_k(8)
             .use_lookup_bits(9);
 
-        let pool = mem::take(builder.pool(0));
+        let mut pool = mem::take(builder.pool(0));
 
 
         let aggregator = ProtostarIvcAggregator::new(
@@ -293,6 +320,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         );
 
         let mut transcript = strawman::PoseidonTranscriptChip::new(
+            builder.main(0),
             strawman::decider_transcript_param(),
             chip.clone(),
             self.proof.clone(),
@@ -311,6 +339,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
 
         let (secondary_initial_input, secondary_output, pairing_acc) = {
             let mut transcript = strawman::PoseidonTranscriptChip::new(
+                builder.main(0),
                 strawman::decider_transcript_param(),
                 chip.clone(),
                 self.secondary_aggregation_proof.clone(),
@@ -347,19 +376,19 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
             )
         };
 
-        let cell_map = chip.layout_and_clear(&mut layouter)?;
-        for (idx, witness) in chain![
-            [primary_num_steps],
-            primary_initial_input,
-            primary_output,
-            secondary_initial_input.into_iter().flatten(),
-            secondary_output.into_iter().flatten(),
-            pairing_acc.into_iter().flatten(),
-        ]
-        .enumerate()
-        {
-            layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
-        }
+        // let cell_map = chip.layout_and_clear(&mut layouter)?;
+        // for (idx, witness) in chain![
+        //     [primary_num_steps],
+        //     primary_initial_input,
+        //     primary_output,
+        //     secondary_initial_input.into_iter().flatten(),
+        //     secondary_output.into_iter().flatten(),
+        //     pairing_acc.into_iter().flatten(),
+        // ]
+        // .enumerate()
+        // {
+        //     layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
+        // }
 
         Ok(())
     }
@@ -698,7 +727,7 @@ mod strawman {
 
     use halo2_base::{
         Context,
-        utils::{BigPrimeField, ScalarField, CurveAffineExt},
+        utils::{BigPrimeField, ScalarField, CurveAffineExt, decompose},
         QuantumCell::{Constant, Existing, Witness, WitnessFraction},
         halo2_proofs::plonk::Assigned,
         AssignedValue,
@@ -707,7 +736,7 @@ mod strawman {
             RangeChip,
             flex_gate::{GateChip, GateInstructions},
         },
-        gates::flex_gate::threads::SinglePhaseCoreManager,
+        gates::flex_gate::threads::SinglePhaseCoreManager, poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
     };
     
     use halo2_proofs::{
@@ -744,30 +773,32 @@ mod strawman {
     const RATE: usize = 4;
     const R_F: usize = 8;
     const R_P: usize = 60;
+    //todo check this
+    const SECURE_MDS: usize = 0;
 
     const NUM_CHALLENGE_BITS: usize = 128;
     const NUM_CHALLENGE_BYTES: usize = NUM_CHALLENGE_BITS / 8;
 
     const NUM_HASH_BITS: usize = 250;
 
-    fn fe_to_limbs<F1: PrimeFieldBits, F2: PrimeField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
-        fe.to_le_bits()
-            .chunks(num_limb_bits)
-            .into_iter()
-            .map(|bits| match bits.len() {
-                1..=64 => F2::from(bits.load_le()),
-                65..=128 => {
-                    let lo = bits[..64].load_le::<u64>();
-                    let hi = bits[64..].load_le::<u64>();
-                    F2::from(hi) * F2::from(2).pow_vartime([64]) + F2::from(lo)
-                }
-                _ => unimplemented!(),
-            })
-            .take(NUM_LIMBS)
-            .collect()
-    }
+    // fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
+    //     fe.to_bytes_le()
+    //         .chunks(num_limb_bits)
+    //         .into_iter()
+    //         .map(|bits| match bits.len() {
+    //             1..=64 => F2::from(bits.load_le()),
+    //             65..=128 => {
+    //                 let lo = bits[..64].load_le::<u64>();
+    //                 let hi = bits[64..].load_le::<u64>();
+    //                 F2::from(hi) * F2::from(2).pow_vartime([64]) + F2::from(lo)
+    //             }
+    //             _ => unimplemented!(),
+    //         })
+    //         .take(NUM_LIMBS)
+    //         .collect()
+    // }
 
-    pub fn fe_from_limbs<F1: PrimeFieldBits, F2: PrimeField>(
+    pub fn fe_from_limbs<F1: ScalarField, F2: ScalarField>(
         limbs: &[F1],
         num_limb_bits: usize,
     ) -> F2 {
@@ -782,26 +813,25 @@ mod strawman {
         [*coords.x(), *coords.y(), fe_from_bool(is_identity)]
     }
 
-    pub fn accumulation_transcript_param<F: FromUniformBytes<64>>() -> Spec<F, T, RATE> {
-        Spec::new(R_F, R_P)
+    pub fn accumulation_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
+        OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>()
     }
 
-    pub fn decider_transcript_param<F: FromUniformBytes<64>>() -> Spec<F, T, RATE> {
-        Spec::new(R_F, R_P)
+    pub fn decider_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
+        OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>()
     }
 
-    #[derive(Debug)]
-    pub struct PoseidonTranscript<F: PrimeField, S> {
-        state: Poseidon<F, T, RATE>,
+    pub struct PoseidonTranscript<F: ScalarField, S> {
+        state: PoseidonHash<F, T, RATE>,
         stream: S,
     }
 
-    impl<F: FromUniformBytes<64>> InMemoryTranscript for PoseidonTranscript<F, Cursor<Vec<u8>>> {
-        type Param = Spec<F, T, RATE>;
+    impl<F: ScalarField> InMemoryTranscript for PoseidonTranscript<F, Cursor<Vec<u8>>> {
+        type Param = OptimizedPoseidonSpec<F, T, RATE>;
 
         fn new(spec: Self::Param) -> Self {
             Self {
-                state: Poseidon::new_with_spec(spec),
+                state: PoseidonHash::from_spec(spec),
                 stream: Default::default(),
             }
         }
@@ -812,13 +842,13 @@ mod strawman {
 
         fn from_proof(spec: Self::Param, proof: &[u8]) -> Self {
             Self {
-                state: Poseidon::new_with_spec(spec),
+                state: PoseidonHash::from_spec(spec),
                 stream: Cursor::new(proof.to_vec()),
             }
         }
     }
 
-    impl<F: PrimeFieldBits, N: FromUniformBytes<64>, S> FieldTranscript<F>
+    impl<F: ScalarField, N: ScalarField, S> FieldTranscript<F>
         for PoseidonTranscript<N, S>
     {
         fn squeeze_challenge(&mut self) -> F {
@@ -828,14 +858,15 @@ mod strawman {
             fe_from_le_bytes(&hash.to_repr().as_ref()[..NUM_CHALLENGE_BYTES])
         }
 
+        //TODO FIX THIS
         fn common_field_element(&mut self, fe: &F) -> Result<(), crate::Error> {
-            self.state.update(&fe_to_limbs(*fe, NUM_LIMB_BITS));
+            self.state.update(vec![N::ONE, N::ZERO].as_slice());//&fe_to_limbs(*fe, NUM_LIMB_BITS));
 
             Ok(())
         }
     }
 
-    impl<F: PrimeFieldBits, N: FromUniformBytes<64>, R: io::Read> FieldTranscriptRead<F>
+    impl<F: ScalarField, N: ScalarField, R: io::Read> FieldTranscriptRead<F>
         for PoseidonTranscript<N, R>
     {
         fn read_field_element(&mut self) -> Result<F, crate::Error> {
@@ -854,7 +885,7 @@ mod strawman {
         }
     }
 
-    impl<F: PrimeFieldBits, N: FromUniformBytes<64>, W: io::Write> FieldTranscriptWrite<F>
+    impl<F: ScalarField, N: ScalarField, W: io::Write> FieldTranscriptWrite<F>
         for PoseidonTranscript<N, W>
     {
         fn write_field_element(&mut self, fe: &F) -> Result<(), crate::Error> {
@@ -868,8 +899,8 @@ mod strawman {
 
     impl<C: CurveAffine, S> Transcript<C, C::Scalar> for PoseidonTranscript<C::Base, S>
     where
-        C::Base: FromUniformBytes<64>,
-        C::Scalar: PrimeFieldBits,
+        C::Base: ScalarField,
+        C::Scalar: ScalarField,
     {
         fn common_commitment(&mut self, ec_point: &C) -> Result<(), crate::Error> {
             self.state.update(&x_y_is_identity(ec_point));
@@ -879,8 +910,8 @@ mod strawman {
 
     impl<C: CurveAffine, R: io::Read> TranscriptRead<C, C::Scalar> for PoseidonTranscript<C::Base, R>
     where
-        C::Base: FromUniformBytes<64>,
-        C::Scalar: PrimeFieldBits,
+        C::Base: ScalarField,
+        C::Scalar: ScalarField,
     {
         fn read_commitment(&mut self) -> Result<C, crate::Error> {
             let mut reprs = [<C::Base as PrimeField>::Repr::default(); 2];
@@ -906,8 +937,8 @@ mod strawman {
 
     impl<C: CurveAffine, W: io::Write> TranscriptWrite<C, C::Scalar> for PoseidonTranscript<C::Base, W>
     where
-        C::Base: FromUniformBytes<64>,
-        C::Scalar: PrimeFieldBits,
+        C::Base: ScalarField,
+        C::Scalar: ScalarField,
     {
         fn write_commitment(&mut self, ec_point: &C) -> Result<(), crate::Error> {
             self.common_commitment(ec_point)?;
@@ -925,20 +956,17 @@ mod strawman {
     #[derive(Clone, Debug)]
     pub struct Config<F: ScalarField> {
         pub instance: Column<Instance>,
-        pub poseidon_spec: Spec<F, T, RATE>,
-        pub range: RangeChip<F>,
+        pub poseidon_spec: OptimizedPoseidonSpec<F, T, RATE>,
     }
 
     impl<F: FromUniformBytes<64> + Ord + From<bool> + Hash> Config<F> {
         pub fn configure<C: CurveAffine<ScalarExt = F>>(meta: &mut ConstraintSystem<F>) -> Self {
             let instance = meta.instance_column();
             meta.enable_equality(instance);
-            let poseidon_spec = Spec::new(R_F, R_P);
-            let range = BaseCircuitBuilder::new(true).use_lookup_bits(8).range_chip();
+            let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P, SECURE_MDS>();
             Self {
                 instance,
                 poseidon_spec,
-                range,
             }
         }
     }
@@ -949,12 +977,12 @@ mod strawman {
     where
         C::Scalar: BigPrimeField,
         C::Base: BigPrimeField,
-    {
+    {   
         pub gate_chip: GateChip<C::Scalar>,
         pub base_chip: &'range FpChip<'range, C::Scalar, C::Base>,
         pub ecc_chip: &'range EccChip<'range, C::Scalar, NativeFieldChip<'range, C::Scalar>>,
         pub instance: Column<Instance>,
-        poseidon_spec: Spec<C::Scalar, T, RATE>,
+        poseidon_spec: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
         _marker: PhantomData<C>,
     }
 
@@ -1152,7 +1180,7 @@ mod strawman {
     //     }
     // }
 
-    impl<'range, C: TwoChainCurve> TwoChainCurveInstruction<C> for Chip<'range, C> 
+    impl<C: TwoChainCurve> TwoChainCurveInstruction<C> for Chip<'_, C> 
     where
         C::Scalar: BigPrimeField, //PrimeField<Repr = [u8; 32]> + From<bool> + FromUniformBytes<64> + Hash,
         C::Base: BigPrimeField, //PrimeField<Repr = [u8; 32]> + From<bool> + FromUniformBytes<64> + Hash,
@@ -1162,11 +1190,11 @@ mod strawman {
         type AssignedBase = ProperCrtUint<C::Scalar>;
         type AssignedSecondary = EcPoint<C::Scalar, AssignedValue<C::Scalar>>;
 
-        fn new(config: Self::Config) -> Self {
+        fn new(gate_chip: GateChip<C::Scalar>, base_chip: &'_ FpChip<'_, C::Scalar, C::Base>, ecc_chip: &'_ EccChip<'_, C::Scalar, NativeFieldChip<'_, C::Scalar>>, config: Self::Config) -> Self {
             Chip {
-                gate_chip: GateChip::default(),
-                base_chip: &FpChip::<'range, C::Scalar,C::Base>::new(&config.range, NUM_LIMB_BITS, NUM_LIMBS),
-                ecc_chip: &EccChip::new(&NativeFieldChip::<'range, C::Scalar>::new(&config.range)),
+                gate_chip: gate_chip,
+                base_chip: base_chip,
+                ecc_chip: ecc_chip,
                 instance: config.instance,
                 poseidon_spec: config.poseidon_spec,
                 _marker: PhantomData,
@@ -1196,6 +1224,14 @@ mod strawman {
             witness: C::Scalar,
         ) -> Result<Self::Assigned, Error> {
             Ok(builder.main().load_witness(witness))
+        }
+
+        fn assign_privates(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            witness: &[C::Scalar],
+        ) -> Result<Vec<Self::Assigned>, Error> {
+            Ok(builder.main().assign_witnesses(witness.iter().cloned()))
         }
     
         fn select_gatechip(
@@ -1429,8 +1465,8 @@ mod strawman {
     {
         const NUM_HASH_BITS: usize = NUM_HASH_BITS;
 
-        type Param = Spec<C::Scalar, T, RATE>;
-        type Config = Spec<C::Scalar, T, RATE>;
+        type Param = OptimizedPoseidonSpec<C::Scalar, T, RATE>;
+        type Config = OptimizedPoseidonSpec<C::Scalar, T, RATE>;
         type TccChip = Chip<'a, C>;
 
         fn new(_: Self::Config, chip: Self::TccChip) -> Self {
@@ -1445,227 +1481,231 @@ mod strawman {
             output: &[C::Scalar],
             acc: &ProtostarAccumulatorInstance<C::Base, Comm>,
         ) -> C::Scalar {
-            let mut poseidon = Poseidon::new_with_spec(spec.clone());
-            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
+            let mut poseidon = PoseidonHash::from_spec(spec.clone());
+            //let fe_to_limbs = |fe| decompose(fe, NUM_LIMB_BITS, NUM_LIMBS);
             let inputs = iter::empty()
                 .chain([vp_digest, C::Scalar::from(step_idx as u64)])
                 .chain(initial_input.iter().copied())
                 .chain(output.iter().copied())
-                .chain(fe_to_limbs(acc.instances[0][0]))
-                .chain(fe_to_limbs(acc.instances[0][1]))
+                //.chain(fe_to_limbs(acc.instances[0][0]))
+                //.chain(fe_to_limbs(acc.instances[0][1]))
                 .chain(
                     acc.witness_comms
                         .iter()
                         .map(AsRef::as_ref)
                         .flat_map(x_y_is_identity),
                 )
-                .chain(acc.challenges.iter().copied().flat_map(fe_to_limbs))
-                .chain(fe_to_limbs(acc.u))
+                //.chain(acc.challenges.iter().copied().flat_map(fe_to_limbs))
+                //.chain(fe_to_limbs(acc.u))
                 .chain(x_y_is_identity(acc.e_comm.as_ref()))
-                .chain(acc.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
+                //.chain(acc.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
                 .collect_vec();
-            poseidon.update(&inputs);
+            poseidon.update(inputs.as_slice());
             fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
         }
 
-        // fn hash_assigned_state(
-        //     &self,
-        //     vp_digest: &<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned,
-        //     step_idx: &<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned,
-        //     initial_input: &[<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned],
-        //     output: &[<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned],
-        //     acc: &AssignedProtostarAccumulatorInstance<
-        //         <Self::TccChip as TwoChainCurveInstruction<C>>::AssignedBase,
-        //         <Self::TccChip as TwoChainCurveInstruction<C>>::AssignedSecondary,
-        //     >,
-        // ) -> Result<<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned, Error> {
-        //     let collector = &mut self.collector.borrow_mut();
-        //     let inputs = iter::empty()
-        //         .chain([vp_digest, step_idx])
-        //         .chain(initial_input)
-        //         .chain(output)
-        //         .chain(acc.instances[0][0].assigned_cells())
-        //         .chain(acc.instances[0][1].assigned_cells())
-        //         .chain(
-        //             acc.witness_comms
-        //                 .iter()
-        //                 .flat_map(AssignedEcPoint::assigned_cells),
-        //         )
-        //         .chain(acc.challenges.iter().flat_map(AssignedBase::assigned_cells))
-        //         .chain(acc.u.assigned_cells())
-        //         .chain(acc.e_comm.assigned_cells())
-        //         .chain(
-        //             acc.compressed_e_sum
-        //                 .as_ref()
-        //                 .map(AssignedBase::assigned_cells)
-        //                 .into_iter()
-        //                 .flatten(),
-        //         )
-        //         .copied()
-        //         .collect_vec();
-        //     let mut poseidon_chip = PoseidonChip::from_spec(collector, self.poseidon_spec.clone());
-        //     poseidon_chip.update(&inputs);
-        //     let hash = poseidon_chip.squeeze(collector);
-        //     let hash_le_bits = to_le_bits_strict(collector, &hash);
-        //     Ok(from_le_bits(collector, &hash_le_bits[..NUM_HASH_BITS]))
-        // }
+        fn hash_assigned_state(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            vp_digest: &<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned,
+            step_idx: &<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned,
+            initial_input: &[<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned],
+            output: &[<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned],
+            acc: &AssignedProtostarAccumulatorInstance<
+                <Self::TccChip as TwoChainCurveInstruction<C>>::AssignedBase,
+                <Self::TccChip as TwoChainCurveInstruction<C>>::AssignedSecondary,
+            >,
+        ) -> Result<<Self::TccChip as TwoChainCurveInstruction<C>>::Assigned, Error> {
+            let inputs = iter::empty()
+                .chain([vp_digest, step_idx])
+                .chain(initial_input)
+                .chain(output)
+                .chain(acc.instances[0][0].limbs())
+                .chain(acc.instances[0][1].limbs())
+                //TODO FIX THIS
+                // .chain(
+                //     acc.witness_comms
+                //         .iter()
+                //         .flat_map(AssignedEcPoint::assigned_cells),
+                // )
+                .chain(acc.challenges.iter().flat_map(ProperCrtUint::limbs))
+                .chain(acc.u.limbs())
+                //.chain(acc.e_comm.limbs())
+                .chain(
+                    acc.compressed_e_sum
+                        .as_ref()
+                        .map(ProperCrtUint::limbs)
+                        .into_iter()
+                        .flatten(),
+                )
+                .copied()
+                .collect_vec();
+            let mut poseidon_chip = PoseidonSponge::from_spec(builder.main(), self.poseidon_spec.clone());
+            poseidon_chip.update(&inputs);
+            let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
+            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, 256);
+            Ok(self.gate_chip.bits_to_num(builder.main(), (&hash_le_bits[..NUM_HASH_BITS]).to_vec()))
+        }
     }
 
     // #[derive(Clone, Debug)]
-    // pub struct PoseidonTranscriptChip<'a, C: OverridenCurveAffine> 
-    // where
-    //     C::Scalar: BigPrimeField,
-    //     C::Base: BigPrimeField,
-    // {
-    //     poseidon_chip: PoseidonChip<C::Scalar, T, RATE>,
-    //     chip: Chip<'a, C>,
-    //     proof: Value<Cursor<Vec<u8>>>,
+    pub struct PoseidonTranscriptChip<'a, C: OverridenCurveAffine> 
+    where
+        C::Scalar: BigPrimeField,
+        C::Base: BigPrimeField,
+    {
+        poseidon_chip: PoseidonSponge<C::Scalar, T, RATE>,
+        chip: Chip<'a, C>,
+        proof: Value<Cursor<Vec<u8>>>,
+    }
+
+    #[derive(Clone)]
+    pub struct Challenge<F: BigPrimeField> {
+        le_bits: Vec<AssignedValue<F>>,
+        scalar: ProperCrtUint<F>,
+    }
+
+    // impl<F: BigPrimeField> Debug for Challenge<F> {
+    //     // fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    //     //     let mut f = f.debug_struct("Challenge");
+    //     //     self.scalar
+    //     //         .scalar
+    //     //         .value()
+    //     //         .map(|scalar| f.field("scalar", &scalar));
+    //     //     f.finish()
+    //     // }
     // }
 
-    // #[derive(Clone)]
-    // pub struct Challenge<F: PrimeField, N: PrimeField> {
-    //     le_bits: Vec<AssignedValue<N>>,
-    //     scalar: ProperCrtUint<F, N>,
-    // }
+    impl<F: BigPrimeField> AsRef<ProperCrtUint<F>> for Challenge<F> {
+        fn as_ref(&self) -> &ProperCrtUint<F> {
+            &self.scalar
+        }
+    }
 
-    // impl<F: PrimeField, N: PrimeField> Debug for Challenge<F, N> {
-    //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    //         let mut f = f.debug_struct("Challenge");
-    //         self.scalar
-    //             .scalar
-    //             .value()
-    //             .map(|scalar| f.field("scalar", &scalar));
-    //         f.finish()
-    //     }
-    // }
+    impl<'a, C: TwoChainCurve> TranscriptInstruction<C> for PoseidonTranscriptChip<'a, C>
+    where
+        C: TwoChainCurve,
+        C::Base: BigPrimeField + PrimeFieldBits,
+        C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
+    {
+        type Config = OptimizedPoseidonSpec<C::Scalar, T, RATE>;
+        type TccChip = Chip<'a, C>;
+        type Challenge = Challenge<C::Scalar>;
 
-    // impl<F: PrimeField, N: PrimeField> AsRef<AssignedBase<F, N>> for Challenge<F, N> {
-    //     fn as_ref(&self) -> &AssignedBase<F, N> {
-    //         &self.scalar
-    //     }
-    // }
+        fn new(ctx: &mut Context<C::Scalar>, spec: Self::Config, chip: Self::TccChip, proof: Value<Vec<u8>>) -> Self {
+            let poseidon_chip = PoseidonSponge::from_spec(ctx, spec);
+            PoseidonTranscriptChip {
+                poseidon_chip,
+                chip,
+                proof: proof.map(Cursor::new),
+            }
+        }
 
-    // impl<C: TwoChainCurve> TranscriptInstruction<C> for PoseidonTranscriptChip<C>
-    // where
-    //     C: TwoChainCurve,
-    //     C::Base: BigPrimeField + PrimeFieldBits,
-    //     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
-    // {
-    //     type Config = Spec<C::Scalar, T, RATE>;
-    //     type TccChip = Chip<C>;
-    //     type Challenge = ProperCrtUint<C::Scalar>;
+        fn challenge_to_le_bits(
+            &self,
+            challenge: &Challenge<C::Scalar>,
+        ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
+            Ok(challenge.scalar.limbs().clone().to_vec())
+        }
 
-    //     fn new(spec: Self::Config, chip: Self::TccChip, proof: Value<Vec<u8>>) -> Self {
-    //         let poseidon_chip = C::Base::ONE; //PoseidonChip::from_spec(&mut chip.collector.borrow_mut(), spec);
-    //         PoseidonTranscriptChip {
-    //             poseidon_chip,
-    //             chip,
-    //             proof: proof.map(Cursor::new),
-    //         }
-    //     }
+        //TODO FIX THIS
+        fn common_field_element(
+            &mut self,
+            value: &ProperCrtUint<C::Scalar>,
+        ) -> Result<(), Error> {
+            // value
+            //     .assigned_cells()
+            //     .for_each(|value| self.poseidon_chip.update(&[*value]));
+            Ok(())
+        }
 
-    //     fn challenge_to_le_bits(
-    //         &self,
-    //         challenge: &ProperCrtUint<C::Scalar>,
-    //     ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
-    //         Ok(challenge.limbs().clone().to_vec())
-    //     }
+        //TODO FIX THIS
+        fn common_commitment(
+            &mut self,
+            value: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+        ) -> Result<(), Error> {
+            // value
+            //     .assigned_cells()
+            //     .for_each(|value| self.poseidon_chip.update(&[*value]));
+            Ok(())
+        }
 
-    //     fn common_field_element(
-    //         &mut self,
-    //         value: &ProperCrtUint<C::Scalar>,
-    //     ) -> Result<(), Error> {
-    //         // value
-    //         //     .assigned_cells()
-    //         //     .for_each(|value| self.poseidon_chip.update(&[*value]));
-    //         Ok(())
-    //     }
+        fn read_field_element(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        ) -> Result<ProperCrtUint<C::Scalar>, Error> {
+            let fe = self.proof.as_mut().and_then(|proof| {
+                let mut repr = <C::Base as PrimeField>::Repr::default();
+                if proof.read_exact(repr.as_mut()).is_err() {
+                    return Value::unknown();
+                }
+                C::Base::from_repr_vartime(repr)
+                    .map(Value::known)
+                    .unwrap_or_else(Value::unknown)
+            });
+            let fe = self.chip.assign_witness_base(builder, fe.assign().unwrap())?;
+            self.common_field_element(&fe)?;
+            Ok(fe)
+        }
 
-    //     fn common_commitment(
-    //         &mut self,
-    //         value: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
-    //     ) -> Result<(), Error> {
-    //         // value
-    //         //     .assigned_cells()
-    //         //     .for_each(|value| self.poseidon_chip.update(&[*value]));
-    //         Ok(())
-    //     }
+        fn read_commitment(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
+            let comm = self.proof.as_mut().and_then(|proof| {
+                let mut reprs = [<C::Scalar as PrimeField>::Repr::default(); 2];
+                for repr in &mut reprs {
+                    if proof.read_exact(repr.as_mut()).is_err() {
+                        return Value::unknown();
+                    }
+                }
+                let [x, y] = reprs.map(|repr| {
+                    C::Scalar::from_repr_vartime(repr)
+                        .map(Value::known)
+                        .unwrap_or_else(Value::unknown)
+                });
+                x.zip(y).and_then(|(x, y)| {
+                    Option::from(C::Secondary::from_xy(x, y))
+                        .map(Value::known)
+                        .unwrap_or_else(Value::unknown)
+                })
+            });
+            let comm = self.chip.assign_witness_secondary(builder, comm.assign().unwrap())?;
+            self.common_commitment(&comm)?;
+            Ok(comm)
+        }
+        
+        //todo fix this
+        fn squeeze_challenge(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        ) -> Result<Challenge<C::Scalar>, Error> {
+            // let (challenge_le_bits, challenge) = {
+            //     let hash = self.poseidon_chip.squeeze(builder.main(), &self.chip.gate_chip);
+            //     self.poseidon_chip.update(&[hash]);
 
-    //     fn read_field_element(
-    //         &mut self,
-    //         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-    //     ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-    //         let fe = self.proof.as_mut().and_then(|proof| {
-    //             let mut repr = <C::Base as PrimeField>::Repr::default();
-    //             if proof.read_exact(repr.as_mut()).is_err() {
-    //                 return Value::unknown();
-    //             }
-    //             C::Base::from_repr_vartime(repr)
-    //                 .map(Value::known)
-    //                 .unwrap_or_else(Value::unknown)
-    //         });
-    //         let fe = self.chip.assign_witness_base(builder, fe.assign().unwrap())?;
-    //         self.common_field_element(&fe)?;
-    //         Ok(fe)
-    //     }
+            //     let challenge_le_bits = decompose(&hash, NUM_LIMBS)
+            //         .into_iter()
+            //         .take(NUM_CHALLENGE_BITS)
+            //         .collect_vec();
+            //     let challenge = from_le_bits(collector, &challenge_le_bits);
 
-    //     fn read_commitment(
-    //         &mut self,
-    //         builder: &mut SinglePhaseCoreManager<C::Scalar>,
-    //     ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-    //         let comm = self.proof.as_mut().and_then(|proof| {
-    //             let mut reprs = [<C::Scalar as PrimeField>::Repr::default(); 2];
-    //             for repr in &mut reprs {
-    //                 if proof.read_exact(repr.as_mut()).is_err() {
-    //                     return Value::unknown();
-    //                 }
-    //             }
-    //             let [x, y] = reprs.map(|repr| {
-    //                 C::Scalar::from_repr_vartime(repr)
-    //                     .map(Value::known)
-    //                     .unwrap_or_else(Value::unknown)
-    //             });
-    //             x.zip(y).and_then(|(x, y)| {
-    //                 Option::from(C::Secondary::from_xy(x, y))
-    //                     .map(Value::known)
-    //                     .unwrap_or_else(Value::unknown)
-    //             })
-    //         });
-    //         let comm = self.chip.assign_witness_secondary(builder, comm.assign().unwrap())?;
-    //         self.common_commitment(&comm)?;
-    //         Ok(comm)
-    //     }
+            //     (challenge_le_bits, challenge)
+            // };
 
-        // fn squeeze_challenge(
-        //     &mut self,
-        // ) -> Result<Challenge<C::Base, C::Scalar>, Error> {
-        //     let collector = &mut self.chip.collector.borrow_mut();
-        //     let (challenge_le_bits, challenge) = {
-        //         let hash = self.poseidon_chip.squeeze(collector);
-        //         self.poseidon_chip.update(&[hash]);
+            // let scalar = self.chip.assign_witness_base(builder, witness).unwrap();
+            // let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
 
-        //         let challenge_le_bits = to_le_bits_strict(collector, &hash)
-        //             .into_iter()
-        //             .take(NUM_CHALLENGE_BITS)
-        //             .collect_vec();
-        //         let challenge = from_le_bits(collector, &challenge_le_bits);
+            // let scalar_in_base =
+            //     integer_to_native(&self.chip.rns, collector, &scalar, NUM_CHALLENGE_BITS);
+            // collector.equal(&challenge, &scalar_in_base);
 
-        //         (challenge_le_bits, challenge)
-        //     };
-
-        //     let mut integer_chip = IntegerChip::new(collector, &self.chip.rns);
-        //     let limbs = self.chip.rns.from_fe(challenge.value().map(fe_to_fe));
-        //     let scalar = integer_chip.range(limbs, Range::Remainder);
-        //     let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-
-        //     let scalar_in_base =
-        //         integer_to_native(&self.chip.rns, collector, &scalar, NUM_CHALLENGE_BITS);
-        //     collector.equal(&challenge, &scalar_in_base);
-
-        //     Ok(Challenge {
-        //         le_bits: challenge_le_bits,
-        //         scalar: AssignedBase { scalar, limbs },
-        //     })
-        // }
+            let scalar = self.chip.assign_constant_base(builder, C::Base::ONE).unwrap();
+            let challenge_le_bits = vec![self.chip.assign_constant(builder, C::Scalar::ONE).unwrap()];
+            Ok(Challenge {
+                le_bits: challenge_le_bits,
+                scalar: scalar,
+            })
+        }
+    }
 }
-

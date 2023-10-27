@@ -26,10 +26,11 @@ use halo2_base::{
     gates::flex_gate::{GateChip, GateInstructions},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
+
 // use halo2_base::halo2_proofs::
 //     halo2curves::{pairing::{self}, bn256, grumpkin, pasta,
 // };
-//use pairing::{Engine, MillerLoopResult, MultiMillerLoop, PairingCurveAffine};
+// use pairing::{Engine, MillerLoopResult, MultiMillerLoop, PairingCurveAffine};
 
 pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
     fn pairings_product_is_identity(terms: &[(&Self::G1Affine, &Self::G2Prepared)]) -> bool {

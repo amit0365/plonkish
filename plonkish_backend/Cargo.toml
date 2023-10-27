@@ -16,9 +16,9 @@ sha3 = "0.10.6"
 poseidon = { git = "https://github.com/han0110/poseidon", branch = "feature/with-spec" }
 
 # Use halo2-base as non-optional dependency because it re-exports halo2_proofs, halo2curves, and poseidon, using different repos based on feature flag "halo2-axiom" or "halo2-pse"
-halo2-base = { git = "https://github.com/amit0365/halo2-lib.git", branch = "protostar", default-features = false }
+halo2-base = { path = "/Users/ak36/Desktop/axiom/halo2-lib/halo2-base" }
 
-halo2-ecc = { git = "https://github.com/amit0365/halo2-lib.git", branch = "protostar", default-features = false }
+halo2-ecc = { path = "/Users/ak36/Desktop/axiom/halo2-lib/halo2-ecc" }
 
 # timer
 ark-std = { version = "^0.4.0", default-features = false, optional = true }

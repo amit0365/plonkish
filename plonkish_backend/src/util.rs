@@ -80,7 +80,7 @@ macro_rules! impl_index {
 
 pub(crate) use {impl_index, izip_eq};
 
-#[cfg(any(test, feature = "benchmark"))]
+//#[cfg(any(test, feature = "benchmark"))]
 pub mod test {
     use crate::util::arithmetic::Field;
     use rand::{

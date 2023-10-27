@@ -76,34 +76,46 @@ impl<F: Clone> PlonkishCircuitInfo<F> {
     pub fn is_well_formed(&self) -> bool {
         let num_poly = self.num_poly();
         let num_challenges = self.num_challenges.iter().sum::<usize>();
+        
         let polys = iter::empty()
             .chain(self.expressions().flat_map(Expression::used_poly))
             .chain(self.permutation_polys())
             .collect::<BTreeSet<_>>();
+    
         let challenges = iter::empty()
             .chain(self.expressions().flat_map(Expression::used_challenge))
             .collect::<BTreeSet<_>>();
-        // Same amount of phases
-        self.num_witness_polys.len() == self.num_challenges.len()
-            // Every phase has some witness polys
-            && !self.num_witness_polys.iter().any(|n| *n == 0)
-            // Every phase except the last one has some challenges after the witness polys are committed
-            && !self.num_challenges[..self.num_challenges.len() - 1].iter().any(|n| *n == 0)
-            // Polynomial indices are in range
-            && (polys.is_empty() || *polys.last().unwrap() < num_poly)
-            // Challenge indices are in range
-            && (challenges.is_empty() || *challenges.last().unwrap() < num_challenges)
-            // Every constraint has degree less equal than `max_degree`
-            && self
-                .max_degree
-                .map(|max_degree| {
-                    !self
-                        .constraints
-                        .iter()
-                        .any(|constraint| constraint.degree() > max_degree)
-                })
-                .unwrap_or(true)
+    
+        // println!("num_poly: {}", num_poly);
+        // println!("num_challenges: {}", num_challenges);
+        // println!("polys: {:?}", polys);
+        // println!("challenges: {:?}", challenges);
+    
+        let condition1 = self.num_witness_polys.len() == self.num_challenges.len();
+        let condition2 = !self.num_witness_polys.iter().any(|n| *n == 0);
+        let condition3 = !self.num_challenges[..self.num_challenges.len() - 1].iter().any(|n| *n == 0);
+        let condition4 = polys.is_empty() || *polys.last().unwrap() < num_poly;
+        let condition5 = challenges.is_empty() || *challenges.last().unwrap() < num_challenges;
+        let condition6 = self
+            .max_degree
+            .map(|max_degree| {
+                !self
+                    .constraints
+                    .iter()
+                    .any(|constraint| constraint.degree() > max_degree)
+            })
+            .unwrap_or(true);
+    
+        // println!("Condition 1 (Same amount of phases): {}", condition1);
+        // println!("Condition 2 (Every phase has some witness polys): {}", condition2);
+        // println!("Condition 3 (Every phase except the last one has some challenges after the witness polys are committed): {}", condition3);
+        // println!("Condition 4 (Polynomial indices are in range): {}", condition4);
+        // println!("Condition 5 (Challenge indices are in range): {}", condition5);
+        // println!("Condition 6 (Every constraint has degree less equal than `max_degree`): {}", condition6);
+    
+        condition1 && condition2 && condition3 && condition4 && condition5 && condition6
     }
+    
 
     pub fn num_poly(&self) -> usize {
         self.num_instances.len()

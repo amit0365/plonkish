@@ -355,7 +355,6 @@ where
 }
 
 
-
 impl<F, Comm> ProtostarAccumulatorInstance<F, Comm>
 where
     F: Field,

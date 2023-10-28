@@ -61,7 +61,7 @@ use halo2_base::{
     Context,
     gates::{
         circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder, self},
-        CircuitBuilderStage, BaseCircuitParams, BaseConfig},
+        CircuitBuilderStage, BaseCircuitParams, BaseConfig, self},
         flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager},
     },
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
@@ -145,8 +145,8 @@ where
         layouter: impl Layouter<C::Scalar>,
     ) -> Result<
         (
-            // Vec<AssignedCell<C::Scalar, C::Scalar>>,
-            // Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            Vec<AssignedValue<C::Scalar>>,
+            Vec<AssignedValue<C::Scalar>>,
         ),
         Error,
     >;
@@ -232,9 +232,6 @@ where
     > {
         let tcc_chip = &self.tcc_chip;
         let avp = &self.avp;
-        println!("avp_len {:?}", avp.num_instances.len());
-        println!("acc_len {:?}", acc.map(|acc| &acc.instances));        
-
         let instances = avp
             .num_instances
             .iter()
@@ -249,40 +246,6 @@ where
                     .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied().assign().unwrap()))
                     .try_collect::<_, Vec<_>, _>()
             }).try_collect::<_, Vec<_>, _>()?;
-
-        // let instances = avp
-        // .num_instances
-        // .iter()
-        // .zip(
-        //     {
-        //         let pre_transpose = acc.map(|acc| &acc.instances);
-        //         println!("Before first transpose_vec: {:?}", pre_transpose); // This might not work directly if the type doesn't implement Debug. Adjust accordingly.
-
-        //         let post_transpose = pre_transpose.transpose_vec(avp.num_instances.len());
-        //         println!("After first transpose_vec: {:?}", post_transpose); // Same note on Debug.
-
-        //         post_transpose
-        //     }
-        // )
-        // .map(|(num_instances, instances)| {
-        //     println!("Processing instance with num_instances = {}", num_instances);
-            
-        //     let pre_second_transpose = instances.clone(); // Clone to avoid ownership issues for the print
-        //     println!("Before second transpose_vec: {:?}", pre_second_transpose);
-
-        //     let post_second_transpose = instances.transpose_vec(*num_instances);
-        //     println!("After second transpose_vec: {:?}", post_second_transpose);
-            
-        //     post_second_transpose
-        //         .into_iter()
-        //         .map(|instance| {
-        //             println!("Assigning witness base for instance: {:?}", instance);
-        //             tcc_chip.assign_witness_base(builder, instance.copied().assign().unwrap())
-        //         })
-        //         .try_collect::<_, Vec<_>, _>()
-        // }).try_collect::<_, Vec<_>, _>()?;
-
-        println!("instances_done");
         
         let witness_comms = acc
             .map(|acc| &acc.witness_comms)
@@ -376,7 +339,6 @@ where
             num_cross_terms,
             ..
         } = &self.avp;
-
         let instances = instances
             .into_iter()
             .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied().assign().unwrap()))
@@ -412,7 +374,6 @@ where
                 let zeta_cross_term_comm = vec![transcript.read_commitment(builder)?];
                 let compressed_cross_term_sums =
                     transcript.read_field_elements(builder, *num_cross_terms)?;
-
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -563,7 +524,6 @@ where
         Error,
     > {
         let tcc_chip = &self.tcc_chip;
-
         let instances = izip_eq!(&when_true.instances, &when_false.instances)
             .map(|(when_true, when_false)| {
                 izip_eq!(when_true, when_false)
@@ -656,7 +616,6 @@ where
         avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
         //config_params: BaseCircuitParams,
     ) -> Self {
-        println!("recursive circuit new");
         let config = Self::configure(&mut Default::default());
         let (hash_config, transcript_config) = Sc::configs(config);
         let hash_chip = Chip::<C>::new(hash_config.clone(), chip.clone());
@@ -672,21 +631,52 @@ where
 
         let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::new(false).use_params(circuit_params));
 
-        let mut circuit= Self {
-            is_primary,
-            step_circuit,
-            tcc_chip: chip,
-            hash_chip,
-            hash_config,
-            transcript_config,
-            avp: avp.clone().unwrap_or_default(),
-            h_prime: Value::known(C::Scalar::ZERO),
-            acc: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
-            acc_prime: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
-            incoming_instances: [Value::known(C::Base::ZERO); 2],
-            incoming_proof: Value::known(PoseidonTranscriptChip::<C>::dummy_proof(&avp.clone().unwrap_or_default())),
-            inner,
-        };
+        // Self {
+        //     is_primary,
+        //     step_circuit,
+        //     tcc_chip: chip,
+        //     hash_chip,
+        //     hash_config,
+        //     transcript_config,
+        //     avp: avp.clone().unwrap_or_default(),
+        //     h_prime: Value::known(C::Scalar::ZERO),
+        //     acc: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
+        //     acc_prime: Value::unknown(),
+        //     incoming_instances: [Value::unknown(); 2],
+        //     incoming_proof: Value::unknown(),
+        //     inner,
+        // }
+
+        // Self {
+        //     is_primary,
+        //     step_circuit,
+        //     tcc_chip: chip,
+        //     hash_chip,
+        //     hash_config,
+        //     transcript_config,
+        //     avp: avp.clone().unwrap_or_default(),
+        //     h_prime: Value::known(C::Scalar::ZERO),
+        //     acc: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
+        //     acc_prime: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
+        //     incoming_instances: [Value::known(C::Base::ZERO); 2],
+        //     incoming_proof: Value::known(PoseidonTranscriptChip::<C>::dummy_proof(&avp.clone().unwrap_or_default())),
+        //     inner,
+        // }
+        let circuit = Self {
+                is_primary,
+                step_circuit,
+                tcc_chip: chip,
+                hash_chip,
+                hash_config,
+                transcript_config,
+                avp: avp.clone().unwrap_or_default(),
+                h_prime: Value::known(C::Scalar::ZERO),
+                acc: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
+                acc_prime: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
+                incoming_instances: [Value::known(C::Base::ZERO); 2],
+                incoming_proof: Value::known(PoseidonTranscriptChip::<C>::dummy_proof(&avp.clone().unwrap_or_default())),
+                inner,
+            };
         // Value::known(avp.clone().unwrap_or_default().init_accumulator())
         // C::Base::ZERO
         // circuit.build();
@@ -755,21 +745,11 @@ where
         incoming_instances: [C::Base; 2],
         incoming_proof: Vec<u8>,
     ) {
-        println!("recursive circuit update");
-
         if (self.is_primary && acc_prime.u != C::Base::ZERO)
             || (!self.is_primary && acc.u != C::Base::ZERO)
             {
                 self.step_circuit.next();
             }
-            
-            // Debug print statements before computing h_prime
-            // println!("self.avp.vp_digest: {:?}", self.avp.vp_digest);
-            // println!("self.step_circuit.step_idx(): {:?}", self.step_circuit.step_idx());
-            // println!("self.step_circuit.initial_input(): {:?}", self.step_circuit.initial_input());
-            // println!("self.step_circuit.output(): {:?}", self.step_circuit.output());
-            // println!("&acc_prime: {:?}", &acc_prime);
-        
             self.h_prime = Value::known(Chip::<C>::hash_state(
                 self.hash_config.borrow(),
                 self.avp.vp_digest,
@@ -778,10 +758,7 @@ where
                 self.step_circuit.output(),
                 &acc_prime,
             ));
-        
-            // Debug print statement for the computed h_prime
-            // println!("Computed h_prime: {:?}", self.h_prime);
-            
+
             self.acc = Value::known(acc.unwrap_comm());
             self.acc_prime = Value::known(acc_prime.unwrap_comm());
             self.incoming_instances = incoming_instances.map(Value::known);
@@ -789,7 +766,6 @@ where
         }
 
     fn init(&mut self, vp_digest: C::Scalar) {
-        println!("recursive circuit init");
         assert_eq!(&self.avp.num_instances, &[2]);
         self.avp.vp_digest = vp_digest;
         self.update::<Cow<C::Secondary>>(
@@ -798,6 +774,11 @@ where
             [Self::DUMMY_H; 2].map(fe_to_fe),
             PoseidonTranscriptChip::<C>::dummy_proof(&self.avp),
         );
+    }
+
+    fn update_acc(&mut self) {
+        self.acc = Value::known(self.avp.init_accumulator());
+        self.acc_prime = Value::known(self.avp.init_accumulator());
     }
 
     fn check_initial_condition(
@@ -858,7 +839,7 @@ where
     // todo fix this with other synthesizes
     fn synthesize_accumulation_verifier(
         &self,
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        mut layouter: impl Layouter<C::Scalar>,
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
     ) -> Result<(), Error> {
@@ -869,6 +850,8 @@ where
             ..
         } = &self;
 
+        let mut binding = self.inner.borrow_mut();
+        let builder = binding.pool(0);        
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
 
         let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
@@ -900,18 +883,7 @@ where
 
         self.check_initial_condition(builder, &is_base_case, &initial_input, input)?;
 
-        println!("start acc");
-        println!("primary {:?}", self.is_primary);
-        println!("step_circiuit {:?}", self.step_circuit);
-        println!("avp {:?}", self.avp);
-        println!("h_prime {:?}", self.h_prime);
-        println!("acc {:?}", self.acc);
-        println!("acc_prime {:?}", self.acc_prime);
-        println!("incoming_instances {:?}", self.incoming_instances);
-        println!("incoming_proof {:?}", self.incoming_proof);
-
         let acc = acc_verifier.assign_accumulator(builder, self.acc.as_ref())?;
-        println!("end acc");
         let (nark, acc_r_nark, acc_prime) = {
             let instances =
                 [&self.incoming_instances[0], &self.incoming_instances[1]].map(Value::as_ref);
@@ -1005,10 +977,9 @@ where
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
 
-        StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
-        println!("step_circuit synthesize pass");
+        let (input, output) =
+            StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
         // self.inner.synthesize(config, layouter);
-
         // let range = config.range;
         // range.load_lookup_table(&mut layouter).expect("load lookup table should not fail");
         // let circuit = &self.inner.0;
@@ -1051,14 +1022,11 @@ where
         // }
 
         // let mut pool = self.inner.pool(0);
-
         // self.tcc_chip.assign_constant(&mut pool, C::Scalar::ZERO).unwrap()
         // self.tcc_chip.assign_constant(&mut pool, C::Scalar::ZERO).unwrap()
-        let input  = Vec::new();
-        let output = Vec::new();
 
         //self.synthesize_accumulation_verifier(layouter.namespace(|| ""), builder.main(), &input, &output)?;
-        self.synthesize_accumulation_verifier(self.inner.borrow_mut().pool(0), &input.as_slice(), &output.as_slice())?;
+        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
         Ok(())
     }
 }
@@ -1186,23 +1154,15 @@ where
     let primary_param = P1::setup(1 << primary_num_vars, 0, &mut rng).unwrap();
     let secondary_param = P2::setup(1 << secondary_num_vars, 0, &mut rng).unwrap();
 
-    println!("start primary");
     let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, chip_primary, None);
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit);
     
     let (_, primary_vp) = {
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
-        // println!("primary_circuit_info {:?}", primary_circuit_info);
-        // println!("primary_param_info {:?}", primary_param);
-        println!("primary preprocess start");
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
 
-    // println!("primary_pp {:?}", primary_pp);
-    // println!("primary_vp {:?}", primary_vp);
-
-    println!("start secondary");
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,
@@ -1215,27 +1175,15 @@ where
         
     let (secondary_pp, secondary_vp) = {
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
-        //println!("secondary_circuit_info {:?}", secondary_circuit_info);
-        println!("secondary preprocess start");
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };
-    println!("secondary preprocess end");
-
-    println!("secondary_pp {:?}", secondary_pp);
-    println!("secondary_vp {:?}", secondary_vp);
-
-    println!("primary circuit update");
     primary_circuit.update_witness(|circuit| {
         circuit.avp = ProtostarAccumulationVerifierParam::from(&secondary_vp);
-        println!("primary circuit avp {:?}", circuit.avp);
+        circuit.update_acc();
     });
     let primary_circuit_info = primary_circuit.circuit_info().unwrap();
-    println!("primary circuit preprocess start");
     let (primary_pp, primary_vp) =
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
-
-        println!("primary_circuit_info_preprocess {:?}", primary_pp);
-        println!("primary_param_info_preprocess {:?}", primary_vp);
 
     let vp_digest = fe_truncated_from_le_bytes(
         Keccak256::digest(bincode::serialize(&(&primary_vp, &secondary_vp)).unwrap()),

@@ -111,17 +111,8 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         challenge_idx,
         ..
     } = self;
-    
-    // Debug print
-    // println!("k: {:?}", k);
-    // println!("instances: {:?}", instances);
-    // println!("cs: {:?}", cs);
-    // println!("challenge_idx: {:?}", challenge_idx);
 
     let advice_idx = advice_idx(cs);
-
-    // Debug print
-    // println!("advice_idx: {:?}", advice_idx);
 
     let constraints = cs
         .gates()
@@ -132,9 +123,6 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             })
         })
         .collect();
-
-    // Debug print
-    //println!("constraints: {:?}", constraints);
 
     let lookups = cs
         .lookups()
@@ -154,9 +142,6 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         })
         .collect();
 
-    // Debug print
-    // println!("lookups: {:?}", lookups);
-
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
         vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];
@@ -170,12 +155,6 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             vec![(column_idx[&key], 1)]
         })
         .collect_vec();
-
-    // Debug print
-    // println!("num_instances: {:?}", num_instances);
-    // println!("preprocess_polys: {:?}", preprocess_polys);
-    // println!("column_idx: {:?}", column_idx);
-    // println!("permutations: {:?}", permutations);
 
     Ok(PlonkishCircuitInfo {
         k: *k as usize,
@@ -201,19 +180,10 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         constants,
         row_mapping,
         ..
-    } = self;
-
-    println!("Start of circuit_info");
-    
+    } = self;    
     let mut circuit_info = self.circuit_info_without_preprocess()?;
-    // println!("Got circuit_info_without_preprocess: {:?}", circuit_info);
-
     let num_instances = instances.iter().map(Vec::len).collect_vec();
-    println!("Num instances: {:?}", num_instances);
-
     let column_idx = column_idx(cs);
-    println!("Column idx: {:?}", column_idx);
-
     let permutation_column_idx = cs
         .permutation()
         .get_columns()
@@ -223,48 +193,27 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             (key, column_idx[&key])
         })
         .collect();
-    println!("Permutation column idx: {:?}", permutation_column_idx);
-
     let mut preprocess_collector = PreprocessCollector {
         k: *k,
-        num_instances,
+        num_instances: num_instances,        
         fixeds: vec![vec![F::ZERO.into(); 1 << k]; cs.num_fixed_columns()],
         permutation: Permutation::new(permutation_column_idx),
         selectors: vec![vec![false; 1 << k]; cs.num_selectors()],
         row_mapping,
     };
     
-    println!("Initialized preprocess_collector: {:?}", preprocess_collector);
-    // println!("circuit_instances: {:?}", circuit);
-    // println!("Config: {:?}", config);
-    println!("constants: {:?}", constants);
+    //println!("Prior preprocess_polys: {:?}", circuit_info.preprocess_polys);
 
-    // circuit_info.preprocess_polys = iter::empty()
-    // .chain(batch_invert_assigned(preprocess_collector.fixeds))
-    // .chain(preprocess_collector.selectors.into_iter().map(|selectors| {
-    //     selectors
-    //         .into_iter()
-    //         .map(|selector| if selector { F::ONE } else { F::ZERO })
-    //         .collect()
-    // }))
-    // .collect();
-    // println!("Prior preprocess_polys: {:?}", circuit_info.preprocess_polys);
-
-    let synthesize_result = C::FloorPlanner::synthesize(
+    C::FloorPlanner::synthesize(
         &mut preprocess_collector,
-        &self.circuit,
-        self.config.clone(),
-        self.constants.clone(),
-    );
+        circuit,
+        config.clone(),
+        constants.clone(),
+    )
+    .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
-    match &synthesize_result {
-        Ok(_) => println!("Synthesize successful"),
-        Err(e) => println!("Error during synthesize: {:?}", e),
-    }
-    
-    synthesize_result.map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
-    
-    println!("Updated preprocess_collector: {:?}", preprocess_collector);
+    // todo check preprocess_collector is not updated as plonkish -- none of the updating works -- maybe fix transcript
+    //println!("Updated preprocess_collector: {:?}", preprocess_collector);
 
     // preprocess poly not updating
     circuit_info.preprocess_polys = iter::empty()
@@ -276,12 +225,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
                 .collect()
         }))
         .collect();
-    println!("Updated preprocess_polys: {:?}", circuit_info.preprocess_polys);
-
     circuit_info.permutations = preprocess_collector.permutation.into_cycles();
-    println!("Updated permutations: {:?}", circuit_info.permutations);
-
-    println!("End of circuit_info");
     Ok(circuit_info)
 }
 

@@ -29,9 +29,9 @@ use crate::{
         DeserializeOwned, Itertools, Serialize,
     },
 };
-use halo2_base::halo2_proofs::
+use halo2_base::{halo2_proofs::
     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-};
+}, AssignedValue};
 //use pairing::{Engine, MillerLoopResult, MultiMillerLoop, PairingCurveAffine};
 use halo2_base::{Context,
     gates::{circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
@@ -142,12 +142,12 @@ where
         _: impl Layouter<C::Scalar>,
     ) -> Result<
         (
-            // Vec<AssignedCell<C::Scalar, C::Scalar>>,
-            // Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            Vec<AssignedValue<C::Scalar>>,
+            Vec<AssignedValue<C::Scalar>>,
         ),
         Error,
     > {
-        Ok(())
+        Ok((Vec::new(), Vec::new()))
     }
 }
 
@@ -448,7 +448,6 @@ where
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
     
-    println!("preprocess");
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
         P1,
@@ -470,7 +469,6 @@ where
     )
     .unwrap();
 
-    println!("prove steps");
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
         &ivc_pp, 
         &mut primary_circuit,
@@ -483,7 +481,6 @@ where
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();
 
-    println!("prove decider");
     let (
         primary_acc,
         primary_initial_input,
@@ -979,7 +976,8 @@ pub mod strawman {
 
     #[derive(Clone, Debug)]
     pub struct Config<F: ScalarField> {
-        pub range_config: RangeConfig<F>,
+        // pub range_config: RangeConfig<F>,
+        pub flex_config: FlexGateConfig<F>,
         pub instance: Column<Instance>,
         pub poseidon_spec: OptimizedPoseidonSpec<F, T, RATE>,
     }
@@ -991,17 +989,22 @@ pub mod strawman {
                 num_advice_per_phase: vec![1],
                 num_fixed: 1,
             };
-            let range_config = RangeConfig::configure(
+            let flex_config = FlexGateConfig::configure(
                 meta,
                 params,
-                &[NUM_LOOKUPS],
-                LOOKUP_BITS,
             );
+            // let range_config = RangeConfig::configure(
+            //     meta,
+            //     params,
+            //     &[NUM_LOOKUPS],
+            //     LOOKUP_BITS,
+            // );
             let instance = meta.instance_column();
-            // meta.enable_equality(instance);
+            meta.enable_equality(instance);
             let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P, SECURE_MDS>();
             Self {
-                range_config,
+                //range_config,
+                flex_config,
                 instance,
                 poseidon_spec,
             }
@@ -1018,6 +1021,7 @@ pub mod strawman {
         pub gate_chip: GateChip<C::Scalar>,
         pub base_chip: &'a FpChip<'a, C::Scalar, C::Base>,
         pub ecc_chip: &'a EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
+        //pub instance: Column<Instance>,
         _marker: PhantomData<C>,
     }
 
@@ -1029,11 +1033,13 @@ pub mod strawman {
 
         pub fn create(gate_chip: GateChip<C::Scalar>, 
             base_chip: &'a FpChip<'a, C::Scalar, C::Base>, 
-            ecc_chip: &'a EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>) -> Self {
+            ecc_chip: &'a EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
+            ) -> Self {
                 Self {
                     gate_chip,
                     base_chip,
                     ecc_chip,
+                    //instance: config.instance, config: Config
                     _marker: PhantomData,
                 }
             }
@@ -1511,8 +1517,8 @@ pub mod strawman {
 
     #[derive(Clone)]
     pub struct Challenge<F: BigPrimeField> {
-        le_bits: Vec<AssignedValue<F>>,
-        scalar: ProperCrtUint<F>,
+        pub le_bits: Vec<AssignedValue<F>>,
+        pub scalar: ProperCrtUint<F>,
     }
 
     // impl<F: BigPrimeField> Debug for Challenge<F> {
@@ -1596,7 +1602,7 @@ pub mod strawman {
                     .map(Value::known)
                     .unwrap_or_else(Value::unknown)
             });
-            let fe = self.chip.assign_witness_base(builder, fe.assign().unwrap())?;
+            let fe = self.chip.assign_witness_base(builder, fe.assign().unwrap_or_default())?;
             self.common_field_element(&fe)?;
             Ok(fe)
         }
@@ -1623,7 +1629,7 @@ pub mod strawman {
                         .unwrap_or_else(Value::unknown)
                 })
             });
-            let comm = self.chip.assign_witness_secondary(builder, comm.assign().unwrap())?;
+            let comm = self.chip.assign_witness_secondary(builder, comm.assign().unwrap_or_default())?;
             self.common_commitment(&comm)?;
             Ok(comm)
         }
@@ -1665,7 +1671,8 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             n: usize,
         ) -> Result<Vec<EcPoint<C::Scalar, AssignedValue<C::Scalar>>>, Error> {
-            (0..n).map(|_| self.read_commitment(builder)).collect()
+            let read_commitments = (0..n).map(|_| self.read_commitment(builder)).collect();
+            read_commitments
         }
     
         pub fn absorb_accumulator(

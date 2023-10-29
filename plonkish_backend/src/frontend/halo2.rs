@@ -213,7 +213,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
     // todo check preprocess_collector is not updated as plonkish -- none of the updating works -- maybe fix transcript
-    //println!("Updated preprocess_collector: {:?}", preprocess_collector);
+    println!("Updated preprocess_collector: {:?}", preprocess_collector);
 
     // preprocess poly not updating
     circuit_info.preprocess_polys = iter::empty()

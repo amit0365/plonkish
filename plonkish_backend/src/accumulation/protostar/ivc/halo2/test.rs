@@ -750,7 +750,7 @@ pub mod strawman {
 
     use halo2_base::{
         Context,
-        utils::{BigPrimeField, ScalarField, CurveAffineExt, decompose},
+        utils::{BigPrimeField, ScalarField, CurveAffineExt, decompose, decompose_fe_to_u64_limbs, fe_to_biguint},
         QuantumCell::{Constant, Existing, Witness, WitnessFraction},
         halo2_proofs::plonk::Assigned,
         AssignedValue,
@@ -769,10 +769,10 @@ pub mod strawman {
     
     use halo2_ecc::{
         fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip, Selectable},
-        bigint::{CRTInteger, FixedCRTInteger, ProperCrtUint},
+        bigint::{self, CRTInteger, FixedCRTInteger, ProperCrtUint},
         ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip},
     };
-    
+    // use num_bigint::{BigInt, BigUint};
     //use super::range::RangeConfig;
 
     use std::{
@@ -803,22 +803,22 @@ pub mod strawman {
     pub const NUM_CHALLENGE_BYTES: usize = NUM_CHALLENGE_BITS / 8;
     pub const NUM_HASH_BITS: usize = 250;
 
-    // fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
-    //     fe.to_bytes_le()
-    //         .chunks(num_limb_bits)
-    //         .into_iter()
-    //         .map(|bits| match bits.len() {
-    //             1..=64 => F2::from(bits.load_le()),
-    //             65..=128 => {
-    //                 let lo = bits[..64].load_le::<u64>();
-    //                 let hi = bits[64..].load_le::<u64>();
-    //                 F2::from(hi) * F2::from(2).pow_vartime([64]) + F2::from(lo)
-    //             }
-    //             _ => unimplemented!(),
-    //         })
-    //         .take(NUM_LIMBS)
-    //         .collect()
-    // }
+    fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
+        fe.to_bytes_le()
+            .chunks(num_limb_bits)
+            .into_iter()
+            .map(|bits| match bits.len() {
+                1..=64 => F2::from_bytes_le(bits),
+                65..=128 => {
+                    let lo = &bits[..64];
+                    let hi = &bits[64..];
+                    F2::from_bytes_le(hi) * F2::from(2).pow_vartime([64]) + F2::from_bytes_le(lo)
+                }
+                _ => unimplemented!(),
+            })
+            .take(NUM_LIMBS)
+            .collect()
+    }
 
     pub fn fe_from_limbs<F1: ScalarField, F2: ScalarField>(
         limbs: &[F1],
@@ -834,6 +834,12 @@ pub mod strawman {
         let is_identity = (coords.x().is_zero() & coords.y().is_zero()).into();
         [*coords.x(), *coords.y(), fe_from_bool(is_identity)]
     }
+
+    // impl<C: CurveAffine> EcPoint<C> {
+    //     fn assigned_cells(&self) -> impl Iterator<Item = &Witness<C::Base>> {
+    //         [self.x(), self.y()].into_iter()
+    //     }
+    // }
 
     pub fn accumulation_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
         OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>()
@@ -879,10 +885,8 @@ pub mod strawman {
             fe_from_le_bytes(&hash.to_repr().as_ref()[..NUM_CHALLENGE_BYTES])
         }
 
-        //TODO FIX THIS
         fn common_field_element(&mut self, fe: &F) -> Result<(), crate::Error> {
-            self.state.update(vec![N::ONE, N::ZERO].as_slice());//&fe_to_limbs(*fe, NUM_LIMB_BITS));
-
+            self.state.update(&fe_to_limbs(*fe, NUM_LIMB_BITS));
             Ok(())
         }
     }
@@ -1438,23 +1442,23 @@ pub mod strawman {
             acc: &ProtostarAccumulatorInstance<C::Base, Comm>,
         ) -> C::Scalar {
             let mut poseidon = PoseidonHash::from_spec(spec.clone());
-            //let fe_to_limbs = |fe| decompose(fe, NUM_LIMB_BITS, NUM_LIMBS);
+            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
             let inputs = iter::empty()
                 .chain([vp_digest, C::Scalar::from(step_idx as u64)])
                 .chain(initial_input.iter().copied())
                 .chain(output.iter().copied())
-                //.chain(fe_to_limbs(acc.instances[0][0]))
-                //.chain(fe_to_limbs(acc.instances[0][1]))
+                .chain(fe_to_limbs(acc.instances[0][0]))
+                .chain(fe_to_limbs(acc.instances[0][1]))
                 .chain(
                     acc.witness_comms
                         .iter()
                         .map(AsRef::as_ref)
                         .flat_map(x_y_is_identity),
                 )
-                //.chain(acc.challenges.iter().copied().flat_map(fe_to_limbs))
-                //.chain(fe_to_limbs(acc.u))
+                .chain(acc.challenges.iter().copied().flat_map(fe_to_limbs))
+                .chain(fe_to_limbs(acc.u))
                 .chain(x_y_is_identity(acc.e_comm.as_ref()))
-                //.chain(acc.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
+                .chain(acc.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
                 .collect_vec();
             poseidon.update(inputs.as_slice());
             fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
@@ -1478,15 +1482,14 @@ pub mod strawman {
                 .chain(output)
                 .chain(acc.instances[0][0].limbs())
                 .chain(acc.instances[0][1].limbs())
-                //TODO FIX THIS
-                // .chain(
-                //     acc.witness_comms
-                //         .iter()
-                //         .flat_map(AssignedEcPoint::assigned_cells),
-                // )
+                .chain(
+                    acc.witness_comms
+                        .iter()
+                        .flat_map(|point| vec![point.x(), point.y()].into_iter()),
+                )
                 .chain(acc.challenges.iter().flat_map(ProperCrtUint::limbs))
                 .chain(acc.u.limbs())
-                //.chain(acc.e_comm.limbs())
+                .chain(vec![acc.e_comm.x(), acc.e_comm.y()].into_iter())
                 .chain(
                     acc.compressed_e_sum
                         .as_ref()
@@ -1504,7 +1507,7 @@ pub mod strawman {
         }
     }
 
-    // #[derive(Clone, Debug)]
+    //#[derive(Clone, Debug)]
     pub struct PoseidonTranscriptChip<'a, C: TwoChainCurve> 
     where
         C::Scalar: BigPrimeField,
@@ -1520,17 +1523,6 @@ pub mod strawman {
         pub le_bits: Vec<AssignedValue<F>>,
         pub scalar: ProperCrtUint<F>,
     }
-
-    // impl<F: BigPrimeField> Debug for Challenge<F> {
-    //     // fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    //     //     let mut f = f.debug_struct("Challenge");
-    //     //     self.scalar
-    //     //         .scalar
-    //     //         .value()
-    //     //         .map(|scalar| f.field("scalar", &scalar));
-    //     //     f.finish()
-    //     // }
-    // }
 
     impl<F: BigPrimeField> AsRef<ProperCrtUint<F>> for Challenge<F> {
         fn as_ref(&self) -> &ProperCrtUint<F> {
@@ -1695,33 +1687,27 @@ pub mod strawman {
             Ok(())
         }
         
-        //todo fix this
         pub fn squeeze_challenge(
             &mut self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
         ) -> Result<Challenge<C::Scalar>, Error> {
-            // let (challenge_le_bits, challenge) = {
-            //     let hash = self.poseidon_chip.squeeze(builder.main(), &self.chip.gate_chip);
-            //     self.poseidon_chip.update(&[hash]);
+            let (challenge_le_bits, challenge) = {
+                let hash = self.poseidon_chip.squeeze(builder.main(), &self.chip.gate_chip);
+                self.poseidon_chip.update(&[hash]);
+                let challenge_le_bits = self.chip.gate_chip.num_to_bits(builder.main(),hash, NUM_CHALLENGE_BITS);
+                let challenge = self.chip.gate_chip.bits_to_num(builder.main(), challenge_le_bits.clone());
+                (challenge_le_bits, challenge)
+            };
 
-            //     let challenge_le_bits = decompose(&hash, NUM_LIMBS, NUM_CHALLENGE_BITS)
-            //         .into_iter()
-            //         .take(NUM_CHALLENGE_BITS)
-            //         .collect_vec();
-            //     //let challenge = from_le_bits(collector, &challenge_le_bits);
+            let scalar = FixedCRTInteger::from_native(fe_to_biguint(challenge.value()), 
+                                                        self.chip.base_chip.num_limbs, self.chip.base_chip.limb_bits).assign(
+                                                        builder.main(),
+                                                        self.chip.base_chip.limb_bits,
+                                                        self.chip.base_chip.native_modulus());
 
-            //     (challenge_le_bits, challenge)
-            // };
+            let scalar_in_base = scalar.native();
+            self.chip.constrain_equal(builder, &challenge, scalar_in_base).unwrap();                                       
 
-            // let scalar = self.chip.assign_witness_base(builder, witness).unwrap();
-            // let limbs = scalar.limbs().iter().map(AsRef::as_ref).copied().collect();
-
-            // let scalar_in_base =
-            //     integer_to_native(&self.chip.rns, collector, &scalar, NUM_CHALLENGE_BITS);
-            // collector.equal(&challenge, &scalar_in_base);
-
-            let scalar = self.chip.assign_constant_base(builder, C::Base::ONE).unwrap();
-            let challenge_le_bits = vec![self.chip.assign_constant(builder, C::Scalar::ONE).unwrap()];
             Ok(Challenge {
                 le_bits: challenge_le_bits,
                 scalar: scalar,

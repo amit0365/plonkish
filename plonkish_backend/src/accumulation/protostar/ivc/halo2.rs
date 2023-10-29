@@ -868,15 +868,6 @@ where
             .map(|value| tcc_chip.assign_witness(builder, *value))
             .try_collect::<_, Vec<_>, _>()?;
 
-        // let input = input
-        //     .iter()
-        //     .map(|assigned| tcc_chip.to_assigned(builder, assigned))
-        //     .try_collect::<_, Vec<_>, _>()?;
-        // let output = output
-        //     .iter()
-        //     .map(|assigned| tcc_chip.to_assigned(builder, assigned))
-        //     .try_collect::<_, Vec<_>, _>()?;
-
         let is_base_case = tcc_chip.is_equal(builder, &step_idx, &zero)?;
 
         let h_prime = tcc_chip.assign_witness(builder, self.h_prime.assign().unwrap())?;
@@ -1025,7 +1016,6 @@ where
         // self.tcc_chip.assign_constant(&mut pool, C::Scalar::ZERO).unwrap()
         // self.tcc_chip.assign_constant(&mut pool, C::Scalar::ZERO).unwrap()
 
-        //self.synthesize_accumulation_verifier(layouter.namespace(|| ""), builder.main(), &input, &output)?;
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
         Ok(())
     }

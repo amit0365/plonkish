@@ -147,6 +147,7 @@ where
         ),
         Error,
     > {
+        println!("step circuit trivial circuit synthesize");
         Ok((Vec::new(), Vec::new()))
     }
 }
@@ -559,7 +560,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 14;
     const NUM_STEPS: usize = 3;
 
-    let mut builder_primary = RangeCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Keygen)
+    let mut builder_primary = RangeCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Prover)
     .use_k(10)
     .use_lookup_bits(8);
 
@@ -570,7 +571,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     let ecc_chip_primary = EccChip::new(&native_chip_primary);
     let chip_primary = strawman::Chip::<bn256::G1Affine>::create(gate_chip_primary, &base_chip_primary, &ecc_chip_primary);
 
-    let mut builder_secondary = RangeCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Keygen)
+    let mut builder_secondary = RangeCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Prover)
     .use_k(10)
     .use_lookup_bits(8);
 
@@ -755,11 +756,11 @@ pub mod strawman {
         halo2_proofs::plonk::Assigned,
         AssignedValue,
         gates::{
-            circuit::builder::BaseCircuitBuilder,
+            circuit::{builder::BaseCircuitBuilder, BaseCircuitParams, BaseConfig},            
             RangeChip,range::RangeConfig,
             flex_gate::{GateChip, GateInstructions, FlexGateConfig, FlexGateConfigParams},
         },
-        gates::flex_gate::threads::SinglePhaseCoreManager, poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
+        gates::flex_gate::{threads::SinglePhaseCoreManager, BasicGateConfig}, poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
     };
     
     use halo2_base::halo2_proofs::{
@@ -980,8 +981,8 @@ pub mod strawman {
 
     #[derive(Clone, Debug)]
     pub struct Config<F: ScalarField> {
-        // pub range_config: RangeConfig<F>,
-        pub flex_config: FlexGateConfig<F>,
+        pub range_config: RangeConfig<F>,
+        // pub flex_config: FlexGateConfig<F>,
         pub instance: Column<Instance>,
         pub poseidon_spec: OptimizedPoseidonSpec<F, T, RATE>,
     }
@@ -989,26 +990,38 @@ pub mod strawman {
     impl<F: FromUniformBytes<64> + Ord + From<bool> + Hash> Config<F> {
         pub fn configure<C: CurveAffine<ScalarExt = F>>(meta: &mut ConstraintSystem<F>) -> Self {
             let params = FlexGateConfigParams {
-                k: 10,
-                num_advice_per_phase: vec![1],
-                num_fixed: 1,
+                k: 14,
+                num_advice_per_phase: vec![7],
+                num_fixed: 2,
             };
-            let flex_config = FlexGateConfig::configure(
-                meta,
-                params,
-            );
-            // let range_config = RangeConfig::configure(
+            // let mut circuit_params = BaseCircuitParams {
+            //     k: 14,
+            //     num_advice_per_phase: vec![7],
+            //     num_lookup_advice_per_phase: vec![1],
+            //     num_fixed: 13,
+            //     lookup_bits: Some(8),
+            //     num_instance_columns: 1,
+            // };
+            // let flex_config = FlexGateConfig::configure(
             //     meta,
             //     params,
-            //     &[NUM_LOOKUPS],
-            //     LOOKUP_BITS,
+            // );
+            let range_config = RangeConfig::configure(
+                meta,
+                params,
+                &[NUM_LOOKUPS],
+                LOOKUP_BITS,
+            );
+            // let flex_config = BaseCircuitBuilder::configure_with_params(
+            //     meta,
+            //     circuit_params,
             // );
             let instance = meta.instance_column();
             meta.enable_equality(instance);
             let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P, SECURE_MDS>();
             Self {
-                //range_config,
-                flex_config,
+                range_config,
+                //flex_config,
                 instance,
                 poseidon_spec,
             }
@@ -1025,7 +1038,7 @@ pub mod strawman {
         pub gate_chip: GateChip<C::Scalar>,
         pub base_chip: &'a FpChip<'a, C::Scalar, C::Base>,
         pub ecc_chip: &'a EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
-        //pub instance: Column<Instance>,
+        // pub instance: Column<Instance>,
         _marker: PhantomData<C>,
     }
 
@@ -1663,8 +1676,7 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             n: usize,
         ) -> Result<Vec<EcPoint<C::Scalar, AssignedValue<C::Scalar>>>, Error> {
-            let read_commitments = (0..n).map(|_| self.read_commitment(builder)).collect();
-            read_commitments
+            (0..n).map(|_| self.read_commitment(builder)).collect()
         }
     
         pub fn absorb_accumulator(

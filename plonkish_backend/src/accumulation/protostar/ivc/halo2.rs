@@ -851,7 +851,16 @@ where
         } = &self;
 
         let mut binding = self.inner.borrow_mut();
-        let builder = binding.pool(0);        
+        // let stats = binding.statistics();
+
+        // let total_advice_per_phase = stats.gate.total_advice_per_phase;
+        // let total_fixed = stats.gate.total_fixed;
+        
+        // println!("stats total_advice_per_phase {:?}", total_advice_per_phase);
+        // println!("stats total_fixed {:?}", total_fixed);
+        
+        let builder = binding.pool(0);  
+        
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
 
         let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
@@ -919,6 +928,13 @@ where
             &acc_prime,
         )?;
 
+        let stats = binding.statistics();
+        let total_advice_per_phase = stats.gate.total_advice_per_phase;
+        let total_fixed = stats.gate.total_fixed;
+        
+        println!("stats total_advice_per_phase {:?}", total_advice_per_phase);
+        println!("stats total_fixed {:?}", total_fixed);      
+
         // todo impl constrain instance these 
         // tcc_chip.constrain_instance(builder, &h_ohs_from_incoming, 0)?;
         // tcc_chip.constrain_instance(builder, &h_prime, 1)?;
@@ -967,7 +983,7 @@ where
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
-
+        println!("recursive circuit synthesize");
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
         // self.inner.synthesize(config, layouter);
@@ -1147,11 +1163,14 @@ where
     let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, chip_primary, None);
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit);
-    
-    let (_, primary_vp) = {
+
+    let (primary_pp, primary_vp) = {
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
+
+        println!("primary_pp {:?}", primary_pp);
+        println!("primary_vp {:?}", primary_vp);
 
     let secondary_circuit = RecursiveCircuit::new(
         false,
@@ -1162,11 +1181,14 @@ where
     
     let mut secondary_circuit =
         Halo2Circuit::new::<HyperPlonk<P2>>(secondary_num_vars, secondary_circuit);
-        
+
     let (secondary_pp, secondary_vp) = {
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };
+        println!("secondary_pp {:?}", secondary_pp);
+        println!("secondary_vp {:?}", secondary_vp);
+
     primary_circuit.update_witness(|circuit| {
         circuit.avp = ProtostarAccumulationVerifierParam::from(&secondary_vp);
         circuit.update_acc();

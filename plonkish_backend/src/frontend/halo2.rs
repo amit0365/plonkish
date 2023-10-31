@@ -28,6 +28,7 @@ pub mod chip;
 #[cfg(test)]
 mod test;
 
+//todo check this
 pub trait CircuitExt<F: Field>: Circuit<F> {
     fn num_instance(&self) -> Vec<usize> {
         self.instances().iter().map(Vec::len).collect()
@@ -63,6 +64,7 @@ impl<F: Field, C: CircuitExt<F>> Halo2Circuit<F, C> {
         let (cs, config) = {
             let mut cs = ConstraintSystem::default();
             let config = C::configure(&mut cs);
+            println!("cs {:?}", cs);
             (cs, config)
         };
         let constants = cs.constants().clone();
@@ -204,6 +206,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     
     //println!("Prior preprocess_polys: {:?}", circuit_info.preprocess_polys);
 
+    println!("start preprocess synthesize");
     C::FloorPlanner::synthesize(
         &mut preprocess_collector,
         circuit,
@@ -211,8 +214,8 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         constants.clone(),
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
-
-    // todo check preprocess_collector is not updated as plonkish -- none of the updating works -- maybe fix transcript
+    println!("end preprocess synthesize");
+    // todo check preprocess_collector is not updated as plonkish -- none of the updating works
     println!("Updated preprocess_collector: {:?}", preprocess_collector);
 
     // preprocess poly not updating
@@ -226,6 +229,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         }))
         .collect();
     circuit_info.permutations = preprocess_collector.permutation.into_cycles();
+    println!("Updated circuit_info: {:?}", circuit_info);
     Ok(circuit_info)
 }
 
@@ -294,7 +298,7 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         let Some(row) = self.row_mapping.get(row).copied() else {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
         };
-
+        println!("enable_selector");
         self.selectors[selector.index()][row] = true;
 
         Ok(())
@@ -385,6 +389,7 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         for row in self.row_mapping.iter().skip(from_row).copied() {
             col[row] = filler;
         }
+        println!("fill_from_row");
 
         Ok(())
     }

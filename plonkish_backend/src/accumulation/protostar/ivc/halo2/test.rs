@@ -31,7 +31,7 @@ use crate::{
 };
 use halo2_base::{halo2_proofs::
     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-}, AssignedValue};
+}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
 //use pairing::{Engine, MillerLoopResult, MultiMillerLoop, PairingCurveAffine};
 use halo2_base::{Context,
     gates::{circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
@@ -62,16 +62,27 @@ where
     C: CurveAffine,
     C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
-    type Config = strawman::Config<C::Scalar>;
+    type Config = BaseConfig<C::Scalar>;
     type FloorPlanner = SimpleFloorPlanner;
-    type Params = ();
+    type Params = BaseCircuitParams;
 
     fn without_witnesses(&self) -> Self {
         self.clone()
     }
 
-    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        strawman::Config::configure::<C>(meta)
+    // fn configure_with_params(
+    //     meta: &mut ConstraintSystem<Fr>,
+    //     params: Self::Params,
+    // ) -> Self::Config {
+    //     BaseCircuitBuilder::configure_with_params(meta, params.into())
+    // }
+
+    // fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+    //     strawman::Config::configure::<C>(meta)
+    // }
+
+    fn configure(_: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        unreachable!()
     }
 
     fn synthesize(&self, _: Self::Config, _: impl Layouter<C::Scalar>) -> Result<(), Error> {
@@ -98,18 +109,18 @@ where
     //type HashChip = strawman::Chip<'a, C>;
     //type TranscriptChip = strawman::PoseidonTranscriptChip<'a, C>;
 
-    fn configs(
-        config: Self::Config,
-    ) -> (
-            OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-            OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-        ) {
-        (
-            //config.clone(),
-            config.poseidon_spec.clone(),
-            config.poseidon_spec,
-        )
-    }
+    // fn configs(
+    //     config: Self::Config,
+    // ) -> (
+    //         // OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+    //         // OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+    //     ) {
+    //     (
+    //         //config.clone(),
+    //         //config.poseidon_spec.clone(),
+    //         //config.poseidon_spec,
+    //     )
+    // }
 
     fn arity() -> usize {
         0
@@ -410,6 +421,7 @@ fn run_protostar_hyperplonk_ivc<C, P1, P2>(
     num_steps: usize,
     chip_primary: Chip<C>,
     chip_secondary: Chip<<C as TwoChainCurve>::Secondary>,
+    circuit_params: BaseCircuitParams
 ) -> (
     ProtostarIvcVerifierParam<
         C,
@@ -466,6 +478,7 @@ where
         TrivialCircuit::default(),
         chip_primary,
         chip_secondary,
+        circuit_params, 
         seeded_std_rng(),
     )
     .unwrap();
@@ -560,6 +573,15 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 14;
     const NUM_STEPS: usize = 3;
 
+    let circuit_params = BaseCircuitParams {
+            k: 14,
+            num_advice_per_phase: vec![5],
+            num_lookup_advice_per_phase: vec![1],
+            num_fixed: 1,
+            lookup_bits: Some(8),
+            num_instance_columns: 1,
+        };
+
     let mut builder_primary = RangeCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Prover)
     .use_k(10)
     .use_lookup_bits(8);
@@ -586,7 +608,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
         bn256::G1Affine,
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
-    >(NUM_VARS, NUM_STEPS,chip_primary, chip_secondary);
+    >(NUM_VARS, NUM_STEPS,chip_primary, chip_secondary, circuit_params);
 }
 
 // #[test]
@@ -762,6 +784,7 @@ pub mod strawman {
         },
         gates::flex_gate::{threads::SinglePhaseCoreManager, BasicGateConfig}, poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
     };
+    use halo2_base::halo2_proofs::plonk::Circuit;
     
     use halo2_base::halo2_proofs::{
         circuit::{AssignedCell, Layouter, Value},
@@ -979,54 +1002,54 @@ pub mod strawman {
         }
     }
 
-    #[derive(Clone, Debug)]
-    pub struct Config<F: ScalarField> {
-        pub range_config: RangeConfig<F>,
-        // pub flex_config: FlexGateConfig<F>,
-        pub instance: Column<Instance>,
-        pub poseidon_spec: OptimizedPoseidonSpec<F, T, RATE>,
-    }
+    //todo keep one baseconfig for config and recursive circuit. might need to modify since recursive expects Sc:config
+    // #[derive(Clone, Debug)]
+    // pub struct Config<F: ScalarField> {
+    //     pub base_config: BaseConfig<F>,
+    //     // pub flex_config: FlexGateConfig<F>,
+    //     pub instance: Column<Instance>,
+    //     pub poseidon_spec: OptimizedPoseidonSpec<F, T, RATE>,
+    // }
 
-    impl<F: FromUniformBytes<64> + Ord + From<bool> + Hash> Config<F> {
-        pub fn configure<C: CurveAffine<ScalarExt = F>>(meta: &mut ConstraintSystem<F>) -> Self {
-            let params = FlexGateConfigParams {
-                k: 14,
-                num_advice_per_phase: vec![7],
-                num_fixed: 2,
-            };
-            // let mut circuit_params = BaseCircuitParams {
-            //     k: 14,
-            //     num_advice_per_phase: vec![7],
-            //     num_lookup_advice_per_phase: vec![1],
-            //     num_fixed: 13,
-            //     lookup_bits: Some(8),
-            //     num_instance_columns: 1,
-            // };
-            // let flex_config = FlexGateConfig::configure(
-            //     meta,
-            //     params,
-            // );
-            let range_config = RangeConfig::configure(
-                meta,
-                params,
-                &[NUM_LOOKUPS],
-                LOOKUP_BITS,
-            );
-            // let flex_config = BaseCircuitBuilder::configure_with_params(
-            //     meta,
-            //     circuit_params,
-            // );
-            let instance = meta.instance_column();
-            meta.enable_equality(instance);
-            let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P, SECURE_MDS>();
-            Self {
-                range_config,
-                //flex_config,
-                instance,
-                poseidon_spec,
-            }
-        }
-    }
+    // impl<F: FromUniformBytes<64> + Ord + From<bool> + Hash> Config<F> {
+    //     pub fn configure<C: CurveAffine<ScalarExt = F>>(meta: &mut ConstraintSystem<F>) -> Self {
+    //         // let params = FlexGateConfigParams {
+    //         //     k: 14,
+    //         //     num_advice_per_phase: vec![7],
+    //         //     num_fixed: 2,
+    //         // };
+    //         let mut circuit_params = BaseCircuitParams {
+    //             k: 14,
+    //             num_advice_per_phase: vec![7],
+    //             num_lookup_advice_per_phase: vec![1],
+    //             num_fixed: 13,
+    //             lookup_bits: Some(8),
+    //             num_instance_columns: 1,
+    //         };
+    //         // let flex_config = FlexGateConfig::configure(
+    //         //     meta,
+    //         //     params,
+    //         // );
+    //         // let range_config = RangeConfig::configure(
+    //         //     meta,
+    //         //     params,
+    //         //     &[NUM_LOOKUPS],
+    //         //     LOOKUP_BITS,
+    //         // );
+    //         let base_config = BaseCircuitBuilder::configure_with_params(
+    //             meta,
+    //             circuit_params,
+    //         );
+    //         let instance = meta.instance_column();
+    //         meta.enable_equality(instance);
+    //         let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P, SECURE_MDS>();
+    //         Self {
+    //             base_config,
+    //             instance,
+    //             poseidon_spec,
+    //         }
+    //     }
+    // }
 
     #[allow(clippy::type_complexity)]
     #[derive(Clone, Debug)]

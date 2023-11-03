@@ -6,13 +6,13 @@ use crate::{
         Itertools,
     },
 };
-use halo2_base::halo2_proofs::{
+use halo2_base::{halo2_proofs::{
     circuit::Value,
     plonk::{
         self, Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem,
         Error, Fixed, FloorPlanner, Instance, Selector,
     },
-};
+}, gates::circuit::BaseCircuitParams};
 use rand::RngCore;
 use std::{
     collections::{HashMap, HashSet},
@@ -60,10 +60,10 @@ pub struct Halo2Circuit<F: Field, C: Circuit<F>> {
 }
 
 impl<F: Field, C: CircuitExt<F>> Halo2Circuit<F, C> {
-    pub fn new<E: WitnessEncoding>(k: usize, circuit: C) -> Self {
+    pub fn new<E: WitnessEncoding>(k: usize, circuit: C, circuit_params: C::Params) -> Self {
         let (cs, config) = {
             let mut cs = ConstraintSystem::default();
-            let config = C::configure(&mut cs);
+            let config = C::configure_with_params(&mut cs, circuit_params);
             println!("cs {:?}", cs);
             (cs, config)
         };

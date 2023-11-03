@@ -49,6 +49,7 @@ use std::{
     rc::Rc,
 };
 
+use poseidon::Spec;
 use rand::RngCore;
 use std::cell::RefCell;
 
@@ -60,8 +61,8 @@ use std::cell::RefCell;
 use halo2_base::{
     Context,
     gates::{
-        circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder, self},
-        CircuitBuilderStage, BaseCircuitParams, BaseConfig, self},
+        circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder},
+        CircuitBuilderStage, BaseCircuitParams, BaseConfig},
         flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager},
     },
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
@@ -100,7 +101,7 @@ pub const SECURE_MDS: usize = 0;
 
 
 mod test;
-use test::strawman::Chip;
+use test::strawman::{self, Chip};
 
 
 type AssignedPlonkishNarkInstance<AssignedBase, AssignedSecondary> =
@@ -116,14 +117,14 @@ where
     C::Base: BigPrimeField,
 {   
 
-    #[allow(clippy::type_complexity)]
-    fn configs(
-        config: Self::Config,
-    ) -> (
-        //Chip<C>::Config,
-        OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-        OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    );
+    // #[allow(clippy::type_complexity)]
+    // fn configs(
+    //     config: strawman::Config<C::Scalar>,
+    // ) -> (
+    //     //Chip<C>::Config,
+    //     OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+    //     OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+    // );
 
     fn arity() -> usize;
 
@@ -141,7 +142,7 @@ where
     #[allow(clippy::type_complexity)]
     fn synthesize(
         &self,
-        config: Self::Config,
+        config: BaseConfig<C::Scalar>,
         layouter: impl Layouter<C::Scalar>,
     ) -> Result<
         (
@@ -614,20 +615,14 @@ where
         step_circuit: Sc,
         chip: Chip<'a, C>,
         avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
-        //config_params: BaseCircuitParams,
+        circuit_params: BaseCircuitParams,
     ) -> Self {
-        let config = Self::configure(&mut Default::default());
-        let (hash_config, transcript_config) = Sc::configs(config);
+        // let config = Self::configure_with_params(&mut Default::default(), config_params);
+        // let (hash_config, transcript_config) = Sc::configs(config);
+        let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>();
+        let hash_config = poseidon_spec.clone();
+        let transcript_config = poseidon_spec.clone();
         let hash_chip = Chip::<C>::new(hash_config.clone(), chip.clone());
-
-        let mut circuit_params = BaseCircuitParams {
-            k: 10,
-            num_advice_per_phase: vec![5],
-            num_lookup_advice_per_phase: vec![1],
-            num_fixed: 1,
-            lookup_bits: Some(8),
-            num_instance_columns: 1,
-        };
 
         let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::new(false).use_params(circuit_params));
 
@@ -951,9 +946,9 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 
 {
-    type Config = Sc::Config;
+    type Config = BaseConfig<C::Scalar>;
     type FloorPlanner = Sc::FloorPlanner;
-    type Params = ();
+    type Params = BaseCircuitParams;
 
     fn without_witnesses(&self) -> Self {
         Self {
@@ -973,11 +968,19 @@ where
         }
     }
 
-    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        Sc::configure(meta)
+    // fn params(&self) -> Self::Params {
+    //     (&self.inner.borrow_mut().circuit_params).try_into().unwrap()
+    // }
+
+    fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
+        BaseCircuitBuilder::configure_with_params(meta, params)
     }
 
-    //todo fix this with other synthesizes
+    fn configure(_: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        unreachable!()
+    }
+
+    // todo fix this with other synthesizes
     fn synthesize(
         &self,
         config: Self::Config,
@@ -986,7 +989,8 @@ where
         println!("recursive circuit synthesize");
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
-        // self.inner.synthesize(config, layouter);
+        // let base_config = Sc::configure(meta);
+        // self.inner.borrow_mut().synthesize(config, layouter);
         // let range = config.range;
         // range.load_lookup_table(&mut layouter).expect("load lookup table should not fail");
         // let circuit = &self.inner.0;
@@ -1120,6 +1124,7 @@ pub fn preprocess<'a, C, P1, P2, S1, S2, AT1, AT2>(
     secondary_step_circuit: S2,
     chip_primary: Chip<'a, C>,
     chip_secondary: Chip<'a, C::Secondary>,
+    circuit_params: BaseCircuitParams,
     mut rng: impl RngCore,
 ) -> Result<
     (
@@ -1160,34 +1165,34 @@ where
     let primary_param = P1::setup(1 << primary_num_vars, 0, &mut rng).unwrap();
     let secondary_param = P2::setup(1 << secondary_num_vars, 0, &mut rng).unwrap();
 
-    let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, chip_primary, None);
+    let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, chip_primary, None, circuit_params.clone());
     let mut primary_circuit =
-        Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit);
+        Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, circuit_params.clone());
 
     let (primary_pp, primary_vp) = {
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
-
-        println!("primary_pp {:?}", primary_pp);
-        println!("primary_vp {:?}", primary_vp);
+        // println!("primary_pp {:?}", primary_pp);
+        // println!("primary_vp {:?}", primary_vp);
 
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,
         chip_secondary,
         Some(ProtostarAccumulationVerifierParam::from(&primary_vp)),
+        circuit_params.clone(),
     );
     
     let mut secondary_circuit =
-        Halo2Circuit::new::<HyperPlonk<P2>>(secondary_num_vars, secondary_circuit);
+        Halo2Circuit::new::<HyperPlonk<P2>>(secondary_num_vars, secondary_circuit, circuit_params.clone());
 
     let (secondary_pp, secondary_vp) = {
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };
-        println!("secondary_pp {:?}", secondary_pp);
-        println!("secondary_vp {:?}", secondary_vp);
+        // println!("secondary_pp {:?}", secondary_pp);
+        // println!("secondary_vp {:?}", secondary_vp);
 
     primary_circuit.update_witness(|circuit| {
         circuit.avp = ProtostarAccumulationVerifierParam::from(&secondary_vp);

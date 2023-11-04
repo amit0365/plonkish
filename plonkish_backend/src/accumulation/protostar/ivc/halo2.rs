@@ -61,9 +61,9 @@ use std::cell::RefCell;
 use halo2_base::{
     Context,
     gates::{
-        circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder},
+        circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder, self},
         CircuitBuilderStage, BaseCircuitParams, BaseConfig},
-        flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager},
+        flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager}, RangeChip,
     },
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
     QuantumCell::{Constant, Existing, Witness, WitnessFraction},
@@ -604,10 +604,6 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 
 {
-    // const PREPROCESSED_DIGEST_ROW: usize = 4 * LIMBS;
-    // const INITIAL_STATE_ROW: usize = 4 * LIMBS + 1;
-    // const STATE_ROW: usize = 4 * LIMBS + 2;
-    // const ROUND_ROW: usize = 4 * LIMBS + 3;
     pub const DUMMY_H: C::Scalar = C::Scalar::ZERO;
 
     pub fn new(
@@ -615,48 +611,13 @@ where
         step_circuit: Sc,
         chip: Chip<'a, C>,
         avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
-        circuit_params: BaseCircuitParams,
+        builder: BaseCircuitBuilder<C::Scalar>,
     ) -> Self {
-        // let config = Self::configure_with_params(&mut Default::default(), config_params);
-        // let (hash_config, transcript_config) = Sc::configs(config);
         let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>();
         let hash_config = poseidon_spec.clone();
         let transcript_config = poseidon_spec.clone();
         let hash_chip = Chip::<C>::new(hash_config.clone(), chip.clone());
-
-        let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::new(false).use_params(circuit_params));
-
-        // Self {
-        //     is_primary,
-        //     step_circuit,
-        //     tcc_chip: chip,
-        //     hash_chip,
-        //     hash_config,
-        //     transcript_config,
-        //     avp: avp.clone().unwrap_or_default(),
-        //     h_prime: Value::known(C::Scalar::ZERO),
-        //     acc: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
-        //     acc_prime: Value::unknown(),
-        //     incoming_instances: [Value::unknown(); 2],
-        //     incoming_proof: Value::unknown(),
-        //     inner,
-        // }
-
-        // Self {
-        //     is_primary,
-        //     step_circuit,
-        //     tcc_chip: chip,
-        //     hash_chip,
-        //     hash_config,
-        //     transcript_config,
-        //     avp: avp.clone().unwrap_or_default(),
-        //     h_prime: Value::known(C::Scalar::ZERO),
-        //     acc: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
-        //     acc_prime: Value::known(avp.clone().unwrap_or_default().init_accumulator()),
-        //     incoming_instances: [Value::known(C::Base::ZERO); 2],
-        //     incoming_proof: Value::known(PoseidonTranscriptChip::<C>::dummy_proof(&avp.clone().unwrap_or_default())),
-        //     inner,
-        // }
+        let inner = RefCell::new(builder);
         let circuit = Self {
                 is_primary,
                 step_circuit,
@@ -672,66 +633,8 @@ where
                 incoming_proof: Value::known(PoseidonTranscriptChip::<C>::dummy_proof(&avp.clone().unwrap_or_default())),
                 inner,
             };
-        // Value::known(avp.clone().unwrap_or_default().init_accumulator())
-        // C::Base::ZERO
-        // circuit.build();
         circuit
     }
-
-    // fn build(&mut self) {
-    //     let range = self.inner.range_chip();
-    //     let main_gate = range.gate();
-    //     let pool = self.inner.pool(0);
-    //     let [preprocessed_digest, initial_state, state, round] = [
-    //         self.instances[Self::PREPROCESSED_DIGEST_ROW],
-    //         self.instances[Self::INITIAL_STATE_ROW],
-    //         self.instances[Self::STATE_ROW],
-    //         self.instances[Self::ROUND_ROW],
-    //     ]
-    //     .map(|instance| main_gate.assign_integer(pool, instance));
-    //     let first_round = main_gate.is_zero(pool.main(), round);
-    //     let not_first_round = main_gate.not(pool.main(), first_round);
-
-    //     let mut pool = loader.take_ctx();
-    //     let ctx = pool.main();
-    //     for (lhs, rhs) in [
-    //         // Propagate preprocessed_digest
-    //         (
-    //             &main_gate.mul(ctx, preprocessed_digest, not_first_round),
-    //             &previous_instances[Self::PREPROCESSED_DIGEST_ROW],
-    //         ),
-    //         // Propagate initial_state
-    //         (
-    //             &main_gate.mul(ctx, initial_state, not_first_round),
-    //             &previous_instances[Self::INITIAL_STATE_ROW],
-    //         ),
-    //         // Verify initial_state is same as the first application snark
-    //         (
-    //             &main_gate.mul(ctx, initial_state, first_round),
-    //             &main_gate.mul(ctx, app_instances[0], first_round),
-    //         ),
-    //         // Verify current state is same as the current application snark
-    //         (&state, &app_instances[1]),
-    //         // Verify previous state is same as the current application snark
-    //         (
-    //             &main_gate.mul(ctx, app_instances[0], not_first_round),
-    //             &previous_instances[Self::STATE_ROW],
-    //         ),
-    //         // Verify round is increased by 1 when not at first round
-    //         (&round, &main_gate.add(ctx, not_first_round, previous_instances[Self::ROUND_ROW])),
-    //     ] {
-    //         ctx.constrain_equal(lhs, rhs);
-    //     }
-    //     *self.inner.pool(0) = pool;
-
-    //     self.inner.assigned_instances[0].extend(
-    //         [lhs.x(), lhs.y(), rhs.x(), rhs.y()]
-    //             .into_iter()
-    //             .flat_map(|coordinate| coordinate.limbs())
-    //             .chain([preprocessed_digest, initial_state, state, round].iter())
-    //             .copied(),
-    //     );
-    // }
 
     pub fn update<Comm: AsRef<C::Secondary>>(
         &mut self,
@@ -846,16 +749,7 @@ where
         } = &self;
 
         let mut binding = self.inner.borrow_mut();
-        // let stats = binding.statistics();
-
-        // let total_advice_per_phase = stats.gate.total_advice_per_phase;
-        // let total_fixed = stats.gate.total_fixed;
-        
-        // println!("stats total_advice_per_phase {:?}", total_advice_per_phase);
-        // println!("stats total_fixed {:?}", total_fixed);
-        
         let builder = binding.pool(0);  
-        
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
 
         let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
@@ -873,7 +767,7 @@ where
             .try_collect::<_, Vec<_>, _>()?;
 
         let is_base_case = tcc_chip.is_equal(builder, &step_idx, &zero)?;
-
+        
         let h_prime = tcc_chip.assign_witness(builder, self.h_prime.assign().unwrap())?;
 
         self.check_initial_condition(builder, &is_base_case, &initial_input, input)?;
@@ -923,12 +817,12 @@ where
             &acc_prime,
         )?;
 
-        let stats = binding.statistics();
-        let total_advice_per_phase = stats.gate.total_advice_per_phase;
-        let total_fixed = stats.gate.total_fixed;
+        // let stats = binding.statistics();
+        // let total_advice_per_phase = stats.gate.total_advice_per_phase;
+        // let total_fixed = stats.gate.total_fixed;
         
-        println!("stats total_advice_per_phase {:?}", total_advice_per_phase);
-        println!("stats total_fixed {:?}", total_fixed);      
+        // println!("stats total_advice_per_phase {:?}", total_advice_per_phase);
+        // println!("stats total_fixed {:?}", total_fixed);      
 
         // todo impl constrain instance these 
         // tcc_chip.constrain_instance(builder, &h_ohs_from_incoming, 0)?;
@@ -950,27 +844,27 @@ where
     type FloorPlanner = Sc::FloorPlanner;
     type Params = BaseCircuitParams;
 
-    fn without_witnesses(&self) -> Self {
-        Self {
-            is_primary: self.is_primary,
-            step_circuit: self.step_circuit.without_witnesses(),
-            tcc_chip: self.tcc_chip.clone(),
-            hash_chip: self.hash_chip.clone(),
-            hash_config: self.hash_config.clone(),
-            transcript_config: self.transcript_config.clone(),
-            avp: self.avp.clone(),
-            h_prime: Value::unknown(),
-            acc: Value::unknown(),
-            acc_prime: Value::unknown(),
-            incoming_instances: [Value::unknown(), Value::unknown()],
-            incoming_proof: Value::unknown(),
-            inner: self.inner.clone(),
-        }
-    }
-
-    // fn params(&self) -> Self::Params {
-    //     (&self.inner.borrow_mut().circuit_params).try_into().unwrap()
+    // fn without_witnesses(&self) -> Self {
+    //     Self {
+    //         is_primary: self.is_primary,
+    //         step_circuit: self.step_circuit.without_witnesses(),
+    //         tcc_chip: self.tcc_chip.clone(),
+    //         hash_chip: self.hash_chip.clone(),
+    //         hash_config: self.hash_config.clone(),
+    //         transcript_config: self.transcript_config.clone(),
+    //         avp: self.avp.clone(),
+    //         h_prime: Value::unknown(),
+    //         acc: Value::unknown(),
+    //         acc_prime: Value::unknown(),
+    //         incoming_instances: [Value::unknown(), Value::unknown()],
+    //         incoming_proof: Value::unknown(),
+    //         inner: self.inner,
+    //     }
     // }
+
+    fn without_witnesses(&self) -> Self {
+        unreachable!()
+    }
 
     fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
         BaseCircuitBuilder::configure_with_params(meta, params)
@@ -986,57 +880,17 @@ where
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
-        println!("recursive circuit synthesize");
+
         let (input, output) =
-            StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
-        // let base_config = Sc::configure(meta);
-        // self.inner.borrow_mut().synthesize(config, layouter);
-        // let range = config.range;
-        // range.load_lookup_table(&mut layouter).expect("load lookup table should not fail");
-        // let circuit = &self.inner.0;
+            StepCircuit::synthesize(&self.step_circuit, config.clone(), layouter.namespace(|| ""))?;
 
-        // let mut assigned_advices = HashMap::new();
-        // // POC so will only do mock prover and not real prover
-        // let mut first_pass = halo2_base::SKIP_FIRST_PASS; // assume using simple floor planner
-        // layouter
-        //     .assign_region(
-        //         || "Recursion Circuit",
-        //         |mut region| {
-        //             if first_pass {
-        //                 first_pass = false;
-        //                 return Ok(());
-        //             }
-        //             // clone the builder so we can re-use the circuit for both vk and pk gen
-        //             let builder = circuit.builder.borrow();
-        //             let assignments = builder.assign_all(
-        //                 &range.gate,
-        //                 &range.lookup_advice,
-        //                 &range.q_lookup,
-        //                 &mut region,
-        //                 Default::default(),
-        //             );
-        //             *circuit.break_points.borrow_mut() = assignments.break_points;
-        //             assigned_advices = assignments.assigned_advices;
-        //             Ok(())
-        //         },
-        //     )
-        //     .unwrap();
-
-        // expose public instances
-        // let mut layouter = layouter.namespace(|| "expose");
-        // for (i, instance) in self.assigned_instances.iter().enumerate() {
-        //     let cell = instance.cell.unwrap();
-        //     let (cell, _) = assigned_advices
-        //         .get(&(cell.context_id, cell.offset))
-        //         .expect("instance not assigned");
-        //     layouter.constrain_instance(*cell, config.instance, i);
-        // }
-
-        // let mut pool = self.inner.pool(0);
-        // self.tcc_chip.assign_constant(&mut pool, C::Scalar::ZERO).unwrap()
-        // self.tcc_chip.assign_constant(&mut pool, C::Scalar::ZERO).unwrap()
+        //let builder = self.build(); //let builder = self.inner.pool(0); 
 
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
+
+        self.inner.borrow_mut().synthesize(config.clone(), layouter.namespace(|| ""));
+        //BaseCircuitBuilder::synthesize(self, config.clone(), layouter.namespace(|| ""));
+
         Ok(())
     }
 }
@@ -1124,6 +978,8 @@ pub fn preprocess<'a, C, P1, P2, S1, S2, AT1, AT2>(
     secondary_step_circuit: S2,
     chip_primary: Chip<'a, C>,
     chip_secondary: Chip<'a, C::Secondary>,
+    builder_primary: BaseCircuitBuilder<C::Scalar>,
+    builder_secondary: BaseCircuitBuilder<<<C as TwoChainCurve>::Secondary as CurveAffine>::ScalarExt>,
     circuit_params: BaseCircuitParams,
     mut rng: impl RngCore,
 ) -> Result<
@@ -1165,7 +1021,7 @@ where
     let primary_param = P1::setup(1 << primary_num_vars, 0, &mut rng).unwrap();
     let secondary_param = P2::setup(1 << secondary_num_vars, 0, &mut rng).unwrap();
 
-    let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, chip_primary, None, circuit_params.clone());
+    let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, chip_primary, None, builder_primary);
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, circuit_params.clone());
 
@@ -1181,7 +1037,7 @@ where
         secondary_step_circuit,
         chip_secondary,
         Some(ProtostarAccumulationVerifierParam::from(&primary_vp)),
-        circuit_params.clone(),
+        builder_secondary,
     );
     
     let mut secondary_circuit =

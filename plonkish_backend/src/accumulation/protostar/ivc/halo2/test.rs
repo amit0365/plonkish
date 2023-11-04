@@ -158,7 +158,6 @@ where
         ),
         Error,
     > {
-        println!("step circuit trivial circuit synthesize");
         Ok((Vec::new(), Vec::new()))
     }
 }
@@ -421,7 +420,9 @@ fn run_protostar_hyperplonk_ivc<C, P1, P2>(
     num_steps: usize,
     chip_primary: Chip<C>,
     chip_secondary: Chip<<C as TwoChainCurve>::Secondary>,
-    circuit_params: BaseCircuitParams
+    builder_primary: BaseCircuitBuilder<C::Scalar>,
+    builder_secondary:BaseCircuitBuilder<<<C as TwoChainCurve>::Secondary as CurveAffine>::ScalarExt>,
+    circuit_params: BaseCircuitParams,
 ) -> (
     ProtostarIvcVerifierParam<
         C,
@@ -478,7 +479,9 @@ where
         TrivialCircuit::default(),
         chip_primary,
         chip_secondary,
-        circuit_params, 
+        builder_primary,
+        builder_secondary,
+        circuit_params.clone(), 
         seeded_std_rng(),
     )
     .unwrap();
@@ -574,41 +577,35 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_STEPS: usize = 3;
 
     let circuit_params = BaseCircuitParams {
-            k: 14,
-            num_advice_per_phase: vec![5],
+            k: NUM_VARS,
+            num_advice_per_phase: vec![7],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
             lookup_bits: Some(8),
             num_instance_columns: 1,
         };
 
-    let mut builder_primary = RangeCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Prover)
-    .use_k(10)
-    .use_lookup_bits(8);
-
+    let mut builder_primary = BaseCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Prover).use_params(circuit_params.clone());
     let range_primary = builder_primary.range_chip();
     let gate_chip_primary = GateChip::<bn256::Fr>::new();
     let base_chip_primary = FpChip::<bn256::Fr, bn256::Fq>::new(&range_primary, NUM_LIMB_BITS, NUM_LIMBS);
     let native_chip_primary = NativeFieldChip::new(&range_primary);
     let ecc_chip_primary = EccChip::new(&native_chip_primary);
-    let chip_primary = strawman::Chip::<bn256::G1Affine>::create(gate_chip_primary, &base_chip_primary, &ecc_chip_primary);
+    let chip_primary = strawman::Chip::<bn256::G1Affine>::create(gate_chip_primary, base_chip_primary, ecc_chip_primary);
 
-    let mut builder_secondary = RangeCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Prover)
-    .use_k(10)
-    .use_lookup_bits(8);
-
+    let mut builder_secondary = BaseCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Prover).use_params(circuit_params.clone());
     let range_secondary = builder_secondary.range_chip();
     let gate_chip_secondary = GateChip::<grumpkin::Fr>::new();
     let base_chip_secondary = FpChip::<grumpkin::Fr, grumpkin::Fq>::new(&range_secondary, NUM_LIMB_BITS, NUM_LIMBS);
     let native_chip_secondary = NativeFieldChip::new(&range_secondary);
     let ecc_chip_secondary = EccChip::new(&native_chip_secondary);
-    let chip_secondary = strawman::Chip::<grumpkin::G1Affine>::create(gate_chip_secondary, &base_chip_secondary, &ecc_chip_secondary);
+    let chip_secondary = strawman::Chip::<grumpkin::G1Affine>::create(gate_chip_secondary, base_chip_secondary, ecc_chip_secondary);
 
     run_protostar_hyperplonk_ivc::<
         bn256::G1Affine,
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
-    >(NUM_VARS, NUM_STEPS,chip_primary, chip_secondary, circuit_params);
+    >(NUM_VARS, NUM_STEPS,chip_primary, chip_secondary, builder_primary, builder_secondary, circuit_params);
 }
 
 // #[test]
@@ -1058,11 +1055,11 @@ pub mod strawman {
         C::Scalar: BigPrimeField,
         C::Base: BigPrimeField,
     {   
+        //pub range_chip: RangeChip<C::Scalar>,
         pub gate_chip: GateChip<C::Scalar>,
-        pub base_chip: &'a FpChip<'a, C::Scalar, C::Base>,
-        pub ecc_chip: &'a EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
-        // pub instance: Column<Instance>,
-        _marker: PhantomData<C>,
+        pub base_chip: FpChip<'a, C::Scalar, C::Base>,
+        //pub native_chip: NativeFieldChip<'a, C::Scalar>,
+        pub ecc_chip: EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
     }
 
     impl<'a, C: TwoChainCurve> Chip<'a, C> 
@@ -1071,16 +1068,18 @@ pub mod strawman {
         C::Base: BigPrimeField,  
     {
 
-        pub fn create(gate_chip: GateChip<C::Scalar>, 
-            base_chip: &'a FpChip<'a, C::Scalar, C::Base>, 
-            ecc_chip: &'a EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
+        pub fn create(//range_chip: RangeChip<C::Scalar>,
+            gate_chip: GateChip<C::Scalar>, 
+            base_chip: FpChip<'a, C::Scalar, C::Base>, 
+            //native_chip: NativeFieldChip<'a, C::Scalar>, 
+            ecc_chip: EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
             ) -> Self {
                 Self {
+                    //range_chip,
                     gate_chip,
                     base_chip,
+                    //native_chip,
                     ecc_chip,
-                    //instance: config.instance, config: Config
-                    _marker: PhantomData,
                 }
             }
 

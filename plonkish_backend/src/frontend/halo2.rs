@@ -241,8 +241,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             challenges,
             row_mapping: &self.row_mapping,
         };
-        // println!("phase {:?}", phase);
-        // println!("C_FloorPlanner_synthesize_synthesize");
+
         C::FloorPlanner::synthesize(
             &mut witness_collector,
             &self.circuit,
@@ -287,7 +286,6 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
-        // println!("PreprocessCollector_halo2_frontend enable_selector");
         let Some(row) = self.row_mapping.get(row).copied() else {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k});
         };
@@ -317,7 +315,6 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
-        // println!("PreprocessCollector_halo2_frontend assign_advice");
         Ok(())
     }
 
@@ -334,7 +331,6 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
-        // println!("PreprocessCollector_halo2_frontend assign_fixed");
         let Some(row) = self.row_mapping.get(row).copied() else {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
         };
@@ -355,7 +351,6 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         rhs_column: Column<Any>,
         rhs_row: usize,
     ) -> Result<(), Error> {
-        // println!("PreprocessCollector_halo2_frontend copy");
         let Some(lhs_row) = self.row_mapping.get(lhs_row).copied() else {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
         };
@@ -372,7 +367,6 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         from_row: usize,
         to: Value<Assigned<F>>,
     ) -> Result<(), Error> {
-        // println!("PreprocessCollector_halo2_frontend fill_from_row");
         let Some(_) = self.row_mapping.get(from_row) else {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
         };
@@ -510,7 +504,6 @@ impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
-        // println!("WitnessCollector_halo2_frontend enable_selector");
         Ok(())
     }
 
@@ -535,7 +528,6 @@ impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
-        // println!("WitnessCollector_halo2_frontend assign_advice");
         if self.phase != column.column_type().phase() {
             return Ok(());
         }
@@ -566,12 +558,10 @@ impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
-        // println!("WitnessCollector_halo2_frontend assign_fixed");
         Ok(())
     }
 
     fn copy(&mut self, _: Column<Any>, _: usize, _: Column<Any>, _: usize) -> Result<(), Error> {
-        // println!("WitnessCollector_halo2_frontend copy");
         Ok(())
     }
 
@@ -581,7 +571,6 @@ impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
         _: usize,
         _: Value<Assigned<F>>,
     ) -> Result<(), Error> {
-        // println!("WitnessCollector_halo2_frontend fill_from_row");
         Ok(())
     }
 

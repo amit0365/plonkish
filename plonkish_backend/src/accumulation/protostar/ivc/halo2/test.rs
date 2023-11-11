@@ -486,7 +486,6 @@ where
     )
     .unwrap();
 
-    println!("end_preprocess");
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
         &ivc_pp, 
         &mut primary_circuit,
@@ -495,7 +494,6 @@ where
         seeded_std_rng(),
     )
     .unwrap();
-    // println!("end_prove_steps");
 
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();
@@ -582,9 +580,9 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
             num_advice_per_phase: vec![36],
-            num_lookup_advice_per_phase: vec![1],
+            num_lookup_advice_per_phase: vec![1, 0 ,0],
             num_fixed: 1,
-            lookup_bits: Some(NUM_VARS - 1),
+            lookup_bits: Some(13),
             num_instance_columns: 1,
         };
 
@@ -611,6 +609,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
     >(NUM_VARS, NUM_STEPS, chip_primary, chip_secondary, builder_primary, builder_secondary, circuit_params);
+
 }
 
 // #[test]

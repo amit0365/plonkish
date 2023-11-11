@@ -1,1 +1,2150 @@
    Compiling plonkish_backend v0.1.0 (/Users/ak36/Desktop/bunz/plonkish/plonkish_backend)
+    Finished release [optimized] target(s) in 18.38s
+     Running unittests src/lib.rs (target/release/deps/plonkish_backend-e73c27a1e0e203a6)
+
+running 1 test
+[2023-11-11T02:39:57Z INFO  halo2_base::gates::flex_gate] Poisoned rows after FlexGateConfig::configure 9
+[2023-11-11T02:39:57Z INFO  halo2_base::gates::range] Poisoned rows after RangeConfig::configure 9
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................18.003ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................16.925ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.661ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.305ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.377ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.526ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.543ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.494ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.249ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.495ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.533ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.699ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.518ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.075ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.369ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.660ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.731ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.820ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.648ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.188ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.362ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.423ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.197ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.694ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.669ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.527ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.790ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.905ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.623ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.562ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.546ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.805ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.335ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.815ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.155ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................12.964ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................17.388ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.943ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.744ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................23.947ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................25.570ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................24.295ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.261ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.383ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................31.752ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.108ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.493ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................31.944ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................27.694ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.396ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................28.953ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.311ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................32.179ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.232ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.816ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.083ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.026ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................31.687ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.136ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................31.911ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.143ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.855ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.241ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.261ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.906ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.750ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................27.529ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.747ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................28.470ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.429ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.950ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.557ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.914ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................27.070ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................27.379ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.622ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................27.798ms
+[2023-11-11T02:39:59Z INFO  halo2_base::gates::flex_gate] Poisoned rows after FlexGateConfig::configure 9
+[2023-11-11T02:39:59Z INFO  halo2_base::gates::range] Poisoned rows after RangeConfig::configure 9
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................16.932ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.591ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.544ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.893ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.379ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.920ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.669ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.179ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.332ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.611ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.037ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.806ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.560ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.910ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.490ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.763ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................15.039ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.284ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.855ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.996ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.367ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.999ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.574ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.747ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.635ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.523ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.734ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.807ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.681ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.647ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.817ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................16.365ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.761ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.839ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.538ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.143ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.739ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.443ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................22.549ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................22.282ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................20.797ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.158ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.133ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.498ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................25.937ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.003ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.297ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.663ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.049ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................25.930ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.877ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.165ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.185ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.418ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................28.738ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.350ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.177ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.415ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.990ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.387ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................27.136ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.271ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................31.271ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.939ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.425ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.390ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.146ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.200ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.260ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.278ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................25.973ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.327ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.341ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................27.377ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.287ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.483ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................19.586ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.261ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.316ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.197ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.982ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.261ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.020ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.617ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.523ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................15.290ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.691ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.764ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.926ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................15.125ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.784ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.991ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.654ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.602ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................15.493ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.427ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................13.866ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.646ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................15.638ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.673ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.393ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.537ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................15.290ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.834ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................15.814ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................14.749ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................15.511ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................17.755ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................18.809ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................18.032ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................20.617ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.683ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.734ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................22.159ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................25.684ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.881ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................32.698ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................38.826ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................45.044ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................35.854ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................34.338ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................34.161ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................37.987ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................34.175ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................40.196ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.802ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.787ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.042ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.281ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................34.393ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................32.879ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................31.760ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................28.681ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.860ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.500ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.954ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.501ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................32.432ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................31.669ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.898ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.617ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................31.749ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................32.280ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................35.312ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................30.533ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.329ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................33.253ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.910ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................26.653ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................29.514ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................28.503ms
+Start:   variable_base_msm-65536
+End:     variable_base_msm-65536 ...................................................28.411ms
+Start:   prove_accumulation_from_nark-primary-16
+··Start:   witness_collector-0
+··End:     witness_collector-0 .....................................................2.296s
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................140.673ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................120.494ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................154.281ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................167.198ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................161.024ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................161.901ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................85.013ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................88.084ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................88.647ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.512ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.872ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................84.450ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................90.017ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................104.683ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................86.129ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.423ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.706ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.364ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.423ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................95.856ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................96.693ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................102.372ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................97.146ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................84.873ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.067ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.919ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.500ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................79.297ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................130.093ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................145.060ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................148.152ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................144.804ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................146.437ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................147.164ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................145.354ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................130.982ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................16.225ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................238.541µs
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................392.916µs
+··End:     lookup_compressed_polys-1 ...............................................1.079ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................3.123ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................14.797ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................3.375ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................183.199ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................34.801ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................2.994ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................162.252ms
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................1.273ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................559.397ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................12.170ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................417.792µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.291µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.334µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.459µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.666µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.291µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.541µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.666µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.334µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.791µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.416µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.500µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................417.708µs
+··End:     fold_compressed .........................................................36.013ms
+End:     prove_accumulation_from_nark-primary-16 ...................................7.395s
+Start:   prove_accumulation_from_nark-secondary-16
+··Start:   witness_collector-0
+··End:     witness_collector-0 .....................................................2.318s
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................129.747ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................120.797ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................144.426ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................147.152ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................146.293ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................136.807ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.871ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................98.373ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................103.437ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.838ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................104.784ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................93.118ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................93.158ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................97.449ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................87.929ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.417ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................98.411ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................111.775ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................85.725ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.907ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................95.905ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................99.584ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.920ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................88.928ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................87.312ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................85.235ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................96.229ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................87.996ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................135.617ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................157.659ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................156.134ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................138.373ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................139.883ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................147.945ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................160.600ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................134.317ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................16.217ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................198.375µs
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................3.277ms
+··End:     lookup_compressed_polys-1 ...............................................4.010ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................3.110ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................14.689ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................6.401ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................157.012ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................21.291ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................2.659ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................175.385ms
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................1.331ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................511.160ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................12.042ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................402.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.209µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................383.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.916µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.834µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.334µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.209µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.667µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.041µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.250µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................413.375µs
+··End:     fold_compressed .........................................................36.022ms
+End:     prove_accumulation_from_nark-secondary-16 .................................7.371s
+Start:   prove_accumulation_from_nark-primary-16
+··Start:   witness_collector-0
+··End:     witness_collector-0 .....................................................2.442s
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................148.205ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................111.067ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................149.990ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................151.655ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................157.103ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................143.888ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................95.137ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................90.244ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.147ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................93.446ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................96.827ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.099ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.179ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................111.573ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.002ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................84.403ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................87.083ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................86.305ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................86.462ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................87.022ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................97.195ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.396ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.084ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.445ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.357ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................87.021ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................85.598ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................83.909ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................132.326ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................147.002ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................143.667ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................145.560ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................153.078ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................162.709ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................153.073ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................126.500ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................13.122ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................276.292µs
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................582.667µs
+··End:     lookup_compressed_polys-1 ...............................................1.454ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................3.254ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................13.205ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................3.028ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................156.479ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................19.497ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................2.788ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................158.581ms
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................1.856ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................882.942ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................161.616ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.792µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.916µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.416µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.959µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.459µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.541µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.667µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.834µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.917µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................416.250µs
+··End:     fold_compressed .........................................................37.128ms
+End:     prove_accumulation_from_nark-primary-16 ...................................7.933s
+Start:   prove_accumulation_from_nark-secondary-16
+··Start:   witness_collector-0
+··End:     witness_collector-0 .....................................................2.138s
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................132.430ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................114.850ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................151.099ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................153.625ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................147.520ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................136.716ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................86.114ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.733ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................97.944ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................86.837ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.606ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................84.989ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................90.673ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................96.244ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................83.219ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................84.037ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................101.667ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................122.685ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................114.460ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................121.459ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................110.588ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................103.575ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................100.693ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................100.787ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................98.256ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................88.720ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.261ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.965ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................142.518ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................156.134ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................156.381ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................161.451ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................163.787ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................165.867ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................156.546ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................149.581ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................14.708ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................309.959µs
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................299.084µs
+··End:     lookup_compressed_polys-1 ...............................................1.149ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................2.944ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................14.043ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................3.073ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................185.948ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................24.903ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................3.001ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................182.098ms
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................7.922ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................948.551ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................211.163ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................411.791µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.083µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.209µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.209µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.667µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.041µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.083µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.291µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................705.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.959µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................413.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................418.416µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.667µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................400.834µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.584µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.500µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................444.208µs
+··End:     fold_compressed .........................................................41.553ms
+End:     prove_accumulation_from_nark-secondary-16 .................................8.021s
+Start:   prove_accumulation_from_nark-primary-16
+··Start:   witness_collector-0
+··End:     witness_collector-0 .....................................................2.195s
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................132.416ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................110.429ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................159.816ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................149.036ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................152.743ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................141.163ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................93.304ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................84.712ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.351ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.349ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................93.413ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................101.010ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................87.681ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................90.794ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.169ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................93.748ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................98.390ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................95.064ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.357ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.712ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................96.192ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................101.770ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................104.195ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.515ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................90.231ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.683ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................102.635ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................83.481ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................145.269ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................166.778ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................154.702ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................142.318ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................150.990ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................164.883ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................167.598ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................138.884ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................16.402ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................241.000µs
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................563.666µs
+··End:     lookup_compressed_polys-1 ...............................................1.288ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................3.317ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................13.264ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................7.018ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................197.345ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................26.316ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................2.558ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................174.921ms
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................1.551ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................986.734ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................170.307ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................414.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.834µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................405.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.792µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................404.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................420.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.291µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................430.791µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................420.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................401.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................462.083µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................401.833µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................425.167µs
+··End:     fold_compressed .........................................................37.246ms
+End:     prove_accumulation_from_nark-primary-16 ...................................7.966s
+Start:   prove_decider-primary-16
+··Start:   permutation_z_polys-38
+····Start:   products
+····End:     products ..............................................................78.396ms
+····Start:   z_polys
+····End:     z_polys ...............................................................66.761ms
+····Start:   into_bh_order
+····End:     into_bh_order .........................................................3.164ms
+··End:     permutation_z_polys-38 ..................................................155.243ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................167.636ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................177.647ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................210.274ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................171.250ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................207.682ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................240.141ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................171.216ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................168.332ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................178.835ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................203.430ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................178.412ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................217.587ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................171.843ms
+··Start:   sum_check_prove-16-5
+····Start:   sum_check_prove_round-0
+····End:     sum_check_prove_round-0 ...............................................672.174ms
+····Start:   sum_check_next_round-0
+····End:     sum_check_next_round-0 ................................................128.048ms
+····Start:   sum_check_prove_round-1
+····End:     sum_check_prove_round-1 ...............................................320.982ms
+····Start:   sum_check_next_round-1
+····End:     sum_check_next_round-1 ................................................44.049ms
+····Start:   sum_check_prove_round-2
+····End:     sum_check_prove_round-2 ...............................................151.708ms
+····Start:   sum_check_next_round-2
+····End:     sum_check_next_round-2 ................................................27.488ms
+····Start:   sum_check_prove_round-3
+····End:     sum_check_prove_round-3 ...............................................75.697ms
+····Start:   sum_check_next_round-3
+····End:     sum_check_next_round-3 ................................................13.821ms
+····Start:   sum_check_prove_round-4
+····End:     sum_check_prove_round-4 ...............................................39.499ms
+····Start:   sum_check_next_round-4
+····End:     sum_check_next_round-4 ................................................10.848ms
+····Start:   sum_check_prove_round-5
+····End:     sum_check_prove_round-5 ...............................................18.809ms
+····Start:   sum_check_next_round-5
+····End:     sum_check_next_round-5 ................................................8.620ms
+····Start:   sum_check_prove_round-6
+····End:     sum_check_prove_round-6 ...............................................11.174ms
+····Start:   sum_check_next_round-6
+····End:     sum_check_next_round-6 ................................................7.393ms
+····Start:   sum_check_prove_round-7
+····End:     sum_check_prove_round-7 ...............................................7.102ms
+····Start:   sum_check_next_round-7
+····End:     sum_check_next_round-7 ................................................6.642ms
+····Start:   sum_check_prove_round-8
+····End:     sum_check_prove_round-8 ...............................................4.071ms
+····Start:   sum_check_next_round-8
+····End:     sum_check_next_round-8 ................................................6.539ms
+····Start:   sum_check_prove_round-9
+····End:     sum_check_prove_round-9 ...............................................1.533ms
+····Start:   sum_check_next_round-9
+····End:     sum_check_next_round-9 ................................................6.209ms
+····Start:   sum_check_prove_round-10
+····End:     sum_check_prove_round-10 ..............................................877.667µs
+····Start:   sum_check_next_round-10
+····End:     sum_check_next_round-10 ...............................................308.666µs
+····Start:   sum_check_prove_round-11
+····End:     sum_check_prove_round-11 ..............................................437.167µs
+····Start:   sum_check_next_round-11
+····End:     sum_check_next_round-11 ...............................................167.750µs
+····Start:   sum_check_prove_round-12
+····End:     sum_check_prove_round-12 ..............................................254.417µs
+····Start:   sum_check_next_round-12
+····End:     sum_check_next_round-12 ...............................................107.000µs
+····Start:   sum_check_prove_round-13
+····End:     sum_check_prove_round-13 ..............................................191.292µs
+····Start:   sum_check_next_round-13
+····End:     sum_check_next_round-13 ...............................................72.458µs
+····Start:   sum_check_prove_round-14
+····End:     sum_check_prove_round-14 ..............................................141.958µs
+····Start:   sum_check_next_round-14
+····End:     sum_check_next_round-14 ...............................................51.417µs
+····Start:   sum_check_prove_round-15
+····End:     sum_check_prove_round-15 ..............................................132.583µs
+····Start:   sum_check_next_round-15
+····End:     sum_check_next_round-15 ...............................................43.542µs
+··End:     sum_check_prove-16-5 ....................................................1.573s
+··Start:   evals-241
+··End:     evals-241 ...............................................................52.077ms
+··Start:   pcs_batch_open-639
+····Start:   merged_polys
+····End:     merged_polys ..........................................................256.967ms
+····Start:   sum_check_prove-16-2
+······Start:   sum_check_prove_round-0
+······End:     sum_check_prove_round-0 .............................................7.373ms
+······Start:   sum_check_next_round-0
+······End:     sum_check_next_round-0 ..............................................9.633ms
+······Start:   sum_check_prove_round-1
+······End:     sum_check_prove_round-1 .............................................4.381ms
+······Start:   sum_check_next_round-1
+······End:     sum_check_next_round-1 ..............................................5.946ms
+······Start:   sum_check_prove_round-2
+······End:     sum_check_prove_round-2 .............................................2.524ms
+······Start:   sum_check_next_round-2
+······End:     sum_check_next_round-2 ..............................................3.372ms
+······Start:   sum_check_prove_round-3
+······End:     sum_check_prove_round-3 .............................................1.618ms
+······Start:   sum_check_next_round-3
+······End:     sum_check_next_round-3 ..............................................1.904ms
+······Start:   sum_check_prove_round-4
+······End:     sum_check_prove_round-4 .............................................1.007ms
+······Start:   sum_check_next_round-4
+······End:     sum_check_next_round-4 ..............................................1.363ms
+······Start:   sum_check_prove_round-5
+······End:     sum_check_prove_round-5 .............................................604.666µs
+······Start:   sum_check_next_round-5
+······End:     sum_check_next_round-5 ..............................................1.086ms
+······Start:   sum_check_prove_round-6
+······End:     sum_check_prove_round-6 .............................................602.334µs
+······Start:   sum_check_next_round-6
+······End:     sum_check_next_round-6 ..............................................847.834µs
+······Start:   sum_check_prove_round-7
+······End:     sum_check_prove_round-7 .............................................458.250µs
+······Start:   sum_check_next_round-7
+······End:     sum_check_next_round-7 ..............................................859.375µs
+······Start:   sum_check_prove_round-8
+······End:     sum_check_prove_round-8 .............................................391.625µs
+······Start:   sum_check_next_round-8
+······End:     sum_check_next_round-8 ..............................................826.834µs
+······Start:   sum_check_prove_round-9
+······End:     sum_check_prove_round-9 .............................................396.542µs
+······Start:   sum_check_next_round-9
+······End:     sum_check_next_round-9 ..............................................705.542µs
+······Start:   sum_check_prove_round-10
+······End:     sum_check_prove_round-10 ............................................380.333µs
+······Start:   sum_check_next_round-10
+······End:     sum_check_next_round-10 .............................................30.875µs
+······Start:   sum_check_prove_round-11
+······End:     sum_check_prove_round-11 ............................................358.500µs
+······Start:   sum_check_next_round-11
+······End:     sum_check_next_round-11 .............................................16.042µs
+······Start:   sum_check_prove_round-12
+······End:     sum_check_prove_round-12 ............................................284.250µs
+······Start:   sum_check_next_round-12
+······End:     sum_check_next_round-12 .............................................8.583µs
+······Start:   sum_check_prove_round-13
+······End:     sum_check_prove_round-13 ............................................4.084µs
+······Start:   sum_check_next_round-13
+······End:     sum_check_next_round-13 .............................................4.417µs
+······Start:   sum_check_prove_round-14
+······End:     sum_check_prove_round-14 ............................................2.250µs
+······Start:   sum_check_next_round-14
+······End:     sum_check_next_round-14 .............................................2.542µs
+······Start:   sum_check_prove_round-15
+······End:     sum_check_prove_round-15 ............................................1.417µs
+······Start:   sum_check_next_round-15
+······End:     sum_check_next_round-15 .............................................1.583µs
+····End:     sum_check_prove-16-2 ..................................................61.301ms
+····Start:   g_prime
+····End:     g_prime ...............................................................6.017ms
+····Start:   variable_base_msm-32768
+····End:     variable_base_msm-32768 ...............................................94.839ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................61.709ms
+····Start:   variable_base_msm-8192
+····End:     variable_base_msm-8192 ................................................35.767ms
+····Start:   variable_base_msm-4096
+····End:     variable_base_msm-4096 ................................................19.434ms
+····Start:   variable_base_msm-2048
+····End:     variable_base_msm-2048 ................................................12.751ms
+····Start:   variable_base_msm-1024
+····End:     variable_base_msm-1024 ................................................7.247ms
+····Start:   variable_base_msm-512
+····End:     variable_base_msm-512 .................................................4.630ms
+····Start:   variable_base_msm-256
+····End:     variable_base_msm-256 .................................................2.673ms
+····Start:   variable_base_msm-128
+····End:     variable_base_msm-128 .................................................2.035ms
+····Start:   variable_base_msm-64
+····End:     variable_base_msm-64 ..................................................1.554ms
+····Start:   variable_base_msm-32
+····End:     variable_base_msm-32 ..................................................907.834µs
+····Start:   variable_base_msm-16
+····End:     variable_base_msm-16 ..................................................969.709µs
+····Start:   variable_base_msm-8
+····End:     variable_base_msm-8 ...................................................642.667µs
+····Start:   variable_base_msm-4
+····End:     variable_base_msm-4 ...................................................503.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................435.500µs
+····Start:   variable_base_msm-65534
+····End:     variable_base_msm-65534 ...............................................163.900ms
+····Start:   variable_base_msm-65535
+····End:     variable_base_msm-65535 ...............................................175.360ms
+··End:     pcs_batch_open-639 ......................................................937.190ms
+End:     prove_decider-primary-16 ..................................................5.189s
+Start:   prove_decider_with_last_nark-secondary-16
+··Start:   witness_collector-0
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc has been running for over 60 seconds
+··End:     witness_collector-0 .....................................................2.310s
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................141.198ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................132.499ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................155.203ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................155.272ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................181.158ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................146.049ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................96.260ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................88.621ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................87.536ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.882ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.846ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................106.729ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................91.411ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................93.286ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.725ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.035ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................95.828ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................94.476ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................97.642ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................114.533ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................105.664ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.912ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................89.865ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................93.489ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................90.684ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................92.695ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................86.266ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................79.543ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................129.288ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................143.849ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................151.919ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................156.612ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................145.234ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................147.006ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................145.718ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................118.627ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................13.432ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................239.292µs
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................766.375µs
+··End:     lookup_compressed_polys-1 ...............................................1.463ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................3.109ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................13.421ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................3.338ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................173.312ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................23.605ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................2.561ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................155.130ms
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................1.591ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................862.970ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................157.137ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................404.792µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.041µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.459µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.083µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................394.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.666µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.541µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................399.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................403.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................423.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.041µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................399.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.541µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.584µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.584µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.584µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................404.000µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................412.167µs
+··End:     fold_compressed .........................................................37.471ms
+··Start:   permutation_z_polys-38
+····Start:   products
+····End:     products ..............................................................89.559ms
+····Start:   z_polys
+····End:     z_polys ...............................................................73.644ms
+····Start:   into_bh_order
+····End:     into_bh_order .........................................................3.753ms
+··End:     permutation_z_polys-38 ..................................................167.745ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................160.111ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................161.855ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................161.645ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................156.948ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................155.544ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................166.302ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................165.384ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................158.369ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................157.389ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................154.389ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................162.956ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................154.511ms
+··Start:   variable_base_msm-65536
+··End:     variable_base_msm-65536 .................................................157.157ms
+··Start:   sum_check_prove-16-5
+····Start:   sum_check_prove_round-0
+····End:     sum_check_prove_round-0 ...............................................611.211ms
+····Start:   sum_check_next_round-0
+····End:     sum_check_next_round-0 ................................................135.532ms
+····Start:   sum_check_prove_round-1
+····End:     sum_check_prove_round-1 ...............................................301.479ms
+····Start:   sum_check_next_round-1
+····End:     sum_check_next_round-1 ................................................63.664ms
+····Start:   sum_check_prove_round-2
+····End:     sum_check_prove_round-2 ...............................................159.102ms
+····Start:   sum_check_next_round-2
+····End:     sum_check_next_round-2 ................................................26.929ms
+····Start:   sum_check_prove_round-3
+····End:     sum_check_prove_round-3 ...............................................74.478ms
+····Start:   sum_check_next_round-3
+····End:     sum_check_next_round-3 ................................................13.347ms
+····Start:   sum_check_prove_round-4
+····End:     sum_check_prove_round-4 ...............................................39.377ms
+····Start:   sum_check_next_round-4
+····End:     sum_check_next_round-4 ................................................10.694ms
+····Start:   sum_check_prove_round-5
+····End:     sum_check_prove_round-5 ...............................................18.833ms
+····Start:   sum_check_next_round-5
+····End:     sum_check_next_round-5 ................................................8.520ms
+····Start:   sum_check_prove_round-6
+····End:     sum_check_prove_round-6 ...............................................11.276ms
+····Start:   sum_check_next_round-6
+····End:     sum_check_next_round-6 ................................................7.172ms
+····Start:   sum_check_prove_round-7
+····End:     sum_check_prove_round-7 ...............................................5.642ms
+····Start:   sum_check_next_round-7
+····End:     sum_check_next_round-7 ................................................6.691ms
+····Start:   sum_check_prove_round-8
+····End:     sum_check_prove_round-8 ...............................................4.072ms
+····Start:   sum_check_next_round-8
+····End:     sum_check_next_round-8 ................................................6.446ms
+····Start:   sum_check_prove_round-9
+····End:     sum_check_prove_round-9 ...............................................2.576ms
+····Start:   sum_check_next_round-9
+····End:     sum_check_next_round-9 ................................................5.495ms
+····Start:   sum_check_prove_round-10
+····End:     sum_check_prove_round-10 ..............................................1.291ms
+····Start:   sum_check_next_round-10
+····End:     sum_check_next_round-10 ...............................................278.875µs
+····Start:   sum_check_prove_round-11
+····End:     sum_check_prove_round-11 ..............................................390.958µs
+····Start:   sum_check_next_round-11
+····End:     sum_check_next_round-11 ...............................................158.708µs
+····Start:   sum_check_prove_round-12
+····End:     sum_check_prove_round-12 ..............................................288.000µs
+····Start:   sum_check_next_round-12
+····End:     sum_check_next_round-12 ...............................................109.000µs
+····Start:   sum_check_prove_round-13
+····End:     sum_check_prove_round-13 ..............................................167.334µs
+····Start:   sum_check_next_round-13
+····End:     sum_check_next_round-13 ...............................................69.583µs
+····Start:   sum_check_prove_round-14
+····End:     sum_check_prove_round-14 ..............................................151.667µs
+····Start:   sum_check_next_round-14
+····End:     sum_check_next_round-14 ...............................................52.666µs
+····Start:   sum_check_prove_round-15
+····End:     sum_check_prove_round-15 ..............................................128.959µs
+····Start:   sum_check_next_round-15
+····End:     sum_check_next_round-15 ...............................................44.667µs
+··End:     sum_check_prove-16-5 ....................................................1.524s
+··Start:   evals-241
+··End:     evals-241 ...............................................................51.986ms
+··Start:   pcs_batch_open-639
+····Start:   merged_polys
+····End:     merged_polys ..........................................................258.659ms
+····Start:   sum_check_prove-16-2
+······Start:   sum_check_prove_round-0
+······End:     sum_check_prove_round-0 .............................................7.535ms
+······Start:   sum_check_next_round-0
+······End:     sum_check_next_round-0 ..............................................9.350ms
+······Start:   sum_check_prove_round-1
+······End:     sum_check_prove_round-1 .............................................4.218ms
+······Start:   sum_check_next_round-1
+······End:     sum_check_next_round-1 ..............................................5.619ms
+······Start:   sum_check_prove_round-2
+······End:     sum_check_prove_round-2 .............................................2.679ms
+······Start:   sum_check_next_round-2
+······End:     sum_check_next_round-2 ..............................................3.454ms
+······Start:   sum_check_prove_round-3
+······End:     sum_check_prove_round-3 .............................................1.603ms
+······Start:   sum_check_next_round-3
+······End:     sum_check_next_round-3 ..............................................1.921ms
+······Start:   sum_check_prove_round-4
+······End:     sum_check_prove_round-4 .............................................1.079ms
+······Start:   sum_check_next_round-4
+······End:     sum_check_next_round-4 ..............................................1.288ms
+······Start:   sum_check_prove_round-5
+······End:     sum_check_prove_round-5 .............................................611.791µs
+······Start:   sum_check_next_round-5
+······End:     sum_check_next_round-5 ..............................................1.099ms
+······Start:   sum_check_prove_round-6
+······End:     sum_check_prove_round-6 .............................................548.125µs
+······Start:   sum_check_next_round-6
+······End:     sum_check_next_round-6 ..............................................882.166µs
+······Start:   sum_check_prove_round-7
+······End:     sum_check_prove_round-7 .............................................452.375µs
+······Start:   sum_check_next_round-7
+······End:     sum_check_next_round-7 ..............................................824.250µs
+······Start:   sum_check_prove_round-8
+······End:     sum_check_prove_round-8 .............................................381.666µs
+······Start:   sum_check_next_round-8
+······End:     sum_check_next_round-8 ..............................................765.708µs
+······Start:   sum_check_prove_round-9
+······End:     sum_check_prove_round-9 .............................................411.500µs
+······Start:   sum_check_next_round-9
+······End:     sum_check_next_round-9 ..............................................801.459µs
+······Start:   sum_check_prove_round-10
+······End:     sum_check_prove_round-10 ............................................396.500µs
+······Start:   sum_check_next_round-10
+······End:     sum_check_next_round-10 .............................................31.041µs
+······Start:   sum_check_prove_round-11
+······End:     sum_check_prove_round-11 ............................................299.750µs
+······Start:   sum_check_next_round-11
+······End:     sum_check_next_round-11 .............................................16.292µs
+······Start:   sum_check_prove_round-12
+······End:     sum_check_prove_round-12 ............................................216.750µs
+······Start:   sum_check_next_round-12
+······End:     sum_check_next_round-12 .............................................8.584µs
+······Start:   sum_check_prove_round-13
+······End:     sum_check_prove_round-13 ............................................4.208µs
+······Start:   sum_check_next_round-13
+······End:     sum_check_next_round-13 .............................................4.458µs
+······Start:   sum_check_prove_round-14
+······End:     sum_check_prove_round-14 ............................................2.292µs
+······Start:   sum_check_next_round-14
+······End:     sum_check_next_round-14 .............................................2.500µs
+······Start:   sum_check_prove_round-15
+······End:     sum_check_prove_round-15 ............................................1.458µs
+······Start:   sum_check_next_round-15
+······End:     sum_check_next_round-15 .............................................1.666µs
+····End:     sum_check_prove-16-2 ..................................................60.317ms
+····Start:   g_prime
+····End:     g_prime ...............................................................5.839ms
+····Start:   variable_base_msm-32769
+····End:     variable_base_msm-32769 ...............................................84.412ms
+····Start:   variable_base_msm-32769
+····End:     variable_base_msm-32769 ...............................................84.594ms
+····Start:   variable_base_msm-16385
+····End:     variable_base_msm-16385 ...............................................57.939ms
+····Start:   variable_base_msm-16385
+····End:     variable_base_msm-16385 ...............................................57.572ms
+····Start:   variable_base_msm-8193
+····End:     variable_base_msm-8193 ................................................30.510ms
+····Start:   variable_base_msm-8193
+····End:     variable_base_msm-8193 ................................................34.100ms
+····Start:   variable_base_msm-4097
+····End:     variable_base_msm-4097 ................................................17.561ms
+····Start:   variable_base_msm-4097
+····End:     variable_base_msm-4097 ................................................17.986ms
+····Start:   variable_base_msm-2049
+····End:     variable_base_msm-2049 ................................................11.909ms
+····Start:   variable_base_msm-2049
+····End:     variable_base_msm-2049 ................................................10.725ms
+····Start:   variable_base_msm-1025
+····End:     variable_base_msm-1025 ................................................7.126ms
+····Start:   variable_base_msm-1025
+····End:     variable_base_msm-1025 ................................................7.093ms
+····Start:   variable_base_msm-513
+····End:     variable_base_msm-513 .................................................4.348ms
+····Start:   variable_base_msm-513
+····End:     variable_base_msm-513 .................................................4.344ms
+····Start:   variable_base_msm-257
+····End:     variable_base_msm-257 .................................................2.705ms
+····Start:   variable_base_msm-257
+····End:     variable_base_msm-257 .................................................2.831ms
+····Start:   variable_base_msm-129
+····End:     variable_base_msm-129 .................................................1.766ms
+····Start:   variable_base_msm-129
+····End:     variable_base_msm-129 .................................................1.722ms
+····Start:   variable_base_msm-65
+····End:     variable_base_msm-65 ..................................................1.315ms
+····Start:   variable_base_msm-65
+····End:     variable_base_msm-65 ..................................................1.216ms
+····Start:   variable_base_msm-33
+····End:     variable_base_msm-33 ..................................................926.375µs
+····Start:   variable_base_msm-33
+····End:     variable_base_msm-33 ..................................................982.042µs
+····Start:   variable_base_msm-17
+····End:     variable_base_msm-17 ..................................................840.917µs
+····Start:   variable_base_msm-17
+····End:     variable_base_msm-17 ..................................................845.458µs
+····Start:   variable_base_msm-9
+····End:     variable_base_msm-9 ...................................................778.083µs
+····Start:   variable_base_msm-9
+····End:     variable_base_msm-9 ...................................................769.542µs
+····Start:   variable_base_msm-5
+····End:     variable_base_msm-5 ...................................................531.042µs
+····Start:   variable_base_msm-5
+····End:     variable_base_msm-5 ...................................................532.583µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................463.000µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................464.041µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................432.667µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................430.417µs
+··End:     pcs_batch_open-639 ......................................................3.368s
+End:     prove_decider_with_last_nark-secondary-16 .................................15.074s
+thread 'accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc' panicked at plonkish_backend/src/accumulation/protostar/ivc/halo2/test.rs:557:5:
+assertion `left == right` failed
+  left: Err(InvalidSnark("Unmatched between sum_check output and query evaluation"))
+ right: Ok(())
+stack backtrace:
+   0:        0x104e49cfc - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x104e49cfc - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x104e49cfc - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x104e49cfc - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x104e660f4 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x104e660f4 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x104e47bec - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x104e49b38 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x104e49b38 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x104e4b41c - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x104e4b164 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x104e4b844 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x104e4b744 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x104e4a164 - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x104e4b4e0 - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x104e9a058 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x104e9a354 - core::panicking::assert_failed_inner::h3099ff63f64d1cf6
+  17:        0x104e7c82c - core::panicking::assert_failed::h5ded641cae3b0991
+  18:        0x104c3cbc0 - plonkish_backend::accumulation::protostar::ivc::halo2::test::run_protostar_hyperplonk_ivc::h0f5bfd7927871e57
+  19:        0x104c5d014 - plonkish_backend::accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc::h29eb495213f3108c
+  20:        0x104cc4f3c - core::ops::function::FnOnce::call_once::h125f9714958bf284
+  21:        0x104dae24c - core::ops::function::FnOnce::call_once::hd1a6c133ce596545
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/ops/function.rs:250:5
+  22:        0x104dae24c - test::__rust_begin_short_backtrace::h665c810724821113
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:628:18
+  23:        0x104dad328 - test::run_test_in_process::{{closure}}::h49df2da7fd660933
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:651:60
+  24:        0x104dad328 - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h69e5c8770946231d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panic/unwind_safe.rs:271:9
+  25:        0x104dad328 - std::panicking::try::do_call::ha5b3481f92cc2e29
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:504:40
+  26:        0x104dad328 - std::panicking::try::he8442f1203de8ddd
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:468:19
+  27:        0x104dad328 - std::panic::catch_unwind::h9c1b83088a22d612
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panic.rs:142:14
+  28:        0x104dad328 - test::run_test_in_process::ha5451a88473df7c1
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:651:27
+  29:        0x104dad328 - test::run_test::{{closure}}::h0e02b4f37b76b4ed
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:574:43
+  30:        0x104d80c10 - test::run_test::{{closure}}::h7bc13775c87fce78
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:602:41
+  31:        0x104d80c10 - std::sys_common::backtrace::__rust_begin_short_backtrace::ha3c3d76d59588e26
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:154:18
+  32:        0x104d853f4 - std::thread::Builder::spawn_unchecked_::{{closure}}::{{closure}}::h4c0dfb23f2c55574
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/thread/mod.rs:529:17
+  33:        0x104d853f4 - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::hb0bbe0e9b55f7cec
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panic/unwind_safe.rs:271:9
+  34:        0x104d853f4 - std::panicking::try::do_call::h377315edacc9eeb6
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:504:40
+  35:        0x104d853f4 - std::panicking::try::ha55e8f1d82f1cb2a
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:468:19
+  36:        0x104d853f4 - std::panic::catch_unwind::h73772324df73e810
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panic.rs:142:14
+  37:        0x104d853f4 - std::thread::Builder::spawn_unchecked_::{{closure}}::hbd9db33b0a843a4a
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/thread/mod.rs:528:30
+  38:        0x104d853f4 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h75f419748c4ccefc
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/ops/function.rs:250:5
+  39:        0x104e4f6cc - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  40:        0x104e4f6cc - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  41:        0x104e4f6cc - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  42:        0x18579c26c - __pthread_deallocate
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... FAILED
+
+failures:
+
+failures:
+    accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 75.24s
+
+error: test failed, to rerun pass `-p plonkish_backend --lib`

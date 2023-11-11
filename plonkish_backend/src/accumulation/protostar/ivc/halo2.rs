@@ -817,6 +817,7 @@ where
             &acc_prime,
         )?;
 
+        drop(binding);
         // todo impl constrain instance these 
         // tcc_chip.constrain_instance(builder, &h_prime, 1)?;
         // builder.main().constrain_equal(&h_ohs_from_incoming, 0)?;
@@ -889,7 +890,6 @@ where
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
         //self.inner.borrow_mut().calculate_params(Some(0));
         self.inner.borrow_mut().synthesize(config.clone(), layouter.namespace(|| ""));
-
         Ok(())
     }
 }
@@ -1029,7 +1029,6 @@ where
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
 
-    println!("primary_circuit_preprocess end");
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,
@@ -1046,7 +1045,6 @@ where
         secondary_circuit.circuit().inner.borrow_mut().clear();
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };
-    println!("secondary_circuit_preprocess end");
 
     primary_circuit.update_witness(|circuit| {
         circuit.avp = ProtostarAccumulationVerifierParam::from(&secondary_vp);
@@ -1056,7 +1054,6 @@ where
     primary_circuit.circuit().inner.borrow_mut().clear();
     let (primary_pp, primary_vp) =
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
-    println!("primary_circuit_preprocess rises");
 
     let vp_digest = fe_truncated_from_le_bytes(
         Keccak256::digest(bincode::serialize(&(&primary_vp, &secondary_vp)).unwrap()),
@@ -1064,7 +1061,6 @@ where
     );
     primary_circuit.update_witness(|circuit| circuit.init(vp_digest));
     secondary_circuit.update_witness(|circuit| circuit.init(fe_to_fe(vp_digest)));
-    println!("primary_circuit_update_witness");
 
     let ivc_pp = ProtostarIvcProverParam {
         primary_pp,
@@ -1156,7 +1152,6 @@ where
         };
         end_timer(timer);
 
-        // println!("secondary_circuit.update_witnes_start");
         secondary_circuit.update_witness(|circuit| {
             circuit.update(
                 primary_acc_x,
@@ -1165,7 +1160,6 @@ where
                 proof,
             );
         });
-        // println!("secondary_circuit.update_witnes_end");
 
         if step_idx != num_steps - 1 {
             let secondary_acc_x = secondary_acc.instance.clone();

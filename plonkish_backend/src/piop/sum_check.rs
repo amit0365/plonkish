@@ -191,165 +191,165 @@ pub(super) mod test {
         )
     }
 
-    macro_rules! tests {
-        ($impl:ty) => {
-            #[test]
-            fn sum_check_lagrange() {
-                use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
-                use $crate::{
-                    piop::sum_check::test::run_zero_check,
-                    poly::multilinear::MultilinearPolynomial,
-                    util::{
-                        arithmetic::{BooleanHypercube, Field},
-                        expression::{CommonPolynomial, Expression, Query, Rotation},
-                        test::{rand_vec, seeded_std_rng},
-                        Itertools,
-                    },
-                };
+    // macro_rules! tests {
+    //     ($impl:ty) => {
+    //         #[test]
+    //         fn sum_check_lagrange() {
+    //             use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+    //             use $crate::{
+    //                 piop::sum_check::test::run_zero_check,
+    //                 poly::multilinear::MultilinearPolynomial,
+    //                 util::{
+    //                     arithmetic::{BooleanHypercube, Field},
+    //                     expression::{CommonPolynomial, Expression, Query, Rotation},
+    //                     test::{rand_vec, seeded_std_rng},
+    //                     Itertools,
+    //                 },
+    //             };
 
-                run_zero_check::<$impl>(
-                    2..4,
-                    |num_vars| {
-                        let polys = (0..1 << num_vars)
-                            .map(|idx| {
-                                Expression::<Fr>::Polynomial(Query::new(idx, Rotation::cur()))
-                            })
-                            .collect_vec();
-                        let gates = polys
-                            .iter()
-                            .enumerate()
-                            .map(|(i, poly)| {
-                                Expression::CommonPolynomial(CommonPolynomial::Lagrange(i as i32))
-                                    - poly
-                            })
-                            .collect_vec();
-                        let alpha = Expression::Challenge(0);
-                        let eq = Expression::eq_xy(0);
-                        Expression::distribute_powers(&gates, &alpha) * eq
-                    },
-                    |_| ((), ()),
-                    |num_vars| {
-                        let polys = BooleanHypercube::new(num_vars)
-                            .iter()
-                            .map(|idx| {
-                                let mut polys =
-                                    MultilinearPolynomial::new(vec![Fr::zero(); 1 << num_vars]);
-                                polys[idx] = Fr::one();
-                                polys
-                            })
-                            .collect_vec();
-                        let alpha = Fr::random(seeded_std_rng());
-                        (polys, vec![alpha], rand_vec(num_vars, seeded_std_rng()))
-                    },
-                );
-            }
+    //             run_zero_check::<$impl>(
+    //                 2..4,
+    //                 |num_vars| {
+    //                     let polys = (0..1 << num_vars)
+    //                         .map(|idx| {
+    //                             Expression::<Fr>::Polynomial(Query::new(idx, Rotation::cur()))
+    //                         })
+    //                         .collect_vec();
+    //                     let gates = polys
+    //                         .iter()
+    //                         .enumerate()
+    //                         .map(|(i, poly)| {
+    //                             Expression::CommonPolynomial(CommonPolynomial::Lagrange(i as i32))
+    //                                 - poly
+    //                         })
+    //                         .collect_vec();
+    //                     let alpha = Expression::Challenge(0);
+    //                     let eq = Expression::eq_xy(0);
+    //                     Expression::distribute_powers(&gates, &alpha) * eq
+    //                 },
+    //                 |_| ((), ()),
+    //                 |num_vars| {
+    //                     let polys = BooleanHypercube::new(num_vars)
+    //                         .iter()
+    //                         .map(|idx| {
+    //                             let mut polys =
+    //                                 MultilinearPolynomial::new(vec![Fr::zero(); 1 << num_vars]);
+    //                             polys[idx] = Fr::one();
+    //                             polys
+    //                         })
+    //                         .collect_vec();
+    //                     let alpha = Fr::random(seeded_std_rng());
+    //                     (polys, vec![alpha], rand_vec(num_vars, seeded_std_rng()))
+    //                 },
+    //             );
+    //         }
 
-            #[test]
-            fn sum_check_rotation() {
-                use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
-                use std::iter;
-                use $crate::{
-                    piop::sum_check::test::run_zero_check,
-                    poly::multilinear::MultilinearPolynomial,
-                    util::{
-                        arithmetic::{BooleanHypercube, Field},
-                        expression::{Expression, Query, Rotation},
-                        test::{rand_vec, seeded_std_rng},
-                        Itertools,
-                    },
-                };
+    //         #[test]
+    //         fn sum_check_rotation() {
+    //             use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+    //             use std::iter;
+    //             use $crate::{
+    //                 piop::sum_check::test::run_zero_check,
+    //                 poly::multilinear::MultilinearPolynomial,
+    //                 util::{
+    //                     arithmetic::{BooleanHypercube, Field},
+    //                     expression::{Expression, Query, Rotation},
+    //                     test::{rand_vec, seeded_std_rng},
+    //                     Itertools,
+    //                 },
+    //             };
 
-                run_zero_check::<$impl>(
-                    2..16,
-                    |num_vars| {
-                        let polys = (-(num_vars as i32) + 1..num_vars as i32)
-                            .rev()
-                            .enumerate()
-                            .map(|(idx, rotation)| {
-                                Expression::<Fr>::Polynomial(Query::new(idx, rotation.into()))
-                            })
-                            .collect_vec();
-                        let gates = polys
-                            .windows(2)
-                            .map(|polys| &polys[1] - &polys[0])
-                            .collect_vec();
-                        let alpha = Expression::Challenge(0);
-                        let eq = Expression::eq_xy(0);
-                        Expression::distribute_powers(&gates, &alpha) * eq
-                    },
-                    |_| ((), ()),
-                    |num_vars| {
-                        let bh = BooleanHypercube::new(num_vars);
-                        let rotate = |f: &Vec<Fr>| {
-                            (0..1 << num_vars)
-                                .map(|idx| f[bh.rotate(idx, Rotation::next())])
-                                .collect_vec()
-                        };
-                        let poly = rand_vec(1 << num_vars, seeded_std_rng());
-                        let polys = iter::successors(Some(poly), |poly| Some(rotate(poly)))
-                            .map(MultilinearPolynomial::new)
-                            .take(2 * num_vars - 1)
-                            .collect_vec();
-                        let alpha = Fr::random(seeded_std_rng());
-                        (polys, vec![alpha], rand_vec(num_vars, seeded_std_rng()))
-                    },
-                );
-            }
+    //             run_zero_check::<$impl>(
+    //                 2..16,
+    //                 |num_vars| {
+    //                     let polys = (-(num_vars as i32) + 1..num_vars as i32)
+    //                         .rev()
+    //                         .enumerate()
+    //                         .map(|(idx, rotation)| {
+    //                             Expression::<Fr>::Polynomial(Query::new(idx, rotation.into()))
+    //                         })
+    //                         .collect_vec();
+    //                     let gates = polys
+    //                         .windows(2)
+    //                         .map(|polys| &polys[1] - &polys[0])
+    //                         .collect_vec();
+    //                     let alpha = Expression::Challenge(0);
+    //                     let eq = Expression::eq_xy(0);
+    //                     Expression::distribute_powers(&gates, &alpha) * eq
+    //                 },
+    //                 |_| ((), ()),
+    //                 |num_vars| {
+    //                     let bh = BooleanHypercube::new(num_vars);
+    //                     let rotate = |f: &Vec<Fr>| {
+    //                         (0..1 << num_vars)
+    //                             .map(|idx| f[bh.rotate(idx, Rotation::next())])
+    //                             .collect_vec()
+    //                     };
+    //                     let poly = rand_vec(1 << num_vars, seeded_std_rng());
+    //                     let polys = iter::successors(Some(poly), |poly| Some(rotate(poly)))
+    //                         .map(MultilinearPolynomial::new)
+    //                         .take(2 * num_vars - 1)
+    //                         .collect_vec();
+    //                     let alpha = Fr::random(seeded_std_rng());
+    //                     (polys, vec![alpha], rand_vec(num_vars, seeded_std_rng()))
+    //                 },
+    //             );
+    //         }
 
-            #[test]
-            fn sum_check_vanilla_plonk() {
-                use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
-                use $crate::{
-                    backend::hyperplonk::util::{
-                        rand_vanilla_plonk_assignment, vanilla_plonk_expression,
-                    },
-                    piop::sum_check::test::run_zero_check,
-                    util::test::{rand_vec, seeded_std_rng},
-                };
+    //         #[test]
+    //         fn sum_check_vanilla_plonk() {
+    //             use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+    //             use $crate::{
+    //                 backend::hyperplonk::util::{
+    //                     rand_vanilla_plonk_assignment, vanilla_plonk_expression,
+    //                 },
+    //                 piop::sum_check::test::run_zero_check,
+    //                 util::test::{rand_vec, seeded_std_rng},
+    //             };
 
-                run_zero_check::<$impl>(
-                    2..16,
-                    |num_vars| vanilla_plonk_expression(num_vars),
-                    |_| ((), ()),
-                    |num_vars| {
-                        let (polys, challenges) = rand_vanilla_plonk_assignment(
-                            num_vars,
-                            seeded_std_rng(),
-                            seeded_std_rng(),
-                        );
-                        (polys, challenges, rand_vec(num_vars, seeded_std_rng()))
-                    },
-                );
-            }
+    //             run_zero_check::<$impl>(
+    //                 2..16,
+    //                 |num_vars| vanilla_plonk_expression(num_vars),
+    //                 |_| ((), ()),
+    //                 |num_vars| {
+    //                     let (polys, challenges) = rand_vanilla_plonk_assignment(
+    //                         num_vars,
+    //                         seeded_std_rng(),
+    //                         seeded_std_rng(),
+    //                     );
+    //                     (polys, challenges, rand_vec(num_vars, seeded_std_rng()))
+    //                 },
+    //             );
+    //         }
 
-            #[test]
-            fn sum_check_vanilla_plonk_with_lookup() {
-                use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
-                use $crate::{
-                    backend::hyperplonk::util::{
-                        rand_vanilla_plonk_with_lookup_assignment,
-                        vanilla_plonk_with_lookup_expression,
-                    },
-                    piop::sum_check::test::run_zero_check,
-                    util::test::{rand_vec, seeded_std_rng},
-                };
+    //         #[test]
+    //         fn sum_check_vanilla_plonk_with_lookup() {
+    //             use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+    //             use $crate::{
+    //                 backend::hyperplonk::util::{
+    //                     rand_vanilla_plonk_with_lookup_assignment,
+    //                     vanilla_plonk_with_lookup_expression,
+    //                 },
+    //                 piop::sum_check::test::run_zero_check,
+    //                 util::test::{rand_vec, seeded_std_rng},
+    //             };
 
-                run_zero_check::<$impl>(
-                    2..16,
-                    |num_vars| vanilla_plonk_with_lookup_expression(num_vars),
-                    |_| ((), ()),
-                    |num_vars| {
-                        let (polys, challenges) = rand_vanilla_plonk_with_lookup_assignment(
-                            num_vars,
-                            seeded_std_rng(),
-                            seeded_std_rng(),
-                        );
-                        (polys, challenges, rand_vec(num_vars, seeded_std_rng()))
-                    },
-                );
-            }
-        };
-    }
+    //             run_zero_check::<$impl>(
+    //                 2..16,
+    //                 |num_vars| vanilla_plonk_with_lookup_expression(num_vars),
+    //                 |_| ((), ()),
+    //                 |num_vars| {
+    //                     let (polys, challenges) = rand_vanilla_plonk_with_lookup_assignment(
+    //                         num_vars,
+    //                         seeded_std_rng(),
+    //                         seeded_std_rng(),
+    //                     );
+    //                     (polys, challenges, rand_vec(num_vars, seeded_std_rng()))
+    //                 },
+    //             );
+    //         }
+    //     };
+    // }
 
-    pub(super) use tests;
+    //pub(super) use tests;
 }

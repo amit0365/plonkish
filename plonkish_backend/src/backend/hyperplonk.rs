@@ -113,7 +113,6 @@ where
             .map(MultilinearPolynomial::new)
             .collect_vec();
         let preprocess_comms = Pcs::batch_commit(&pcs_pp, &preprocess_polys)?;
-
         // Compute permutation polys and comms
         let permutation_polys = permutation_polys(
             num_vars,
@@ -373,7 +372,7 @@ mod test {
     use crate::{
         backend::{
             hyperplonk::{
-                util::{rand_vanilla_plonk_circuit, rand_vanilla_plonk_with_lookup_circuit},
+                //util::{rand_vanilla_plonk_circuit, rand_vanilla_plonk_with_lookup_circuit},
                 HyperPlonk,
             },
             test::run_plonkish_backend,

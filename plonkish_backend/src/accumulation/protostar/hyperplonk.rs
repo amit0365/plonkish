@@ -643,7 +643,7 @@ pub(crate) mod test {
     use crate::{
         accumulation::{protostar::Protostar, test::run_accumulation_scheme},
         backend::hyperplonk::{
-            util::{rand_vanilla_plonk_circuit, rand_vanilla_plonk_with_lookup_circuit},
+            //util::{rand_vanilla_plonk_circuit, rand_vanilla_plonk_with_lookup_circuit},
             HyperPlonk,
         },
         pcs::{

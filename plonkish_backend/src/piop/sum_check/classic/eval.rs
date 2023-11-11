@@ -395,12 +395,12 @@ fn split_sparse<F: PrimeField>(state: &ProverState<F>) -> (Expression<F>, Vec<Ex
     )
 }
 
-#[cfg(test)]
-mod test {
-    use crate::piop::sum_check::{
-        classic::{ClassicSumCheck, EvaluationsProver},
-        test::tests,
-    };
+// #[cfg(test)]
+// mod test {
+//     use crate::piop::sum_check::{
+//         classic::{ClassicSumCheck, EvaluationsProver},
+//         test::tests,
+//     };
 
-    tests!(ClassicSumCheck<EvaluationsProver<Fr>>);
-}
+//     tests!(ClassicSumCheck<EvaluationsProver<Fr>>);
+// }

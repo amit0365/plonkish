@@ -68,7 +68,7 @@ use halo2_base::{
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
     QuantumCell::{Constant, Existing, Witness, WitnessFraction},
     AssignedValue,
-    poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
+    poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, halo2_proofs::dev::MockProver,
 };
 
 use halo2_ecc::{
@@ -734,10 +734,10 @@ where
         Ok(())
     }
 
-    // todo fix this with other synthesizes
     fn synthesize_accumulation_verifier(
         &self,
         mut layouter: impl Layouter<C::Scalar>,
+        config: <RecursiveCircuit<'a, C, Sc> as halo2_base::halo2_proofs::plonk::Circuit<C::Scalar>>::Config,
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
     ) -> Result<(), Error> {
@@ -749,7 +749,7 @@ where
         } = &self;
 
         let mut binding = self.inner.borrow_mut();
-        let builder = binding.pool(0);  
+        let builder = binding.pool(0); //.core();  
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
 
         let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
@@ -817,16 +817,10 @@ where
             &acc_prime,
         )?;
 
-        // let stats = binding.statistics();
-        // let total_advice_per_phase = stats.gate.total_advice_per_phase;
-        // let total_fixed = stats.gate.total_fixed;
-        
-        // println!("stats total_advice_per_phase {:?}", total_advice_per_phase);
-        // println!("stats total_fixed {:?}", total_fixed);      
-
         // todo impl constrain instance these 
-        // tcc_chip.constrain_instance(builder, &h_ohs_from_incoming, 0)?;
         // tcc_chip.constrain_instance(builder, &h_prime, 1)?;
+        // builder.main().constrain_equal(&h_ohs_from_incoming, 0)?;
+        // builder.main().constrain_equal(&h_prime, 1);
 
         Ok(())
     }
@@ -844,35 +838,44 @@ where
     type FloorPlanner = Sc::FloorPlanner;
     type Params = BaseCircuitParams;
 
-    // fn without_witnesses(&self) -> Self {
-    //     Self {
-    //         is_primary: self.is_primary,
-    //         step_circuit: self.step_circuit.without_witnesses(),
-    //         tcc_chip: self.tcc_chip.clone(),
-    //         hash_chip: self.hash_chip.clone(),
-    //         hash_config: self.hash_config.clone(),
-    //         transcript_config: self.transcript_config.clone(),
-    //         avp: self.avp.clone(),
-    //         h_prime: Value::unknown(),
-    //         acc: Value::unknown(),
-    //         acc_prime: Value::unknown(),
-    //         incoming_instances: [Value::unknown(), Value::unknown()],
-    //         incoming_proof: Value::unknown(),
-    //         inner: self.inner,
-    //     }
-    // }
-
     fn without_witnesses(&self) -> Self {
-        unreachable!()
+        Self {
+            is_primary: self.is_primary,
+            step_circuit: self.step_circuit.without_witnesses(),
+            tcc_chip: self.tcc_chip.clone(),
+            hash_chip: self.hash_chip.clone(),
+            hash_config: self.hash_config.clone(),
+            transcript_config: self.transcript_config.clone(),
+            avp: self.avp.clone(),
+            h_prime: Value::unknown(),
+            acc: Value::unknown(),
+            acc_prime: Value::unknown(),
+            incoming_instances: [Value::unknown(), Value::unknown()],
+            incoming_proof: Value::unknown(),
+            inner: self.inner.clone(),
+        }
     }
 
     fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
         BaseCircuitBuilder::configure_with_params(meta, params)
     }
 
-    fn configure(_: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
         unreachable!()
     }
+
+
+    // fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+    //     let circuit_params = BaseCircuitParams {
+    //         k: 19,
+    //         num_advice_per_phase: vec![6],
+    //         num_lookup_advice_per_phase: vec![1],
+    //         num_fixed: 1,               
+    //         lookup_bits: Some(18),
+    //         num_instance_columns: 1,
+    //     };
+    //     BaseCircuitBuilder::configure_with_params(meta, circuit_params)
+    // }
 
     // todo fix this with other synthesizes
     fn synthesize(
@@ -883,13 +886,9 @@ where
 
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config.clone(), layouter.namespace(|| ""))?;
-
-        //let builder = self.build(); //let builder = self.inner.pool(0); 
-
-        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
-
+        self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
+        //self.inner.borrow_mut().calculate_params(Some(0));
         self.inner.borrow_mut().synthesize(config.clone(), layouter.namespace(|| ""));
-        //BaseCircuitBuilder::synthesize(self, config.clone(), layouter.namespace(|| ""));
 
         Ok(())
     }
@@ -1029,9 +1028,8 @@ where
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
-        // println!("primary_pp {:?}", primary_pp);
-        // println!("primary_vp {:?}", primary_vp);
 
+    println!("primary_circuit_preprocess end");
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,
@@ -1045,18 +1043,20 @@ where
 
     let (secondary_pp, secondary_vp) = {
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
+        secondary_circuit.circuit().inner.borrow_mut().clear();
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };
-        // println!("secondary_pp {:?}", secondary_pp);
-        // println!("secondary_vp {:?}", secondary_vp);
+    println!("secondary_circuit_preprocess end");
 
     primary_circuit.update_witness(|circuit| {
         circuit.avp = ProtostarAccumulationVerifierParam::from(&secondary_vp);
         circuit.update_acc();
     });
     let primary_circuit_info = primary_circuit.circuit_info().unwrap();
+    primary_circuit.circuit().inner.borrow_mut().clear();
     let (primary_pp, primary_vp) =
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
+    println!("primary_circuit_preprocess rises");
 
     let vp_digest = fe_truncated_from_le_bytes(
         Keccak256::digest(bincode::serialize(&(&primary_vp, &secondary_vp)).unwrap()),
@@ -1064,6 +1064,7 @@ where
     );
     primary_circuit.update_witness(|circuit| circuit.init(vp_digest));
     secondary_circuit.update_witness(|circuit| circuit.init(fe_to_fe(vp_digest)));
+    println!("primary_circuit_update_witness");
 
     let ivc_pp = ProtostarIvcProverParam {
         primary_pp,
@@ -1150,10 +1151,12 @@ where
                 &mut transcript,
                 &mut rng,
             )?;
+            primary_circuit.circuit().inner.borrow_mut().clear();
             transcript.into_proof()
         };
         end_timer(timer);
 
+        // println!("secondary_circuit.update_witnes_start");
         secondary_circuit.update_witness(|circuit| {
             circuit.update(
                 primary_acc_x,
@@ -1162,6 +1165,7 @@ where
                 proof,
             );
         });
+        // println!("secondary_circuit.update_witnes_end");
 
         if step_idx != num_steps - 1 {
             let secondary_acc_x = secondary_acc.instance.clone();
@@ -1181,6 +1185,7 @@ where
                     &mut transcript,
                     &mut rng,
                 )?;
+                secondary_circuit.circuit().inner.borrow_mut().clear();
                 transcript.into_proof()
             };
             end_timer(timer);
@@ -1290,8 +1295,6 @@ where
         CommitmentChunk = C::Secondary,
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
-    // H1: HashInstruction<C>,
-    // H2: HashInstruction<C::Secondary>,
 {
     if Chip::<C>::hash_state(
         &ivc_vp.primary_hp,
@@ -1973,21 +1976,6 @@ where
             }
 
             coeff
-
-            // let mut coeff = vec![vec![one]];
-
-            // for xi in xis.iter().rev() {
-            //     let extended = coeff
-            //         .last()
-            //         .unwrap()
-            //         .iter()
-            //         .map(|coeff| self.mul_base(builder, coeff, xi))
-            //         .try_collect::<_, Vec<_>, _>()?;
-            //     coeff.push(extended);
-            // }
-            
-            // coeff
-            
         };
 
         let neg_c = self.neg_base(builder, &c)?;
@@ -2000,7 +1988,7 @@ where
         let out = {
             let h = self.assign_constant_secondary(builder, *vp.h())?;
             let (mut bases, mut scalars) = comm.into_iter().map(|(base, scalar)| (base, scalar.clone())).unzip::<_, _, Vec<_>, Vec<_>>();
-
+            //todo fix these for agg
             scalars.extend(chain![&xi_invs, &xis, [&h_scalar, &neg_c]].map(|scalar| scalar.clone()));
             // .map(|&scalar| scalar.clone()).collect()
             // let mut all_scalars = Vec::new();

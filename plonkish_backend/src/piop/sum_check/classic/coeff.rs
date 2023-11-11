@@ -88,9 +88,9 @@ where
                 });
                 (-constant, products)
             },
-            &|(lhs_constnat, mut lhs_products), (rhs_constnat, rhs_products)| {
+            &|(lhs_constant, mut lhs_products), (rhs_constant, rhs_products)| {
                 lhs_products.extend(rhs_products);
-                (lhs_constnat + rhs_constnat, lhs_products)
+                (lhs_constant + rhs_constant, lhs_products)
             },
             &|(lhs_constant, lhs_products), (rhs_constant, rhs_products)| {
                 let mut outputs =

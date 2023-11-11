@@ -34,7 +34,7 @@ use halo2_base::{halo2_proofs::
 }, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
 //use pairing::{Engine, MillerLoopResult, MultiMillerLoop, PairingCurveAffine};
 use halo2_base::{Context,
-    gates::{circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
+    gates::{range::RangeInstructions, circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
             flex_gate::{GateChip, GateInstructions}},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
     poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
@@ -470,7 +470,7 @@ where
         _,
         strawman::PoseidonTranscript<_, _>,
         strawman::PoseidonTranscript<_, _>,
-    >(
+    >(  
         primary_num_vars,
         primary_atp,
         TrivialCircuit::default(),
@@ -486,6 +486,7 @@ where
     )
     .unwrap();
 
+    println!("end_preprocess");
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
         &ivc_pp, 
         &mut primary_circuit,
@@ -494,6 +495,7 @@ where
         seeded_std_rng(),
     )
     .unwrap();
+    // println!("end_prove_steps");
 
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();
@@ -573,39 +575,42 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_VARS: usize = 14;
+    env_logger::init();
+    const NUM_VARS: usize = 16;
     const NUM_STEPS: usize = 3;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
-            num_advice_per_phase: vec![7],
+            num_advice_per_phase: vec![36],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
-            lookup_bits: Some(8),
+            lookup_bits: Some(NUM_VARS - 1),
             num_instance_columns: 1,
         };
 
-    let mut builder_primary = BaseCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Prover).use_params(circuit_params.clone());
+    let mut builder_primary = BaseCircuitBuilder::<bn256::Fr>::new(false).use_params(circuit_params.clone());
+    // builder_primary.set_break_points(vec![vec![524278]; 6]);
     let range_primary = builder_primary.range_chip();
-    let gate_chip_primary = GateChip::<bn256::Fr>::new();
+    let gate_chip_primary = range_primary.gate();
     let base_chip_primary = FpChip::<bn256::Fr, bn256::Fq>::new(&range_primary, NUM_LIMB_BITS, NUM_LIMBS);
     let native_chip_primary = NativeFieldChip::new(&range_primary);
     let ecc_chip_primary = EccChip::new(&native_chip_primary);
-    let chip_primary = strawman::Chip::<bn256::G1Affine>::create(gate_chip_primary, base_chip_primary, ecc_chip_primary);
+    let chip_primary = strawman::Chip::<bn256::G1Affine>::create(gate_chip_primary.clone(), base_chip_primary, ecc_chip_primary);
 
-    let mut builder_secondary = BaseCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Prover).use_params(circuit_params.clone());
+    let mut builder_secondary = BaseCircuitBuilder::<grumpkin::Fr>::new(false).use_params(circuit_params.clone());
+    // builder_secondary.set_break_points(vec![vec![524278]; 6]);
     let range_secondary = builder_secondary.range_chip();
-    let gate_chip_secondary = GateChip::<grumpkin::Fr>::new();
+    let gate_chip_secondary = range_secondary.gate();
     let base_chip_secondary = FpChip::<grumpkin::Fr, grumpkin::Fq>::new(&range_secondary, NUM_LIMB_BITS, NUM_LIMBS);
     let native_chip_secondary = NativeFieldChip::new(&range_secondary);
     let ecc_chip_secondary = EccChip::new(&native_chip_secondary);
-    let chip_secondary = strawman::Chip::<grumpkin::G1Affine>::create(gate_chip_secondary, base_chip_secondary, ecc_chip_secondary);
+    let chip_secondary = strawman::Chip::<grumpkin::G1Affine>::create(gate_chip_secondary.clone(), base_chip_secondary, ecc_chip_secondary);
 
     run_protostar_hyperplonk_ivc::<
         bn256::G1Affine,
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
-    >(NUM_VARS, NUM_STEPS,chip_primary, chip_secondary, builder_primary, builder_secondary, circuit_params);
+    >(NUM_VARS, NUM_STEPS, chip_primary, chip_secondary, builder_primary, builder_secondary, circuit_params);
 }
 
 // #[test]
@@ -793,8 +798,6 @@ pub mod strawman {
         bigint::{self, CRTInteger, FixedCRTInteger, ProperCrtUint},
         ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip},
     };
-    // use num_bigint::{BigInt, BigUint};
-    //use super::range::RangeConfig;
 
     use std::{
         cell::RefCell,
@@ -855,12 +858,6 @@ pub mod strawman {
         let is_identity = (coords.x().is_zero() & coords.y().is_zero()).into();
         [*coords.x(), *coords.y(), fe_from_bool(is_identity)]
     }
-
-    // impl<C: CurveAffine> EcPoint<C> {
-    //     fn assigned_cells(&self) -> impl Iterator<Item = &Witness<C::Base>> {
-    //         [self.x(), self.y()].into_iter()
-    //     }
-    // }
 
     pub fn accumulation_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
         OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>()
@@ -1015,18 +1012,6 @@ pub mod strawman {
     //         //     num_advice_per_phase: vec![7],
     //         //     num_fixed: 2,
     //         // };
-    //         let mut circuit_params = BaseCircuitParams {
-    //             k: 14,
-    //             num_advice_per_phase: vec![7],
-    //             num_lookup_advice_per_phase: vec![1],
-    //             num_fixed: 13,
-    //             lookup_bits: Some(8),
-    //             num_instance_columns: 1,
-    //         };
-    //         // let flex_config = FlexGateConfig::configure(
-    //         //     meta,
-    //         //     params,
-    //         // );
     //         // let range_config = RangeConfig::configure(
     //         //     meta,
     //         //     params,
@@ -1428,7 +1413,6 @@ pub mod strawman {
             Ok(self.ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), 8,8))
         }
 
-        // todo change the inputs where this is used
         pub fn fixed_base_msm_secondary(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1448,6 +1432,7 @@ pub mod strawman {
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
             let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
             let max_bits = self.base_chip.limb_bits;
+            //Ok(self.ecc_chip.fixed_base_msm::<C::Secondary>(builder, &[C::Secondary::identity()], scalar_limbs_vec, max_bits))
             Ok(self.ecc_chip.variable_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_bits))
         }
 

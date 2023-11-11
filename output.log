@@ -1,143 +1,226 @@
    Compiling plonkish_backend v0.1.0 (/Users/ak36/Desktop/bunz/plonkish/plonkish_backend)
-    Finished release [optimized] target(s) in 21.62s
-     Running unittests src/lib.rs (target/release/deps/plonkish_backend-d97b5e0544966903)
+    Finished release [optimized] target(s) in 18.60s
+     Running unittests src/lib.rs (target/release/deps/plonkish_backend-e73c27a1e0e203a6)
 
 running 1 test
-cs ConstraintSystem { num_fixed_columns: 2, num_advice_columns: 8, num_instance_columns: 1, num_selectors: 7, num_challenges: 0, advice_column_phase: [Phase(0), Phase(0), Phase(0), Phase(0), Phase(0), Phase(0), Phase(0), Phase(0)], challenge_phase: [], selector_map: [], gates: [Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(0, true)), Sum(Sum(Advice { query_index: 0, column_index: 0, rotation: Rotation(0) }, Product(Advice { query_index: 1, column_index: 0, rotation: Rotation(1) }, Advice { query_index: 2, column_index: 0, rotation: Rotation(2) })), Negated(Advice { query_index: 3, column_index: 0, rotation: Rotation(3) })))], queried_selectors: [Selector(0, true)], queried_cells: [VirtualCell { column: Column { index: 0, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 0, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 0, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 0, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(1, true)), Sum(Sum(Advice { query_index: 4, column_index: 1, rotation: Rotation(0) }, Product(Advice { query_index: 5, column_index: 1, rotation: Rotation(1) }, Advice { query_index: 6, column_index: 1, rotation: Rotation(2) })), Negated(Advice { query_index: 7, column_index: 1, rotation: Rotation(3) })))], queried_selectors: [Selector(1, true)], queried_cells: [VirtualCell { column: Column { index: 1, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 1, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 1, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 1, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(2, true)), Sum(Sum(Advice { query_index: 8, column_index: 2, rotation: Rotation(0) }, Product(Advice { query_index: 9, column_index: 2, rotation: Rotation(1) }, Advice { query_index: 10, column_index: 2, rotation: Rotation(2) })), Negated(Advice { query_index: 11, column_index: 2, rotation: Rotation(3) })))], queried_selectors: [Selector(2, true)], queried_cells: [VirtualCell { column: Column { index: 2, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 2, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 2, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 2, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(3, true)), Sum(Sum(Advice { query_index: 12, column_index: 3, rotation: Rotation(0) }, Product(Advice { query_index: 13, column_index: 3, rotation: Rotation(1) }, Advice { query_index: 14, column_index: 3, rotation: Rotation(2) })), Negated(Advice { query_index: 15, column_index: 3, rotation: Rotation(3) })))], queried_selectors: [Selector(3, true)], queried_cells: [VirtualCell { column: Column { index: 3, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 3, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 3, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 3, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(4, true)), Sum(Sum(Advice { query_index: 16, column_index: 4, rotation: Rotation(0) }, Product(Advice { query_index: 17, column_index: 4, rotation: Rotation(1) }, Advice { query_index: 18, column_index: 4, rotation: Rotation(2) })), Negated(Advice { query_index: 19, column_index: 4, rotation: Rotation(3) })))], queried_selectors: [Selector(4, true)], queried_cells: [VirtualCell { column: Column { index: 4, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 4, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 4, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 4, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(5, true)), Sum(Sum(Advice { query_index: 20, column_index: 5, rotation: Rotation(0) }, Product(Advice { query_index: 21, column_index: 5, rotation: Rotation(1) }, Advice { query_index: 22, column_index: 5, rotation: Rotation(2) })), Negated(Advice { query_index: 23, column_index: 5, rotation: Rotation(3) })))], queried_selectors: [Selector(5, true)], queried_cells: [VirtualCell { column: Column { index: 5, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 5, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 5, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 5, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(6, true)), Sum(Sum(Advice { query_index: 24, column_index: 6, rotation: Rotation(0) }, Product(Advice { query_index: 25, column_index: 6, rotation: Rotation(1) }, Advice { query_index: 26, column_index: 6, rotation: Rotation(2) })), Negated(Advice { query_index: 27, column_index: 6, rotation: Rotation(3) })))], queried_selectors: [Selector(6, true)], queried_cells: [VirtualCell { column: Column { index: 6, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 6, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 6, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 6, column_type: Advice }, rotation: Rotation(3) }] }], advice_queries: [(Column { index: 0, column_type: Advice }, Rotation(0)), (Column { index: 0, column_type: Advice }, Rotation(1)), (Column { index: 0, column_type: Advice }, Rotation(2)), (Column { index: 0, column_type: Advice }, Rotation(3)), (Column { index: 1, column_type: Advice }, Rotation(0)), (Column { index: 1, column_type: Advice }, Rotation(1)), (Column { index: 1, column_type: Advice }, Rotation(2)), (Column { index: 1, column_type: Advice }, Rotation(3)), (Column { index: 2, column_type: Advice }, Rotation(0)), (Column { index: 2, column_type: Advice }, Rotation(1)), (Column { index: 2, column_type: Advice }, Rotation(2)), (Column { index: 2, column_type: Advice }, Rotation(3)), (Column { index: 3, column_type: Advice }, Rotation(0)), (Column { index: 3, column_type: Advice }, Rotation(1)), (Column { index: 3, column_type: Advice }, Rotation(2)), (Column { index: 3, column_type: Advice }, Rotation(3)), (Column { index: 4, column_type: Advice }, Rotation(0)), (Column { index: 4, column_type: Advice }, Rotation(1)), (Column { index: 4, column_type: Advice }, Rotation(2)), (Column { index: 4, column_type: Advice }, Rotation(3)), (Column { index: 5, column_type: Advice }, Rotation(0)), (Column { index: 5, column_type: Advice }, Rotation(1)), (Column { index: 5, column_type: Advice }, Rotation(2)), (Column { index: 5, column_type: Advice }, Rotation(3)), (Column { index: 6, column_type: Advice }, Rotation(0)), (Column { index: 6, column_type: Advice }, Rotation(1)), (Column { index: 6, column_type: Advice }, Rotation(2)), (Column { index: 6, column_type: Advice }, Rotation(3)), (Column { index: 7, column_type: Advice }, Rotation(0))], num_advice_queries: [4, 4, 4, 4, 4, 4, 4, 1], instance_queries: [(Column { index: 0, column_type: Instance }, Rotation(0))], fixed_queries: [(Column { index: 1, column_type: Fixed }, Rotation(0)), (Column { index: 0, column_type: Fixed }, Rotation(0))], permutation: Argument { columns: [Column { index: 1, column_type: Fixed }, Column { index: 0, column_type: Advice }, Column { index: 1, column_type: Advice }, Column { index: 2, column_type: Advice }, Column { index: 3, column_type: Advice }, Column { index: 4, column_type: Advice }, Column { index: 5, column_type: Advice }, Column { index: 6, column_type: Advice }, Column { index: 7, column_type: Advice }, Column { index: 0, column_type: Instance }] }, lookups: [Argument { input_expressions: [Advice { query_index: 28, column_index: 7, rotation: Rotation(0) }], table_expressions: [Fixed { query_index: 1, column_index: 0, rotation: Rotation(0) }] }], shuffles: [], general_column_annotations: {}, constants: [], minimum_degree: None }
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................4.976ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................6.049ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................5.443ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................5.061ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................5.265ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................4.056ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................4.221ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................4.229ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................4.123ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................7.016ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................8.446ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................9.186ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................9.708ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................9.322ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................8.938ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................8.878ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................12.591ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................10.700ms
-Start:   variable_base_msm-16384
-End:     variable_base_msm-16384 ...................................................11.067ms
-cs ConstraintSystem { num_fixed_columns: 2, num_advice_columns: 8, num_instance_columns: 1, num_selectors: 7, num_challenges: 0, advice_column_phase: [Phase(0), Phase(0), Phase(0), Phase(0), Phase(0), Phase(0), Phase(0), Phase(0)], challenge_phase: [], selector_map: [], gates: [Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(0, true)), Sum(Sum(Advice { query_index: 0, column_index: 0, rotation: Rotation(0) }, Product(Advice { query_index: 1, column_index: 0, rotation: Rotation(1) }, Advice { query_index: 2, column_index: 0, rotation: Rotation(2) })), Negated(Advice { query_index: 3, column_index: 0, rotation: Rotation(3) })))], queried_selectors: [Selector(0, true)], queried_cells: [VirtualCell { column: Column { index: 0, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 0, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 0, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 0, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(1, true)), Sum(Sum(Advice { query_index: 4, column_index: 1, rotation: Rotation(0) }, Product(Advice { query_index: 5, column_index: 1, rotation: Rotation(1) }, Advice { query_index: 6, column_index: 1, rotation: Rotation(2) })), Negated(Advice { query_index: 7, column_index: 1, rotation: Rotation(3) })))], queried_selectors: [Selector(1, true)], queried_cells: [VirtualCell { column: Column { index: 1, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 1, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 1, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 1, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(2, true)), Sum(Sum(Advice { query_index: 8, column_index: 2, rotation: Rotation(0) }, Product(Advice { query_index: 9, column_index: 2, rotation: Rotation(1) }, Advice { query_index: 10, column_index: 2, rotation: Rotation(2) })), Negated(Advice { query_index: 11, column_index: 2, rotation: Rotation(3) })))], queried_selectors: [Selector(2, true)], queried_cells: [VirtualCell { column: Column { index: 2, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 2, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 2, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 2, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(3, true)), Sum(Sum(Advice { query_index: 12, column_index: 3, rotation: Rotation(0) }, Product(Advice { query_index: 13, column_index: 3, rotation: Rotation(1) }, Advice { query_index: 14, column_index: 3, rotation: Rotation(2) })), Negated(Advice { query_index: 15, column_index: 3, rotation: Rotation(3) })))], queried_selectors: [Selector(3, true)], queried_cells: [VirtualCell { column: Column { index: 3, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 3, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 3, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 3, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(4, true)), Sum(Sum(Advice { query_index: 16, column_index: 4, rotation: Rotation(0) }, Product(Advice { query_index: 17, column_index: 4, rotation: Rotation(1) }, Advice { query_index: 18, column_index: 4, rotation: Rotation(2) })), Negated(Advice { query_index: 19, column_index: 4, rotation: Rotation(3) })))], queried_selectors: [Selector(4, true)], queried_cells: [VirtualCell { column: Column { index: 4, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 4, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 4, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 4, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(5, true)), Sum(Sum(Advice { query_index: 20, column_index: 5, rotation: Rotation(0) }, Product(Advice { query_index: 21, column_index: 5, rotation: Rotation(1) }, Advice { query_index: 22, column_index: 5, rotation: Rotation(2) })), Negated(Advice { query_index: 23, column_index: 5, rotation: Rotation(3) })))], queried_selectors: [Selector(5, true)], queried_cells: [VirtualCell { column: Column { index: 5, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 5, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 5, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 5, column_type: Advice }, rotation: Rotation(3) }] }, Gate { name: "1 column a + b * c = out", constraint_names: [""], polys: [Product(Selector(Selector(6, true)), Sum(Sum(Advice { query_index: 24, column_index: 6, rotation: Rotation(0) }, Product(Advice { query_index: 25, column_index: 6, rotation: Rotation(1) }, Advice { query_index: 26, column_index: 6, rotation: Rotation(2) })), Negated(Advice { query_index: 27, column_index: 6, rotation: Rotation(3) })))], queried_selectors: [Selector(6, true)], queried_cells: [VirtualCell { column: Column { index: 6, column_type: Advice }, rotation: Rotation(0) }, VirtualCell { column: Column { index: 6, column_type: Advice }, rotation: Rotation(1) }, VirtualCell { column: Column { index: 6, column_type: Advice }, rotation: Rotation(2) }, VirtualCell { column: Column { index: 6, column_type: Advice }, rotation: Rotation(3) }] }], advice_queries: [(Column { index: 0, column_type: Advice }, Rotation(0)), (Column { index: 0, column_type: Advice }, Rotation(1)), (Column { index: 0, column_type: Advice }, Rotation(2)), (Column { index: 0, column_type: Advice }, Rotation(3)), (Column { index: 1, column_type: Advice }, Rotation(0)), (Column { index: 1, column_type: Advice }, Rotation(1)), (Column { index: 1, column_type: Advice }, Rotation(2)), (Column { index: 1, column_type: Advice }, Rotation(3)), (Column { index: 2, column_type: Advice }, Rotation(0)), (Column { index: 2, column_type: Advice }, Rotation(1)), (Column { index: 2, column_type: Advice }, Rotation(2)), (Column { index: 2, column_type: Advice }, Rotation(3)), (Column { index: 3, column_type: Advice }, Rotation(0)), (Column { index: 3, column_type: Advice }, Rotation(1)), (Column { index: 3, column_type: Advice }, Rotation(2)), (Column { index: 3, column_type: Advice }, Rotation(3)), (Column { index: 4, column_type: Advice }, Rotation(0)), (Column { index: 4, column_type: Advice }, Rotation(1)), (Column { index: 4, column_type: Advice }, Rotation(2)), (Column { index: 4, column_type: Advice }, Rotation(3)), (Column { index: 5, column_type: Advice }, Rotation(0)), (Column { index: 5, column_type: Advice }, Rotation(1)), (Column { index: 5, column_type: Advice }, Rotation(2)), (Column { index: 5, column_type: Advice }, Rotation(3)), (Column { index: 6, column_type: Advice }, Rotation(0)), (Column { index: 6, column_type: Advice }, Rotation(1)), (Column { index: 6, column_type: Advice }, Rotation(2)), (Column { index: 6, column_type: Advice }, Rotation(3)), (Column { index: 7, column_type: Advice }, Rotation(0))], num_advice_queries: [4, 4, 4, 4, 4, 4, 4, 1], instance_queries: [(Column { index: 0, column_type: Instance }, Rotation(0))], fixed_queries: [(Column { index: 1, column_type: Fixed }, Rotation(0)), (Column { index: 0, column_type: Fixed }, Rotation(0))], permutation: Argument { columns: [Column { index: 1, column_type: Fixed }, Column { index: 0, column_type: Advice }, Column { index: 1, column_type: Advice }, Column { index: 2, column_type: Advice }, Column { index: 3, column_type: Advice }, Column { index: 4, column_type: Advice }, Column { index: 5, column_type: Advice }, Column { index: 6, column_type: Advice }, Column { index: 7, column_type: Advice }, Column { index: 0, column_type: Instance }] }, lookups: [Argument { input_expressions: [Advice { query_index: 28, column_index: 7, rotation: Rotation(0) }], table_expressions: [Fixed { query_index: 1, column_index: 0, rotation: Rotation(0) }] }], shuffles: [], general_column_annotations: {}, constants: [], minimum_degree: None }
-stats total_advice_per_phase [784559]
-stats total_fixed 0
-thread 'accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc' panicked at /Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/gates/flex_gate/threads/single_phase.rs:157:49:
-break points not set
+[2023-11-10T21:21:48Z INFO  halo2_base::gates::flex_gate] Poisoned rows after FlexGateConfig::configure 9
+[2023-11-10T21:21:48Z INFO  halo2_base::gates::range] Poisoned rows after RangeConfig::configure 9
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................44.215ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................39.867ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................39.371ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................41.951ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................44.113ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................43.341ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................43.000ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................49.154ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................132.809ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................119.468ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................117.943ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................118.823ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................119.441ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................118.229ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................119.217ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................119.831ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................158.824ms
+primary_circuit_preprocess end
+[2023-11-10T21:21:50Z INFO  halo2_base::gates::flex_gate] Poisoned rows after FlexGateConfig::configure 9
+[2023-11-10T21:21:50Z INFO  halo2_base::gates::range] Poisoned rows after RangeConfig::configure 9
+num_threads 1
+core 1
+synthesize builder
+ctx advice len 717573
+break_points [524278]
+bp None
+assign_lookups_in_phase
+assign_lookups_in_phase
+ctx advice len 717573
+break_points [524278]
+bp Some([524278])
+assign_lookups_in_phase
+assign_lookups_in_phase
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................83.406ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................44.647ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................56.798ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................46.244ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................41.707ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................40.212ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................38.667ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................42.635ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................120.218ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................120.864ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................138.067ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................118.123ms
+secondary_circuit_preprocess end
+num_threads 1
+core 1
+synthesize builder
+ctx advice len 717662
+break_points [524278]
+bp None
+assign_lookups_in_phase
+assign_lookups_in_phase
+ctx advice len 717662
+break_points [524278]
+bp Some([524278])
+assign_lookups_in_phase
+assign_lookups_in_phase
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................92.062ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................44.650ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................50.605ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................43.851ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................44.181ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................39.695ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................42.336ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................40.273ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................120.017ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................119.903ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................119.563ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................119.276ms
+primary_circuit_preprocess rises
+primary_circuit_update_witness
+end_preprocess
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+num_threads 1
+core 1
+synthesize builder
+ctx advice len 1435323
+break_points [524278, 524277]
+bp Some([524278])
+thread 'accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc' panicked at /Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/gates/flex_gate/threads/single_phase.rs:173:17:
+assertion `left == right` failed: break points don't match
+  left: [524278]
+ right: [524278, 524277]
 stack backtrace:
-   0:        0x104b25888 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+   0:        0x1044d207c - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
-   1:        0x104b25888 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+   1:        0x1044d207c - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
-   2:        0x104b25888 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+   2:        0x1044d207c - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
-   3:        0x104b25888 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+   3:        0x1044d207c - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
-   4:        0x104b41970 - core::fmt::rt::Argument::fmt::hced102f619adf930
+   4:        0x1044ee474 - core::fmt::rt::Argument::fmt::hced102f619adf930
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
-   5:        0x104b41970 - core::fmt::write::hd695f6f323113fa4
+   5:        0x1044ee474 - core::fmt::write::hd695f6f323113fa4
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
-   6:        0x104b23778 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+   6:        0x1044cff6c - std::io::Write::write_fmt::h2d56978b54c1b9c0
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
-   7:        0x104b256c4 - std::sys_common::backtrace::_print::h728db9ad119c4970
+   7:        0x1044d1eb8 - std::sys_common::backtrace::_print::h728db9ad119c4970
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
-   8:        0x104b256c4 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+   8:        0x1044d1eb8 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
-   9:        0x104b26fa8 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
-  10:        0x104b26cf0 - std::panicking::default_hook::ha412fc42696c192f
+   9:        0x1044d379c - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x1044d34e4 - std::panicking::default_hook::ha412fc42696c192f
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
-  11:        0x104b273d0 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+  11:        0x1044d3bc4 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
-  12:        0x104b272d0 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+  12:        0x1044d3ac4 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
-  13:        0x104b25cf0 - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+  13:        0x1044d24e4 - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
-  14:        0x104b2706c - rust_begin_unwind
+  14:        0x1044d3860 - rust_begin_unwind
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
-  15:        0x104b71198 - core::panicking::panic_fmt::h37068c283f2fbb8b
+  15:        0x104521efc - core::panicking::panic_fmt::h37068c283f2fbb8b
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
-  16:        0x104b71164 - core::panicking::panic_display::h6903d76304092dbf
-                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:178:5
-  17:        0x104b71164 - core::panicking::panic_str::hb7dfdb4fbf06ca9f
-                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:152:5
-  18:        0x104b71164 - core::option::expect_failed::h2132d7d2d25843f5
-                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/option.rs:1979:5
-  19:        0x1048eb708 - <halo2_base::gates::flex_gate::threads::single_phase::SinglePhaseCoreManager<F> as halo2_base::virtual_region::manager::VirtualRegionManager<F>>::assign_raw::h1d516749efb14d65
-  20:        0x104a08448 - halo2_base::gates::circuit::<impl halo2_proofs::plonk::circuit::Circuit<F> for halo2_base::gates::circuit::builder::BaseCircuitBuilder<F>>::synthesize::{{closure}}::h2bf3e0aaf41fe898
-  21:        0x104a10744 - <halo2_proofs::circuit::floor_planner::single_pass::SingleChipLayouter<F,CS> as halo2_proofs::circuit::Layouter<F>>::assign_region::h263a76ee65949842
-  22:        0x1048e5a68 - halo2_base::gates::circuit::<impl halo2_proofs::plonk::circuit::Circuit<F> for halo2_base::gates::circuit::builder::BaseCircuitBuilder<F>>::synthesize::h241b8521e48de9c5
-  23:        0x1048ca838 - <plonkish_backend::accumulation::protostar::ivc::halo2::RecursiveCircuit<C,Sc> as halo2_proofs::plonk::circuit::Circuit<<C as group::prime::PrimeCurveAffine>::Scalar>>::synthesize::h25162a8ca0927cd7
-  24:        0x104a0e1ac - <halo2_proofs::circuit::floor_planner::single_pass::SimpleFloorPlanner as halo2_proofs::plonk::circuit::FloorPlanner>::synthesize::h039172efb26d3aa2
-  25:        0x1048d36a4 - plonkish_backend::accumulation::protostar::ivc::halo2::preprocess::h5743d87aed5680dd
-  26:        0x1048ddcd0 - plonkish_backend::accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc::h80feabed61ee2f37
-  27:        0x104a16bf0 - core::ops::function::FnOnce::call_once::h9f50e11359f81552
-  28:        0x104a8a254 - core::ops::function::FnOnce::call_once::hd1a6c133ce596545
+  16:        0x1045221f8 - core::panicking::assert_failed_inner::h3099ff63f64d1cf6
+  17:        0x10450ca60 - core::panicking::assert_failed::h0d69847106760ca4
+  18:        0x10420601c - <halo2_base::gates::flex_gate::threads::single_phase::SinglePhaseCoreManager<F> as halo2_base::virtual_region::manager::VirtualRegionManager<F>>::assign_raw::hab85d39d2b9dd4eb
+  19:        0x10427e1a0 - halo2_base::gates::circuit::<impl halo2_proofs::plonk::circuit::Circuit<F> for halo2_base::gates::circuit::builder::BaseCircuitBuilder<F>>::synthesize::{{closure}}::h54aa796958066948
+  20:        0x10427d750 - halo2_base::gates::circuit::<impl halo2_proofs::plonk::circuit::Circuit<F> for halo2_base::gates::circuit::builder::BaseCircuitBuilder<F>>::synthesize::hff0f456d2bed97a2
+  21:        0x104236040 - <plonkish_backend::accumulation::protostar::ivc::halo2::RecursiveCircuit<C,Sc> as halo2_proofs::plonk::circuit::Circuit<<C as group::prime::PrimeCurveAffine>::Scalar>>::synthesize::h5baf9c0f3b6459dd
+  22:        0x10428caf0 - <halo2_proofs::circuit::floor_planner::single_pass::SimpleFloorPlanner as halo2_proofs::plonk::circuit::FloorPlanner>::synthesize::h0c1c6add144fe85c
+  23:        0x104254d98 - <plonkish_backend::frontend::halo2::Halo2Circuit<F,C> as plonkish_backend::backend::PlonkishCircuit<F>>::synthesize::hb0731d3f290eaaca
+  24:        0x10431bbf4 - plonkish_backend::accumulation::AccumulationScheme::prove_accumulation_from_nark::hd3a1857ed7c9ac4f
+  25:        0x10421c6e8 - plonkish_backend::accumulation::protostar::ivc::halo2::test::run_protostar_hyperplonk_ivc::h0f5bfd7927871e57
+  26:        0x10423e8d8 - plonkish_backend::accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc::h29eb495213f3108c
+  27:        0x104303e28 - core::ops::function::FnOnce::call_once::h125f9714958bf284
+  28:        0x1044365cc - core::ops::function::FnOnce::call_once::hd1a6c133ce596545
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/ops/function.rs:250:5
-  29:        0x104a8a254 - test::__rust_begin_short_backtrace::h665c810724821113
+  29:        0x1044365cc - test::__rust_begin_short_backtrace::h665c810724821113
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:628:18
-  30:        0x104a89330 - test::run_test_in_process::{{closure}}::h49df2da7fd660933
+  30:        0x1044356a8 - test::run_test_in_process::{{closure}}::h49df2da7fd660933
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:651:60
-  31:        0x104a89330 - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h69e5c8770946231d
+  31:        0x1044356a8 - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h69e5c8770946231d
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panic/unwind_safe.rs:271:9
-  32:        0x104a89330 - std::panicking::try::do_call::ha5b3481f92cc2e29
+  32:        0x1044356a8 - std::panicking::try::do_call::ha5b3481f92cc2e29
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:504:40
-  33:        0x104a89330 - std::panicking::try::he8442f1203de8ddd
+  33:        0x1044356a8 - std::panicking::try::he8442f1203de8ddd
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:468:19
-  34:        0x104a89330 - std::panic::catch_unwind::h9c1b83088a22d612
+  34:        0x1044356a8 - std::panic::catch_unwind::h9c1b83088a22d612
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panic.rs:142:14
-  35:        0x104a89330 - test::run_test_in_process::ha5451a88473df7c1
+  35:        0x1044356a8 - test::run_test_in_process::ha5451a88473df7c1
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:651:27
-  36:        0x104a89330 - test::run_test::{{closure}}::h0e02b4f37b76b4ed
+  36:        0x1044356a8 - test::run_test::{{closure}}::h0e02b4f37b76b4ed
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:574:43
-  37:        0x104a5cc18 - test::run_test::{{closure}}::h7bc13775c87fce78
+  37:        0x104408f90 - test::run_test::{{closure}}::h7bc13775c87fce78
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/test/src/lib.rs:602:41
-  38:        0x104a5cc18 - std::sys_common::backtrace::__rust_begin_short_backtrace::ha3c3d76d59588e26
+  38:        0x104408f90 - std::sys_common::backtrace::__rust_begin_short_backtrace::ha3c3d76d59588e26
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:154:18
-  39:        0x104a613fc - std::thread::Builder::spawn_unchecked_::{{closure}}::{{closure}}::h4c0dfb23f2c55574
+  39:        0x10440d774 - std::thread::Builder::spawn_unchecked_::{{closure}}::{{closure}}::h4c0dfb23f2c55574
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/thread/mod.rs:529:17
-  40:        0x104a613fc - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::hb0bbe0e9b55f7cec
+  40:        0x10440d774 - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::hb0bbe0e9b55f7cec
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panic/unwind_safe.rs:271:9
-  41:        0x104a613fc - std::panicking::try::do_call::h377315edacc9eeb6
+  41:        0x10440d774 - std::panicking::try::do_call::h377315edacc9eeb6
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:504:40
-  42:        0x104a613fc - std::panicking::try::ha55e8f1d82f1cb2a
+  42:        0x10440d774 - std::panicking::try::ha55e8f1d82f1cb2a
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:468:19
-  43:        0x104a613fc - std::panic::catch_unwind::h73772324df73e810
+  43:        0x10440d774 - std::panic::catch_unwind::h73772324df73e810
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panic.rs:142:14
-  44:        0x104a613fc - std::thread::Builder::spawn_unchecked_::{{closure}}::hbd9db33b0a843a4a
+  44:        0x10440d774 - std::thread::Builder::spawn_unchecked_::{{closure}}::hbd9db33b0a843a4a
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/thread/mod.rs:528:30
-  45:        0x104a613fc - core::ops::function::FnOnce::call_once{{vtable.shim}}::h75f419748c4ccefc
+  45:        0x10440d774 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h75f419748c4ccefc
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/ops/function.rs:250:5
-  46:        0x104b2b258 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+  46:        0x1044d7a4c - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
-  47:        0x104b2b258 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+  47:        0x1044d7a4c - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
-  48:        0x104b2b258 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+  48:        0x1044d7a4c - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
                                at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
   49:        0x18579c26c - __pthread_deallocate
-[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/lookups.rs:114] "WARNING: LookupAnyManager was not assigned!" = "WARNING: LookupAnyManager was not assigned!"
+··End:     witness_collector-0 .....................................................426.019ms
+End:     prove_accumulation_from_nark-primary-19 ...................................426.060ms
 test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... FAILED
 
 failures:
@@ -145,6 +228,6 @@ failures:
 failures:
     accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc
 
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 25 filtered out; finished in 1.74s
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 35.56s
 
 error: test failed, to rerun pass `-p plonkish_backend --lib`

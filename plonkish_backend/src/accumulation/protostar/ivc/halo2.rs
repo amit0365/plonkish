@@ -53,11 +53,6 @@ use poseidon::Spec;
 use rand::RngCore;
 use std::cell::RefCell;
 
-// use halo2_proofs::{
-//     circuit::{AssignedCell, Layouter, Value},
-//     plonk::{ConstraintSystem, Error, Circuit},
-// };
-
 use halo2_base::{
     Context,
     gates::{
@@ -111,7 +106,7 @@ type AssignedProtostarAccumulatorInstance<AssignedBase, AssignedSecondary> =
     ProtostarAccumulatorInstance<AssignedBase, AssignedSecondary>;
 
 
-pub trait StepCircuit<'a, C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> 
+pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> 
 where
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
@@ -153,25 +148,25 @@ where
     >;
 }
 
-pub struct ProtostarAccumulationVerifier<'a, C: TwoChainCurve> 
+pub struct ProtostarAccumulationVerifier<C: TwoChainCurve> 
 where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 
 {
     avp: ProtostarAccumulationVerifierParam<C::Scalar>,
-    tcc_chip: Chip<'a, C>,
+    tcc_chip: Chip<C>,
     _marker: PhantomData<C>,
 }
 
-impl<'a, C> ProtostarAccumulationVerifier<'a, C>
+impl<C> ProtostarAccumulationVerifier<C>
 where
     C: TwoChainCurve,
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 
 {
-    pub fn new(avp: ProtostarAccumulationVerifierParam<C::Scalar>, tcc_chip: Chip<'a, C>) -> Self {
+    pub fn new(avp: ProtostarAccumulationVerifierParam<C::Scalar>, tcc_chip: Chip<C>) -> Self {
         Self {
             avp,
             tcc_chip,
@@ -577,18 +572,18 @@ where
 }
 
 #[derive(Debug)]
-pub struct RecursiveCircuit<'a, C, Sc>
+pub struct RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
-    Sc: StepCircuit<'a, C>,
+    Sc: StepCircuit<C>,
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 
 {
     is_primary: bool,
     step_circuit: Sc,
-    tcc_chip: Chip<'a, C>,
-    hash_chip: Chip<'a, C>,
+    tcc_chip: Chip<C>,
+    hash_chip: Chip<C>,
     hash_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
     transcript_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
     avp: ProtostarAccumulationVerifierParam<C::Scalar>,
@@ -600,10 +595,10 @@ where
     inner: RefCell<BaseCircuitBuilder<C::Scalar>>,
 }
 
-impl<'a, C, Sc> RecursiveCircuit<'a, C, Sc>
+impl<C, Sc> RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
-    Sc: StepCircuit<'a, C>,
+    Sc: StepCircuit<C>,
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 
@@ -613,15 +608,17 @@ where
     pub fn new(
         is_primary: bool,
         step_circuit: Sc,
-        chip: Chip<'a, C>,
         avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
-        builder: BaseCircuitBuilder<C::Scalar>,
+        circuit_params: BaseCircuitParams,
     ) -> Self {
         let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>();
         let hash_config = poseidon_spec.clone();
         let transcript_config = poseidon_spec.clone();
-        let hash_chip = Chip::<C>::new(hash_config.clone(), chip.clone());
+
+        let mut builder = BaseCircuitBuilder::<C::Scalar>::new(false).use_params(circuit_params.clone());
         let inner = RefCell::new(builder);
+        let chip = Chip::<C>::create(inner.borrow_mut().clone());
+        let hash_chip = Chip::<C>::new(hash_config.clone(), chip.clone());
         let circuit = Self {
                 is_primary,
                 step_circuit,
@@ -741,7 +738,7 @@ where
     fn synthesize_accumulation_verifier(
         &self,
         mut layouter: impl Layouter<C::Scalar>,
-        config: <RecursiveCircuit<'a, C, Sc> as halo2_base::halo2_proofs::plonk::Circuit<C::Scalar>>::Config,
+        config: <RecursiveCircuit<C, Sc> as halo2_base::halo2_proofs::plonk::Circuit<C::Scalar>>::Config,
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
     ) -> Result<(), Error> {
@@ -753,7 +750,7 @@ where
         } = &self;
 
         let mut binding = self.inner.borrow_mut();
-        let builder = binding.pool(0); //.core();  
+        let builder = binding.pool(0);  
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
 
         let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
@@ -818,21 +815,24 @@ where
             &acc_prime,
         )?;
 
-        // todo impl constrain instance these 
+        // todo check impl constrain instance these 
         // tcc_chip.constrain_instance(builder, &mut layouter, &h_ohs_from_incoming, 0)?;
         let assigned_instances = &mut binding.assigned_instances;
         assigned_instances[0].push(h_ohs_from_incoming);
         assigned_instances[0].push(h_from_incoming);
+
+        binding.synthesize(config.clone(), layouter.namespace(|| ""));
+        binding.clear();
         drop(binding);
 
         Ok(())
     }
 }
 
-impl<'a, C, Sc> Circuit<C::Scalar> for RecursiveCircuit<'a, C, Sc>
+impl<C, Sc> Circuit<C::Scalar> for RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
-    Sc: StepCircuit<'a, C>,
+    Sc: StepCircuit<C>,
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 
@@ -876,16 +876,15 @@ where
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config.clone(), layouter.namespace(|| ""))?;
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
-        //self.inner.borrow_mut().calculate_params(Some(0));
-        self.inner.borrow_mut().synthesize(config.clone(), layouter.namespace(|| ""));
+
         Ok(())
     }
 }
 
-impl<'a, C, Sc> CircuitExt<C::Scalar> for RecursiveCircuit<'a, C, Sc>
+impl<'a, C, Sc> CircuitExt<C::Scalar> for RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
-    Sc: StepCircuit<'a, C>,
+    Sc: StepCircuit<C>,
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
@@ -956,23 +955,19 @@ where
 
 #[allow(clippy::type_complexity)]
 #[allow(clippy::too_many_arguments)]
-pub fn preprocess<'a, C, P1, P2, S1, S2, AT1, AT2>(
+pub fn preprocess<C, P1, P2, S1, S2, AT1, AT2>(
     primary_num_vars: usize,
     primary_atp: AT1::Param,
     primary_step_circuit: S1,
     secondary_num_vars: usize,
     secondary_atp: AT2::Param,
     secondary_step_circuit: S2,
-    chip_primary: Chip<'a, C>,
-    chip_secondary: Chip<'a, C::Secondary>,
-    builder_primary: BaseCircuitBuilder<C::Scalar>,
-    builder_secondary: BaseCircuitBuilder<<<C as TwoChainCurve>::Secondary as CurveAffine>::ScalarExt>,
     circuit_params: BaseCircuitParams,
     mut rng: impl RngCore,
 ) -> Result<
     (
-        Halo2Circuit<C::Scalar, RecursiveCircuit<'a, C, S1>>,
-        Halo2Circuit<C::Base, RecursiveCircuit<'a, C::Secondary, S2>>,
+        Halo2Circuit<C::Scalar, RecursiveCircuit<C, S1>>,
+        Halo2Circuit<C::Base, RecursiveCircuit<C::Secondary, S2>>,
         ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
         ProtostarIvcVerifierParam<
             C,
@@ -998,8 +993,8 @@ where
         CommitmentChunk = C::Secondary,
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
-    S1: StepCircuit<'a, C>,
-    S2: StepCircuit<'a, C::Secondary>,
+    S1: StepCircuit<C>,
+    S2: StepCircuit<C::Secondary>,
     AT1: InMemoryTranscript,
     AT2: InMemoryTranscript,
 {
@@ -1008,7 +1003,7 @@ where
     let primary_param = P1::setup(1 << primary_num_vars, 0, &mut rng).unwrap();
     let secondary_param = P2::setup(1 << secondary_num_vars, 0, &mut rng).unwrap();
 
-    let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, chip_primary, None, builder_primary);
+    let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, None, circuit_params.clone());
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, circuit_params.clone());
 
@@ -1020,9 +1015,8 @@ where
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,
-        chip_secondary,
         Some(ProtostarAccumulationVerifierParam::from(&primary_vp)),
-        builder_secondary,
+        circuit_params.clone(),
     );
     
     let mut secondary_circuit =
@@ -1030,7 +1024,6 @@ where
 
     let (secondary_pp, secondary_vp) = {
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
-        secondary_circuit.circuit().inner.borrow_mut().clear();
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };
 
@@ -1039,7 +1032,6 @@ where
         circuit.update_acc();
     });
     let primary_circuit_info = primary_circuit.circuit_info().unwrap();
-    primary_circuit.circuit().inner.borrow_mut().clear();
     let (primary_pp, primary_vp) =
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
 
@@ -1104,8 +1096,8 @@ where
         CommitmentChunk = C::Secondary,
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
-    S1: for<'b> StepCircuit<'b, C>,
-    S2: for<'b> StepCircuit<'b, C::Secondary>,
+    S1: StepCircuit<C>,
+    S2: StepCircuit<C::Secondary>,
     AT1: TranscriptRead<P1::CommitmentChunk, C::Scalar>
         + TranscriptWrite<P1::CommitmentChunk, C::Scalar>
         + InMemoryTranscript,
@@ -1135,7 +1127,6 @@ where
                 &mut transcript,
                 &mut rng,
             )?;
-            primary_circuit.circuit().inner.borrow_mut().clear();
             transcript.into_proof()
         };
         end_timer(timer);
@@ -1167,7 +1158,6 @@ where
                     &mut transcript,
                     &mut rng,
                 )?;
-                secondary_circuit.circuit().inner.borrow_mut().clear();
                 transcript.into_proof()
             };
             end_timer(timer);
@@ -1321,7 +1311,7 @@ where
     Ok(())
 }
 
-impl<C: TwoChainCurve> Chip<'_, C>
+impl<C: TwoChainCurve> Chip<C>
 where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
@@ -2146,17 +2136,8 @@ where
     }
 }
 
-// impl<C> ProtostarHyperPlonkUtil<C> for Chip<'_, C>
-// where
-//     C: TwoChainCurve,
-//     C::Scalar: BigPrimeField,
-//     C::Base: BigPrimeField,
-//     //I: TwoChainCurveInstruction<C>,
-// {
-// }
-
 #[derive(Debug)]
-pub struct ProtostarIvcAggregator<'a, C, Pcs>
+pub struct ProtostarIvcAggregator<C, Pcs>
 where
     C: TwoChainCurve,
     C::Scalar: BigPrimeField + PrimeFieldBits,
@@ -2166,12 +2147,12 @@ where
     vp_digest: C::Scalar,
     vp: ProtostarVerifierParam<C::Base, HyperPlonk<Pcs>>,
     arity: usize,
-    tcc_chip: Chip<'a, C>,
-    hash_chip: Chip<'a, C>,
+    tcc_chip: Chip<C>,
+    hash_chip: Chip<C>,
     _marker: PhantomData<(C, Pcs)>,
 }
 
-impl<'a, C, Pcs> ProtostarIvcAggregator<'a, C, Pcs>
+impl<'a, C, Pcs> ProtostarIvcAggregator<C, Pcs>
 where
     C: TwoChainCurve,
     C::ScalarExt: BigPrimeField + PrimeFieldBits,
@@ -2185,8 +2166,8 @@ where
         vp_digest: C::Scalar,
         vp: ProtostarVerifierParam<C::Base, HyperPlonk<Pcs>>,
         arity: usize,
-        tcc_chip: Chip<'a, C>,
-        hash_chip: Chip<'a, C>,
+        tcc_chip: Chip<C>,
+        hash_chip: Chip<C>,
     ) -> Self {
         Self {
             vp_digest,
@@ -2436,7 +2417,7 @@ where
     }
 }
 
-impl<'a, C, M> ProtostarIvcAggregator<'a, C, Gemini<UnivariateKzg<M>>>
+impl<C, M> ProtostarIvcAggregator<C, Gemini<UnivariateKzg<M>>>
 where
     C: TwoChainCurve,
     C::Scalar: BigPrimeField + PrimeFieldBits,
@@ -2625,12 +2606,12 @@ where
     }
 }
 
-impl<'a, C>
-    ProtostarIvcAggregator<'a, C, MultilinearIpa<C::Secondary>>
+impl<C>
+    ProtostarIvcAggregator<C, MultilinearIpa<C::Secondary>>
 where
     C: TwoChainCurve,
     C::Scalar: BigPrimeField + PrimeFieldBits,
-    C::Secondary: Serialize + DeserializeOwned, //+ BigPrimeField,
+    C::Secondary: Serialize + DeserializeOwned,
     C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField + PrimeFieldBits,
 {
     #[allow(clippy::too_many_arguments)]

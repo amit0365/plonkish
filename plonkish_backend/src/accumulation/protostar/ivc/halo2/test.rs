@@ -32,7 +32,7 @@ use crate::{
 use halo2_base::{halo2_proofs::
     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
 }, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
-//use pairing::{Engine, MillerLoopResult, MultiMillerLoop, PairingCurveAffine};
+
 use halo2_base::{Context,
     gates::{range::RangeInstructions, circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
             flex_gate::{GateChip, GateInstructions}},
@@ -43,8 +43,8 @@ use halo2_ecc::{fields::{fp::FpChip, native_fp::NativeFieldChip}, ecc::EccChip};
 use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value, SimpleFloorPlanner},
     plonk::{Circuit, Selector, ConstraintSystem, Error},
-};//halo2_base::
-//use halo2_ecc::bn254::pairing;
+};
+
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From};
 use std::{mem, rc::Rc};
 
@@ -70,17 +70,6 @@ where
         self.clone()
     }
 
-    // fn configure_with_params(
-    //     meta: &mut ConstraintSystem<Fr>,
-    //     params: Self::Params,
-    // ) -> Self::Config {
-    //     BaseCircuitBuilder::configure_with_params(meta, params.into())
-    // }
-
-    // fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-    //     strawman::Config::configure::<C>(meta)
-    // }
-
     fn configure(_: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
         unreachable!()
     }
@@ -100,14 +89,14 @@ where
     }
 }
 
-impl<'a, C: TwoChainCurve> StepCircuit<'a, C> for TrivialCircuit<C>
+impl<C: TwoChainCurve> StepCircuit<C> for TrivialCircuit<C>
 where
     C::Base: BigPrimeField + PrimeFieldBits,
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
-    //type TccChip = strawman::Chip<'a, C>;
-    //type HashChip = strawman::Chip<'a, C>;
-    //type TranscriptChip = strawman::PoseidonTranscriptChip<'a, C>;
+    //type TccChip = strawman::Chip<C>;
+    //type HashChip = strawman::Chip<C>;
+    //type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
 
     // fn configs(
     //     config: Self::Config,
@@ -418,10 +407,6 @@ where
 fn run_protostar_hyperplonk_ivc<C, P1, P2>(
     num_vars: usize,
     num_steps: usize,
-    chip_primary: Chip<C>,
-    chip_secondary: Chip<<C as TwoChainCurve>::Secondary>,
-    builder_primary: BaseCircuitBuilder<C::Scalar>,
-    builder_secondary:BaseCircuitBuilder<<<C as TwoChainCurve>::Secondary as CurveAffine>::ScalarExt>,
     circuit_params: BaseCircuitParams,
 ) -> (
     ProtostarIvcVerifierParam<
@@ -477,10 +462,6 @@ where
         secondary_num_vars,
         secondary_atp,
         TrivialCircuit::default(),
-        chip_primary,
-        chip_secondary,
-        builder_primary,
-        builder_secondary,
         circuit_params.clone(), 
         seeded_std_rng(),
     )
@@ -586,26 +567,11 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
             num_instance_columns: 1,
         };
 
-    let mut builder_primary = BaseCircuitBuilder::<bn256::Fr>::new(false).use_params(circuit_params.clone());
-    let range_primary = builder_primary.range_chip();
-    let base_chip_primary = FpChip::<bn256::Fr, bn256::Fq>::new(&range_primary, NUM_LIMB_BITS, NUM_LIMBS);
-    let native_chip_primary = NativeFieldChip::new(&range_primary);
-    let ecc_chip_primary = EccChip::new(&native_chip_primary);
-    let chip_primary = strawman::Chip::<bn256::G1Affine>::create(base_chip_primary, ecc_chip_primary);
-
-    let mut builder_secondary = BaseCircuitBuilder::<grumpkin::Fr>::new(false).use_params(circuit_params.clone());
-    let range_secondary = builder_secondary.range_chip();
-    let base_chip_secondary = FpChip::<grumpkin::Fr, grumpkin::Fq>::new(&range_secondary, NUM_LIMB_BITS, NUM_LIMBS);
-    let native_chip_secondary = NativeFieldChip::new(&range_secondary);
-    let ecc_chip_secondary = EccChip::new(&native_chip_secondary);
-    let chip_secondary = strawman::Chip::<grumpkin::G1Affine>::create(base_chip_secondary, ecc_chip_secondary);
-
     run_protostar_hyperplonk_ivc::<
         bn256::G1Affine,
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
-    >(NUM_VARS, NUM_STEPS, chip_primary, chip_secondary, builder_primary, builder_secondary, circuit_params);
-
+    >(NUM_VARS, NUM_STEPS, circuit_params);
 }
 
 // #[test]
@@ -994,30 +960,24 @@ pub mod strawman {
 
     #[allow(clippy::type_complexity)]
     #[derive(Clone, Debug)]
-    pub struct Chip<'a, C: TwoChainCurve> 
+    pub struct Chip<C: TwoChainCurve> 
     where
         C::Scalar: BigPrimeField,
         C::Base: BigPrimeField,
     {   
-        pub base_chip: FpChip<'a, C::Scalar, C::Base>,
-        pub ecc_chip: EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
+        pub builder: BaseCircuitBuilder<C::Scalar>
     }
 
-    impl<'a, C: TwoChainCurve> Chip<'a, C> 
+    impl<'a, C: TwoChainCurve> Chip<C> 
     where
         C::Scalar: BigPrimeField,
         C::Base: BigPrimeField,  
     {
 
-        pub fn create(
-            base_chip: FpChip<'a, C::Scalar, C::Base>, 
-            ecc_chip: EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
-            ) -> Self {
-                Self {
-                    base_chip,
-                    ecc_chip,
-                }
+        pub fn create(builder: BaseCircuitBuilder<C::Scalar>) -> Self {
+                Self {builder,
             }
+        }
 
         // pub fn constrain_instance(
         //         &self,
@@ -1086,7 +1046,8 @@ pub mod strawman {
             when_true: &AssignedValue<C::Scalar>,
             when_false: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(GateInstructions::select(&self.base_chip.range().gate, builder.main(), Existing(when_true.into()), Existing(when_false.into()), Existing(condition.into())))
+            let gate_chip = self.builder.range_chip().gate;
+            Ok(GateInstructions::select(&gate_chip, builder.main(), Existing(when_true.into()), Existing(when_false.into()), Existing(condition.into())))
         }
     
         pub fn is_equal(
@@ -1095,7 +1056,8 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.base_chip.range().gate.is_equal(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+            let gate_chip = self.builder.range_chip().gate;
+            Ok(gate_chip.is_equal(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
         pub fn add(
@@ -1104,7 +1066,8 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.base_chip.range().gate.add(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+            let gate_chip = self.builder.range_chip().gate;
+            Ok(gate_chip.add(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
         pub fn sub(
@@ -1113,7 +1076,8 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.base_chip.range().gate.sub(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+            let gate_chip = self.builder.range_chip().gate;
+            Ok(gate_chip.sub(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }  
     
         pub fn mul(
@@ -1122,7 +1086,8 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.base_chip.range().gate.mul(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+            let gate_chip = self.builder.range_chip().gate;
+            Ok(gate_chip.mul(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
 
         pub fn constrain_equal_base(
@@ -1131,7 +1096,9 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<(), Error> {
-            self.base_chip.assert_equal(builder.main(),lhs,rhs);
+            let range_chip = self.builder.range_chip();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            base_chip.assert_equal(builder.main(),lhs,rhs);
             Ok(())
         }
     
@@ -1140,7 +1107,9 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Base,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            Ok(self.base_chip.load_constant(builder.main(),constant))
+            let range_chip = self.builder.range_chip();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            Ok(base_chip.load_constant(builder.main(),constant))
         }
     
         pub fn assign_witness_base(
@@ -1148,7 +1117,9 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Base,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            Ok(self.base_chip.load_private(builder.main(),witness))
+            let range_chip = self.builder.range_chip();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            Ok(base_chip.load_private(builder.main(),witness))
         }    
     
         pub fn select_base(
@@ -1158,7 +1129,9 @@ pub mod strawman {
             when_true: &ProperCrtUint<C::Scalar>,
             when_false: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            Ok(self.base_chip.select(builder.main(),when_true.clone(),when_false.clone(),*condition))
+            let range_chip = self.builder.range_chip();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            Ok(base_chip.select(builder.main(),when_true.clone(),when_false.clone(),*condition))
         }
     
         pub fn fit_base_in_scalar(
@@ -1181,12 +1154,14 @@ pub mod strawman {
             a: &ProperCrtUint<C::Scalar>,
             b: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            let add = self.base_chip.add_no_carry(builder.main(), a, b);
+            let range_chip = self.builder.range_chip();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let add = base_chip.add_no_carry(builder.main(), a, b);
                 Ok(FixedCRTInteger::from_native(add.value.to_biguint().unwrap(), 
-                    self.base_chip.num_limbs, self.base_chip.limb_bits).assign(
+                    base_chip.num_limbs, base_chip.limb_bits).assign(
                     builder.main(),
-                    self.base_chip.limb_bits,
-                    self.base_chip.native_modulus(),
+                    base_chip.limb_bits,
+                    base_chip.native_modulus(),
                 ))
         }
     
@@ -1196,12 +1171,14 @@ pub mod strawman {
             a: &ProperCrtUint<C::Scalar>,
             b: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            let sub = self.base_chip.sub_no_carry(builder.main(), a, b);
+            let range_chip = self.builder.range_chip();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let sub = base_chip.sub_no_carry(builder.main(), a, b);
                 Ok(FixedCRTInteger::from_native(sub.value.to_biguint().unwrap(), 
-                    self.base_chip.num_limbs, self.base_chip.limb_bits).assign(
+                    base_chip.num_limbs, base_chip.limb_bits).assign(
                     builder.main(),
-                    self.base_chip.limb_bits,
-                    self.base_chip.native_modulus(),
+                    base_chip.limb_bits,
+                    base_chip.native_modulus(),
                 ))
         }
 
@@ -1248,7 +1225,9 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            Ok(self.base_chip.mul(builder.main(), lhs, rhs))
+            let range_chip = self.builder.range_chip();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            Ok(base_chip.mul(builder.main(), lhs, rhs))
         }
     
         pub fn div_incomplete_base(
@@ -1257,7 +1236,9 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            Ok(self.base_chip.divide_unsafe(builder.main(), lhs, rhs))
+            let range_chip = self.builder.range_chip();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            Ok(base_chip.divide_unsafe(builder.main(), lhs, rhs))
         }
 
         pub fn invert_incomplete_base(
@@ -1342,7 +1323,10 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<(), Error> {
-            self.ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
+            let range_chip = self.builder.range_chip();
+            let native_chip = NativeFieldChip::new(&range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
             Ok(())
         }
 
@@ -1351,7 +1335,10 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Secondary,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            Ok(self.ecc_chip.assign_constant_point(builder.main(), constant))
+            let range_chip = self.builder.range_chip();
+            let native_chip = NativeFieldChip::new(&range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.assign_constant_point(builder.main(), constant))
         }
 
         pub fn assign_witness_secondary(
@@ -1359,7 +1346,10 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Secondary,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            Ok(self.ecc_chip.assign_point(builder.main(), witness))
+            let range_chip = self.builder.range_chip();
+            let native_chip = NativeFieldChip::new(&range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.assign_point(builder.main(), witness))
         }
 
         pub fn select_secondary(
@@ -1369,7 +1359,10 @@ pub mod strawman {
             when_true: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             when_false: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            Ok(self.ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
+            let range_chip = self.builder.range_chip();
+            let native_chip = NativeFieldChip::new(&range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
 
         pub fn add_secondary(
@@ -1378,7 +1371,10 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            Ok(self.ecc_chip.add_unequal(builder.main(), lhs, rhs, false))
+            let range_chip = self.builder.range_chip();
+            let native_chip = NativeFieldChip::new(&range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.add_unequal(builder.main(), lhs, rhs, false))
         }
 
         pub fn scalar_mul_secondary(
@@ -1387,8 +1383,11 @@ pub mod strawman {
             base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             le_bits: &[AssignedValue<C::Scalar>],
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            let max_bits = self.base_chip.limb_bits;
-            Ok(self.ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), max_bits, WINDOW_BITS))
+            let max_bits = NUM_LIMB_BITS;
+            let range_chip = self.builder.range_chip();
+            let native_chip = NativeFieldChip::new(&range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), max_bits, WINDOW_BITS))
         }
 
         pub fn fixed_base_msm_secondary(
@@ -1398,8 +1397,11 @@ pub mod strawman {
             scalars: Vec<ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
             let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
-            let max_scalar_bits_per_cell = self.base_chip.limb_bits;
-            Ok(self.ecc_chip.fixed_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_scalar_bits_per_cell))
+            let max_scalar_bits_per_cell = NUM_LIMB_BITS;
+            let range_chip = self.builder.range_chip();
+            let native_chip = NativeFieldChip::new(&range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.fixed_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_scalar_bits_per_cell))
         }
 
         pub fn variable_base_msm_secondary(
@@ -1409,24 +1411,23 @@ pub mod strawman {
             scalars: Vec<ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
             let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
-            let max_bits = self.base_chip.limb_bits;
-            Ok(self.ecc_chip.variable_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_bits))
+            let max_bits = NUM_LIMB_BITS;
+            let range_chip = self.builder.range_chip();
+            let native_chip = NativeFieldChip::new(&range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.variable_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_bits))
         }
 
     }
 
-    impl<'a, C: TwoChainCurve> Chip<'a, C>
+    impl<C: TwoChainCurve> Chip<C>
     where
         C::Base: BigPrimeField + PrimeFieldBits,
         C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
     {
         pub const NUM_HASH_BITS: usize = NUM_HASH_BITS;
 
-        // type Param = OptimizedPoseidonSpec<C::Scalar, T, RATE>;
-        // type Config = OptimizedPoseidonSpec<C::Scalar, T, RATE>;
-        // type TccChip = Chip<'a, C>;
-
-        pub fn new(_: OptimizedPoseidonSpec<C::Scalar, T, RATE>, chip: Chip<'a, C>) -> Self {
+        pub fn new(_: OptimizedPoseidonSpec<C::Scalar, T, RATE>, chip: Chip<C>) -> Self {
             chip
         }
 
@@ -1498,20 +1499,21 @@ pub mod strawman {
                 .collect_vec();
             let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main()); //PoseidonSponge::from_spec(builder.main(), self.poseidon_spec.clone());
             poseidon_chip.update(&inputs);
-            let hash = poseidon_chip.squeeze(builder.main(), &self.base_chip.range().gate);
-            let hash_le_bits = self.base_chip.range().gate.num_to_bits(builder.main(), hash, 254);
-            Ok(self.base_chip.range().gate.bits_to_num(builder.main(), (&hash_le_bits[..NUM_HASH_BITS]).to_vec()))
+            let gate_chip = self.builder.range_chip().gate;
+            let hash = poseidon_chip.squeeze(builder.main(), &gate_chip);
+            let hash_le_bits = gate_chip.num_to_bits(builder.main(), hash, 254);
+            Ok(gate_chip.bits_to_num(builder.main(), (&hash_le_bits[..NUM_HASH_BITS]).to_vec()))
         }
     }
 
     //#[derive(Clone, Debug)]
-    pub struct PoseidonTranscriptChip<'a, C: TwoChainCurve> 
+    pub struct PoseidonTranscriptChip<C: TwoChainCurve> 
     where
         C::Scalar: BigPrimeField,
         C::Base: BigPrimeField,
     {
         poseidon_chip: PoseidonSponge<C::Scalar, T, RATE>,
-        chip: Chip<'a, C>,
+        chip: Chip<C>,
         proof: Value<Cursor<Vec<u8>>>,
     }
 
@@ -1527,7 +1529,7 @@ pub mod strawman {
         }
     }
 
-    impl<'a, C: TwoChainCurve> PoseidonTranscriptChip<'a, C>
+    impl<'a, C: TwoChainCurve> PoseidonTranscriptChip<C>
     where
         C: TwoChainCurve,
         C::Base: BigPrimeField + PrimeFieldBits,
@@ -1535,7 +1537,7 @@ pub mod strawman {
     {
 
         pub fn new(ctx: &mut Context<C::Scalar>, spec: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-            chip: Chip<'a, C>, proof: Value<Vec<u8>>) -> Self {
+            chip: Chip<C>, proof: Value<Vec<u8>>) -> Self {
             let poseidon_chip = PoseidonSponge::from_spec(ctx, spec);
             PoseidonTranscriptChip {
                 poseidon_chip,
@@ -1687,19 +1689,21 @@ pub mod strawman {
             &mut self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
         ) -> Result<Challenge<C::Scalar>, Error> {
+            let range_chip = self.chip.builder.range_chip();
             let (challenge_le_bits, challenge) = {
-                let hash = self.poseidon_chip.squeeze(builder.main(), &self.chip.base_chip.range().gate);
+                let hash = self.poseidon_chip.squeeze(builder.main(), &range_chip.gate);
                 self.poseidon_chip.update(&[hash]);
-                let challenge_le_bits = self.chip.base_chip.range().gate.num_to_bits(builder.main(),hash, NUM_CHALLENGE_BITS);
-                let challenge = self.chip.base_chip.range().gate.bits_to_num(builder.main(), challenge_le_bits.clone());
+                let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, NUM_CHALLENGE_BITS);
+                let challenge = range_chip.gate.bits_to_num(builder.main(), challenge_le_bits.clone());
                 (challenge_le_bits, challenge)
             };
 
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let scalar = FixedCRTInteger::from_native(fe_to_biguint(challenge.value()), 
-                                                        self.chip.base_chip.num_limbs, self.chip.base_chip.limb_bits).assign(
+                                                        base_chip.num_limbs, base_chip.limb_bits).assign(
                                                         builder.main(),
-                                                        self.chip.base_chip.limb_bits,
-                                                        self.chip.base_chip.native_modulus());
+                                                        base_chip.limb_bits,
+                                                        base_chip.native_modulus());
 
             let scalar_in_base = scalar.native();
             self.chip.constrain_equal(builder, &challenge, scalar_in_base).unwrap();                                       

@@ -587,22 +587,18 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
         };
 
     let mut builder_primary = BaseCircuitBuilder::<bn256::Fr>::new(false).use_params(circuit_params.clone());
-    // builder_primary.set_break_points(vec![vec![524278]; 6]);
     let range_primary = builder_primary.range_chip();
-    let gate_chip_primary = range_primary.gate();
     let base_chip_primary = FpChip::<bn256::Fr, bn256::Fq>::new(&range_primary, NUM_LIMB_BITS, NUM_LIMBS);
     let native_chip_primary = NativeFieldChip::new(&range_primary);
     let ecc_chip_primary = EccChip::new(&native_chip_primary);
-    let chip_primary = strawman::Chip::<bn256::G1Affine>::create(gate_chip_primary.clone(), base_chip_primary, ecc_chip_primary);
+    let chip_primary = strawman::Chip::<bn256::G1Affine>::create(base_chip_primary, ecc_chip_primary);
 
     let mut builder_secondary = BaseCircuitBuilder::<grumpkin::Fr>::new(false).use_params(circuit_params.clone());
-    // builder_secondary.set_break_points(vec![vec![524278]; 6]);
     let range_secondary = builder_secondary.range_chip();
-    let gate_chip_secondary = range_secondary.gate();
     let base_chip_secondary = FpChip::<grumpkin::Fr, grumpkin::Fq>::new(&range_secondary, NUM_LIMB_BITS, NUM_LIMBS);
     let native_chip_secondary = NativeFieldChip::new(&range_secondary);
     let ecc_chip_secondary = EccChip::new(&native_chip_secondary);
-    let chip_secondary = strawman::Chip::<grumpkin::G1Affine>::create(gate_chip_secondary.clone(), base_chip_secondary, ecc_chip_secondary);
+    let chip_secondary = strawman::Chip::<grumpkin::G1Affine>::create(base_chip_secondary, ecc_chip_secondary);
 
     run_protostar_hyperplonk_ivc::<
         bn256::G1Affine,
@@ -768,7 +764,7 @@ pub mod strawman {
                 FieldTranscript, FieldTranscriptRead, FieldTranscriptWrite, InMemoryTranscript,
                 Transcript, TranscriptRead, TranscriptWrite,
             },
-            Itertools,
+            Itertools, start_timer,
         },
     };
 
@@ -776,14 +772,14 @@ pub mod strawman {
         Context,
         utils::{BigPrimeField, ScalarField, CurveAffineExt, decompose, decompose_fe_to_u64_limbs, fe_to_biguint},
         QuantumCell::{Constant, Existing, Witness, WitnessFraction},
-        halo2_proofs::plonk::Assigned,
+        halo2_proofs::{plonk::Assigned, circuit::Cell},
         AssignedValue,
         gates::{
             circuit::{builder::BaseCircuitBuilder, BaseCircuitParams, BaseConfig},            
             RangeChip,range::RangeConfig,
             flex_gate::{GateChip, GateInstructions, FlexGateConfig, FlexGateConfigParams},
         },
-        gates::flex_gate::{threads::SinglePhaseCoreManager, BasicGateConfig}, poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
+        gates::flex_gate::{threads::SinglePhaseCoreManager, BasicGateConfig}, poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, ContextCell,
     };
     use halo2_base::halo2_proofs::plonk::Circuit;
     
@@ -810,11 +806,12 @@ pub mod strawman {
         hash::Hash,
     };
 
-    pub const NUM_LIMBS: usize = 4;
-    pub const NUM_LIMB_BITS: usize = 65;
+    pub const NUM_LIMBS: usize = 3;
+    pub const NUM_LIMB_BITS: usize = 88;
     pub const NUM_SUBLIMBS: usize = 5;
     pub const NUM_LOOKUPS: usize = 1;
     pub const LOOKUP_BITS: usize = 8;
+    pub const WINDOW_BITS: usize = 4;
 
     pub const T: usize = 5;
     pub const RATE: usize = 4;
@@ -995,43 +992,6 @@ pub mod strawman {
         }
     }
 
-    //todo keep one baseconfig for config and recursive circuit. might need to modify since recursive expects Sc:config
-    // #[derive(Clone, Debug)]
-    // pub struct Config<F: ScalarField> {
-    //     pub base_config: BaseConfig<F>,
-    //     // pub flex_config: FlexGateConfig<F>,
-    //     pub instance: Column<Instance>,
-    //     pub poseidon_spec: OptimizedPoseidonSpec<F, T, RATE>,
-    // }
-
-    // impl<F: FromUniformBytes<64> + Ord + From<bool> + Hash> Config<F> {
-    //     pub fn configure<C: CurveAffine<ScalarExt = F>>(meta: &mut ConstraintSystem<F>) -> Self {
-    //         // let params = FlexGateConfigParams {
-    //         //     k: 14,
-    //         //     num_advice_per_phase: vec![7],
-    //         //     num_fixed: 2,
-    //         // };
-    //         // let range_config = RangeConfig::configure(
-    //         //     meta,
-    //         //     params,
-    //         //     &[NUM_LOOKUPS],
-    //         //     LOOKUP_BITS,
-    //         // );
-    //         let base_config = BaseCircuitBuilder::configure_with_params(
-    //             meta,
-    //             circuit_params,
-    //         );
-    //         let instance = meta.instance_column();
-    //         meta.enable_equality(instance);
-    //         let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P, SECURE_MDS>();
-    //         Self {
-    //             base_config,
-    //             instance,
-    //             poseidon_spec,
-    //         }
-    //     }
-    // }
-
     #[allow(clippy::type_complexity)]
     #[derive(Clone, Debug)]
     pub struct Chip<'a, C: TwoChainCurve> 
@@ -1039,10 +999,7 @@ pub mod strawman {
         C::Scalar: BigPrimeField,
         C::Base: BigPrimeField,
     {   
-        //pub range_chip: RangeChip<C::Scalar>,
-        pub gate_chip: GateChip<C::Scalar>,
         pub base_chip: FpChip<'a, C::Scalar, C::Base>,
-        //pub native_chip: NativeFieldChip<'a, C::Scalar>,
         pub ecc_chip: EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
     }
 
@@ -1052,20 +1009,42 @@ pub mod strawman {
         C::Base: BigPrimeField,  
     {
 
-        pub fn create(//range_chip: RangeChip<C::Scalar>,
-            gate_chip: GateChip<C::Scalar>, 
+        pub fn create(
             base_chip: FpChip<'a, C::Scalar, C::Base>, 
-            //native_chip: NativeFieldChip<'a, C::Scalar>, 
             ecc_chip: EccChip<'a, C::Scalar, NativeFieldChip<'a, C::Scalar>>,
             ) -> Self {
                 Self {
-                    //range_chip,
-                    gate_chip,
                     base_chip,
-                    //native_chip,
                     ecc_chip,
                 }
             }
+
+        // pub fn constrain_instance(
+        //         &self,
+        //         builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        //         layouter: &mut impl Layouter<C::Scalar>,
+        //         assigned: &AssignedValue<C::Scalar>,
+        //         row: usize,
+        //     ) -> Result<Cell, Error> {
+        //         let cell = match row {
+        //             0 => {
+        //                 // *self.cell_map.borrow_mut() =
+        //                 // self.main_gate.layout(layouter, &self.collector.borrow())?;
+        //                 // self.cell_map.borrow()[&assigned.id()].cell()
+        //                 builder.copy_manager.lock().unwrap().assigned_advices[&assigned.cell.unwrap()]
+        //             }
+        //             1 => {
+        //                 // *self.collector.borrow_mut() = Default::default();
+        //                 // std::mem::take(self.cell_map.borrow_mut().deref_mut());
+        //                 builder.copy_manager.lock().unwrap().clear(); 
+        //                 let cell_map = &builder.copy_manager.lock().unwrap().assigned_advices;
+        //                 cell_map[&assigned.cell.unwrap()]
+        //             }
+        //             _ => unreachable!(),
+        //         };
+        
+        //         Ok(cell)
+        //     }
 
         pub fn constrain_equal(
             &self,
@@ -1107,7 +1086,7 @@ pub mod strawman {
             when_true: &AssignedValue<C::Scalar>,
             when_false: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(GateInstructions::select(&self.gate_chip, builder.main(), Existing(when_true.into()), Existing(when_false.into()), Existing(condition.into())))
+            Ok(GateInstructions::select(&self.base_chip.range().gate, builder.main(), Existing(when_true.into()), Existing(when_false.into()), Existing(condition.into())))
         }
     
         pub fn is_equal(
@@ -1116,7 +1095,7 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.gate_chip.is_equal(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+            Ok(self.base_chip.range().gate.is_equal(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
         pub fn add(
@@ -1125,7 +1104,7 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.gate_chip.add(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+            Ok(self.base_chip.range().gate.add(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
         pub fn sub(
@@ -1134,7 +1113,7 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.gate_chip.sub(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+            Ok(self.base_chip.range().gate.sub(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }  
     
         pub fn mul(
@@ -1143,7 +1122,7 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.gate_chip.mul(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+            Ok(self.base_chip.range().gate.mul(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
 
         pub fn constrain_equal_base(
@@ -1402,14 +1381,14 @@ pub mod strawman {
             Ok(self.ecc_chip.add_unequal(builder.main(), lhs, rhs, false))
         }
 
-        // todo SET MAX_BITS, WINDOW_BITS
         pub fn scalar_mul_secondary(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             le_bits: &[AssignedValue<C::Scalar>],
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            Ok(self.ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), 8,8))
+            let max_bits = self.base_chip.limb_bits;
+            Ok(self.ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), max_bits, WINDOW_BITS))
         }
 
         pub fn fixed_base_msm_secondary(
@@ -1431,7 +1410,6 @@ pub mod strawman {
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
             let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
             let max_bits = self.base_chip.limb_bits;
-            //Ok(self.ecc_chip.fixed_base_msm::<C::Secondary>(builder, &[C::Secondary::identity()], scalar_limbs_vec, max_bits))
             Ok(self.ecc_chip.variable_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_bits))
         }
 
@@ -1520,9 +1498,9 @@ pub mod strawman {
                 .collect_vec();
             let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main()); //PoseidonSponge::from_spec(builder.main(), self.poseidon_spec.clone());
             poseidon_chip.update(&inputs);
-            let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
-            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, 254);
-            Ok(self.gate_chip.bits_to_num(builder.main(), (&hash_le_bits[..NUM_HASH_BITS]).to_vec()))
+            let hash = poseidon_chip.squeeze(builder.main(), &self.base_chip.range().gate);
+            let hash_le_bits = self.base_chip.range().gate.num_to_bits(builder.main(), hash, 254);
+            Ok(self.base_chip.range().gate.bits_to_num(builder.main(), (&hash_le_bits[..NUM_HASH_BITS]).to_vec()))
         }
     }
 
@@ -1710,10 +1688,10 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
         ) -> Result<Challenge<C::Scalar>, Error> {
             let (challenge_le_bits, challenge) = {
-                let hash = self.poseidon_chip.squeeze(builder.main(), &self.chip.gate_chip);
+                let hash = self.poseidon_chip.squeeze(builder.main(), &self.chip.base_chip.range().gate);
                 self.poseidon_chip.update(&[hash]);
-                let challenge_le_bits = self.chip.gate_chip.num_to_bits(builder.main(),hash, NUM_CHALLENGE_BITS);
-                let challenge = self.chip.gate_chip.bits_to_num(builder.main(), challenge_le_bits.clone());
+                let challenge_le_bits = self.chip.base_chip.range().gate.num_to_bits(builder.main(),hash, NUM_CHALLENGE_BITS);
+                let challenge = self.chip.base_chip.range().gate.bits_to_num(builder.main(), challenge_le_bits.clone());
                 (challenge_le_bits, challenge)
             };
 

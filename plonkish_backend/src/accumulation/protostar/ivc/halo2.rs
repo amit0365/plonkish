@@ -437,11 +437,13 @@ where
                         .try_collect::<_, Vec<_>, _>()
                 })
                 .try_collect::<_, Vec<_>, _>()?;
+            let timer = start_timer(|| format!("fold_accumulator_from_nark witness_comms-{}", nark.witness_comms.len()));
             let witness_comms = nark
                 .witness_comms
                 .iter()
                 .map(|comm| tcc_chip.scalar_mul_secondary(builder, comm, r_le_bits))
                 .try_collect::<_, Vec<_>, _>()?;
+            end_timer(timer);
             let challenges = nark
                 .challenges
                 .iter()
@@ -472,11 +474,13 @@ where
             let e_comm = if cross_term_comms.is_empty() {
                 acc.e_comm.clone()
             } else {
+                let timer = start_timer(|| format!("fold_accumulator_from_nark e_comm"));
                 let mut e_comm = cross_term_comms.last().unwrap().clone();
                 for item in cross_term_comms.iter().rev().skip(1).chain([&acc.e_comm]) {
                     e_comm = tcc_chip.scalar_mul_secondary(builder, &e_comm, r_le_bits)?;
                     e_comm = tcc_chip.add_secondary(builder, &e_comm, item)?;
                 }
+                end_timer(timer);
                 e_comm
             };
             let compressed_e_sum = match strategy {
@@ -767,9 +771,7 @@ where
             .try_collect::<_, Vec<_>, _>()?;
 
         let is_base_case = tcc_chip.is_equal(builder, &step_idx, &zero)?;
-        
         let h_prime = tcc_chip.assign_witness(builder, self.h_prime.assign().unwrap())?;
-
         self.check_initial_condition(builder, &is_base_case, &initial_input, input)?;
 
         let acc = acc_verifier.assign_accumulator(builder, self.acc.as_ref())?;
@@ -794,7 +796,6 @@ where
         let h_from_incoming = tcc_chip.fit_base_in_scalar(&nark.instances[0][0])?;
         let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(&nark.instances[0][1])?;
 
-
         self.check_state_hash(
             builder,
             Some(&is_base_case),
@@ -817,11 +818,12 @@ where
             &acc_prime,
         )?;
 
-        drop(binding);
         // todo impl constrain instance these 
-        // tcc_chip.constrain_instance(builder, &h_prime, 1)?;
-        // builder.main().constrain_equal(&h_ohs_from_incoming, 0)?;
-        // builder.main().constrain_equal(&h_prime, 1);
+        // tcc_chip.constrain_instance(builder, &mut layouter, &h_ohs_from_incoming, 0)?;
+        let assigned_instances = &mut binding.assigned_instances;
+        assigned_instances[0].push(h_ohs_from_incoming);
+        assigned_instances[0].push(h_from_incoming);
+        drop(binding);
 
         Ok(())
     }
@@ -865,20 +867,6 @@ where
         unreachable!()
     }
 
-
-    // fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-    //     let circuit_params = BaseCircuitParams {
-    //         k: 19,
-    //         num_advice_per_phase: vec![6],
-    //         num_lookup_advice_per_phase: vec![1],
-    //         num_fixed: 1,               
-    //         lookup_bits: Some(18),
-    //         num_instance_columns: 1,
-    //     };
-    //     BaseCircuitBuilder::configure_with_params(meta, circuit_params)
-    // }
-
-    // todo fix this with other synthesizes
     fn synthesize(
         &self,
         config: Self::Config,

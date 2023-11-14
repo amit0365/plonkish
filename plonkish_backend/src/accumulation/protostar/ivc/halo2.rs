@@ -615,9 +615,9 @@ where
         let hash_config = poseidon_spec.clone();
         let transcript_config = poseidon_spec.clone();
 
-        let mut builder = BaseCircuitBuilder::<C::Scalar>::new(false).use_params(circuit_params.clone());
-        let inner = RefCell::new(builder);
-        let chip = Chip::<C>::create(inner.borrow_mut().clone());
+        let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Mock).use_params(circuit_params.clone()));
+        let range_chip = inner.borrow().range_chip();
+        let chip = Chip::<C>::create(range_chip);
         let hash_chip = Chip::<C>::new(hash_config.clone(), chip.clone());
         let circuit = Self {
                 is_primary,

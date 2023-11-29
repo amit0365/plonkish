@@ -202,102 +202,102 @@ pub(super) fn permutation_polys<F: PrimeField>(
         .collect()
 }
 
-// #[cfg(test)]
-// pub(crate) mod test {
-//     use crate::{
-//         backend::hyperplonk::util::{
-//             //vanilla_plonk_expression, vanilla_plonk_with_lookup_expression,
-//         },
-//         util::expression::{Expression, Query, Rotation},
-//     };
-//     use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
-//     use std::array;
+#[cfg(test)]
+pub(crate) mod test {
+    use crate::{
+        backend::hyperplonk::util::{
+            vanilla_plonk_expression, vanilla_plonk_with_lookup_expression,
+        },
+        util::expression::{Expression, Query, Rotation},
+    };
+    use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+    use std::array;
 
-//     #[test]
-//     fn compose_vanilla_plonk() {
-//         let num_vars = 3;
-//         let expression = vanilla_plonk_expression(num_vars);
-//         assert_eq!(expression, {
-//             let [pi, q_l, q_r, q_m, q_o, q_c, w_l, w_r, w_o, s_1, s_2, s_3] =
-//                 &array::from_fn(|poly| Query::new(poly, Rotation::cur()))
-//                     .map(Expression::Polynomial);
-//             let [z, z_next] = &[
-//                 Query::new(12, Rotation::cur()),
-//                 Query::new(12, Rotation::next()),
-//             ]
-//             .map(Expression::Polynomial);
-//             let [beta, gamma, alpha] = &array::from_fn(Expression::<Fr>::Challenge);
-//             let [id_1, id_2, id_3] = array::from_fn(|idx| {
-//                 Expression::Constant(Fr::from((idx << num_vars) as u64)) + Expression::identity()
-//             });
-//             let l_1 = Expression::<Fr>::lagrange(1);
-//             let one = Expression::one();
-//             let constraints = {
-//                 vec![
-//                     q_l * w_l + q_r * w_r + q_m * w_l * w_r + q_o * w_o + q_c + pi,
-//                     l_1 * (z - one),
-//                     (z * ((w_l + beta * id_1 + gamma)
-//                         * (w_r + beta * id_2 + gamma)
-//                         * (w_o + beta * id_3 + gamma)))
-//                         - (z_next
-//                             * ((w_l + beta * s_1 + gamma)
-//                                 * (w_r + beta * s_2 + gamma)
-//                                 * (w_o + beta * s_3 + gamma))),
-//                 ]
-//             };
-//             let eq = Expression::eq_xy(0);
-//             Expression::distribute_powers(&constraints, alpha) * eq
-//         });
-//     }
+    #[test]
+    fn compose_vanilla_plonk() {
+        let num_vars = 3;
+        let expression = vanilla_plonk_expression(num_vars);
+        assert_eq!(expression, {
+            let [pi, q_l, q_r, q_m, q_o, q_c, w_l, w_r, w_o, s_1, s_2, s_3] =
+                &array::from_fn(|poly| Query::new(poly, Rotation::cur()))
+                    .map(Expression::Polynomial);
+            let [z, z_next] = &[
+                Query::new(12, Rotation::cur()),
+                Query::new(12, Rotation::next()),
+            ]
+            .map(Expression::Polynomial);
+            let [beta, gamma, alpha] = &array::from_fn(Expression::<Fr>::Challenge);
+            let [id_1, id_2, id_3] = array::from_fn(|idx| {
+                Expression::Constant(Fr::from((idx << num_vars) as u64)) + Expression::identity()
+            });
+            let l_1 = Expression::<Fr>::lagrange(1);
+            let one = Expression::one();
+            let constraints = {
+                vec![
+                    q_l * w_l + q_r * w_r + q_m * w_l * w_r + q_o * w_o + q_c + pi,
+                    l_1 * (z - one),
+                    (z * ((w_l + beta * id_1 + gamma)
+                        * (w_r + beta * id_2 + gamma)
+                        * (w_o + beta * id_3 + gamma)))
+                        - (z_next
+                            * ((w_l + beta * s_1 + gamma)
+                                * (w_r + beta * s_2 + gamma)
+                                * (w_o + beta * s_3 + gamma))),
+                ]
+            };
+            let eq = Expression::eq_xy(0);
+            Expression::distribute_powers(&constraints, alpha) * eq
+        });
+    }
 
-//     #[test]
-//     fn compose_vanilla_plonk_with_lookup() {
-//         let num_vars = 3;
-//         let expression = vanilla_plonk_with_lookup_expression(num_vars);
-//         assert_eq!(expression, {
-//             let [pi, q_l, q_r, q_m, q_o, q_c, q_lookup, t_l, t_r, t_o, w_l, w_r, w_o, s_1, s_2, s_3] =
-//                 &array::from_fn(|poly| Query::new(poly, Rotation::cur()))
-//                     .map(Expression::Polynomial);
-//             let [lookup_m, lookup_h] = &[
-//                 Query::new(16, Rotation::cur()),
-//                 Query::new(17, Rotation::cur()),
-//             ]
-//             .map(Expression::<Fr>::Polynomial);
-//             let [perm_z, perm_z_next] = &[
-//                 Query::new(18, Rotation::cur()),
-//                 Query::new(18, Rotation::next()),
-//             ]
-//             .map(Expression::Polynomial);
-//             let [beta, gamma, alpha] = &array::from_fn(Expression::<Fr>::Challenge);
-//             let [id_1, id_2, id_3] = array::from_fn(|idx| {
-//                 Expression::Constant(Fr::from((idx << num_vars) as u64)) + Expression::identity()
-//             });
-//             let l_1 = &Expression::<Fr>::lagrange(1);
-//             let one = &Expression::one();
-//             let lookup_input =
-//                 &Expression::distribute_powers(&[w_l, w_r, w_o].map(|w| q_lookup * w), beta);
-//             let lookup_table = &Expression::distribute_powers([t_l, t_r, t_o], beta);
-//             let constraints = {
-//                 vec![
-//                     q_l * w_l + q_r * w_r + q_m * w_l * w_r + q_o * w_o + q_c + pi,
-//                     lookup_h * (lookup_input + gamma) * (lookup_table + gamma)
-//                         - (lookup_table + gamma)
-//                         + lookup_m * (lookup_input + gamma),
-//                     l_1 * (perm_z - one),
-//                     (perm_z
-//                         * ((w_l + beta * id_1 + gamma)
-//                             * (w_r + beta * id_2 + gamma)
-//                             * (w_o + beta * id_3 + gamma)))
-//                         - (perm_z_next
-//                             * ((w_l + beta * s_1 + gamma)
-//                                 * (w_r + beta * s_2 + gamma)
-//                                 * (w_o + beta * s_3 + gamma))),
-//                 ]
-//             };
-//             let eq = Expression::eq_xy(0);
-//             let zero_check_on_every_row = Expression::distribute_powers(&constraints, alpha) * eq;
-//             let lookup_zero_check = lookup_h;
-//             Expression::distribute_powers([lookup_zero_check, &zero_check_on_every_row], alpha)
-//         });
-//     }
-//}
+    #[test]
+    fn compose_vanilla_plonk_with_lookup() {
+        let num_vars = 3;
+        let expression = vanilla_plonk_with_lookup_expression(num_vars);
+        assert_eq!(expression, {
+            let [pi, q_l, q_r, q_m, q_o, q_c, q_lookup, t_l, t_r, t_o, w_l, w_r, w_o, s_1, s_2, s_3] =
+                &array::from_fn(|poly| Query::new(poly, Rotation::cur()))
+                    .map(Expression::Polynomial);
+            let [lookup_m, lookup_h] = &[
+                Query::new(16, Rotation::cur()),
+                Query::new(17, Rotation::cur()),
+            ]
+            .map(Expression::<Fr>::Polynomial);
+            let [perm_z, perm_z_next] = &[
+                Query::new(18, Rotation::cur()),
+                Query::new(18, Rotation::next()),
+            ]
+            .map(Expression::Polynomial);
+            let [beta, gamma, alpha] = &array::from_fn(Expression::<Fr>::Challenge);
+            let [id_1, id_2, id_3] = array::from_fn(|idx| {
+                Expression::Constant(Fr::from((idx << num_vars) as u64)) + Expression::identity()
+            });
+            let l_1 = &Expression::<Fr>::lagrange(1);
+            let one = &Expression::one();
+            let lookup_input =
+                &Expression::distribute_powers(&[w_l, w_r, w_o].map(|w| q_lookup * w), beta);
+            let lookup_table = &Expression::distribute_powers([t_l, t_r, t_o], beta);
+            let constraints = {
+                vec![
+                    q_l * w_l + q_r * w_r + q_m * w_l * w_r + q_o * w_o + q_c + pi,
+                    lookup_h * (lookup_input + gamma) * (lookup_table + gamma)
+                        - (lookup_table + gamma)
+                        + lookup_m * (lookup_input + gamma),
+                    l_1 * (perm_z - one),
+                    (perm_z
+                        * ((w_l + beta * id_1 + gamma)
+                            * (w_r + beta * id_2 + gamma)
+                            * (w_o + beta * id_3 + gamma)))
+                        - (perm_z_next
+                            * ((w_l + beta * s_1 + gamma)
+                                * (w_r + beta * s_2 + gamma)
+                                * (w_o + beta * s_3 + gamma))),
+                ]
+            };
+            let eq = Expression::eq_xy(0);
+            let zero_check_on_every_row = Expression::distribute_powers(&constraints, alpha) * eq;
+            let lookup_zero_check = lookup_h;
+            Expression::distribute_powers([lookup_zero_check, &zero_check_on_every_row], alpha)
+        });
+    }
+}

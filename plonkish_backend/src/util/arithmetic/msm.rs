@@ -69,6 +69,7 @@ pub fn fixed_base_msm<'a, C: CurveAffine>(
     window_table: &[Vec<C>],
     scalars: impl IntoIterator<Item = &'a C::Scalar>,
 ) -> Vec<C::Curve> {
+    // let _timer = start_timer(|| format!("fixed_base_msm-{}", scalars.into_iter().collect_vec().len()));
     let window_mask = (1 << window_size) - 1;
     let scalars = scalars.into_iter().collect_vec();
     let mut outputs = vec![C::Curve::identity(); scalars.len()];

@@ -63,7 +63,7 @@ use halo2_base::{
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
     QuantumCell::{Constant, Existing, Witness, WitnessFraction},
     AssignedValue,
-    poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, halo2_proofs::dev::MockProver,
+    poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, halo2_proofs::dev::MockProver, virtual_region::copy_constraints::SharedCopyConstraintManager,
 };
 
 use halo2_ecc::{
@@ -95,7 +95,7 @@ pub const R_P: usize = 60;
 pub const SECURE_MDS: usize = 0;
 
 
-mod test;
+pub mod test;
 use test::strawman::{self, Chip};
 
 
@@ -615,6 +615,7 @@ where
         let hash_config = poseidon_spec.clone();
         let transcript_config = poseidon_spec.clone();
 
+        // let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Prover).use_params(circuit_params.clone()).use_break_points(vec![vec![131061, 131062, 131062, 131060, 131062]]));
         let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Mock).use_params(circuit_params.clone()));
         let range_chip = inner.borrow().range_chip();
         let chip = Chip::<C>::create(range_chip);
@@ -819,7 +820,11 @@ where
         // tcc_chip.constrain_instance(builder, &mut layouter, &h_ohs_from_incoming, 0)?;
         let assigned_instances = &mut binding.assigned_instances;
         assigned_instances[0].push(h_ohs_from_incoming);
-        assigned_instances[0].push(h_from_incoming);
+
+        binding.set_copy_manager(SharedCopyConstraintManager::default());
+
+        let assigned_instances = &mut binding.assigned_instances;
+        assigned_instances[0].push(h_prime);
 
         binding.synthesize(config.clone(), layouter.namespace(|| ""));
         binding.clear();
@@ -1002,7 +1007,7 @@ where
 
     let primary_param = P1::setup(1 << primary_num_vars, 0, &mut rng).unwrap();
     let secondary_param = P2::setup(1 << secondary_num_vars, 0, &mut rng).unwrap();
-
+    
     let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, None, circuit_params.clone());
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, circuit_params.clone());
@@ -1018,7 +1023,7 @@ where
         Some(ProtostarAccumulationVerifierParam::from(&primary_vp)),
         circuit_params.clone(),
     );
-    
+
     let mut secondary_circuit =
         Halo2Circuit::new::<HyperPlonk<P2>>(secondary_num_vars, secondary_circuit, circuit_params.clone());
 

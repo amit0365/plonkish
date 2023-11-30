@@ -49,6 +49,7 @@ use std::{
     rc::Rc, time::Instant,
 };
 
+use bitvec::store::BitStore;
 use poseidon::Spec;
 use rand::RngCore;
 use std::cell::RefCell;
@@ -98,6 +99,8 @@ pub const SECURE_MDS: usize = 0;
 pub mod test;
 use test::strawman::{self, Chip};
 
+use self::test::{FunctionConfig, FunctionChip, SharedConfig};
+
 
 type AssignedPlonkishNarkInstance<AssignedBase, AssignedSecondary> =
     PlonkishNarkInstance<AssignedBase, AssignedSecondary>;
@@ -137,7 +140,7 @@ where
     #[allow(clippy::type_complexity)]
     fn synthesize(
         &self,
-        config: BaseConfig<C::Scalar>,
+        config: SharedConfig<C::Scalar>,
         layouter: impl Layouter<C::Scalar>,
     ) -> Result<
         (
@@ -739,7 +742,7 @@ where
     fn synthesize_accumulation_verifier(
         &self,
         mut layouter: impl Layouter<C::Scalar>,
-        config: <RecursiveCircuit<C, Sc> as halo2_base::halo2_proofs::plonk::Circuit<C::Scalar>>::Config,
+        config: <RecursiveCircuit<C, Sc> as Circuit<C::Scalar>>::Config,
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
     ) -> Result<(), Error> {
@@ -826,7 +829,7 @@ where
         let assigned_instances = &mut binding.assigned_instances;
         assigned_instances[0].push(h_prime);
 
-        binding.synthesize(config.clone(), layouter.namespace(|| ""));
+        binding.synthesize(config.base_circuit_config.clone(), layouter.namespace(|| ""));
         binding.clear();
         drop(binding);
 
@@ -842,7 +845,7 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 
 {
-    type Config = BaseConfig<C::Scalar>;
+    type Config = SharedConfig<C::Scalar>;
     type FloorPlanner = Sc::FloorPlanner;
     type Params = BaseCircuitParams;
 
@@ -865,7 +868,10 @@ where
     }
 
     fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
-        BaseCircuitBuilder::configure_with_params(meta, params)
+        let function_circuit_config = FunctionChip::configure(meta);
+        let base_circuit_config =
+            BaseCircuitBuilder::configure_with_params(meta, params);
+        Self::Config { base_circuit_config, function_circuit_config }
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
@@ -881,7 +887,7 @@ where
             StepCircuit::synthesize(&self.step_circuit, config.clone(), layouter.namespace(|| ""))?;
         
         let synthesize_accumulation_verifier_time = Instant::now();
-        self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
+        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
         println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
 
@@ -1014,12 +1020,12 @@ where
     let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, None, circuit_params.clone());
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, circuit_params.clone());
-
+    println!("primary_inital_preprcessing started");
     let (primary_pp, primary_vp) = {
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
-
+    println!("primary_inital_preprcessing done");
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,

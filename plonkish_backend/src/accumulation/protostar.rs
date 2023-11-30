@@ -33,7 +33,7 @@ pub enum ProtostarStrategy {
     Compressing = 1,
     // TODO:
     // Compressing verification with square-root optimization applied as described in 2023/620 section 3.5
-    //CompressingWithSqrtPowers = 2,
+    // CompressingWithSqrtPowers = 2,
 }
 
 impl From<usize> for ProtostarStrategy {

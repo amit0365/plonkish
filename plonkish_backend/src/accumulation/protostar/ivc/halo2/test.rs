@@ -31,7 +31,7 @@ use crate::{
 };
 use halo2_base::{halo2_proofs::{
     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-}, plonk::{Advice, Column}, poly::Rotation}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
+}, plonk::{Advice, Column, Instance}, poly::Rotation}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
 
 use halo2_base::{Context,
     gates::{range::RangeInstructions, circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
@@ -62,7 +62,7 @@ where
     C: CurveAffine,
     C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
-    type Config = BaseConfig<C::Scalar>;
+    type Config = SharedConfig<C::Scalar>;
     type FloorPlanner = SimpleFloorPlanner;
     type Params = BaseCircuitParams;
 
@@ -94,22 +94,6 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
-    //type TccChip = strawman::Chip<C>;
-    //type HashChip = strawman::Chip<C>;
-    //type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
-
-    // fn configs(
-    //     config: Self::Config,
-    // ) -> (
-    //         // OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    //         // OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    //     ) {
-    //     (
-    //         //config.clone(),
-    //         //config.poseidon_spec.clone(),
-    //         //config.poseidon_spec,
-    //     )
-    // }
 
     fn arity() -> usize {
         0
@@ -153,13 +137,14 @@ where
 
 
 #[derive(Debug, Clone)]
-struct FunctionConfig {
+pub struct FunctionConfig {
     selector: Selector,
     a: Column<Advice>,
     b: Column<Advice>,
+    instance: Column<Instance>,
 }
 
-struct FunctionChip<F: Field> {
+pub struct FunctionChip<F: Field> {
     config: FunctionConfig,
     _marker: PhantomData<F>,
 }
@@ -171,9 +156,10 @@ impl<F: Field> FunctionChip<F> {
 
     pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
         // advice colns are defined separately in config so use meta.advice_column like the syntax in selector
-        let a = meta.advice_column(); // reference to self.config.advice[0] used below
+        let a = meta.advice_column(); 
         let b = meta.advice_column();
         let selector = meta.selector(); 
+        let instance = meta.instance_column(); 
 
         // defining custom gate with logic
         meta.create_gate("b = a",|meta|{
@@ -189,34 +175,60 @@ impl<F: Field> FunctionChip<F> {
         FunctionConfig { 
             selector,
             a,
-            b
+            b,
+            instance
         }
          
     }
 
     pub fn assign(
         &self, 
-        mut layouter: 
-        impl Layouter<F>, 
+        layouter: 
+        &mut impl Layouter<F>, 
         a: F, 
         b: F 
-    ) -> Result<AssignedCell<F, F>, Error> {
-
+        ) -> Result<
+        (
+            Vec<AssignedCell<F, F>>,
+            Vec<AssignedCell<F, F>>,
+        ),
+        Error,
+    > {
         layouter.assign_region(
             || "b = a", 
             |mut region| {  
 
                 self.config.selector.enable(&mut region, 0)?;
 
-                region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
+                let input_cell = region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
 
                 let b = a;
 
-                region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))
+                let output_cell = region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))?;
+
+                Ok((vec![input_cell], vec![output_cell]))
 
             },
         )
     }
+
+    // pub fn expose_public(
+    //     &self,
+    //     mut layouter: impl Layouter<F>,
+    //     cell: AssignedCell<F, F>,
+    //     row: usize,
+    // ) -> Result<(), Error> {
+    //     layouter.constrain_instance(cell.cell(), self.config.instance, row)
+    // }
+
+}
+
+#[derive(Clone)]
+pub struct SharedConfig<F> 
+    where F: BigPrimeField + FromUniformBytes<64>,
+{
+    pub base_circuit_config: BaseConfig<F>,
+    pub function_circuit_config: FunctionConfig,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -251,7 +263,7 @@ impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
         C: CurveAffine,
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
-    type Config = FunctionConfig;
+    type Config = SharedConfig<C::Scalar>;  
     type FloorPlanner = SimpleFloorPlanner;
     type Params = BaseCircuitParams;
 
@@ -259,14 +271,30 @@ impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
         self.clone()
     }
 
-    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        FunctionChip::configure(meta)
+    fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
+        let function_circuit_config = FunctionChip::configure(meta);
+        let base_circuit_config =
+            BaseCircuitBuilder::configure_with_params(meta, params);
+        Self::Config { base_circuit_config, function_circuit_config }
     }
 
-    fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<C::Scalar>) -> Result<(), Error> {
-        // fix this
-        let chip = FunctionChip::construct(config);
-        chip.assign(layouter, self.input[0], self.output[0])?;
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        unreachable!()
+    }
+
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<C::Scalar>,
+    ) -> Result<(), Error> {
+        println!("NonTrivialCircuit::synthesize");
+        let layouter = &mut layouter;
+        let chip = FunctionChip::<C::Scalar>::construct(config.function_circuit_config.clone());
+        // let (input_cell, output_cell) 
+        //     = chip.assign(layouter, self.input[0], self.output[0])?;
+
+        // layouter.constrain_instance(input_cell[0].cell(), config.1.instance, 0);
+        // layouter.constrain_instance(output_cell[0].cell(), config.1.instance, 1);
 
         Ok(())
     }
@@ -315,12 +343,12 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
 
     fn synthesize(
         &self,
-        _: Self::Config,
-        _: impl Layouter<C::Scalar>,
+        config: Self::Config,
+        layouter: impl Layouter<C::Scalar>,
     ) -> Result<
         (
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            Vec<AssignedValue<C::Scalar>>,
+            Vec<AssignedValue<C::Scalar>>,
         ),
         Error,
     > {
@@ -332,8 +360,10 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
         // x = y.clone();
         // }
 
-        //self.synthesize(config, layouter);
-
+        // <NonTrivialCircuit<C> as halo2_proofs::plonk::Circuit<C>>::synthesize(self, config, layouter);
+        Circuit::synthesize(self, config, layouter);
+        // let input = config.1.instance.cur();
+        // let output = config.1.instance;
         Ok((Vec::new(), Vec::new()))
 
     }

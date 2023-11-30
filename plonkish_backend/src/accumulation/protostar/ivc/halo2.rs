@@ -821,6 +821,7 @@ where
 
         // todo check impl constrain instance these 
         // tcc_chip.constrain_instance(builder, &mut layouter, &h_ohs_from_incoming, 0)?;
+        // todo check if poseidon hasher needs to be cleared?
         let assigned_instances = &mut binding.assigned_instances;
         assigned_instances[0].push(h_ohs_from_incoming);
 
@@ -885,7 +886,7 @@ where
     ) -> Result<(), Error> {
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config.clone(), layouter.namespace(|| ""))?;
-        
+        // todo check if poseidon hasher needs to be cleared?
         let synthesize_accumulation_verifier_time = Instant::now();
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();

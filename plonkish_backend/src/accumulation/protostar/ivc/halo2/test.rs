@@ -141,7 +141,7 @@ pub struct FunctionConfig {
     selector: Selector,
     a: Column<Advice>,
     b: Column<Advice>,
-    instance: Column<Instance>,
+    // instance: Column<Instance>,
 }
 
 pub struct FunctionChip<F: Field> {
@@ -159,7 +159,8 @@ impl<F: Field> FunctionChip<F> {
         let a = meta.advice_column(); 
         let b = meta.advice_column();
         let selector = meta.selector(); 
-        let instance = meta.instance_column(); 
+        //let instance = meta.instance_column(); 
+        //meta.enable_equality(instance);
 
         // defining custom gate with logic
         meta.create_gate("b = a",|meta|{
@@ -176,7 +177,7 @@ impl<F: Field> FunctionChip<F> {
             selector,
             a,
             b,
-            instance
+            //instance,
         }
          
     }
@@ -238,6 +239,7 @@ struct NonTrivialCircuit<C>
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
     step_idx: usize,
+    num_constraints: usize,
     initial_input: Vec<C::Scalar>,
     input: Vec<C::Scalar>,
     output: Vec<C::Scalar>,
@@ -248,9 +250,10 @@ impl<C> NonTrivialCircuit<C>
         C: CurveAffine,
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
-    pub fn new(initial_input: Vec<C::Scalar>) -> Self {
+    pub fn new(num_constraints: usize, initial_input: Vec<C::Scalar>) -> Self {
         Self { 
-            step_idx: 0, 
+            step_idx: 0,
+            num_constraints: num_constraints, 
             initial_input: initial_input.clone(), 
             input: initial_input.clone(), 
             output: initial_input.clone()
@@ -290,8 +293,8 @@ impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
         println!("NonTrivialCircuit::synthesize");
         let layouter = &mut layouter;
         let chip = FunctionChip::<C::Scalar>::construct(config.function_circuit_config.clone());
-        // let (input_cell, output_cell) 
-        //     = chip.assign(layouter, self.input[0], self.output[0])?;
+        let (input_cell, output_cell) 
+            = chip.assign(layouter, self.input[0], self.output[0])?;
 
         // layouter.constrain_instance(input_cell[0].cell(), config.1.instance, 0);
         // layouter.constrain_instance(output_cell[0].cell(), config.1.instance, 1);
@@ -337,6 +340,10 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
         self.step_idx
     }
 
+    fn num_constraints(&self) -> usize {
+        self.num_constraints
+    }
+
     fn next(&mut self) {
         self.step_idx += 1;
     }
@@ -353,15 +360,14 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
         Error,
     > {
         // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
-        // let mut x = z[0].clone();
-        // let mut y = x.clone();
-        // for i in 0..self.num_cons {
-        // y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
-        // x = y.clone();
-        // }
+        let mut x = self.input[0].clone();
+        let mut y = x.clone();
+        for i in 0..self.num_constraints {
+        y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
+        x = y.clone();
 
         // <NonTrivialCircuit<C> as halo2_proofs::plonk::Circuit<C>>::synthesize(self, config, layouter);
-        Circuit::synthesize(self, config, layouter);
+        // Circuit::synthesize(self, config, layouter);
         // let input = config.1.instance.cur();
         // let output = config.1.instance;
         Ok((Vec::new(), Vec::new()))

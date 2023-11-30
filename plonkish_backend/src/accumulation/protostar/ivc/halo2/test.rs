@@ -152,192 +152,192 @@ where
 }
 
 
-#[derive(Debug, Clone)]
-struct FunctionConfig {
-    selector: Selector,
-    a: Column<Advice>,
-    b: Column<Advice>,
-}
+// #[derive(Debug, Clone)]
+// struct FunctionConfig {
+//     selector: Selector,
+//     a: Column<Advice>,
+//     b: Column<Advice>,
+// }
 
-struct FunctionChip<F: Field> {
-    config: FunctionConfig,
-    _marker: PhantomData<F>,
-}
+// struct FunctionChip<F: Field> {
+//     config: FunctionConfig,
+//     _marker: PhantomData<F>,
+// }
 
-impl<F: Field> FunctionChip<F> {
-    pub fn construct(config: FunctionConfig) -> Self {
-        Self { config, _marker: PhantomData }
-    }
+// impl<F: Field> FunctionChip<F> {
+//     pub fn construct(config: FunctionConfig) -> Self {
+//         Self { config, _marker: PhantomData }
+//     }
 
-    pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
-        // advice colns are defined separately in config so use meta.advice_column like the syntax in selector
-        let a = meta.advice_column(); // reference to self.config.advice[0] used below
-        let b = meta.advice_column();
-        let selector = meta.selector(); 
+//     pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
+//         // advice colns are defined separately in config so use meta.advice_column like the syntax in selector
+//         let a = meta.advice_column(); // reference to self.config.advice[0] used below
+//         let b = meta.advice_column();
+//         let selector = meta.selector(); 
 
-        // defining custom gate with logic
-        meta.create_gate("b = a",|meta|{
-            let s = meta.query_selector(selector);
-            let a = meta.query_advice(a, Rotation::cur());
-            let b = meta.query_advice(b, Rotation::cur());
+//         // defining custom gate with logic
+//         meta.create_gate("b = a",|meta|{
+//             let s = meta.query_selector(selector);
+//             let a = meta.query_advice(a, Rotation::cur());
+//             let b = meta.query_advice(b, Rotation::cur());
 
-            vec![s * (b - a)]
+//             vec![s * (b - a)]
 
-        });
+//         });
 
-        // instantiate empty circuit
-        FunctionConfig { 
-            selector,
-            a,
-            b
-        }
+//         // instantiate empty circuit
+//         FunctionConfig { 
+//             selector,
+//             a,
+//             b
+//         }
          
-    }
+//     }
 
-    pub fn assign(
-        &self, 
-        mut layouter: 
-        impl Layouter<F>, 
-        a: F, 
-        b: F 
-    ) -> Result<AssignedCell<F, F>, Error> {
+//     pub fn assign(
+//         &self, 
+//         mut layouter: 
+//         impl Layouter<F>, 
+//         a: F, 
+//         b: F 
+//     ) -> Result<AssignedCell<F, F>, Error> {
 
-        layouter.assign_region(
-            || "b = a", 
-            |mut region| {  
+//         layouter.assign_region(
+//             || "b = a", 
+//             |mut region| {  
 
-                self.config.selector.enable(&mut region, 0)?;
+//                 self.config.selector.enable(&mut region, 0)?;
 
-                region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
+//                 region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
 
-                let b = a;
+//                 let b = a;
 
-                region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))
+//                 region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))
 
-            },
-        )
-    }
-}
+//             },
+//         )
+//     }
+// }
 
-#[derive(Clone, Debug, Default)]
-struct NonTrivialCircuit<C> 
-    where
-        C: CurveAffine,
-        C::Scalar: BigPrimeField + FromUniformBytes<64>,
-{
-    step_idx: usize,
-    initial_input: Vec<C::Scalar>,
-    input: Vec<C::Scalar>,
-    output: Vec<C::Scalar>,
-}
+// #[derive(Clone, Debug, Default)]
+// struct NonTrivialCircuit<C> 
+//     where
+//         C: CurveAffine,
+//         C::Scalar: BigPrimeField + FromUniformBytes<64>,
+// {
+//     step_idx: usize,
+//     initial_input: Vec<C::Scalar>,
+//     input: Vec<C::Scalar>,
+//     output: Vec<C::Scalar>,
+// }
 
-impl<C> NonTrivialCircuit<C>
-    where
-        C: CurveAffine,
-        C::Scalar: BigPrimeField + FromUniformBytes<64>,
-{
-    pub fn new(initial_input: Vec<C::Scalar>) -> Self {
-        Self { 
-            step_idx: 0, 
-            initial_input: initial_input.clone(), 
-            input: initial_input.clone(), 
-            output: initial_input.clone()
-        }
-    }
-}
+// impl<C> NonTrivialCircuit<C>
+//     where
+//         C: CurveAffine,
+//         C::Scalar: BigPrimeField + FromUniformBytes<64>,
+// {
+//     pub fn new(initial_input: Vec<C::Scalar>) -> Self {
+//         Self { 
+//             step_idx: 0, 
+//             initial_input: initial_input.clone(), 
+//             input: initial_input.clone(), 
+//             output: initial_input.clone()
+//         }
+//     }
+// }
 
-impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
-    where
-        C: CurveAffine,
-        C::Scalar: BigPrimeField + FromUniformBytes<64>,
-{
-    type Config = FunctionConfig;
-    type FloorPlanner = SimpleFloorPlanner;
-    type Params = BaseCircuitParams;
+// impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
+//     where
+//         C: CurveAffine,
+//         C::Scalar: BigPrimeField + FromUniformBytes<64>,
+// {
+//     type Config = FunctionConfig;
+//     type FloorPlanner = SimpleFloorPlanner;
+//     type Params = BaseCircuitParams;
 
-    fn without_witnesses(&self) -> Self {
-        self.clone()
-    }
+//     fn without_witnesses(&self) -> Self {
+//         self.clone()
+//     }
 
-    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        FunctionChip::configure(meta)
-    }
+//     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+//         FunctionChip::configure(meta)
+//     }
 
-    fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<C::Scalar>) -> Result<(), Error> {
-        // fix this
-        let chip = FunctionChip::construct(config);
-        chip.assign(layouter, self.input[0], self.output[0])?;
+//     fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<C::Scalar>) -> Result<(), Error> {
+//         // fix this
+//         let chip = FunctionChip::construct(config);
+//         chip.assign(layouter, self.input[0], self.output[0])?;
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
 
-impl<C> CircuitExt<C::Scalar> for NonTrivialCircuit<C>
-    where
-        C: CurveAffine,
-        C::Scalar: BigPrimeField + FromUniformBytes<64>,
-{
-    fn instances(&self) -> Vec<Vec<C::Scalar>> {
-        Vec::new()
-    }
-}
+// impl<C> CircuitExt<C::Scalar> for NonTrivialCircuit<C>
+//     where
+//         C: CurveAffine,
+//         C::Scalar: BigPrimeField + FromUniformBytes<64>,
+// {
+//     fn instances(&self) -> Vec<Vec<C::Scalar>> {
+//         Vec::new()
+//     }
+// }
 
 
-impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
-    where
-        C::Base: BigPrimeField + PrimeFieldBits,
-        C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
-{
+// impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
+//     where
+//         C::Base: BigPrimeField + PrimeFieldBits,
+//         C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
+// {
 
-    fn arity() -> usize {
-        1
-    }
+//     fn arity() -> usize {
+//         1
+//     }
 
-    fn initial_input(&self) -> &[C::Scalar] {
-        &self.initial_input
-    }
+//     fn initial_input(&self) -> &[C::Scalar] {
+//         &self.initial_input
+//     }
 
-    fn input(&self) -> &[C::Scalar] {
-        &self.input
-    }
+//     fn input(&self) -> &[C::Scalar] {
+//         &self.input
+//     }
 
-    fn output(&self) -> &[C::Scalar] {
-        &self.output
-    }
+//     fn output(&self) -> &[C::Scalar] {
+//         &self.output
+//     }
 
-    fn step_idx(&self) -> usize {
-        self.step_idx
-    }
+//     fn step_idx(&self) -> usize {
+//         self.step_idx
+//     }
 
-    fn next(&mut self) {
-        self.step_idx += 1;
-    }
+//     fn next(&mut self) {
+//         self.step_idx += 1;
+//     }
 
-    fn synthesize(
-        &self,
-        _: Self::Config,
-        _: impl Layouter<C::Scalar>,
-    ) -> Result<
-        (
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
-            Vec<AssignedCell<C::Scalar, C::Scalar>>,
-        ),
-        Error,
-    > {
-        // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
-        // let mut x = z[0].clone();
-        // let mut y = x.clone();
-        // for i in 0..self.num_cons {
-        // y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
-        // x = y.clone();
-        // }
+//     fn synthesize(
+//         &self,
+//         _: Self::Config,
+//         _: impl Layouter<C::Scalar>,
+//     ) -> Result<
+//         (
+//             Vec<AssignedValue<C::Scalar>>,
+//             Vec<AssignedValue<C::Scalar>>,
+//         ),
+//         Error,
+//     > {
+//         // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
+//         // let mut x = z[0].clone();
+//         // let mut y = x.clone();
+//         // for i in 0..self.num_cons {
+//         // y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
+//         // x = y.clone();
+//         // }
 
-        //self.synthesize(config, layouter);
+//         // self.synthesize(config, layouter);
 
-        Ok((Vec::new(), Vec::new()))
+//         Ok((Vec::new(), Vec::new()))
 
-    }
-}
+//     }
+// }
 
 
 // #[derive(Clone)]
@@ -749,7 +749,7 @@ where
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 17;
-    const NUM_STEPS: usize = 3;
+    const NUM_STEPS: usize = 10;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,

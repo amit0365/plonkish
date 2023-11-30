@@ -46,7 +46,7 @@ use std::{
     iter,
     marker::PhantomData,
     mem,
-    rc::Rc,
+    rc::Rc, time::Instant,
 };
 
 use poseidon::Spec;
@@ -877,10 +877,13 @@ where
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
-
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config.clone(), layouter.namespace(|| ""))?;
+        
+        let synthesize_accumulation_verifier_time = Instant::now();
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
+        let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
+        println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
 
         Ok(())
     }

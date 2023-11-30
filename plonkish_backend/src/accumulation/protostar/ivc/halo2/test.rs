@@ -29,9 +29,9 @@ use crate::{
         DeserializeOwned, Itertools, Serialize, end_timer, start_timer,
     },
 };
-use halo2_base::{halo2_proofs::
+use halo2_base::{halo2_proofs::{
     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
+}, plonk::{Advice, Column}, poly::Rotation}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
 
 use halo2_base::{Context,
     gates::{range::RangeInstructions, circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
@@ -150,6 +150,195 @@ where
         Ok((Vec::new(), Vec::new()))
     }
 }
+
+
+#[derive(Debug, Clone)]
+struct FunctionConfig {
+    selector: Selector,
+    a: Column<Advice>,
+    b: Column<Advice>,
+}
+
+struct FunctionChip<F: Field> {
+    config: FunctionConfig,
+    _marker: PhantomData<F>,
+}
+
+impl<F: Field> FunctionChip<F> {
+    pub fn construct(config: FunctionConfig) -> Self {
+        Self { config, _marker: PhantomData }
+    }
+
+    pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
+        // advice colns are defined separately in config so use meta.advice_column like the syntax in selector
+        let a = meta.advice_column(); // reference to self.config.advice[0] used below
+        let b = meta.advice_column();
+        let selector = meta.selector(); 
+
+        // defining custom gate with logic
+        meta.create_gate("b = a",|meta|{
+            let s = meta.query_selector(selector);
+            let a = meta.query_advice(a, Rotation::cur());
+            let b = meta.query_advice(b, Rotation::cur());
+
+            vec![s * (b - a)]
+
+        });
+
+        // instantiate empty circuit
+        FunctionConfig { 
+            selector,
+            a,
+            b
+        }
+         
+    }
+
+    pub fn assign(
+        &self, 
+        mut layouter: 
+        impl Layouter<F>, 
+        a: F, 
+        b: F 
+    ) -> Result<AssignedCell<F, F>, Error> {
+
+        layouter.assign_region(
+            || "b = a", 
+            |mut region| {  
+
+                self.config.selector.enable(&mut region, 0)?;
+
+                region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
+
+                let b = a;
+
+                region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))
+
+            },
+        )
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct NonTrivialCircuit<C> 
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    step_idx: usize,
+    initial_input: Vec<C::Scalar>,
+    input: Vec<C::Scalar>,
+    output: Vec<C::Scalar>,
+}
+
+impl<C> NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    pub fn new(initial_input: Vec<C::Scalar>) -> Self {
+        Self { 
+            step_idx: 0, 
+            initial_input: initial_input.clone(), 
+            input: initial_input.clone(), 
+            output: initial_input.clone()
+        }
+    }
+}
+
+impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    type Config = FunctionConfig;
+    type FloorPlanner = SimpleFloorPlanner;
+    type Params = BaseCircuitParams;
+
+    fn without_witnesses(&self) -> Self {
+        self.clone()
+    }
+
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        FunctionChip::configure(meta)
+    }
+
+    fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<C::Scalar>) -> Result<(), Error> {
+        // fix this
+        let chip = FunctionChip::construct(config);
+        chip.assign(layouter, self.input[0], self.output[0])?;
+
+        Ok(())
+    }
+}
+
+impl<C> CircuitExt<C::Scalar> for NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    fn instances(&self) -> Vec<Vec<C::Scalar>> {
+        Vec::new()
+    }
+}
+
+
+impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
+    where
+        C::Base: BigPrimeField + PrimeFieldBits,
+        C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
+{
+
+    fn arity() -> usize {
+        1
+    }
+
+    fn initial_input(&self) -> &[C::Scalar] {
+        &self.initial_input
+    }
+
+    fn input(&self) -> &[C::Scalar] {
+        &self.input
+    }
+
+    fn output(&self) -> &[C::Scalar] {
+        &self.output
+    }
+
+    fn step_idx(&self) -> usize {
+        self.step_idx
+    }
+
+    fn next(&mut self) {
+        self.step_idx += 1;
+    }
+
+    fn synthesize(
+        &self,
+        _: Self::Config,
+        _: impl Layouter<C::Scalar>,
+    ) -> Result<
+        (
+            Vec<AssignedCell<C::Scalar, C::Scalar>>,
+            Vec<AssignedCell<C::Scalar, C::Scalar>>,
+        ),
+        Error,
+    > {
+        // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
+        // let mut x = z[0].clone();
+        // let mut y = x.clone();
+        // for i in 0..self.num_cons {
+        // y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
+        // x = y.clone();
+        // }
+
+        //self.synthesize(config, layouter);
+
+        Ok((Vec::new(), Vec::new()))
+
+    }
+}
+
 
 // #[derive(Clone)]
 // struct SecondaryAggregationCircuit {

@@ -1,9 +1,10 @@
 ### IVC
-Axiom api
+
+#### Axiom api
 2^k rows, but don’t need to be to power of two
 k = 17, advice colns = 7
 
-num_steps = 10
+##### num_steps = 10
 no compressing/compressing
 
 Time for preprocess: 13.0877925s/10.246109042s
@@ -24,7 +25,7 @@ Time for prove_decider: 17.884145209s/15.238887791s
 (sanity-check) Time for verify_decider: 381.394125ms/338.456166ms
 
 
-num_steps = 50
+##### num_steps = 50
 compressing
 
 Time for preprocess: 10.084841083s
@@ -36,15 +37,18 @@ Time for prove_decider: 14.410719s
 Time for verify_decider: 338.679584ms
 
 
-k = 19, advice colns = 1
-prove_accumulation_from_nark-primary
 
+#### Han incomplete impl
 
-Halo2wrong api 
 10 steps, no compressing
+
 Time for preprocess: 1.995075083s
 Time for prove_steps: 5.060839917s
 Time for prove_decider: 1.908527459s
+
+
+
+
 
 
 Start:   prove_accumulation_from_nark-primary-19

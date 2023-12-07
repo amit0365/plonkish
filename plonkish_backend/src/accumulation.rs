@@ -4,12 +4,12 @@ use crate::{
     util::{
         arithmetic::Field,
         transcript::{TranscriptRead, TranscriptWrite},
-        DeserializeOwned, Serialize,
+        DeserializeOwned, Serialize, end_timer,
     },
     Error,
 };
 use rand::RngCore;
-use std::{borrow::BorrowMut, fmt::Debug};
+use std::{borrow::BorrowMut, fmt::Debug, time::Instant};
 
 pub mod protostar;
 pub mod sangria;

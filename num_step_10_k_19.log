@@ -1,0 +1,1627 @@
+    Finished release [optimized] target(s) in 0.35s
+     Running unittests src/lib.rs (target/release/deps/plonkish_backend-64669385111b45f8)
+
+running 1 test
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................51.287ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................51.249ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................48.823ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................49.669ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................141.389ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................153.635ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................159.121ms
+Start:   fold_accumulator_from_nark witness_comms-5
+End:     fold_accumulator_from_nark witness_comms-5 ................................37.179ms
+Start:   fold_accumulator_from_nark e_comm
+End:     fold_accumulator_from_nark e_comm .........................................9.168ms
+Time for synthesize_accumulation_verifier: 212.758708ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................53.025ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................53.002ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................63.020ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................46.679ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................129.305ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................147.571ms
+Start:   fold_accumulator_from_nark witness_comms-5
+End:     fold_accumulator_from_nark witness_comms-5 ................................33.426ms
+Start:   fold_accumulator_from_nark e_comm
+End:     fold_accumulator_from_nark e_comm .........................................12.093ms
+Time for synthesize_accumulation_verifier: 211.777209ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................51.828ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................47.527ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................59.354ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................47.489ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................139.864ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................144.644ms
+Time for preprocess: 35.29424275s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................32.598ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................10.791ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 201.267375ms
+··End:     witness_collector-0 .....................................................209.975ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................522.365ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................6.139ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.211ms
+··End:     lookup_compressed_polys-1 ...............................................12.961ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.323ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................48.436ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................36.822ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.136s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................48.091ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................23.979ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.107s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.904ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................244.517ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.074ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................403.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.959µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.708µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................429.917µs
+··End:     fold_compressed .........................................................24.752ms
+End:     prove_accumulation_from_nark-primary-19 ...................................3.495s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................34.632ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................10.464ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 203.990709ms
+··End:     witness_collector-0 .....................................................213.111ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................525.761ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.094ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.082ms
+··End:     lookup_compressed_polys-1 ...............................................11.837ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.051ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.743ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................37.125ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.072s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................51.776ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................26.334ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.105s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.787ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................278.620ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................49.974ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.834µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.458µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................417.750µs
+··End:     fold_compressed .........................................................26.660ms
+End:     prove_accumulation_from_nark-secondary-19 .................................3.479s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.632ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................10.382ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 201.384917ms
+··End:     witness_collector-0 .....................................................210.377ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................528.378ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.050ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.169ms
+··End:     lookup_compressed_polys-1 ...............................................12.003ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.911ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................47.683ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................37.469ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.126s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................52.286ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................26.273ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.225s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................16.480ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................498.951ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.172s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................427.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................418.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................412.875µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................441.542µs
+··End:     fold_compressed .........................................................26.565ms
+End:     prove_accumulation_from_nark-primary-19 ...................................5.002s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................35.047ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................11.011ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 217.636667ms
+··End:     witness_collector-0 .....................................................227.200ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................597.983ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................17.936ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................14.436ms
+··End:     lookup_compressed_polys-1 ...............................................37.136ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................18.536ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................48.005ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................47.159ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.355s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................54.912ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................27.242ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.166s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................17.285ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................511.888ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.124s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.667µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.667µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................452.458µs
+··End:     fold_compressed .........................................................35.021ms
+End:     prove_accumulation_from_nark-secondary-19 .................................5.275s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.985ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.682ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 208.207083ms
+··End:     witness_collector-0 .....................................................218.064ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................544.303ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................7.205ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................5.447ms
+··End:     lookup_compressed_polys-1 ...............................................17.417ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.047ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.112ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................41.206ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.073s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................50.253ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.024ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.112s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.630ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................489.906ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.116s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.792µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.584µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................427.958µs
+··End:     fold_compressed .........................................................27.966ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.791s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................34.443ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.948ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 204.339875ms
+··End:     witness_collector-0 .....................................................213.274ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................540.239ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................6.233ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................4.475ms
+··End:     lookup_compressed_polys-1 ...............................................15.449ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.061ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................47.185ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................38.937ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.096s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................50.340ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................25.372ms
+··Start:   variable_base_msm-524288
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc has been running for over 60 seconds
+··End:     variable_base_msm-524288 ................................................1.089s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.591ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................490.530ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.084s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.416µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.084µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.833µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................425.459µs
+··End:     fold_compressed .........................................................25.865ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.753s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.433ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................10.254ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 199.307917ms
+··End:     witness_collector-0 .....................................................208.176ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................568.840ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.020ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.155ms
+··End:     lookup_compressed_polys-1 ...............................................11.899ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.145ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................52.910ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................35.463ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.077s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................49.220ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.522ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.096s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.201ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................457.457ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.105s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................394.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.791µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................394.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.791µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................436.750µs
+··End:     fold_compressed .........................................................24.614ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.745s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................34.319ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................10.603ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 202.896542ms
+··End:     witness_collector-0 .....................................................211.710ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................519.575ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.463ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.079ms
+··End:     lookup_compressed_polys-1 ...............................................11.154ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.665ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................44.616ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................35.367ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.135s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................54.864ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................28.594ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.167s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................15.333ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................524.431ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.164s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.916µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................421.625µs
+··End:     fold_compressed .........................................................26.548ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.961s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.252ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.548ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 199.907833ms
+··End:     witness_collector-0 .....................................................208.672ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................543.032ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.849ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................7.449ms
+··End:     lookup_compressed_polys-1 ...............................................18.171ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.192ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................50.099ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................44.181ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.131s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................61.762ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................26.498ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.307s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.376ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................521.558ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.212s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................403.834µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................412.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................411.875µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................446.708µs
+··End:     fold_compressed .........................................................43.702ms
+End:     prove_accumulation_from_nark-primary-19 ...................................5.204s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................35.856ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................13.250ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 228.940917ms
+··End:     witness_collector-0 .....................................................238.672ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................572.726ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................7.284ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................5.759ms
+··End:     lookup_compressed_polys-1 ...............................................17.920ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................18.490ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................47.392ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................42.098ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.083s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................52.392ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.341ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.270s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................13.460ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................519.723ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.148s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................394.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.834µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.875µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................425.125µs
+··End:     fold_compressed .........................................................30.752ms
+End:     prove_accumulation_from_nark-secondary-19 .................................5.086s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................32.863ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.966ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 201.447958ms
+··End:     witness_collector-0 .....................................................210.452ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................548.533ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................6.154ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................9.441ms
+··End:     lookup_compressed_polys-1 ...............................................20.540ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.587ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................49.518ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................51.106ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.168s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................61.950ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................23.928ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.165s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................12.136ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................501.885ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.231s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................400.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.250µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................427.042µs
+··End:     fold_compressed .........................................................30.648ms
+End:     prove_accumulation_from_nark-primary-19 ...................................5.098s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.857ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................10.551ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 203.148208ms
+··End:     witness_collector-0 .....................................................212.231ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................594.465ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.735ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.273ms
+··End:     lookup_compressed_polys-1 ...............................................12.660ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................18.206ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................55.364ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................39.970ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.228s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................63.531ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................26.005ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.132s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................27.307ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................526.520ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.120s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.375µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................422.500µs
+··End:     fold_compressed .........................................................29.894ms
+End:     prove_accumulation_from_nark-secondary-19 .................................5.093s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.597ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.785ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 202.664917ms
+··End:     witness_collector-0 .....................................................211.504ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................486.534ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.915ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.277ms
+··End:     lookup_compressed_polys-1 ...............................................12.728ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................15.944ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.593ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................41.316ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.094s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................47.776ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................27.193ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.021s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.570ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................495.471ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.054s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.084µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.375µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................417.167µs
+··End:     fold_compressed .........................................................27.283ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.595s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.078ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................10.168ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 203.884125ms
+··End:     witness_collector-0 .....................................................212.782ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................502.404ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.606ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.250ms
+··End:     lookup_compressed_polys-1 ...............................................11.311ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................15.952ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.491ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................32.255ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.018s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................49.308ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................29.732ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................982.038ms
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................8.969ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................430.721ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.078s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................402.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.459µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.292µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................419.500µs
+··End:     fold_compressed .........................................................20.937ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.442s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................32.320ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.159ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 194.586459ms
+··End:     witness_collector-0 .....................................................203.683ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................477.110ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.406ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.130ms
+··End:     lookup_compressed_polys-1 ...............................................11.192ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................15.933ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.628ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................32.218ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.018s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................45.801ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................26.186ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.060s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................9.314ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................444.555ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.004s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.666µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................418.500µs
+··End:     fold_compressed .........................................................20.598ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.418s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.129ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.165ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 198.53725ms
+··End:     witness_collector-0 .....................................................207.715ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................478.193ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.591ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................1.992ms
+··End:     lookup_compressed_polys-1 ...............................................10.988ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................15.584ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................43.191ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................31.347ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................954.465ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.861ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................22.780ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.040s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................9.967ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................426.613ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.020s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................404.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................380.583µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................422.167µs
+··End:     fold_compressed .........................................................20.878ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.330s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................31.884ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................8.871ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 196.0585ms
+··End:     witness_collector-0 .....................................................205.225ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................480.874ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.299ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.147ms
+··End:     lookup_compressed_polys-1 ...............................................11.074ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.118ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................43.303ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................32.138ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................973.745ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................45.407ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.330ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.239s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.795ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................441.285ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.062s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................404.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.417µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................417.291µs
+··End:     fold_compressed .........................................................21.171ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.615s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................32.938ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................8.997ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 197.785833ms
+··End:     witness_collector-0 .....................................................206.395ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................475.185ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.362ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.031ms
+··End:     lookup_compressed_polys-1 ...............................................10.953ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................15.649ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................43.231ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................32.005ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.006s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.510ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.676ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.043s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................9.929ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................438.641ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.010s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.084µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.334µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.250µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................457.833µs
+··End:     fold_compressed .........................................................23.333ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.388s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.060ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.239ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 196.533875ms
+··End:     witness_collector-0 .....................................................205.356ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................508.449ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.396ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.060ms
+··End:     lookup_compressed_polys-1 ...............................................11.028ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.280ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................43.094ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................35.777ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.141s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.116ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.132ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.047s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................20.076ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................493.291ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.033s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.584µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.958µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................420.334µs
+··End:     fold_compressed .........................................................26.813ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.657s
+Time for prove_steps: 88.457289833s
+Start:   prove_decider-primary-19
+··Start:   permutation_z_polys-2
+····Start:   products
+····End:     products ..............................................................32.296ms
+····Start:   z_polys
+····End:     z_polys ...............................................................29.609ms
+····Start:   into_bh_order
+····End:     into_bh_order .........................................................3.413ms
+··End:     permutation_z_polys-2 ...................................................68.802ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................83.780ms
+··Start:   sum_check_prove-19-4
+····Start:   sum_check_prove_round-0
+····End:     sum_check_prove_round-0 ...............................................262.167ms
+····Start:   sum_check_next_round-0
+····End:     sum_check_next_round-0 ................................................65.629ms
+····Start:   sum_check_prove_round-1
+····End:     sum_check_prove_round-1 ...............................................135.798ms
+····Start:   sum_check_next_round-1
+····End:     sum_check_next_round-1 ................................................20.027ms
+····Start:   sum_check_prove_round-2
+····End:     sum_check_prove_round-2 ...............................................70.394ms
+····Start:   sum_check_next_round-2
+····End:     sum_check_next_round-2 ................................................10.555ms
+····Start:   sum_check_prove_round-3
+····End:     sum_check_prove_round-3 ...............................................33.304ms
+····Start:   sum_check_next_round-3
+····End:     sum_check_next_round-3 ................................................5.900ms
+····Start:   sum_check_prove_round-4
+····End:     sum_check_prove_round-4 ...............................................17.984ms
+····Start:   sum_check_next_round-4
+····End:     sum_check_next_round-4 ................................................3.442ms
+····Start:   sum_check_prove_round-5
+····End:     sum_check_prove_round-5 ...............................................10.486ms
+····Start:   sum_check_next_round-5
+····End:     sum_check_next_round-5 ................................................2.323ms
+····Start:   sum_check_prove_round-6
+····End:     sum_check_prove_round-6 ...............................................4.586ms
+····Start:   sum_check_next_round-6
+····End:     sum_check_next_round-6 ................................................1.245ms
+····Start:   sum_check_prove_round-7
+····End:     sum_check_prove_round-7 ...............................................4.090ms
+····Start:   sum_check_next_round-7
+····End:     sum_check_next_round-7 ................................................1.107ms
+····Start:   sum_check_prove_round-8
+····End:     sum_check_prove_round-8 ...............................................2.098ms
+····Start:   sum_check_next_round-8
+····End:     sum_check_next_round-8 ................................................792.625µs
+····Start:   sum_check_prove_round-9
+····End:     sum_check_prove_round-9 ...............................................742.250µs
+····Start:   sum_check_next_round-9
+····End:     sum_check_next_round-9 ................................................669.834µs
+····Start:   sum_check_prove_round-10
+····End:     sum_check_prove_round-10 ..............................................408.125µs
+····Start:   sum_check_next_round-10
+····End:     sum_check_next_round-10 ...............................................590.458µs
+····Start:   sum_check_prove_round-11
+····End:     sum_check_prove_round-11 ..............................................236.458µs
+····Start:   sum_check_next_round-11
+····End:     sum_check_next_round-11 ...............................................588.375µs
+····Start:   sum_check_prove_round-12
+····End:     sum_check_prove_round-12 ..............................................124.625µs
+····Start:   sum_check_next_round-12
+····End:     sum_check_next_round-12 ...............................................512.292µs
+····Start:   sum_check_prove_round-13
+····End:     sum_check_prove_round-13 ..............................................78.417µs
+····Start:   sum_check_next_round-13
+····End:     sum_check_next_round-13 ...............................................53.500µs
+····Start:   sum_check_prove_round-14
+····End:     sum_check_prove_round-14 ..............................................61.292µs
+····Start:   sum_check_next_round-14
+····End:     sum_check_next_round-14 ...............................................53.959µs
+····Start:   sum_check_prove_round-15
+····End:     sum_check_prove_round-15 ..............................................58.375µs
+····Start:   sum_check_next_round-15
+····End:     sum_check_next_round-15 ...............................................47.583µs
+····Start:   sum_check_prove_round-16
+····End:     sum_check_prove_round-16 ..............................................71.666µs
+····Start:   sum_check_next_round-16
+····End:     sum_check_next_round-16 ...............................................35.916µs
+····Start:   sum_check_prove_round-17
+····End:     sum_check_prove_round-17 ..............................................54.958µs
+····Start:   sum_check_next_round-17
+····End:     sum_check_next_round-17 ...............................................43.291µs
+····Start:   sum_check_prove_round-18
+····End:     sum_check_prove_round-18 ..............................................24.375µs
+····Start:   sum_check_next_round-18
+····End:     sum_check_next_round-18 ...............................................40.541µs
+··End:     sum_check_prove-19-4 ....................................................669.644ms
+··Start:   evals-17
+··End:     evals-17 ................................................................17.978ms
+··Start:   pcs_batch_open-30
+····Start:   merged_polys
+····End:     merged_polys ..........................................................48.659ms
+····Start:   sum_check_prove-19-2
+······Start:   sum_check_prove_round-0
+······End:     sum_check_prove_round-0 .............................................54.815ms
+······Start:   sum_check_next_round-0
+······End:     sum_check_next_round-0 ..............................................37.902ms
+······Start:   sum_check_prove_round-1
+······End:     sum_check_prove_round-1 .............................................27.403ms
+······Start:   sum_check_next_round-1
+······End:     sum_check_next_round-1 ..............................................18.555ms
+······Start:   sum_check_prove_round-2
+······End:     sum_check_prove_round-2 .............................................13.709ms
+······Start:   sum_check_next_round-2
+······End:     sum_check_next_round-2 ..............................................10.045ms
+······Start:   sum_check_prove_round-3
+······End:     sum_check_prove_round-3 .............................................7.537ms
+······Start:   sum_check_next_round-3
+······End:     sum_check_next_round-3 ..............................................5.733ms
+······Start:   sum_check_prove_round-4
+······End:     sum_check_prove_round-4 .............................................4.324ms
+······Start:   sum_check_next_round-4
+······End:     sum_check_next_round-4 ..............................................3.501ms
+······Start:   sum_check_prove_round-5
+······End:     sum_check_prove_round-5 .............................................2.633ms
+······Start:   sum_check_next_round-5
+······End:     sum_check_next_round-5 ..............................................2.366ms
+······Start:   sum_check_prove_round-6
+······End:     sum_check_prove_round-6 .............................................1.903ms
+······Start:   sum_check_next_round-6
+······End:     sum_check_next_round-6 ..............................................1.341ms
+······Start:   sum_check_prove_round-7
+······End:     sum_check_prove_round-7 .............................................1.058ms
+······Start:   sum_check_next_round-7
+······End:     sum_check_next_round-7 ..............................................865.083µs
+······Start:   sum_check_prove_round-8
+······End:     sum_check_prove_round-8 .............................................631.750µs
+······Start:   sum_check_next_round-8
+······End:     sum_check_next_round-8 ..............................................786.708µs
+······Start:   sum_check_prove_round-9
+······End:     sum_check_prove_round-9 .............................................520.208µs
+······Start:   sum_check_next_round-9
+······End:     sum_check_next_round-9 ..............................................593.042µs
+······Start:   sum_check_prove_round-10
+······End:     sum_check_prove_round-10 ............................................491.083µs
+······Start:   sum_check_next_round-10
+······End:     sum_check_next_round-10 .............................................543.708µs
+······Start:   sum_check_prove_round-11
+······End:     sum_check_prove_round-11 ............................................409.834µs
+······Start:   sum_check_next_round-11
+······End:     sum_check_next_round-11 .............................................516.958µs
+······Start:   sum_check_prove_round-12
+······End:     sum_check_prove_round-12 ............................................471.583µs
+······Start:   sum_check_next_round-12
+······End:     sum_check_next_round-12 .............................................520.292µs
+······Start:   sum_check_prove_round-13
+······End:     sum_check_prove_round-13 ............................................375.542µs
+······Start:   sum_check_next_round-13
+······End:     sum_check_next_round-13 .............................................19.708µs
+······Start:   sum_check_prove_round-14
+······End:     sum_check_prove_round-14 ............................................340.583µs
+······Start:   sum_check_next_round-14
+······End:     sum_check_next_round-14 .............................................10.167µs
+······Start:   sum_check_prove_round-15
+······End:     sum_check_prove_round-15 ............................................288.750µs
+······Start:   sum_check_next_round-15
+······End:     sum_check_next_round-15 .............................................5.500µs
+······Start:   sum_check_prove_round-16
+······End:     sum_check_prove_round-16 ............................................4.708µs
+······Start:   sum_check_next_round-16
+······End:     sum_check_next_round-16 .............................................2.834µs
+······Start:   sum_check_prove_round-17
+······End:     sum_check_prove_round-17 ............................................2.958µs
+······Start:   sum_check_next_round-17
+······End:     sum_check_next_round-17 .............................................1.666µs
+······Start:   sum_check_prove_round-18
+······End:     sum_check_prove_round-18 ............................................2.041µs
+······Start:   sum_check_next_round-18
+······End:     sum_check_next_round-18 .............................................1.042µs
+····End:     sum_check_prove-19-2 ..................................................294.648ms
+····Start:   g_prime
+····End:     g_prime ...............................................................55.877ms
+····Start:   variable_base_msm-30
+····End:     variable_base_msm-30 ..................................................1.043ms
+····Start:   variable_base_msm-524288
+····End:     variable_base_msm-524288 ..............................................988.969ms
+····Start:   variable_base_msm-262144
+····End:     variable_base_msm-262144 ..............................................585.665ms
+····Start:   variable_base_msm-131072
+····End:     variable_base_msm-131072 ..............................................327.076ms
+····Start:   variable_base_msm-65536
+····End:     variable_base_msm-65536 ...............................................167.214ms
+····Start:   variable_base_msm-32768
+····End:     variable_base_msm-32768 ...............................................103.221ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................57.930ms
+····Start:   variable_base_msm-8192
+····End:     variable_base_msm-8192 ................................................35.243ms
+····Start:   variable_base_msm-4096
+····End:     variable_base_msm-4096 ................................................17.681ms
+····Start:   variable_base_msm-2048
+····End:     variable_base_msm-2048 ................................................11.115ms
+····Start:   variable_base_msm-1024
+····End:     variable_base_msm-1024 ................................................6.664ms
+····Start:   variable_base_msm-512
+····End:     variable_base_msm-512 .................................................4.192ms
+····Start:   variable_base_msm-256
+····End:     variable_base_msm-256 .................................................2.441ms
+····Start:   variable_base_msm-128
+····End:     variable_base_msm-128 .................................................1.858ms
+····Start:   variable_base_msm-64
+····End:     variable_base_msm-64 ..................................................1.173ms
+····Start:   variable_base_msm-32
+····End:     variable_base_msm-32 ..................................................1.133ms
+····Start:   variable_base_msm-16
+····End:     variable_base_msm-16 ..................................................1.136ms
+····Start:   variable_base_msm-8
+····End:     variable_base_msm-8 ...................................................642.667µs
+····Start:   variable_base_msm-4
+····End:     variable_base_msm-4 ...................................................501.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................434.000µs
+····Start:   variable_base_msm-524286
+····End:     variable_base_msm-524286 ..............................................1.036s
+····Start:   variable_base_msm-20
+····End:     variable_base_msm-20 ..................................................880.500µs
+····Start:   variable_base_msm-524288
+····End:     variable_base_msm-524288 ..............................................995.731ms
+····Start:   variable_base_msm-524287
+····End:     variable_base_msm-524287 ..............................................983.434ms
+··End:     pcs_batch_open-30 .......................................................5.946s
+End:     prove_decider-primary-19 ..................................................6.788s
+Start:   prove_decider_with_last_nark-secondary-19
+··Start:   witness_collector-0
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................33.640ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................9.213ms
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+Time for synthesize_accumulation_verifier: 197.8595ms
+··End:     witness_collector-0 .....................................................206.647ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................476.538ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.238ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................4.609ms
+··End:     lookup_compressed_polys-1 ...............................................14.395ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.533ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.490ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................32.544ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.009s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................45.763ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................23.707ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.017s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.501ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................462.226ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................965.594ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.667µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.083µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................415.542µs
+··End:     fold_compressed .........................................................20.429ms
+··Start:   permutation_z_polys-2
+····Start:   products
+····End:     products ..............................................................32.882ms
+····Start:   z_polys
+····End:     z_polys ...............................................................32.829ms
+····Start:   into_bh_order
+····End:     into_bh_order .........................................................3.538ms
+··End:     permutation_z_polys-2 ...................................................72.847ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................80.443ms
+··Start:   sum_check_prove-19-4
+····Start:   sum_check_prove_round-0
+····End:     sum_check_prove_round-0 ...............................................252.386ms
+····Start:   sum_check_next_round-0
+····End:     sum_check_next_round-0 ................................................78.738ms
+····Start:   sum_check_prove_round-1
+····End:     sum_check_prove_round-1 ...............................................145.449ms
+····Start:   sum_check_next_round-1
+····End:     sum_check_next_round-1 ................................................19.929ms
+····Start:   sum_check_prove_round-2
+····End:     sum_check_prove_round-2 ...............................................75.587ms
+····Start:   sum_check_next_round-2
+····End:     sum_check_next_round-2 ................................................10.327ms
+····Start:   sum_check_prove_round-3
+····End:     sum_check_prove_round-3 ...............................................32.326ms
+····Start:   sum_check_next_round-3
+····End:     sum_check_next_round-3 ................................................5.995ms
+····Start:   sum_check_prove_round-4
+····End:     sum_check_prove_round-4 ...............................................18.086ms
+····Start:   sum_check_next_round-4
+····End:     sum_check_next_round-4 ................................................3.608ms
+····Start:   sum_check_prove_round-5
+····End:     sum_check_prove_round-5 ...............................................9.301ms
+····Start:   sum_check_next_round-5
+····End:     sum_check_next_round-5 ................................................2.254ms
+····Start:   sum_check_prove_round-6
+····End:     sum_check_prove_round-6 ...............................................4.699ms
+····Start:   sum_check_next_round-6
+····End:     sum_check_next_round-6 ................................................1.169ms
+····Start:   sum_check_prove_round-7
+····End:     sum_check_prove_round-7 ...............................................2.476ms
+····Start:   sum_check_next_round-7
+····End:     sum_check_next_round-7 ................................................1.013ms
+····Start:   sum_check_prove_round-8
+····End:     sum_check_prove_round-8 ...............................................1.409ms
+····Start:   sum_check_next_round-8
+····End:     sum_check_next_round-8 ................................................791.375µs
+····Start:   sum_check_prove_round-9
+····End:     sum_check_prove_round-9 ...............................................752.833µs
+····Start:   sum_check_next_round-9
+····End:     sum_check_next_round-9 ................................................715.666µs
+····Start:   sum_check_prove_round-10
+····End:     sum_check_prove_round-10 ..............................................384.458µs
+····Start:   sum_check_next_round-10
+····End:     sum_check_next_round-10 ...............................................571.333µs
+····Start:   sum_check_prove_round-11
+····End:     sum_check_prove_round-11 ..............................................321.500µs
+····Start:   sum_check_next_round-11
+····End:     sum_check_next_round-11 ...............................................652.292µs
+····Start:   sum_check_prove_round-12
+····End:     sum_check_prove_round-12 ..............................................199.416µs
+····Start:   sum_check_next_round-12
+····End:     sum_check_next_round-12 ...............................................541.083µs
+····Start:   sum_check_prove_round-13
+····End:     sum_check_prove_round-13 ..............................................73.375µs
+····Start:   sum_check_next_round-13
+····End:     sum_check_next_round-13 ...............................................52.792µs
+····Start:   sum_check_prove_round-14
+····End:     sum_check_prove_round-14 ..............................................83.000µs
+····Start:   sum_check_next_round-14
+····End:     sum_check_next_round-14 ...............................................42.708µs
+····Start:   sum_check_prove_round-15
+····End:     sum_check_prove_round-15 ..............................................61.875µs
+····Start:   sum_check_next_round-15
+····End:     sum_check_next_round-15 ...............................................40.959µs
+····Start:   sum_check_prove_round-16
+····End:     sum_check_prove_round-16 ..............................................53.750µs
+····Start:   sum_check_next_round-16
+····End:     sum_check_next_round-16 ...............................................39.334µs
+····Start:   sum_check_prove_round-17
+····End:     sum_check_prove_round-17 ..............................................39.875µs
+····Start:   sum_check_next_round-17
+····End:     sum_check_next_round-17 ...............................................38.875µs
+····Start:   sum_check_prove_round-18
+····End:     sum_check_prove_round-18 ..............................................21.125µs
+····Start:   sum_check_next_round-18
+····End:     sum_check_next_round-18 ...............................................33.625µs
+··End:     sum_check_prove-19-4 ....................................................682.622ms
+··Start:   evals-17
+··End:     evals-17 ................................................................18.448ms
+··Start:   pcs_batch_open-30
+····Start:   merged_polys
+····End:     merged_polys ..........................................................48.795ms
+····Start:   sum_check_prove-19-2
+······Start:   sum_check_prove_round-0
+······End:     sum_check_prove_round-0 .............................................54.975ms
+······Start:   sum_check_next_round-0
+······End:     sum_check_next_round-0 ..............................................42.868ms
+······Start:   sum_check_prove_round-1
+······End:     sum_check_prove_round-1 .............................................26.667ms
+······Start:   sum_check_next_round-1
+······End:     sum_check_next_round-1 ..............................................17.962ms
+······Start:   sum_check_prove_round-2
+······End:     sum_check_prove_round-2 .............................................14.012ms
+······Start:   sum_check_next_round-2
+······End:     sum_check_next_round-2 ..............................................9.616ms
+······Start:   sum_check_prove_round-3
+······End:     sum_check_prove_round-3 .............................................7.858ms
+······Start:   sum_check_next_round-3
+······End:     sum_check_next_round-3 ..............................................5.722ms
+······Start:   sum_check_prove_round-4
+······End:     sum_check_prove_round-4 .............................................4.241ms
+······Start:   sum_check_next_round-4
+······End:     sum_check_next_round-4 ..............................................3.596ms
+······Start:   sum_check_prove_round-5
+······End:     sum_check_prove_round-5 .............................................2.842ms
+······Start:   sum_check_next_round-5
+······End:     sum_check_next_round-5 ..............................................2.379ms
+······Start:   sum_check_prove_round-6
+······End:     sum_check_prove_round-6 .............................................1.734ms
+······Start:   sum_check_next_round-6
+······End:     sum_check_next_round-6 ..............................................1.195ms
+······Start:   sum_check_prove_round-7
+······End:     sum_check_prove_round-7 .............................................1.109ms
+······Start:   sum_check_next_round-7
+······End:     sum_check_next_round-7 ..............................................879.833µs
+······Start:   sum_check_prove_round-8
+······End:     sum_check_prove_round-8 .............................................767.333µs
+······Start:   sum_check_next_round-8
+······End:     sum_check_next_round-8 ..............................................688.000µs
+······Start:   sum_check_prove_round-9
+······End:     sum_check_prove_round-9 .............................................599.167µs
+······Start:   sum_check_next_round-9
+······End:     sum_check_next_round-9 ..............................................587.500µs
+······Start:   sum_check_prove_round-10
+······End:     sum_check_prove_round-10 ............................................457.791µs
+······Start:   sum_check_next_round-10
+······End:     sum_check_next_round-10 .............................................524.584µs
+······Start:   sum_check_prove_round-11
+······End:     sum_check_prove_round-11 ............................................380.042µs
+······Start:   sum_check_next_round-11
+······End:     sum_check_next_round-11 .............................................552.875µs
+······Start:   sum_check_prove_round-12
+······End:     sum_check_prove_round-12 ............................................365.667µs
+······Start:   sum_check_next_round-12
+······End:     sum_check_next_round-12 .............................................466.375µs
+······Start:   sum_check_prove_round-13
+······End:     sum_check_prove_round-13 ............................................369.166µs
+······Start:   sum_check_next_round-13
+······End:     sum_check_next_round-13 .............................................19.750µs
+······Start:   sum_check_prove_round-14
+······End:     sum_check_prove_round-14 ............................................373.375µs
+······Start:   sum_check_next_round-14
+······End:     sum_check_next_round-14 .............................................10.291µs
+······Start:   sum_check_prove_round-15
+······End:     sum_check_prove_round-15 ............................................249.875µs
+······Start:   sum_check_next_round-15
+······End:     sum_check_next_round-15 .............................................5.625µs
+······Start:   sum_check_prove_round-16
+······End:     sum_check_prove_round-16 ............................................4.834µs
+······Start:   sum_check_next_round-16
+······End:     sum_check_next_round-16 .............................................2.875µs
+······Start:   sum_check_prove_round-17
+······End:     sum_check_prove_round-17 ............................................2.959µs
+······Start:   sum_check_next_round-17
+······End:     sum_check_next_round-17 .............................................1.666µs
+······Start:   sum_check_prove_round-18
+······End:     sum_check_prove_round-18 ............................................2.208µs
+······Start:   sum_check_next_round-18
+······End:     sum_check_next_round-18 .............................................1.125µs
+····End:     sum_check_prove-19-2 ..................................................310.029ms
+····Start:   g_prime
+····End:     g_prime ...............................................................58.350ms
+····Start:   variable_base_msm-30
+····End:     variable_base_msm-30 ..................................................922.208µs
+····Start:   variable_base_msm-524288
+····End:     variable_base_msm-524288 ..............................................993.026ms
+····Start:   variable_base_msm-262145
+····End:     variable_base_msm-262145 ..............................................569.953ms
+····Start:   variable_base_msm-262145
+····End:     variable_base_msm-262145 ..............................................555.050ms
+····Start:   variable_base_msm-131073
+····End:     variable_base_msm-131073 ..............................................306.215ms
+····Start:   variable_base_msm-131073
+····End:     variable_base_msm-131073 ..............................................295.898ms
+····Start:   variable_base_msm-65537
+····End:     variable_base_msm-65537 ...............................................156.329ms
+····Start:   variable_base_msm-65537
+····End:     variable_base_msm-65537 ...............................................155.604ms
+····Start:   variable_base_msm-32769
+····End:     variable_base_msm-32769 ...............................................86.681ms
+····Start:   variable_base_msm-32769
+····End:     variable_base_msm-32769 ...............................................86.017ms
+····Start:   variable_base_msm-16385
+····End:     variable_base_msm-16385 ...............................................53.760ms
+····Start:   variable_base_msm-16385
+····End:     variable_base_msm-16385 ...............................................57.319ms
+····Start:   variable_base_msm-8193
+····End:     variable_base_msm-8193 ................................................32.197ms
+····Start:   variable_base_msm-8193
+····End:     variable_base_msm-8193 ................................................32.946ms
+····Start:   variable_base_msm-4097
+····End:     variable_base_msm-4097 ................................................16.848ms
+····Start:   variable_base_msm-4097
+····End:     variable_base_msm-4097 ................................................18.607ms
+····Start:   variable_base_msm-2049
+····End:     variable_base_msm-2049 ................................................10.637ms
+····Start:   variable_base_msm-2049
+····End:     variable_base_msm-2049 ................................................11.567ms
+····Start:   variable_base_msm-1025
+····End:     variable_base_msm-1025 ................................................6.904ms
+····Start:   variable_base_msm-1025
+····End:     variable_base_msm-1025 ................................................7.050ms
+····Start:   variable_base_msm-513
+····End:     variable_base_msm-513 .................................................3.893ms
+····Start:   variable_base_msm-513
+····End:     variable_base_msm-513 .................................................4.373ms
+····Start:   variable_base_msm-257
+····End:     variable_base_msm-257 .................................................3.773ms
+····Start:   variable_base_msm-257
+····End:     variable_base_msm-257 .................................................2.573ms
+····Start:   variable_base_msm-129
+····End:     variable_base_msm-129 .................................................1.960ms
+····Start:   variable_base_msm-129
+····End:     variable_base_msm-129 .................................................1.665ms
+····Start:   variable_base_msm-65
+····End:     variable_base_msm-65 ..................................................1.390ms
+····Start:   variable_base_msm-65
+····End:     variable_base_msm-65 ..................................................1.310ms
+····Start:   variable_base_msm-33
+····End:     variable_base_msm-33 ..................................................1.159ms
+····Start:   variable_base_msm-33
+····End:     variable_base_msm-33 ..................................................948.541µs
+····Start:   variable_base_msm-17
+····End:     variable_base_msm-17 ..................................................872.333µs
+····Start:   variable_base_msm-17
+····End:     variable_base_msm-17 ..................................................840.792µs
+····Start:   variable_base_msm-9
+····End:     variable_base_msm-9 ...................................................960.542µs
+····Start:   variable_base_msm-9
+····End:     variable_base_msm-9 ...................................................872.417µs
+····Start:   variable_base_msm-5
+····End:     variable_base_msm-5 ...................................................554.708µs
+····Start:   variable_base_msm-5
+····End:     variable_base_msm-5 ...................................................546.125µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................472.792µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................459.416µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................434.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................432.292µs
+··End:     pcs_batch_open-30 .......................................................24.348s
+End:     prove_decider_with_last_nark-secondary-19 .................................29.553s
+Time for prove_decider: 36.342548958s
+Start:   variable_base_msm-12
+End:     variable_base_msm-12 ......................................................818.833µs
+Start:   variable_base_msm-20
+End:     variable_base_msm-20 ......................................................863.000µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................386.375µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................382.625µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................406.875µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................386.500µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................387.375µs
+Start:   variable_base_msm-3
+End:     variable_base_msm-3 .......................................................416.083µs
+Start:   variable_base_msm-12
+End:     variable_base_msm-12 ......................................................833.292µs
+Start:   variable_base_msm-39
+End:     variable_base_msm-39 ......................................................925.167µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................456.291µs
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................997.955ms
+Time for verify_decider: 1.0263825s
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:115] "WARNING: advice_equalities not empty" = "WARNING: advice_equalities not empty"
+[/Users/ak36/Desktop/axiom/halo2-lib/halo2-base/src/virtual_region/copy_constraints.rs:118] "WARNING: constant_equalities not empty" = "WARNING: constant_equalities not empty"
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 161.26s
+

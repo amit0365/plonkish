@@ -112,15 +112,6 @@ where
     C::Base: BigPrimeField,
 {   
 
-    // #[allow(clippy::type_complexity)]
-    // fn configs(
-    //     config: strawman::Config<C::Scalar>,
-    // ) -> (
-    //     //Chip<C>::Config,
-    //     OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    //     OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    // );
-
     fn arity() -> usize;
 
     fn initial_input(&self) -> &[C::Scalar];
@@ -469,7 +460,7 @@ where
             let e_comm = if cross_term_comms.is_empty() {
                 acc.e_comm.clone()
             } else {
-                let timer = start_timer(|| format!("fold_accumulator_from_nark e_comm"));
+                let timer = start_timer(|| format!("fold_accumulator_from_nark e_comm-cross_term_comms.len()-{}", cross_term_comms.len()));
                 let mut e_comm = cross_term_comms.last().unwrap().clone();
                 for item in cross_term_comms.iter().rev().skip(1).chain([&acc.e_comm]) {
                     e_comm = tcc_chip.scalar_mul_secondary(builder, &e_comm, r_le_bits)?;
@@ -615,6 +606,7 @@ where
         let hash_config = poseidon_spec.clone();
         let transcript_config = poseidon_spec.clone();
 
+        // let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Prover).use_params(circuit_params.clone()).use_break_points(vec![vec![]]));
         // let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Prover).use_params(circuit_params.clone()).use_break_points(vec![vec![131061, 131062, 131062, 131060, 131062]]));
         let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Mock).use_params(circuit_params.clone()));
         let range_chip = inner.borrow().range_chip();
@@ -821,9 +813,10 @@ where
         let assigned_instances = &mut binding.assigned_instances;
         assigned_instances[0].push(h_ohs_from_incoming);
 
-        binding.set_copy_manager(SharedCopyConstraintManager::default());
+        // todo check this
+        // binding.set_copy_manager(SharedCopyConstraintManager::default());
+        // let assigned_instances = &mut binding.assigned_instances;
 
-        let assigned_instances = &mut binding.assigned_instances;
         assigned_instances[0].push(h_prime);
 
         binding.synthesize(config.clone(), layouter.namespace(|| ""));

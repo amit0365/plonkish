@@ -94,22 +94,6 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
-    //type TccChip = strawman::Chip<C>;
-    //type HashChip = strawman::Chip<C>;
-    //type TranscriptChip = strawman::PoseidonTranscriptChip<C>;
-
-    // fn configs(
-    //     config: Self::Config,
-    // ) -> (
-    //         // OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    //         // OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    //     ) {
-    //     (
-    //         //config.clone(),
-    //         //config.poseidon_spec.clone(),
-    //         //config.poseidon_spec,
-    //     )
-    // }
 
     fn arity() -> usize {
         0
@@ -748,12 +732,12 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_VARS: usize = 17;
-    const NUM_STEPS: usize = 10;
+    const NUM_VARS: usize = 19;
+    const NUM_STEPS: usize = 3;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
-            num_advice_per_phase: vec![7],
+            num_advice_per_phase: vec![1],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
             lookup_bits: Some(13),
@@ -923,10 +907,11 @@ pub mod strawman {
                 FieldTranscript, FieldTranscriptRead, FieldTranscriptWrite, InMemoryTranscript,
                 Transcript, TranscriptRead, TranscriptWrite,
             },
-            Itertools, start_timer,
+            Itertools, start_timer, end_timer,
         },
     };
 
+    use ark_std::end_timer;
     use halo2_base::{
         Context,
         utils::{BigPrimeField, ScalarField, CurveAffineExt, decompose, decompose_fe_to_u64_limbs, fe_to_biguint},

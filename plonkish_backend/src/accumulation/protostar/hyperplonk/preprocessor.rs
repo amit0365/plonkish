@@ -144,9 +144,6 @@ where
             let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
             let cross_term_expressions =
                 cross_term_expressions(&poly_set, &products, num_folding_challenges);
-            println!("products.len: {:?}", products.len());
-            println!("num_folding_challenges: {:?}", num_folding_challenges);
-            println!("cross_term_expressions.len: {:?}", cross_term_expressions.len());
             let u = num_folding_challenges;
             let relexed_constraint = {
                 let e = builtin_witness_poly_offset

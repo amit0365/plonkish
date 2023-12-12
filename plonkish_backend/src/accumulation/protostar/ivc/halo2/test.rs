@@ -31,7 +31,7 @@ use crate::{
 };
 use halo2_base::{halo2_proofs::{
     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-}, plonk::{Advice, Column, Instance}, poly::Rotation}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
+}, plonk::{Advice, Column, Instance}, poly::Rotation}, AssignedValue, gates::circuit::{BaseConfig, builder::{BaseCircuitBuilder, self}, BaseCircuitParams, self}};
 
 use halo2_base::{Context,
     gates::{range::RangeInstructions, circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
@@ -45,7 +45,7 @@ use halo2_base::halo2_proofs::{
     plonk::{Circuit, Selector, ConstraintSystem, Error},
 };
 
-use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant};
+use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant, cell::{RefCell, RefMut}, borrow::BorrowMut};
 use std::{mem, rc::Rc};
 
 use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS, T, RATE, R_F, R_P, SECURE_MDS, Chip};
@@ -62,7 +62,7 @@ where
     C: CurveAffine,
     C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
-    type Config = SharedConfig<C::Scalar>;
+    type Config = BaseConfig<C::Scalar>;
     type FloorPlanner = SimpleFloorPlanner;
     type Params = BaseCircuitParams;
 
@@ -103,12 +103,22 @@ where
         &[]
     }
 
+    fn setup(&mut self) -> C::Scalar {
+        C::Scalar::from(0u64)
+    }
+
     fn input(&self) -> &[C::Scalar] {
         &[]
     }
 
+    fn set_input(&mut self, input: &[C::Scalar]) {
+    }
+
     fn output(&self) -> &[C::Scalar] {
         &[]
+    }
+
+    fn set_output(&mut self, output: &[C::Scalar]) {
     }
 
     fn step_idx(&self) -> usize {
@@ -119,11 +129,16 @@ where
         self.step_idx += 1;
     }
 
-    //todo fix this with other synthesizes
+    fn num_constraints(&self) -> usize {
+        0
+    }
+
+    // todo fix this with other synthesizes
     fn synthesize(
-        &self,
+        &mut self,
         _: Self::Config,
         _: impl Layouter<C::Scalar>,
+        _: &mut BaseCircuitBuilder<C::Scalar>,
     ) -> Result<
         (
             Vec<AssignedValue<C::Scalar>>,
@@ -136,109 +151,113 @@ where
 }
 
 
-#[derive(Debug, Clone)]
-pub struct FunctionConfig {
-    selector: Selector,
-    a: Column<Advice>,
-    b: Column<Advice>,
-    // instance: Column<Instance>,
-}
+// #[derive(Debug, Clone)]
+// pub struct FunctionConfig {
+//     selector: Selector,
+//     a: Column<Advice>,
+//     b: Column<Advice>,
+//     c: Column<Advice>,
+//     // instance: Vec<Column<Instance>>,
+// }
 
-pub struct FunctionChip<F: Field> {
-    config: FunctionConfig,
-    _marker: PhantomData<F>,
-}
+// pub struct FunctionChip<F: Field> {
+//     config: BaseConfig<F>, // FunctionConfig,
+//     _marker: PhantomData<F>,
+// }
 
-impl<F: Field> FunctionChip<F> {
-    pub fn construct(config: FunctionConfig) -> Self {
-        Self { config, _marker: PhantomData }
-    }
+// impl<F: Field> FunctionChip<F> {
+//     pub fn construct(config: FunctionConfig) -> Self {
+//         Self { config, _marker: PhantomData }
+//     }
 
-    pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
-        // advice colns are defined separately in config so use meta.advice_column like the syntax in selector
-        let a = meta.advice_column(); 
-        let b = meta.advice_column();
-        let selector = meta.selector(); 
-        //let instance = meta.instance_column(); 
-        //meta.enable_equality(instance);
+//     pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
+//         // advice colns are defined separately in config so use meta.advice_column like the syntax in selector
+//         let a = meta.advice_column(); 
+//         let b = meta.advice_column();
+//         let c = meta.advice_column();
+//         let selector = meta.selector(); 
+//         // let instance = meta.instance_column(); 
+//         // meta.enable_equality(instance);
 
-        // defining custom gate with logic
-        meta.create_gate("b = a",|meta|{
-            let s = meta.query_selector(selector);
-            let a = meta.query_advice(a, Rotation::cur());
-            let b = meta.query_advice(b, Rotation::cur());
+//         // defining custom gate with logic
+//         // meta.create_gate("b = a",|meta|{
+//         //     let s = meta.query_selector(selector);
+//         //     let a = meta.query_advice(a, Rotation::cur());
+//         //     let b = meta.query_advice(b, Rotation::cur());
 
-            vec![s * (b - a)]
+//         //     vec![s * (b - a)]
 
-        });
+//         // });
 
-        // instantiate empty circuit
-        FunctionConfig { 
-            selector,
-            a,
-            b,
-            //instance,
-        }
+//         // instantiate empty circuit
+//         FunctionConfig { 
+//             selector,
+//             a,
+//             b,
+//             c,
+//             // instance: vec![instance],
+//         }
          
-    }
+//     }
 
-    pub fn assign(
-        &self, 
-        layouter: 
-        &mut impl Layouter<F>, 
-        a: F, 
-        b: F 
-        ) -> Result<
-        (
-            Vec<AssignedCell<F, F>>,
-            Vec<AssignedCell<F, F>>,
-        ),
-        Error,
-    > {
-        layouter.assign_region(
-            || "b = a", 
-            |mut region| {  
+//     pub fn assign(
+//         &self, 
+//         layouter: 
+//         &mut impl Layouter<F>, 
+//         a: F, 
+//         b: F 
+//         ) -> Result<
+//         (
+//             Vec<AssignedCell<F, F>>,
+//             Vec<AssignedCell<F, F>>,
+//         ),
+//         Error,
+//     > {
+//         layouter.assign_region(
+//             || "b = a", 
+//             |mut region| {  
 
-                self.config.selector.enable(&mut region, 0)?;
+//                 self.config.selector.enable(&mut region, 0)?;
 
-                let input_cell = region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
+//                 let input_cell = region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
 
-                let b = a;
+//                 let b = a;
 
-                let output_cell = region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))?;
+//                 let output_cell = region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))?;
 
-                Ok((vec![input_cell], vec![output_cell]))
+//                 Ok((vec![input_cell], vec![output_cell]))
 
-            },
-        )
-    }
+//             },
+//         )
+//     }
 
-    // pub fn expose_public(
-    //     &self,
-    //     mut layouter: impl Layouter<F>,
-    //     cell: AssignedCell<F, F>,
-    //     row: usize,
-    // ) -> Result<(), Error> {
-    //     layouter.constrain_instance(cell.cell(), self.config.instance, row)
-    // }
+//     // pub fn expose_public(
+//     //     &self,
+//     //     mut layouter: impl Layouter<F>,
+//     //     cell: AssignedCell<F, F>,
+//     //     row: usize,
+//     // ) -> Result<(), Error> {
+//     //     layouter.constrain_instance(cell.cell(), self.config.instance, row)
+//     // }
 
-}
+// }
 
-#[derive(Clone)]
-pub struct SharedConfig<F> 
-    where F: BigPrimeField + FromUniformBytes<64>,
-{
-    pub base_circuit_config: BaseConfig<F>,
-    pub function_circuit_config: FunctionConfig,
-}
+// #[derive(Clone)]
+// pub struct SharedConfig<F> 
+//     where F: BigPrimeField + FromUniformBytes<64>,
+// {
+//     pub base_circuit_config: BaseConfig<F>,
+//     pub function_circuit_config: FunctionConfig,
+// }
 
 #[derive(Clone, Debug, Default)]
-struct NonTrivialCircuit<C> 
+pub struct NonTrivialCircuit<C> 
     where
         C: CurveAffine,
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
     step_idx: usize,
+    setup_done: C::Scalar,
     num_constraints: usize,
     initial_input: Vec<C::Scalar>,
     input: Vec<C::Scalar>,
@@ -253,10 +272,11 @@ impl<C> NonTrivialCircuit<C>
     pub fn new(num_constraints: usize, initial_input: Vec<C::Scalar>) -> Self {
         Self { 
             step_idx: 0,
+            setup_done: C::Scalar::from(0u64),
             num_constraints: num_constraints, 
             initial_input: initial_input.clone(), 
             input: initial_input.clone(), 
-            output: initial_input.clone()
+            output: initial_input.clone(),
         }
     }
 }
@@ -266,7 +286,7 @@ impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
         C: CurveAffine,
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
-    type Config = SharedConfig<C::Scalar>;  
+    type Config = BaseConfig<C::Scalar>;  
     type FloorPlanner = SimpleFloorPlanner;
     type Params = BaseCircuitParams;
 
@@ -275,10 +295,10 @@ impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
     }
 
     fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
-        let function_circuit_config = FunctionChip::configure(meta);
+
         let base_circuit_config =
             BaseCircuitBuilder::configure_with_params(meta, params);
-        Self::Config { base_circuit_config, function_circuit_config }
+            base_circuit_config
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
@@ -290,15 +310,6 @@ impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
-        println!("NonTrivialCircuit::synthesize");
-        let layouter = &mut layouter;
-        let chip = FunctionChip::<C::Scalar>::construct(config.function_circuit_config.clone());
-        let (input_cell, output_cell) 
-            = chip.assign(layouter, self.input[0], self.output[0])?;
-
-        // layouter.constrain_instance(input_cell[0].cell(), config.1.instance, 0);
-        // layouter.constrain_instance(output_cell[0].cell(), config.1.instance, 1);
-
         Ok(())
     }
 }
@@ -324,6 +335,11 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
         1
     }
 
+    fn setup(&mut self) -> C::Scalar {
+        self.setup_done = C::Scalar::from(1u64);
+        self.setup_done
+    }
+
     fn initial_input(&self) -> &[C::Scalar] {
         &self.initial_input
     }
@@ -332,8 +348,16 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
         &self.input
     }
 
+    fn set_input(&mut self, input: &[C::Scalar]) {
+        self.input = input.to_vec();
+    }
+
     fn output(&self) -> &[C::Scalar] {
         &self.output
+    }
+
+    fn set_output(&mut self, output: &[C::Scalar]) {
+        self.output = output.to_vec();
     }
 
     fn step_idx(&self) -> usize {
@@ -349,9 +373,10 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
     }
 
     fn synthesize(
-        &self,
+        &mut self,
         config: Self::Config,
-        layouter: impl Layouter<C::Scalar>,
+        mut layouter: impl Layouter<C::Scalar>,
+        builder: &mut BaseCircuitBuilder<C::Scalar>,
     ) -> Result<
         (
             Vec<AssignedValue<C::Scalar>>,
@@ -359,21 +384,41 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
         ),
         Error,
     > {
-        // Consider a an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
-        let mut x = self.input[0].clone();
-        let mut y = x.clone();
-        for i in 0..self.num_constraints {
-        y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
-        x = y.clone();
+        let range_chip = builder.range_chip();
+        let gate_chip = range_chip.gate();
+        let ctx = builder.main(0);
 
-        // <NonTrivialCircuit<C> as halo2_proofs::plonk::Circuit<C>>::synthesize(self, config, layouter);
-        // Circuit::synthesize(self, config, layouter);
-        // let input = config.1.instance.cur();
-        // let output = config.1.instance;
-        Ok((Vec::new(), Vec::new()))
+        // check for the non-trivial circuit with some input, the other cycle runs trivial circuit with no computation
+        let first_input = self.input().get(0).copied(); 
+        let (inputs, outputs) = 
+        match first_input {
+            Some(first_input) => {
+                // `x + x = y`, where `x` and `y` are respectively the input and output.
+                let x = ctx.load_witness(first_input);
+                let one = ctx.load_constant(C::Scalar::ONE);
 
+                // checks if synthesize has been called for the first time (preprocessing), initiates the input and output same as the intial_input
+                // when synthesize is called for second time by prove_steps, updates the input to the output value for the next step
+                let setup_done = ctx.load_constant(self.setup_done);
+                let setup_sel = gate_chip.is_equal(ctx, one, setup_done);
+                let base_case = x.clone();
+                let non_base_case = gate_chip.add(ctx, x.clone(), x.clone());
+                let y = gate_chip.select(ctx, non_base_case, base_case, setup_sel);
+                // stores the output for the current step
+                self.set_output(&[*y.value()]);
+                // updates the input to the output value for the next step
+                self.set_input(&[*y.value()]);
+
+                (vec![x], vec![y])
+            },
+                None => (Vec::new(), Vec::new()),
+        };
+
+        self.setup();
+
+        Ok((inputs, outputs))
     }
-}
+} 
 
 
 // #[derive(Clone)]
@@ -664,7 +709,8 @@ where
     let primary_atp = strawman::accumulation_transcript_param();
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
-    
+    let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
+
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
@@ -677,7 +723,7 @@ where
     >(  
         primary_num_vars,
         primary_atp,
-        TrivialCircuit::default(),
+        nontrivial_circuit_primary, // TrivialCircuit::default(),
         secondary_num_vars,
         secondary_atp,
         TrivialCircuit::default(),
@@ -686,7 +732,7 @@ where
     )
     .unwrap();
     let duration_preprocess = preprocess_time.elapsed();
-    println!("Time for preprocess: {:?}", duration_preprocess);
+
 
     let prove_steps_time = Instant::now();
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
@@ -698,10 +744,13 @@ where
     )
     .unwrap();
     let duration_prove_steps = prove_steps_time.elapsed();
-    println!("Time for prove_steps: {:?}", duration_prove_steps);
+
 
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();
+
+    let primary_step_circuit = primary_circuit.circuit().step_circuit.clone().into_inner();
+    let secondary_step_circuit = secondary_circuit.circuit().step_circuit.clone().into_inner();
 
     let prove_decider_time = Instant::now();
     let (
@@ -730,42 +779,16 @@ where
 
         (
             primary_acc.instance,
-            StepCircuit::<C>::initial_input(&primary_circuit.circuit().step_circuit),
-            StepCircuit::<C>::output(&primary_circuit.circuit().step_circuit),
+            StepCircuit::<C>::initial_input(&primary_step_circuit),
+            StepCircuit::<C>::output(&primary_step_circuit),
             primary_transcript.into_proof(),
             secondary_acc_before_last,
-            StepCircuit::<C::Secondary>::initial_input(&secondary_circuit.circuit().step_circuit),
-            StepCircuit::<C::Secondary>::output(&secondary_circuit.circuit().step_circuit),
+            StepCircuit::<C::Secondary>::initial_input(&secondary_step_circuit),
+            StepCircuit::<C::Secondary>::output(&secondary_step_circuit),
             secondary_transcript.into_proof(),
         )
     };
     let duration_prove_decider = prove_decider_time.elapsed();
-    println!("Time for prove_decider: {:?}", duration_prove_decider);
-
-    let verify_decider_time = Instant::now();
-    let result = {
-        let mut primary_transcript =
-            strawman::PoseidonTranscript::from_proof(primary_dtp, primary_proof.as_slice());
-        let mut secondary_transcript =
-            strawman::PoseidonTranscript::from_proof(secondary_dtp, secondary_proof.as_slice());
-        verify_decider::<_, _, _>(
-            &ivc_vp,
-            num_steps,
-            primary_initial_input,
-            primary_output,
-            &primary_acc,
-            &mut primary_transcript,
-            secondary_initial_input,
-            secondary_output,
-            secondary_acc_before_last.clone(),
-            &[secondary_last_instances.clone()],
-            &mut secondary_transcript,
-            seeded_std_rng(),
-        )
-    };
-    let duration_verify_decider = verify_decider_time.elapsed();
-    println!("Time for verify_decider: {:?}", duration_verify_decider);
-    assert_eq!(result, Ok(()));
 
     (
         ivc_vp,
@@ -785,7 +808,7 @@ where
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 17;
-    const NUM_STEPS: usize = 3;
+    const NUM_STEPS: usize = 5;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
@@ -1218,7 +1241,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<(), Error> {
-            // println!("ops constrain_equal");
             Ok(builder.main().constrain_equal(lhs, rhs))
         }
     
@@ -1227,7 +1249,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Scalar,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops assign_constant");
             Ok(builder.main().load_constant(constant))
         }
     
@@ -1236,7 +1257,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Scalar,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops assign_witness");
             Ok(builder.main().load_witness(witness))
         }
 
@@ -1245,7 +1265,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: &[C::Scalar],
         ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
-            // println!("ops assign_privates");
             Ok(builder.main().assign_witnesses(witness.iter().cloned()))
         }
     
@@ -1256,7 +1275,6 @@ pub mod strawman {
             when_true: &AssignedValue<C::Scalar>,
             when_false: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops select_gatechip");
             Ok(GateInstructions::select(&self.gate_chip, builder.main(), Existing(when_true.into()), Existing(when_false.into()), Existing(condition.into())))
         }
     
@@ -1266,7 +1284,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops is_equal");
             Ok(self.gate_chip.is_equal(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
@@ -1276,7 +1293,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops add");
             Ok(self.gate_chip.add(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
@@ -1286,7 +1302,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops sub");
             Ok(self.gate_chip.sub(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }  
     
@@ -1296,7 +1311,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops mul");
             Ok(self.gate_chip.mul(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
 
@@ -1306,7 +1320,6 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<(), Error> {
-            // println!("ops constrain_equal_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             base_chip.assert_equal(builder.main(),lhs,rhs);
             Ok(())
@@ -1317,7 +1330,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Base,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops assign_constant_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.load_constant(builder.main(),constant))
         }
@@ -1327,7 +1339,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Base,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops assign_witness_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.load_private(builder.main(),witness))
         }    
@@ -1339,7 +1350,6 @@ pub mod strawman {
             when_true: &ProperCrtUint<C::Scalar>,
             when_false: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops select_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.select(builder.main(),when_true.clone(),when_false.clone(),*condition))
         }
@@ -1348,7 +1358,6 @@ pub mod strawman {
             &self,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops fit_base_in_scalar");
             Ok(value.native().clone())
         }
     
@@ -1356,7 +1365,6 @@ pub mod strawman {
             &self,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
-            // println!("ops to_repr_base");
             Ok(value.limbs().to_vec())
         }
     
@@ -1366,7 +1374,6 @@ pub mod strawman {
             a: &ProperCrtUint<C::Scalar>,
             b: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops add_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let add = base_chip.add_no_carry(builder.main(), a, b);
                 Ok(FixedCRTInteger::from_native(add.value.to_biguint().unwrap(), 
@@ -1383,7 +1390,6 @@ pub mod strawman {
             a: &ProperCrtUint<C::Scalar>,
             b: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops sub_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let sub = base_chip.sub_no_carry(builder.main(), a, b);
                 Ok(FixedCRTInteger::from_native(sub.value.to_biguint().unwrap(), 
@@ -1399,7 +1405,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops neg_base");
             let zero = self.assign_constant_base(builder, C::Base::ZERO)?;
             self.sub_base(builder, &zero, value)
         }
@@ -1412,7 +1417,6 @@ pub mod strawman {
         where
             ProperCrtUint<C::Scalar>: 'b,
         {
-            // println!("ops sum_base");
             values.into_iter().fold(
                 self.assign_constant_base(builder, C::Base::ZERO),
                 |acc, value| self.add_base(builder, &acc?, value),
@@ -1427,7 +1431,6 @@ pub mod strawman {
         where
             ProperCrtUint<C::Scalar>: 'b,
         {
-            // println!("ops product_base");
             values.into_iter().fold(
                 self.assign_constant_base(builder, C::Base::ONE),
                 |acc, value| self.mul_base(builder, &acc?, value),
@@ -1440,7 +1443,6 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops mul_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.mul(builder.main(), lhs, rhs))
         }
@@ -1451,7 +1453,6 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops div_incomplete_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.divide_unsafe(builder.main(), lhs, rhs))
         }
@@ -1461,7 +1462,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops invert_incomplete_base");
             let one = self.assign_constant_base(builder, C::Base::ONE)?;
             self.div_incomplete_base(builder, &one, value)
         }
@@ -1472,7 +1472,6 @@ pub mod strawman {
             base: &ProperCrtUint<C::Scalar>,
             n: usize,
         ) -> Result<Vec<ProperCrtUint<C::Scalar>>, Error> {
-            // println!("ops powers_base");
             Ok(match n {
                 0 => Vec::new(),
                 1 => vec![self.assign_constant_base(builder, C::Base::ONE)?],
@@ -1498,7 +1497,6 @@ pub mod strawman {
             base: &ProperCrtUint<C::Scalar>,
             n: usize,
         ) -> Result<Vec<ProperCrtUint<C::Scalar>>, Error> {
-            // println!("ops squares_base");
             Ok(match n {
                 0 => Vec::new(),
                 1 => vec![base.clone()],
@@ -1526,7 +1524,6 @@ pub mod strawman {
         where
             ProperCrtUint<C::Scalar>: 'c + 'b,
         {
-            // println!("ops inner_product_base");
             let products = izip_eq!(lhs, rhs)
                 .map(|(lhs, rhs)| self.mul_base(builder, lhs, rhs))
                 .collect_vec();
@@ -1542,7 +1539,6 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<(), Error> {
-            // println!("ops constrain_equal_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
@@ -1554,7 +1550,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Secondary,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops assign_constant_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.assign_constant_point(builder.main(), constant))
@@ -1565,7 +1560,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Secondary,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops assign_witness_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.assign_point(builder.main(), witness))
@@ -1578,7 +1572,6 @@ pub mod strawman {
             when_true: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             when_false: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops select_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
@@ -1590,7 +1583,6 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops add_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.add_unequal(builder.main(), lhs, rhs, false))
@@ -1602,7 +1594,6 @@ pub mod strawman {
             base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             le_bits: &[AssignedValue<C::Scalar>],
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops scalar_mul_secondary");
             let max_bits = NUM_LIMB_BITS;
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
@@ -1615,7 +1606,6 @@ pub mod strawman {
             bases: &[C::Secondary],
             scalars: Vec<ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
-            // println!("ops fixed_base_msm_secondary");
             let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
             let max_scalar_bits_per_cell = NUM_LIMB_BITS;
             let native_chip = NativeFieldChip::new(&self.range_chip);
@@ -1629,7 +1619,6 @@ pub mod strawman {
             bases: &[EcPoint<C::Scalar, AssignedValue<C::Scalar>>],
             scalars: Vec<ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
-            // println!("ops variable_base_msm_secondary");
             let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
             let max_bits = NUM_LIMB_BITS;
             let native_chip = NativeFieldChip::new(&self.range_chip);

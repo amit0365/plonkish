@@ -46,7 +46,7 @@ use std::{
     iter,
     marker::PhantomData,
     mem,
-    rc::Rc, time::Instant,
+    rc::Rc, time::Instant, cell::RefMut,
 };
 
 use bitvec::store::BitStore;
@@ -99,8 +99,9 @@ pub const SECURE_MDS: usize = 0;
 pub mod test;
 use test::strawman::{self, Chip};
 
-use self::test::{FunctionConfig, FunctionChip, SharedConfig};
+use self::test::NonTrivialCircuit;
 
+// use self::test::{FunctionConfig, FunctionChip, SharedConfig};
 
 type AssignedPlonkishNarkInstance<AssignedBase, AssignedSecondary> =
     PlonkishNarkInstance<AssignedBase, AssignedSecondary>;
@@ -109,39 +110,39 @@ type AssignedProtostarAccumulatorInstance<AssignedBase, AssignedSecondary> =
     ProtostarAccumulatorInstance<AssignedBase, AssignedSecondary>;
 
 
-pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> 
+pub trait StepCircuit<C: TwoChainCurve>: CircuitExt<C::Scalar> 
 where
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
 {   
 
-    // #[allow(clippy::type_complexity)]
-    // fn configs(
-    //     config: strawman::Config<C::Scalar>,
-    // ) -> (
-    //     //Chip<C>::Config,
-    //     OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    //     OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    // );
-
     fn arity() -> usize;
 
     fn initial_input(&self) -> &[C::Scalar];
 
+    fn setup(&mut self) -> C::Scalar;
+
     fn input(&self) -> &[C::Scalar];
 
+    fn set_input(&mut self, input: &[C::Scalar]);
+
     fn output(&self) -> &[C::Scalar];
+
+    fn set_output(&mut self, output: &[C::Scalar]);
 
     fn step_idx(&self) -> usize;
 
     fn next(&mut self);
 
+    fn num_constraints(&self) -> usize; 
+
     //todo fix this with other synthesizes
     #[allow(clippy::type_complexity)]
     fn synthesize(
-        &self,
-        config: SharedConfig<C::Scalar>,
+        &mut self,
+        config: BaseConfig<C::Scalar>,
         layouter: impl Layouter<C::Scalar>,
+        builder: &mut BaseCircuitBuilder<C::Scalar>,
     ) -> Result<
         (
             Vec<AssignedValue<C::Scalar>>,
@@ -584,7 +585,7 @@ where
 
 {
     is_primary: bool,
-    step_circuit: Sc,
+    step_circuit: RefCell<Sc>,
     tcc_chip: Chip<C>,
     hash_chip: Chip<C>,
     hash_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
@@ -618,7 +619,9 @@ where
         let hash_config = poseidon_spec.clone();
         let transcript_config = poseidon_spec.clone();
 
-        // let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Prover).use_params(circuit_params.clone()).use_break_points(vec![vec![131061, 131062, 131062, 131060, 131062]]));
+        // let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Prover)
+        // .use_params(circuit_params.clone()).use_break_points(vec![vec![131061, 131062, 131062, 131060, 131062]]));
+        let step_circuit = RefCell::new(step_circuit);
         let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Mock).use_params(circuit_params.clone()));
         let range_chip = inner.borrow().range_chip();
         let chip = Chip::<C>::create(range_chip);
@@ -650,15 +653,15 @@ where
     ) {
         if (self.is_primary && acc_prime.u != C::Base::ZERO)
             || (!self.is_primary && acc.u != C::Base::ZERO)
-            {
-                self.step_circuit.next();
+            {   
+                self.step_circuit.borrow_mut().next();
             }
             self.h_prime = Value::known(Chip::<C>::hash_state(
                 self.hash_config.borrow(),
                 self.avp.vp_digest,
-                self.step_circuit.step_idx() + 1,
-                self.step_circuit.initial_input(),
-                self.step_circuit.output(),
+                self.step_circuit.borrow().step_idx() + 1,
+                self.step_circuit.borrow().initial_input(),
+                self.step_circuit.borrow().output(),
                 &acc_prime,
             ));
 
@@ -745,6 +748,7 @@ where
         config: <RecursiveCircuit<C, Sc> as Circuit<C::Scalar>>::Config,
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
+        circuit_builder: &mut BaseCircuitBuilder<C::Scalar>,
     ) -> Result<(), Error> {
         let Self {
             tcc_chip,
@@ -753,8 +757,8 @@ where
             ..
         } = &self;
 
-        let mut binding = self.inner.borrow_mut();
-        let builder = binding.pool(0);  
+
+        let builder = circuit_builder.pool(0);  
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
 
         let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
@@ -762,10 +766,11 @@ where
         let vp_digest = tcc_chip.assign_witness(builder, avp.vp_digest)?;
         let step_idx = tcc_chip.assign_witness(
             builder,
-            C::Scalar::from(self.step_circuit.step_idx() as u64),)?;
+            C::Scalar::from(self.step_circuit.borrow().step_idx() as u64),)?;
         let step_idx_plus_one = tcc_chip.add(builder, &step_idx, &one)?;
         let initial_input = self
             .step_circuit
+            .borrow()
             .initial_input()
             .iter()
             .map(|value| tcc_chip.assign_witness(builder, *value))
@@ -822,17 +827,17 @@ where
         // todo check impl constrain instance these 
         // tcc_chip.constrain_instance(builder, &mut layouter, &h_ohs_from_incoming, 0)?;
         // todo check if poseidon hasher needs to be cleared?
-        let assigned_instances = &mut binding.assigned_instances;
+        let assigned_instances = &mut circuit_builder.assigned_instances;
         assigned_instances[0].push(h_ohs_from_incoming);
 
-        binding.set_copy_manager(SharedCopyConstraintManager::default());
+        // circuit_builder.set_copy_manager(SharedCopyConstraintManager::default());
 
-        let assigned_instances = &mut binding.assigned_instances;
+        let assigned_instances = &mut circuit_builder.assigned_instances;
         assigned_instances[0].push(h_prime);
 
-        binding.synthesize(config.base_circuit_config.clone(), layouter.namespace(|| ""));
-        binding.clear();
-        drop(binding);
+        circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""));
+        circuit_builder.clear();
+        drop(circuit_builder);
 
         Ok(())
     }
@@ -846,14 +851,14 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 
 {
-    type Config = SharedConfig<C::Scalar>;
+    type Config = BaseConfig<C::Scalar>;
     type FloorPlanner = Sc::FloorPlanner;
     type Params = BaseCircuitParams;
 
     fn without_witnesses(&self) -> Self {
         Self {
             is_primary: self.is_primary,
-            step_circuit: self.step_circuit.without_witnesses(),
+            step_circuit: self.step_circuit.borrow().without_witnesses().into(),
             tcc_chip: self.tcc_chip.clone(),
             hash_chip: self.hash_chip.clone(),
             hash_config: self.hash_config.clone(),
@@ -869,10 +874,9 @@ where
     }
 
     fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
-        let function_circuit_config = FunctionChip::configure(meta);
         let base_circuit_config =
             BaseCircuitBuilder::configure_with_params(meta, params);
-        Self::Config { base_circuit_config, function_circuit_config }
+        base_circuit_config
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
@@ -884,13 +888,18 @@ where
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
+        let mut step_circuit = self.step_circuit.borrow_mut();
+        let mut builder = self.inner.borrow_mut();
         let (input, output) =
-            StepCircuit::synthesize(&self.step_circuit, config.clone(), layouter.namespace(|| ""))?;
-        // todo check if poseidon hasher needs to be cleared?
+            StepCircuit::<C>::synthesize(&mut *step_circuit, config.clone(), layouter.namespace(|| ""), &mut builder)?;
+        drop(step_circuit);
+
+        println!("input {:?}", input.clone());
+        println!("output {:?}", output.clone());
+
         let synthesize_accumulation_verifier_time = Instant::now();
-        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output)?;
+        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output, &mut builder)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
-        println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
 
         Ok(())
     }
@@ -1021,12 +1030,12 @@ where
     let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, None, circuit_params.clone());
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, circuit_params.clone());
-    println!("primary_inital_preprcessing started");
-    let (primary_pp, primary_vp) = {
+
+        let (primary_pp, primary_vp) = {
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
-    println!("primary_inital_preprcessing done");
+
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,
@@ -1037,7 +1046,7 @@ where
     let mut secondary_circuit =
         Halo2Circuit::new::<HyperPlonk<P2>>(secondary_num_vars, secondary_circuit, circuit_params.clone());
 
-    let (secondary_pp, secondary_vp) = {
+        let (secondary_pp, secondary_vp) = {
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };

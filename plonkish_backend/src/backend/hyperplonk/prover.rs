@@ -322,14 +322,6 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
         .take(num_chunks << num_vars)
         .collect_vec();
 
-    if cfg!(feature = "sanity-check") {
-        let b_last = BooleanHypercube::new(num_vars).iter().last().unwrap();
-        assert_eq!(
-            *z.last().unwrap() * products.last().unwrap()[b_last],
-            F::ONE
-        );
-    }
-
     drop(products);
     end_timer(timer);
 

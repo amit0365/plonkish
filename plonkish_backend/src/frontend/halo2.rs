@@ -64,7 +64,6 @@ impl<F: Field, C: CircuitExt<F>> Halo2Circuit<F, C> {
         let (cs, config) = {
             let mut cs = ConstraintSystem::default();
             let config = C::configure_with_params(&mut cs, circuit_params); 
-            println!("cs: {:?}", cs);
             (cs, config)
         };
         let constants = cs.constants().clone();
@@ -157,13 +156,7 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             vec![(column_idx[&key], 1)]
         })
         .collect_vec();
-    // println!("permutations: {:?}", permutations);
-    // println!("constraints: {:?}", constraints);
-    // println!("lookups: {:?}", lookups);
-    // println!("num_instances: {:?}", num_instances);
-    // println!("preprocess_polys: {:?}", preprocess_polys);
-    // println!("advice_idx: {:?}", advice_idx);
-    // println!("column_idx: {:?}", column_idx);
+    
     Ok(PlonkishCircuitInfo {
         k: *k as usize,
         num_instances,

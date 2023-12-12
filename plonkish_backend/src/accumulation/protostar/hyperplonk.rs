@@ -272,7 +272,6 @@ where
                     accumulator,
                     incoming,
                 );
-                println!("cross_term_polys.len: {:?}", cross_term_polys.len());
                 end_timer(timer);
 
                 let cross_term_comms =

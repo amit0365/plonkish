@@ -83,78 +83,26 @@ impl<F: Clone> PlonkishCircuitInfo<F> {
         let challenges = iter::empty()
             .chain(self.expressions().flat_map(Expression::used_challenge))
             .collect::<BTreeSet<_>>();
-        println!("self.expressions(): {:?}", self.expressions().flat_map(Expression::used_poly).collect_vec().len());
-        println!("self.permutation_polys(): {:?}", self.permutation_polys());
-        println!("num_poly: {}", num_poly);
-        println!("num_challenges: {}", num_challenges);
-        println!("polys: {:?}", polys);
-        println!("challenges: {:?}", challenges);
-        // // Same amount of phases
-        // self.num_witness_polys.len() == self.num_challenges.len()
-        //     // Every phase has some witness polys
-        //     && !self.num_witness_polys.iter().any(|n| *n == 0)
-        //     // Every phase except the last one has some challenges after the witness polys are committed
-        //     && !self.num_challenges[..self.num_challenges.len() - 1].iter().any(|n| *n == 0)
-        //     // Polynomial indices are in range
-        //     && (polys.is_empty() || *polys.last().unwrap() < num_poly)
-        //     // Challenge indices are in range
-        //     && (challenges.is_empty() || *challenges.last().unwrap() < num_challenges)
-        //     // Every constraint has degree less equal than `max_degree`
-        //     && self
-        //         .max_degree
-        //         .map(|max_degree| {
-        //             !self
-        //                 .constraints
-        //                 .iter()
-        //                 .any(|constraint| constraint.degree() > max_degree)
-        //         })
-        //         .unwrap_or(true)
-
-        println!("Checking num_witness_polys.len() == num_challenges.len()");
-        println!("num_witness_polys.len(): {}", self.num_witness_polys.len());
-        println!("num_challenges.len(): {}", self.num_challenges.len());
-        let length_check = self.num_witness_polys.len() == self.num_challenges.len();
-        println!("length_check: {}", length_check);
-
-        println!("Checking !self.num_witness_polys.iter().any(|n| *n == 0)");
-        let non_zero_witness_check = !self.num_witness_polys.iter().any(|n| *n == 0);
-        println!("Checking non_zero_witness_check: {}", non_zero_witness_check);
-
-        println!("Checking !self.num_challenges[..self.num_challenges.len() - 1].iter().any(|n| *n == 0)");
-        let non_zero_challenges_check = !self.num_challenges[..self.num_challenges.len() - 1].iter().any(|n| *n == 0);
-        println!("Checking non_zero_challenges_check: {}", non_zero_challenges_check);
-
-        println!("Checking polys.is_empty() || *polys.last().unwrap() < num_poly");
-        let polys_range_check = polys.is_empty() || *polys.last().unwrap() < num_poly;
-        println!("Checking polys_range_check: {}", polys_range_check);
-        println!("Checking polys_range_check_1: {}", polys.is_empty());
-        println!("Checking polys_range_check_2: {}", *polys.last().unwrap() < num_poly);
-
-        println!("Checking challenges.is_empty() || *challenges.last().unwrap() < num_challenges");
-        let challenges_range_check = challenges.is_empty() || *challenges.last().unwrap() < num_challenges;
-        println!("Checking challenges_range_check: {}", challenges_range_check);
-
-        println!("Checking max_degree and constraints");
-        let max_degree_check = self.max_degree.map(|max_degree| {
-            !self.constraints.iter().any(|constraint| {
-                let exceeds = constraint.degree() > max_degree;
-                if exceeds {
-                    println!("Constraint exceeds max_degree: {}", constraint.degree());
-                }
-                exceeds
-            })
-        }).unwrap_or(true);
-        println!("Checking max_degree_check: {}", max_degree_check);
-
-        let result = length_check
-            && non_zero_witness_check
-            && non_zero_challenges_check
-            && polys_range_check
-            && challenges_range_check
-            && max_degree_check;
-
-        println!("Final result: {}", result);
-        result
+        // Same amount of phases
+        self.num_witness_polys.len() == self.num_challenges.len()
+            // Every phase has some witness polys
+            && !self.num_witness_polys.iter().any(|n| *n == 0)
+            // Every phase except the last one has some challenges after the witness polys are committed
+            && !self.num_challenges[..self.num_challenges.len() - 1].iter().any(|n| *n == 0)
+            // Polynomial indices are in range
+            && (polys.is_empty() || *polys.last().unwrap() < num_poly)
+            // Challenge indices are in range
+            && (challenges.is_empty() || *challenges.last().unwrap() < num_challenges)
+            // Every constraint has degree less equal than `max_degree`
+            && self
+                .max_degree
+                .map(|max_degree| {
+                    !self
+                        .constraints
+                        .iter()
+                        .any(|constraint| constraint.degree() > max_degree)
+                })
+                .unwrap_or(true)
 
     }
     

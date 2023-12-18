@@ -31,7 +31,7 @@ impl<F> From<ExpressionPolynomial> for Expression<F> {
     }
 }
 
-// num_challenges is k-1, where challendes are r
+// num_challenges is k-1, where challenges are r
 pub(crate) fn cross_term_expressions<F: PrimeField>(
     poly_set: &PolynomialSet,
     products: &[Product<F>],

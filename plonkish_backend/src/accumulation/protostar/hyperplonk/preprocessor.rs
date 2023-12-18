@@ -144,11 +144,9 @@ where
             let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
             let cross_term_expressions =
                 cross_term_expressions(&poly_set, &products, num_folding_challenges);
-            println!("products.len: {:?}", products.len());
-            println!("num_folding_challenges: {:?}", num_folding_challenges);
-            println!("cross_term_expressions.len: {:?}", cross_term_expressions.len());
+                
             let u = num_folding_challenges;
-            let relexed_constraint = {
+            let relaxed_constraint = {
                 let e = builtin_witness_poly_offset
                     + circuit_info.lookups.len() * 3
                     + num_permutation_z_polys;
@@ -161,7 +159,7 @@ where
                 alpha_prime_offset,
                 cross_term_expressions,
                 None,
-                relexed_constraint,
+                relaxed_constraint,
             )
         }
         Compressing => {
@@ -226,8 +224,8 @@ where
                 cross_term_expressions(&poly_set, &compressed_products, num_folding_challenges);
 
             let u = num_folding_challenges;
-            let relexed_compressed_constraint = relaxed_expression(&compressed_products, u);
-            let relexed_zeta_constraint = {
+            let relaxed_compressed_constraint = relaxed_expression(&compressed_products, u);
+            let relaxed_zeta_constraint = {
                 // +1 to include the extra challenge zeta. else same as uncompressed
                 let e = powers_of_zeta + num_permutation_z_polys + 1;
                 relaxed_expression(&zeta_products, u)
@@ -238,8 +236,8 @@ where
                 num_builtin_witness_polys,
                 alpha_prime_offset,
                 cross_term_expressions,
-                Some(relexed_compressed_constraint),
-                relexed_zeta_constraint,
+                Some(relaxed_compressed_constraint),
+                relaxed_zeta_constraint,
             )
         }
     };

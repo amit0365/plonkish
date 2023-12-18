@@ -113,12 +113,13 @@ impl<F: Clone> PlonkishCircuitInfo<F> {
     }
 
     pub fn permutation_polys(&self) -> Vec<usize> {
-        self.permutations
+        let result = self.permutations
             .iter()
             .flat_map(|cycle| cycle.iter().map(|(poly, _)| *poly))
             .unique()
             .sorted()
-            .collect()
+            .collect();
+        result
     }
 
     pub fn expressions(&self) -> impl Iterator<Item = &Expression<F>> {

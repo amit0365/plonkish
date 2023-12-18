@@ -119,6 +119,7 @@ where
             &circuit_info.permutation_polys(),
             &circuit_info.permutations,
         );
+
         let permutation_comms = Pcs::batch_commit(&pcs_pp, &permutation_polys)?;
 
         // Compose `VirtualPolynomialInfo`

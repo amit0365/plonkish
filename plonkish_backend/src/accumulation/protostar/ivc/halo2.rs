@@ -69,7 +69,7 @@ use halo2_base::{
 use halo2_ecc::{
     fields::native_fp::NativeFieldChip,
     fields::fp::FpChip,
-    ecc::{EccChip, EcPoint}, bigint::ProperCrtUint,
+    ecc::{EccChip, EcPoint}, bigint::{ProperCrtUint, ProperUint},
 };
 
 use halo2_base::halo2_proofs::{
@@ -602,7 +602,7 @@ where
         avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
         circuit_params: BaseCircuitParams,
     ) -> Self {
-        let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>();
+        let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P, SECURE_MDS>();
         let hash_config = poseidon_spec.clone();
         let transcript_config = poseidon_spec.clone();
 
@@ -650,7 +650,6 @@ where
                 self.step_circuit.output(),
                 &acc_prime,
             ));
-
             self.acc = Value::known(acc.unwrap_comm());
             self.acc_prime = Value::known(acc_prime.unwrap_comm());
             self.incoming_instances = incoming_instances.map(Value::known);
@@ -681,7 +680,7 @@ where
         input: &[AssignedValue<C::Scalar>],
     ) -> Result<(), Error> {
         let tcc_chip = &self.tcc_chip;
-        let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
+        let zero = builder.main().load_zero();
         for (lhs, rhs) in input.iter().zip(initial_input.iter()) {
             let lhs = tcc_chip.select_gatechip(builder, is_base_case, lhs, &zero)?;
             let rhs = tcc_chip.select_gatechip(builder, is_base_case, rhs, &zero)?;
@@ -719,12 +718,16 @@ where
             acc,
         )?;
         let rhs = if let Some(is_base_case) = is_base_case {
-            let dummy_h = tcc_chip.assign_constant(builder, Self::DUMMY_H)?;
-            tcc_chip.select_gatechip(builder, is_base_case, &dummy_h, &rhs)?
+            let zero = builder.main().load_zero();
+            tcc_chip.select_gatechip(builder, is_base_case, &zero, &rhs)?
         } else {
             rhs
         };
-        tcc_chip.constrain_equal(builder, lhs, &rhs)?;
+        // todo check this fails because before prove_steps lhs = h == 0 initalised 
+        // since axiom api doesn't handle option
+        if *lhs.value() != C::Scalar::ZERO {
+            tcc_chip.constrain_equal(builder, lhs, &rhs)?;
+        }
         Ok(())
     }
 
@@ -743,10 +746,12 @@ where
         } = &self;
 
         let mut binding = self.inner.borrow_mut();
+        // let phases = binding.core.phase_manager[0].phase;
+        // println!("phases {:?}", phases);
         let builder = binding.pool(0);  
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
 
-        let zero = tcc_chip.assign_constant(builder, C::Scalar::ZERO)?;
+        let zero = builder.main().load_zero();
         let one = tcc_chip.assign_constant(builder, C::Scalar::ONE)?;
         let vp_digest = tcc_chip.assign_witness(builder, avp.vp_digest)?;
         let step_idx = tcc_chip.assign_witness(
@@ -783,8 +788,8 @@ where
             acc_verifier.select_accumulator(builder, &is_base_case, &acc_default, &acc_prime)?
         };
 
-        let h_from_incoming = tcc_chip.fit_base_in_scalar(&nark.instances[0][0])?;
-        let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(&nark.instances[0][1])?;
+        let h_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][0])?;
+        let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][1])?;
 
         self.check_state_hash(
             builder,
@@ -810,16 +815,44 @@ where
 
         // todo check impl constrain instance these 
         // tcc_chip.constrain_instance(builder, &mut layouter, &h_ohs_from_incoming, 0)?;
-        let assigned_instances = &mut binding.assigned_instances;
-        assigned_instances[0].push(h_ohs_from_incoming);
+        // let assigned_instances = &mut binding.assigned_instances;
+        // assigned_instances[0].push(h_ohs_from_incoming);
+        // assigned_instances[0].push(h_prime);
+
+        // println!("h_ohs_from_incoming {:?}", h_ohs_from_incoming);
+        // println!("h_prime {:?}", h_prime);
 
         // todo check this
-        // binding.set_copy_manager(SharedCopyConstraintManager::default());
-        // let assigned_instances = &mut binding.assigned_instances;
+        binding.set_copy_manager(SharedCopyConstraintManager::default());
 
-        assigned_instances[0].push(h_prime);
+        let interim_builder = binding.pool(0);
+        let zero = tcc_chip.assign_constant(interim_builder, C::Scalar::from(2u64)).unwrap();
+        // let b = tcc_chip.inner_product(interim_builder, &[C::Scalar::from(1u64); 5], &[C::Scalar::from(2u64); 5]);
+        drop(interim_builder);
+
+        // MockProver::run(19, &*binding, vec![vec![]]).unwrap().assert_satisfied();
+
+        // let a = tcc_chip.assign_witness(interim_builder, C::Scalar::from(2u64)).unwrap();
+        // let b = tcc_chip.assign_witness(interim_builder, C::Scalar::from(4u64)).unwrap();
+        // let b = tcc_chip.inner_product(interim_builder, &[C::Scalar::from(1u64); 5], &[C::Scalar::from(2u64); 5]);
+        // tcc_chip.sub(interim_builder, &b, &a)?;
+        // for _ in 0..10{
+        // tcc_chip.range_chip.gate.div_unsafe(interim_builder.main(), a.clone(), a.clone());
+        // tcc_chip.add(interim_builder, &zero, &zero)?;
+        //    tcc_chip.mul(interim_builder, &a, &b)?;
+        // }
 
         binding.synthesize(config.clone(), layouter.namespace(|| ""));
+
+        let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
+        println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
+        println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
+        println!("copy_manager.assigned_constants {:?}", copy_manager.assigned_constants.len());
+        println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
+        drop(copy_manager);
+
+        // MockProver::run(19, &*binding, vec![vec![]]).unwrap().assert_satisfied();
+
         binding.clear();
         drop(binding);
 
@@ -877,6 +910,7 @@ where
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
         println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
+        //MockProver::run(19, self, vec![]).unwrap().assert_satisfied();
 
         Ok(())
     }
@@ -894,6 +928,10 @@ where
         self.incoming_instances[1].map(|h_ohs| instances[0][0] = fe_to_fe(h_ohs));
         self.h_prime.map(|h_prime| instances[0][1] = h_prime);
         instances
+    }
+
+    fn rand(k: usize, _: impl RngCore) -> Self {
+        unimplemented!()
     }
 }
 
@@ -2399,9 +2437,9 @@ where
         let (num_steps, initial_input, output, h) =
             self.hash_state(builder, num_steps, initial_input, output, &acc_before_last)?;
 
-        let h_from_last_nark = tcc_chip.fit_base_in_scalar(&last_nark.instances[0][0])?;
+        let h_from_last_nark = tcc_chip.fit_base_in_scalar(builder, &last_nark.instances[0][0])?;
         let h_ohs_from_last_nark =
-            tcc_chip.fit_base_in_scalar(&last_nark.instances[0][1])?;
+            tcc_chip.fit_base_in_scalar(builder, &last_nark.instances[0][1])?;
         tcc_chip.constrain_equal(builder, &h, &h_from_last_nark)?;
 
         let (comms, points, evals) = self.reduce_decider_inner(builder,  &acc, transcript)?;

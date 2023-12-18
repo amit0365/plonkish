@@ -46,9 +46,30 @@ Time for preprocess: 1.995075083s
 Time for prove_steps: 5.060839917s
 Time for prove_decider: 1.908527459s
 
+// permutation constraint
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 20)
 
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 12461)
 
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 12891)
 
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 18235)
+
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 18665)
+
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 27852)
+
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 28282)
+
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 33626)
+
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 34056)
+
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 85425)
+
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 85855)
+
+Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 371857)
 
 
 Start:   prove_accumulation_from_nark-primary-19
@@ -109,7 +130,8 @@ witness_comm_start_copy_manager.assigned_constants: 0
 
 ····Start:   fold_accumulator_from_nark witness_comms-5
 ····End:     fold_accumulator_from_nark witness_comms-5 ............................32.439ms
-5 scal_mul_secondary here take 90k advice and 37k constant eq
+1 native scal_mul_secondary here take 33k advice, 18k copies (non-native scalar mul takes 387k advice and 100k advice copies)
+5 scal_mul_secondary here take 90k advice copies and 37k constant eq
 scalar_mul_secondary_finish_copy_manager.advice_equalities: 122514
 scalar_mul_secondary_finish_copy_manager.constant_equalities: 62373
 scalar_mul_secondary_finish_copy_manager.assigned_advices: 0
@@ -172,3 +194,35 @@ binding.borrow().statistics().gate_advice: [371902]
 binding.borrow().statistics().gate_fixed: 918
 binding.borrow().statistics().lookups: [1126, 0, 0]
 Time for synthesize_accumulation_verifier: 426.85925ms
+
+
+scalar_mul 
+
+numbits 800 advice copies, 1.8k
+270 multiple ec_double 17 advice copies, 40 advices
+300 multiple ec_sub_unequal/add 28 copies, 60 advice
+1 ec_sub_strict 60 copies 100 advice
+
+num_to_bits_copy_manager.advice_equalities 37704
+num_to_bits_copy_manager.constant_equalities 27268
+num_to_bits_copy_manager.assigned_advices 0
+k + window_bits = 5
+multiple_ec_double_copy_manager.advice_equalities 37789
+multiple_ec_double_copy_manager.constant_equalities 27335
+multiple_ec_double_copy_manager.assigned_advices 0
+ec_sub_unequal_copy_manager.advice_equalities 37817
+ec_sub_unequal_copy_manager.constant_equalities 27354
+ec_sub_unequal_copy_manager.assigned_advices 0
+ec_sub_unequal_copy_manager.advice_equalities 38397
+ec_sub_unequal_copy_manager.constant_equalities 27640
+ec_sub_unequal_copy_manager.assigned_advices 0
+rounded_bitlen = 264
+multiple_ec_double_ec_add_unequal_copy_manager.advice_equalities 53973
+multiple_ec_double_ec_add_unequal_copy_manager.constant_equalities 33844
+multiple_ec_double_ec_add_unequal_copy_manager.assigned_advices 0
+ec_sub_strict_copy_manager.advice_equalities 54030
+ec_sub_strict_copy_manager.constant_equalities 33869
+ec_sub_strict_copy_manager.assigned_advices 0
+num_to_bits_copy_manager.advice_equalities 54825
+num_to_bits_copy_manager.constant_equalities 34394
+num_to_bits_copy_manager.assigned_advices 0

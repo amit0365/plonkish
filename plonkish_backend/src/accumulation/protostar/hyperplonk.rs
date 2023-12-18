@@ -146,6 +146,8 @@ where
 
         // Round n
 
+
+
         let theta_primes = powers(transcript.squeeze_challenge())
             .skip(1)
             .take(*num_theta_primes)
@@ -209,13 +211,12 @@ where
         };
 
         // Round n+3
-
         let alpha_primes = powers(transcript.squeeze_challenge())
             .skip(1)
             .take(*num_alpha_primes)
             .collect_vec();
 
-        Ok(PlonkishNark::new(
+        let nark = PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
                 .chain(challenges)
@@ -236,7 +237,10 @@ where
                 .chain(lookup_h_polys.into_iter().flatten())
                 .chain(powers_of_zeta_poly)
                 .collect(),
-        ))
+        );
+
+        Ok(nark)
+
     }
 
     fn prove_accumulation<const IS_INCOMING_ABSORBED: bool>(
@@ -272,7 +276,6 @@ where
                     accumulator,
                     incoming,
                 );
-                println!("cross_term_polys.len: {:?}", cross_term_polys.len());
                 end_timer(timer);
 
                 let cross_term_comms =

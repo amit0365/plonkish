@@ -22,14 +22,14 @@ use std::{
 pub mod layouter;
 
 #[cfg(test)]
-pub mod chip;
 // #[cfg(any(test, feature = "benchmark"))]
-//pub mod circuit;
+pub mod circuit;
 #[cfg(test)]
 mod test;
 
-//todo check this
 pub trait CircuitExt<F: Field>: Circuit<F> {
+    fn rand(k: usize, _: impl RngCore) -> Self;
+
     fn num_instance(&self) -> Vec<usize> {
         self.instances().iter().map(Vec::len).collect()
     }
@@ -63,7 +63,8 @@ impl<F: Field, C: CircuitExt<F>> Halo2Circuit<F, C> {
     pub fn new<E: WitnessEncoding>(k: usize, circuit: C, circuit_params: C::Params) -> Self {
         let (cs, config) = {
             let mut cs = ConstraintSystem::default();
-            let config = C::configure_with_params(&mut cs, circuit_params); //C::configure_with_params(&mut cs, circuit_params);
+            let config = C::configure_with_params(&mut cs, circuit_params);
+            println!("cs: {:?}", cs); 
             (cs, config)
         };
         let constants = cs.constants().clone();
@@ -211,6 +212,10 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
+    println!("preprocess_collector: {:?}", preprocess_collector.fixeds.len());
+    for (i, inner_vector) in preprocess_collector.fixeds.iter().enumerate() {
+        println!("Length of vector at index {}: {}", i, inner_vector.len());
+    }
     circuit_info.preprocess_polys = iter::empty()
         .chain(batch_invert_assigned(preprocess_collector.fixeds))
         .chain(preprocess_collector.selectors.into_iter().map(|selectors| {

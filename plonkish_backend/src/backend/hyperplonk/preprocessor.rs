@@ -140,6 +140,7 @@ pub(crate) fn permutation_constraints<F: PrimeField>(
         .collect_vec();
     let z_0_next = Expression::<F>::Polynomial(Query::new(z_offset, Rotation::next()));
     let l_1 = &Expression::<F>::lagrange(1);
+    let l_0 = &Expression::<F>::lagrange(0);
     let one = &Expression::one();
     let constraints = iter::empty()
         .chain(zs.first().map(|z_0| l_1 * (z_0 - one)))
@@ -174,6 +175,8 @@ pub(super) fn permutation_polys<F: PrimeField>(
     permutation_polys: &[usize],
     cycles: &[Vec<(usize, usize)>],
 ) -> Vec<MultilinearPolynomial<F>> {
+    println!("cycles: {:?}", cycles);
+    println!("permutation_polys: {:?}", permutation_polys);
     let poly_index = {
         let mut poly_index = vec![0; permutation_polys.last().map(|poly| 1 + poly).unwrap_or(0)];
         for (idx, poly) in permutation_polys.iter().enumerate() {
@@ -231,11 +234,12 @@ pub(crate) mod test {
                 Expression::Constant(Fr::from((idx << num_vars) as u64)) + Expression::identity()
             });
             let l_1 = Expression::<Fr>::lagrange(1);
+            let l_0 = Expression::<Fr>::lagrange(0);
             let one = Expression::one();
             let constraints = {
                 vec![
                     q_l * w_l + q_r * w_r + q_m * w_l * w_r + q_o * w_o + q_c + pi,
-                    l_1 * (z - one),
+                    l_0 * (z - one),
                     (z * ((w_l + beta * id_1 + gamma)
                         * (w_r + beta * id_2 + gamma)
                         * (w_o + beta * id_3 + gamma)))

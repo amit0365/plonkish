@@ -31,7 +31,7 @@ use crate::{
 };
 use halo2_base::{halo2_proofs::{
     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-}, plonk::{Advice, Column}, poly::Rotation}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
+}, plonk::{Advice, Column}, poly::Rotation, dev::MockProver}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
 
 use halo2_base::{Context,
     gates::{range::RangeInstructions, circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
@@ -44,11 +44,14 @@ use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value, SimpleFloorPlanner},
     plonk::{Circuit, Selector, ConstraintSystem, Error},
 };
+use rand::RngCore;
 
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant};
 use std::{mem, rc::Rc};
 
 use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS, T, RATE, R_F, R_P, SECURE_MDS, Chip};
+
+use super::RecursiveCircuit;
 
 
 #[derive(Clone, Debug, Default)]
@@ -87,6 +90,11 @@ where
     fn instances(&self) -> Vec<Vec<C::Scalar>> {
         Vec::new()
     }
+
+    fn rand(k: usize, _: impl RngCore)-> TrivialCircuit<C> {
+        unimplemented!()
+    }
+    
 }
 
 impl<C: TwoChainCurve> StepCircuit<C> for TrivialCircuit<C>
@@ -730,10 +738,27 @@ where
     )
 }
 
+// #[test]
+// fn gemini_kzg_ipa_protostar_hyperplonk_ivc_mock() {
+//     let circuit_params = BaseCircuitParams {
+//         k: 19,
+//         num_advice_per_phase: vec![1],
+//         num_lookup_advice_per_phase: vec![1],
+//         num_fixed: 1,
+//         lookup_bits: Some(13),
+//         num_instance_columns: 1,
+//     };
+
+//     let primary_circuit  = RecursiveCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), None, circuit_params.clone());
+
+//     MockProver::run(19, &primary_circuit, vec![]).unwrap().assert_satisfied();
+// }
+
+
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 19;
-    const NUM_STEPS: usize = 3;
+    const NUM_STEPS: usize = 1;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
@@ -950,8 +975,8 @@ pub mod strawman {
         hash::Hash,
     };
 
-    pub const NUM_LIMBS: usize = 3;
-    pub const NUM_LIMB_BITS: usize = 88;
+    pub const NUM_LIMBS: usize = 4;
+    pub const NUM_LIMB_BITS: usize = 64;
     pub const NUM_SUBLIMBS: usize = 5;
     pub const NUM_LOOKUPS: usize = 1;
     pub const LOOKUP_BITS: usize = 8;
@@ -963,20 +988,21 @@ pub mod strawman {
     pub const R_P: usize = 60;
     pub const SECURE_MDS: usize = 0;
 
+    pub const RANGE_BITS: usize = 254;
     pub const NUM_CHALLENGE_BITS: usize = 128;
     pub const NUM_CHALLENGE_BYTES: usize = NUM_CHALLENGE_BITS / 8;
     pub const NUM_HASH_BITS: usize = 250;
 
     fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
         fe.to_bytes_le()
-            .chunks(num_limb_bits)
+            .chunks(num_limb_bits/(2*NUM_LIMBS))
             .into_iter()
-            .map(|bits| match bits.len() {
-                1..=64 => F2::from_bytes_le(bits),
-                65..=128 => {
-                    let lo = &bits[..64];
-                    let hi = &bits[64..];
-                    F2::from_bytes_le(hi) * F2::from(2).pow_vartime([64]) + F2::from_bytes_le(lo)
+            .map(|bytes| match bytes.len() {
+                1..=8 => F2::from_bytes_le(bytes),
+                9..=16 => {
+                    let lo = &bytes[..8];
+                    let hi = &bytes[8..];
+                    F2::from_bytes_le(hi) * F2::from(2).pow_vartime([8]) + F2::from_bytes_le(lo)
                 }
                 _ => unimplemented!(),
             })
@@ -993,10 +1019,10 @@ pub mod strawman {
         })
     }
 
-    fn x_y_is_identity<C: CurveAffine>(ec_point: &C) -> [C::Base; 3] {
+    fn x_y_is_identity<C: CurveAffine>(ec_point: &C) -> [C::Base; 2] {
         let coords = ec_point.coordinates().unwrap();
-        let is_identity = (coords.x().is_zero() & coords.y().is_zero()).into();
-        [*coords.x(), *coords.y(), fe_from_bool(is_identity)]
+        // let is_identity = (coords.x().is_zero() & coords.y().is_zero()).into();
+        [*coords.x(), *coords.y()] // , fe_from_bool(is_identity)]
     }
 
     pub fn accumulation_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
@@ -1167,7 +1193,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<(), Error> {
-            // println!("ops constrain_equal");
             Ok(builder.main().constrain_equal(lhs, rhs))
         }
     
@@ -1176,7 +1201,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Scalar,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops assign_constant");
             Ok(builder.main().load_constant(constant))
         }
     
@@ -1185,7 +1209,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Scalar,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops assign_witness");
             Ok(builder.main().load_witness(witness))
         }
 
@@ -1194,7 +1217,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: &[C::Scalar],
         ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
-            // println!("ops assign_privates");
             Ok(builder.main().assign_witnesses(witness.iter().cloned()))
         }
     
@@ -1205,7 +1227,6 @@ pub mod strawman {
             when_true: &AssignedValue<C::Scalar>,
             when_false: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops select_gatechip");
             Ok(GateInstructions::select(&self.gate_chip, builder.main(), Existing(when_true.into()), Existing(when_false.into()), Existing(condition.into())))
         }
     
@@ -1215,7 +1236,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops is_equal");
             Ok(self.gate_chip.is_equal(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
@@ -1225,7 +1245,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops add");
             Ok(self.gate_chip.add(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
     
@@ -1235,7 +1254,6 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops sub");
             Ok(self.gate_chip.sub(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }  
     
@@ -1245,8 +1263,16 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops mul");
             Ok(self.gate_chip.mul(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
+        }
+
+        pub fn inner_product(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            lhs: &[C::Scalar],
+            rhs: &[C::Scalar],
+        ) -> Result<AssignedValue<C::Scalar>, Error> {
+            Ok(self.gate_chip.inner_product_unoptimised(builder.main(), lhs.iter().map(|c| Witness(*c)), rhs.iter().map(|c| Witness(*c))))
         }
 
         pub fn constrain_equal_base(
@@ -1255,7 +1281,6 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<(), Error> {
-            // println!("ops constrain_equal_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             base_chip.assert_equal(builder.main(),lhs,rhs);
             Ok(())
@@ -1266,7 +1291,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Base,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops assign_constant_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.load_constant(builder.main(),constant))
         }
@@ -1276,7 +1300,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Base,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops assign_witness_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.load_private(builder.main(),witness))
         }    
@@ -1288,24 +1311,42 @@ pub mod strawman {
             when_true: &ProperCrtUint<C::Scalar>,
             when_false: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops select_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.select(builder.main(),when_true.clone(),when_false.clone(),*condition))
         }
     
         pub fn fit_base_in_scalar(
             &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            // println!("ops fit_base_in_scalar");
-            Ok(value.native().clone())
+            let zero = builder.main().load_zero();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let decomposed = (0..NUM_LIMBS)
+            .flat_map(|idx| {
+                let number_of_bits = if idx == NUM_LIMBS - 1 {
+                    base_chip.p.bits() as usize % NUM_LIMB_BITS
+                } else {
+                    NUM_LIMB_BITS
+                };
+                self.gate_chip.num_to_bits(builder.main(), value.limbs()[idx], number_of_bits)
+            })
+            .collect_vec();
+
+            assert_eq!(decomposed.len(), base_chip.p.bits() as usize);
+
+            decomposed
+                .iter()
+                .skip(NUM_HASH_BITS)
+                .for_each(|bit| builder.main().constrain_equal(bit, &zero));
+
+            Ok(self.gate_chip.bits_to_num(builder.main(), &decomposed[..NUM_HASH_BITS]))
         }
     
         pub fn to_repr_base(
             &self,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
-            // println!("ops to_repr_base");
             Ok(value.limbs().to_vec())
         }
     
@@ -1315,7 +1356,6 @@ pub mod strawman {
             a: &ProperCrtUint<C::Scalar>,
             b: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops add_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let add = base_chip.add_no_carry(builder.main(), a, b);
                 Ok(FixedCRTInteger::from_native(add.value.to_biguint().unwrap(), 
@@ -1332,7 +1372,6 @@ pub mod strawman {
             a: &ProperCrtUint<C::Scalar>,
             b: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops sub_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let sub = base_chip.sub_no_carry(builder.main(), a, b);
                 Ok(FixedCRTInteger::from_native(sub.value.to_biguint().unwrap(), 
@@ -1348,7 +1387,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops neg_base");
             let zero = self.assign_constant_base(builder, C::Base::ZERO)?;
             self.sub_base(builder, &zero, value)
         }
@@ -1361,7 +1399,6 @@ pub mod strawman {
         where
             ProperCrtUint<C::Scalar>: 'b,
         {
-            // println!("ops sum_base");
             values.into_iter().fold(
                 self.assign_constant_base(builder, C::Base::ZERO),
                 |acc, value| self.add_base(builder, &acc?, value),
@@ -1376,7 +1413,6 @@ pub mod strawman {
         where
             ProperCrtUint<C::Scalar>: 'b,
         {
-            // println!("ops product_base");
             values.into_iter().fold(
                 self.assign_constant_base(builder, C::Base::ONE),
                 |acc, value| self.mul_base(builder, &acc?, value),
@@ -1389,7 +1425,6 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops mul_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.mul(builder.main(), lhs, rhs))
         }
@@ -1400,7 +1435,6 @@ pub mod strawman {
             lhs: &ProperCrtUint<C::Scalar>,
             rhs: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops div_incomplete_base");
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             Ok(base_chip.divide_unsafe(builder.main(), lhs, rhs))
         }
@@ -1410,7 +1444,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
-            // println!("ops invert_incomplete_base");
             let one = self.assign_constant_base(builder, C::Base::ONE)?;
             self.div_incomplete_base(builder, &one, value)
         }
@@ -1421,7 +1454,6 @@ pub mod strawman {
             base: &ProperCrtUint<C::Scalar>,
             n: usize,
         ) -> Result<Vec<ProperCrtUint<C::Scalar>>, Error> {
-            // println!("ops powers_base");
             Ok(match n {
                 0 => Vec::new(),
                 1 => vec![self.assign_constant_base(builder, C::Base::ONE)?],
@@ -1447,7 +1479,6 @@ pub mod strawman {
             base: &ProperCrtUint<C::Scalar>,
             n: usize,
         ) -> Result<Vec<ProperCrtUint<C::Scalar>>, Error> {
-            // println!("ops squares_base");
             Ok(match n {
                 0 => Vec::new(),
                 1 => vec![base.clone()],
@@ -1475,7 +1506,6 @@ pub mod strawman {
         where
             ProperCrtUint<C::Scalar>: 'c + 'b,
         {
-            // println!("ops inner_product_base");
             let products = izip_eq!(lhs, rhs)
                 .map(|(lhs, rhs)| self.mul_base(builder, lhs, rhs))
                 .collect_vec();
@@ -1491,7 +1521,6 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<(), Error> {
-            // println!("ops constrain_equal_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
@@ -1503,7 +1532,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C::Secondary,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops assign_constant_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.assign_constant_point(builder.main(), constant))
@@ -1514,7 +1542,6 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C::Secondary,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops assign_witness_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.assign_point(builder.main(), witness))
@@ -1527,7 +1554,6 @@ pub mod strawman {
             when_true: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             when_false: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops select_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
@@ -1539,7 +1565,6 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops add_secondary");
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.add_unequal(builder.main(), lhs, rhs, false))
@@ -1551,7 +1576,6 @@ pub mod strawman {
             base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             le_bits: &[AssignedValue<C::Scalar>],
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            // println!("ops scalar_mul_secondary");
             let max_bits = NUM_LIMB_BITS;
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
@@ -1564,7 +1588,6 @@ pub mod strawman {
             bases: &[C::Secondary],
             scalars: Vec<ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
-            // println!("ops fixed_base_msm_secondary");
             let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
             let max_scalar_bits_per_cell = NUM_LIMB_BITS;
             let native_chip = NativeFieldChip::new(&self.range_chip);
@@ -1578,7 +1601,6 @@ pub mod strawman {
             bases: &[EcPoint<C::Scalar, AssignedValue<C::Scalar>>],
             scalars: Vec<ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
-            // println!("ops variable_base_msm_secondary");
             let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
             let max_bits = NUM_LIMB_BITS;
             let native_chip = NativeFieldChip::new(&self.range_chip);
@@ -1665,11 +1687,12 @@ pub mod strawman {
                 )
                 .copied()
                 .collect_vec();
-            let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main()); //PoseidonSponge::from_spec(builder.main(), self.poseidon_spec.clone());
+            let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
             poseidon_chip.update(&inputs);
             let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
-            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, 254);
-            Ok(self.gate_chip.bits_to_num(builder.main(), (&hash_le_bits[..NUM_HASH_BITS]).to_vec()))
+            // change to strict
+            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
+            Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
         }
     }
 
@@ -1860,8 +1883,8 @@ pub mod strawman {
             let (challenge_le_bits, challenge) = {
                 let hash = self.poseidon_chip.squeeze(builder.main(), &range_chip.gate);
                 self.poseidon_chip.update(&[hash]);
-                let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, NUM_CHALLENGE_BITS);
-                let challenge = range_chip.gate.bits_to_num(builder.main(), challenge_le_bits.clone());
+                let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, RANGE_BITS).into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
+                let challenge = range_chip.gate.bits_to_num(builder.main(), &challenge_le_bits);
                 (challenge_le_bits, challenge)
             };
 

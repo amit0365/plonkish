@@ -1,12 +1,12 @@
 use crate::util::arithmetic::Field;
-use halo2_proofs::{
+use halo2_base::halo2_proofs::{
     circuit::{
         layouter::{RegionLayouter, TableLayouter},
         Cell, Layouter, Region, Table, Value,
     },
     plonk::{
-        Advice, Any, Assigned, Challenge, Circuit, Column, Error, Fixed, Instance, Selector,
-        TableColumn,
+        Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem,
+        Error, Fixed, FloorPlanner, Instance, Selector, TableColumn,
     },
 };
 use std::{collections::HashMap, fmt::Debug};
@@ -37,6 +37,11 @@ impl<F: Field> RegionLayouter<F> for InstanceExtractor<F> {
     }
 
     fn name_column<'v>(&'v mut self, _: &'v (dyn Fn() -> String + 'v), _: Column<Any>) {}
+
+    fn instance_value(&mut self, instance: Column<Instance>, row: usize)
+    -> Result<Value<F>, Error>{
+        unreachable!()
+    }
 
     fn assign_advice<'v>(
         &'v mut self,

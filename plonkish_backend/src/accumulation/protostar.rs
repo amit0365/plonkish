@@ -259,7 +259,7 @@ where
             compressed_e_sum: match strategy {
                 NoCompressing => None,
                 Compressing => Some(F::ZERO),
-                //CompressingWithSqrtPowers => Some(F::ZERO),
+                // CompressingWithSqrtPowers => Some(F::ZERO),
             },
         }
     }

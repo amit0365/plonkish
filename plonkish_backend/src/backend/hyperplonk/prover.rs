@@ -278,7 +278,7 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
                         .zip(polys[*poly][start..].iter())
                         .zip(permutation_poly[start..].iter())
                     {
-                        println!("product: {:?}, value: {:?}, permutation: {:?}", product, value, permutation);
+                        // println!("product: {:?}, value: {:?}, permutation: {:?}", product, value, permutation);
                         // *product *= (*beta * permutation) + gamma + value;
                         *product *= (*permutation) + value;
                     }
@@ -298,7 +298,7 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
                         //.zip(steps_by(F::from((id_offset + start) as u64) * beta, *beta))
                         .zip(steps_by(F::from((id_offset + start) as u64), F::ONE))
                     {
-                        println!("product: {:?}, value: {:?}, beta_id: {:?}", product, value, beta_id);
+                        // println!("product: {:?}, value: {:?}, beta_id: {:?}", product, value, beta_id);
                         // *product *= beta_id + gamma + value;
                         *product *= beta_id + value;
                     }
@@ -349,13 +349,13 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
             })
             .zip(products.iter().cycle())
             .scan(F::ONE, |state, (b, product)| {
-                println!("Before scan, state: {:?}, b: {:?}, product[b]: {:?}", state, b, product[b]);
+                // println!("Before scan, state: {:?}, b: {:?}, product[b]: {:?}", state, b, product[b]);
                 *state *= &product[b];
 
                 if *&product[b] != F::ONE && *state == F::ONE {
                     println!("product[b] != 1 and state == 1 at b {:?}", b);
                 }
-                println!("After scan, updated state: {:?}", state);
+                // println!("After scan, updated state: {:?}", state);
                 Some(*state)
             }),
         )

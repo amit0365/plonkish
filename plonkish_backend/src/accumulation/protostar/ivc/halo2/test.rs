@@ -758,7 +758,7 @@ where
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 19;
-    const NUM_STEPS: usize = 1;
+    const NUM_STEPS: usize = 3;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
@@ -960,7 +960,7 @@ pub mod strawman {
     use halo2_ecc::{
         fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip, Selectable},
         bigint::{self, CRTInteger, FixedCRTInteger, ProperCrtUint},
-        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip},
+        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip, self},
     };
 
     use std::{
@@ -974,6 +974,9 @@ pub mod strawman {
         rc::Rc,
         hash::Hash,
     };
+
+    use halo2_base::halo2_proofs::halo2curves::{
+        bn256::{self, Bn256}, grumpkin};
 
     pub const NUM_LIMBS: usize = 4;
     pub const NUM_LIMB_BITS: usize = 64;
@@ -993,16 +996,16 @@ pub mod strawman {
     pub const NUM_CHALLENGE_BYTES: usize = NUM_CHALLENGE_BITS / 8;
     pub const NUM_HASH_BITS: usize = 250;
 
-    fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
+    pub fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
         fe.to_bytes_le()
-            .chunks(num_limb_bits/(2*NUM_LIMBS))
+            .chunks(num_limb_bits/8)
             .into_iter()
             .map(|bytes| match bytes.len() {
                 1..=8 => F2::from_bytes_le(bytes),
                 9..=16 => {
                     let lo = &bytes[..8];
                     let hi = &bytes[8..];
-                    F2::from_bytes_le(hi) * F2::from(2).pow_vartime([8]) + F2::from_bytes_le(lo)
+                    F2::from_bytes_le(hi) * F2::from(2).pow_vartime([64]) + F2::from_bytes_le(lo)
                 }
                 _ => unimplemented!(),
             })
@@ -1010,6 +1013,7 @@ pub mod strawman {
             .collect()
     }
 
+    // fix this 
     pub fn fe_from_limbs<F1: ScalarField, F2: ScalarField>(
         limbs: &[F1],
         num_limb_bits: usize,
@@ -1019,10 +1023,10 @@ pub mod strawman {
         })
     }
 
-    fn x_y_is_identity<C: CurveAffine>(ec_point: &C) -> [C::Base; 2] {
+    pub fn x_y_is_identity<C: CurveAffine>(ec_point: &C) -> [C::Base; 2] {
         let coords = ec_point.coordinates().unwrap();
         // let is_identity = (coords.x().is_zero() & coords.y().is_zero()).into();
-        [*coords.x(), *coords.y()] // , fe_from_bool(is_identity)]
+        [*coords.x(), *coords.y()] // fe_from_bool(is_identity)
     }
 
     pub fn accumulation_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
@@ -1350,6 +1354,7 @@ pub mod strawman {
             Ok(value.limbs().to_vec())
         }
     
+    //todo: fix this
         pub fn add_base(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1357,13 +1362,15 @@ pub mod strawman {
             b: &ProperCrtUint<C::Scalar>,
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let one = base_chip.load_constant(builder.main(), C::Base::ONE);
             let add = base_chip.add_no_carry(builder.main(), a, b);
-                Ok(FixedCRTInteger::from_native(add.value.to_biguint().unwrap(), 
-                    base_chip.num_limbs, base_chip.limb_bits).assign(
-                    builder.main(),
-                    base_chip.limb_bits,
-                    base_chip.native_modulus(),
-                ))
+            Ok(base_chip.mul(builder.main(), add, one))
+                // Ok(FixedCRTInteger::from_native(add.value.to_biguint().unwrap(), 
+                //     base_chip.num_limbs, base_chip.limb_bits).assign(
+                //     builder.main(),
+                //     base_chip.limb_bits,
+                //     base_chip.native_modulus(),
+                // ))
         }
     
         pub fn sub_base(
@@ -1559,6 +1566,7 @@ pub mod strawman {
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
 
+        // assume x_1 != x_2 and lhs and rhs are not on infinity
         pub fn add_secondary(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1567,7 +1575,21 @@ pub mod strawman {
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
-            Ok(ecc_chip.add_unequal(builder.main(), lhs, rhs, false))
+
+            let lhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.x);
+            let lhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.y);
+            let lhs_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_x_is_zero, lhs_y_is_zero);
+
+            let rhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.x);
+            let rhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.y);
+            let rhs_is_zero = ecc_chip.field_chip.mul(builder.main(), rhs_x_is_zero, rhs_y_is_zero);
+            let both_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_is_zero, rhs_is_zero);
+            let out_added = ecc_chip.add_unequal(builder.main(), lhs, rhs, false);
+
+            let identity = self.assign_constant_secondary(builder, C::Secondary::identity())?;
+            let out = self.select_secondary(builder, &lhs_is_zero, &rhs, &out_added)?;
+            let out_one_could_be_is_zero = self.select_secondary(builder, &rhs_is_zero, &lhs, &out)?;
+            self.select_secondary(builder, &both_is_zero, &identity, &out_one_could_be_is_zero)            
         }
 
         pub fn scalar_mul_secondary(
@@ -1719,7 +1741,7 @@ pub mod strawman {
         }
     }
 
-    impl<'a, C: TwoChainCurve> PoseidonTranscriptChip<C>
+    impl<C: TwoChainCurve> PoseidonTranscriptChip<C>
     where
         C: TwoChainCurve,
         C::Base: BigPrimeField + PrimeFieldBits,
@@ -1883,12 +1905,14 @@ pub mod strawman {
             let (challenge_le_bits, challenge) = {
                 let hash = self.poseidon_chip.squeeze(builder.main(), &range_chip.gate);
                 self.poseidon_chip.update(&[hash]);
+                // todo change this to num_to_bits_strict and use as r_le_bits in the verifier
                 let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, RANGE_BITS).into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
                 let challenge = range_chip.gate.bits_to_num(builder.main(), &challenge_le_bits);
                 (challenge_le_bits, challenge)
             };
 
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            // todo check this
             let scalar = FixedCRTInteger::from_native(fe_to_biguint(challenge.value()), 
                                                         base_chip.num_limbs, base_chip.limb_bits).assign(
                                                         builder.main(),

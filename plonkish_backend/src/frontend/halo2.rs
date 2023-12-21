@@ -64,7 +64,6 @@ impl<F: Field, C: CircuitExt<F>> Halo2Circuit<F, C> {
         let (cs, config) = {
             let mut cs = ConstraintSystem::default();
             let config = C::configure_with_params(&mut cs, circuit_params);
-            println!("cs: {:?}", cs); 
             (cs, config)
         };
         let constants = cs.constants().clone();

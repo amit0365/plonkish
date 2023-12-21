@@ -1,8 +1,4 @@
 use crate::util::{BigUint, Itertools};
-// use halo2_curves::{
-//     //bn256, grumpkin,
-//     pairing::{self, MillerLoopResult},
-// };
 use num_integer::Integer;
 use std::{borrow::Borrow, fmt::Debug, iter, hash::Hash};
 
@@ -11,9 +7,7 @@ mod msm;
 
 pub use bh::BooleanHypercube;
 pub use bitvec::field::BitField;
-// use halo2_base::halo2_proofs::
-//     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-// };
+
 pub use halo2_base::halo2_proofs::halo2curves::{
     group::{
         ff::{BatchInvert, Field, FromUniformBytes, PrimeField, PrimeFieldBits},
@@ -26,11 +20,6 @@ use halo2_base::{
     gates::flex_gate::{GateChip, GateInstructions},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
-
-// use halo2_base::halo2_proofs::
-//     halo2curves::{pairing::{self}, bn256, grumpkin, pasta,
-// };
-// use pairing::{Engine, MillerLoopResult, MultiMillerLoop, PairingCurveAffine};
 
 pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
     fn pairings_product_is_identity(terms: &[(&Self::G1Affine, &Self::G2Prepared)]) -> bool {
@@ -54,21 +43,8 @@ where
     <Self as CurveAffine>::ScalarExt: BigPrimeField,
     <Self as CurveAffine>::Base: BigPrimeField,
 {
-    type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;//<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self> ;
+    type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;
 }
-
-
-// impl<C> OverridenCurveAffine for C::ScalarExt
-// where
-//     C: CurveAffine + BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
-// {}
-
-// pub trait OverridenTwoChainCurve: TwoChainCurve + OverridenCurveAffine 
-// where
-//     <Self as CurveAffine>::ScalarExt: BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
-//     <Self as CurveAffine>::Base: BigPrimeField + FromUniformBytes<64> + From<bool> + Hash,
-// {}
-
 
 impl OverridenCurveAffine for bn256::G1Affine{}
 impl OverridenCurveAffine for grumpkin::G1Affine{}
@@ -82,14 +58,6 @@ impl TwoChainCurve for grumpkin::G1Affine
 {
     type Secondary = bn256::G1Affine;
 }
-
-// impl TwoChainCurve for pallas::Affine {
-//     type Secondary = vesta::Affine;
-// }
-
-// impl TwoChainCurve for vesta::Affine {
-//     type Secondary = pallas::Affine;
-// }
 
 pub fn horner<F: Field>(coeffs: &[F], x: &F) -> F {
     coeffs

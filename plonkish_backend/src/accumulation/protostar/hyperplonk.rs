@@ -8,7 +8,7 @@ use crate::{
                     evaluate_zeta_cross_term_poly, lookup_h_polys, powers_of_zeta_poly,
                 },
             },
-            ivc::ProtostarAccumulationVerifierParam,
+            ivc::{ProtostarAccumulationVerifierParam, halo2::test::strawman::x_y_is_identity},
             Protostar, ProtostarAccumulator, ProtostarAccumulatorInstance, ProtostarProverParam,
             ProtostarStrategy::{Compressing, NoCompressing},
             ProtostarVerifierParam,
@@ -26,7 +26,7 @@ use crate::{
         },
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
     },
-    pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme},
+    pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme, Commitment},
     poly::multilinear::MultilinearPolynomial,
     util::{
         arithmetic::{powers, PrimeField},
@@ -37,7 +37,7 @@ use crate::{
     Error,
 };
 use rand::RngCore;
-use std::{borrow::BorrowMut, hash::Hash, iter};
+use std::{borrow::BorrowMut, hash::Hash, iter::{self, once}};
 
 mod preprocessor;
 mod prover;

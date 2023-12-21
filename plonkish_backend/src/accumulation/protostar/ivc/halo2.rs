@@ -43,7 +43,7 @@ use std::{
     collections::{btree_map::Entry, BTreeMap, HashMap, BTreeSet},
     fmt::Debug,
     hash::Hash,
-    iter,
+    iter::{self, once},
     marker::PhantomData,
     mem,
     rc::Rc, time::Instant,
@@ -86,17 +86,8 @@ use halo2_base::halo2_proofs::halo2curves::{
     Coordinates, CurveAffine, CurveExt,
 };
 
-pub const NUM_LIMBS: usize = 4;
-pub const NUM_LIMB_BITS: usize = 65;
-pub const T: usize = 5;
-pub const RATE: usize = 4;
-pub const R_F: usize = 8;
-pub const R_P: usize = 60;
-pub const SECURE_MDS: usize = 0;
-
-
 pub mod test;
-use test::strawman::{self, Chip};
+use test::strawman::{self, T, RANGE_BITS, RATE, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS, R_F, R_P, SECURE_MDS, Chip};
 
 
 type AssignedPlonkishNarkInstance<AssignedBase, AssignedSecondary> =
@@ -366,6 +357,7 @@ where
         };
 
         let r = transcript.squeeze_challenge(builder)?;
+        // todo use r.le_bits instead challenge_to_le_bits needs to be constrained in circuit
         let r_le_bits = transcript.challenge_to_le_bits(&r)?;
 
         let (r_nark, acc_prime) = self.fold_accumulator_from_nark(
@@ -723,6 +715,7 @@ where
         } else {
             rhs
         };
+
         // todo check this fails because before prove_steps lhs = h == 0 initalised 
         // since axiom api doesn't handle option
         if *lhs.value() != C::Scalar::ZERO {
@@ -787,7 +780,7 @@ where
             };
             acc_verifier.select_accumulator(builder, &is_base_case, &acc_default, &acc_prime)?
         };
-
+        
         let h_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][0])?;
         let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][1])?;
 
@@ -815,32 +808,27 @@ where
 
         // todo check impl constrain instance these 
         // tcc_chip.constrain_instance(builder, &mut layouter, &h_ohs_from_incoming, 0)?;
-        // let assigned_instances = &mut binding.assigned_instances;
-        // assigned_instances[0].push(h_ohs_from_incoming);
-        // assigned_instances[0].push(h_prime);
-
-        // println!("h_ohs_from_incoming {:?}", h_ohs_from_incoming);
-        // println!("h_prime {:?}", h_prime);
+        let assigned_instances = &mut binding.assigned_instances;
+        assert_eq!(
+            assigned_instances.len(),
+            1,
+            "Circuit must have exactly 1 instance column"
+        );
+        assert!(assigned_instances[0].is_empty());
+        assigned_instances[0].push(h_ohs_from_incoming);
+        assigned_instances[0].push(h_prime);
 
         // todo check this
-        binding.set_copy_manager(SharedCopyConstraintManager::default());
+        // binding.set_copy_manager(SharedCopyConstraintManager::default());
 
-        let interim_builder = binding.pool(0);
-        let zero = tcc_chip.assign_constant(interim_builder, C::Scalar::from(2u64)).unwrap();
-        // let b = tcc_chip.inner_product(interim_builder, &[C::Scalar::from(1u64); 5], &[C::Scalar::from(2u64); 5]);
-        drop(interim_builder);
+        // let interim_builder = binding.pool(0);
+        // let zero = tcc_chip.assign_constant(interim_builder, C::Scalar::from(2u64)).unwrap();
+        // println!("zero {:?}", zero.cell);
+        // // let b = tcc_chip.inner_product(interim_builder, &[C::Scalar::from(1u64); 5], &[C::Scalar::from(2u64); 5]);
+        // drop(interim_builder);
 
-        // MockProver::run(19, &*binding, vec![vec![]]).unwrap().assert_satisfied();
-
-        // let a = tcc_chip.assign_witness(interim_builder, C::Scalar::from(2u64)).unwrap();
-        // let b = tcc_chip.assign_witness(interim_builder, C::Scalar::from(4u64)).unwrap();
-        // let b = tcc_chip.inner_product(interim_builder, &[C::Scalar::from(1u64); 5], &[C::Scalar::from(2u64); 5]);
-        // tcc_chip.sub(interim_builder, &b, &a)?;
-        // for _ in 0..10{
-        // tcc_chip.range_chip.gate.div_unsafe(interim_builder.main(), a.clone(), a.clone());
-        // tcc_chip.add(interim_builder, &zero, &zero)?;
-        //    tcc_chip.mul(interim_builder, &a, &b)?;
-        // }
+        let instances = self.instances();
+        MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
 
         binding.synthesize(config.clone(), layouter.namespace(|| ""));
 
@@ -850,8 +838,6 @@ where
         println!("copy_manager.assigned_constants {:?}", copy_manager.assigned_constants.len());
         println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
-
-        // MockProver::run(19, &*binding, vec![vec![]]).unwrap().assert_satisfied();
 
         binding.clear();
         drop(binding);

@@ -175,8 +175,8 @@ pub(super) fn permutation_polys<F: PrimeField>(
     permutation_polys: &[usize],
     cycles: &[Vec<(usize, usize)>],
 ) -> Vec<MultilinearPolynomial<F>> {
-    println!("cycles: {:?}", cycles);
-    println!("permutation_polys: {:?}", permutation_polys);
+    // println!("cycles: {:?}", cycles);
+    // println!("permutation_polys: {:?}", permutation_polys);
     let poly_index = {
         let mut poly_index = vec![0; permutation_polys.last().map(|poly| 1 + poly).unwrap_or(0)];
         for (idx, poly) in permutation_polys.iter().enumerate() {

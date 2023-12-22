@@ -823,12 +823,12 @@ where
 
         // let interim_builder = binding.pool(0);
         // let zero = tcc_chip.assign_constant(interim_builder, C::Scalar::from(2u64)).unwrap();
-        // println!("zero {:?}", zero.cell);
         // // let b = tcc_chip.inner_product(interim_builder, &[C::Scalar::from(1u64); 5], &[C::Scalar::from(2u64); 5]);
         // drop(interim_builder);
 
-        let instances = self.instances();
-        MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
+        // sanity check that the circuit is satisfied
+        // let instances = self.instances();
+        // MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
 
         binding.synthesize(config.clone(), layouter.namespace(|| ""));
 

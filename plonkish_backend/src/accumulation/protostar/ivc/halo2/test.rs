@@ -1276,7 +1276,7 @@ pub mod strawman {
             lhs: &[C::Scalar],
             rhs: &[C::Scalar],
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.gate_chip.inner_product_unoptimised(builder.main(), lhs.iter().map(|c| Witness(*c)), rhs.iter().map(|c| Witness(*c))))
+            Ok(self.gate_chip.inner_product(builder.main(), lhs.iter().map(|c| Witness(*c)), rhs.iter().map(|c| Witness(*c))))
         }
 
         pub fn constrain_equal_base(
@@ -1354,7 +1354,7 @@ pub mod strawman {
             Ok(value.limbs().to_vec())
         }
     
-    //todo: fix this
+        // todo: fix this
         pub fn add_base(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,

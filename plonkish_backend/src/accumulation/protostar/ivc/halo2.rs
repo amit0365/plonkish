@@ -896,7 +896,6 @@ where
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
         println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
-        //MockProver::run(19, self, vec![]).unwrap().assert_satisfied();
 
         Ok(())
     }

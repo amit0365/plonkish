@@ -36,6 +36,32 @@ Time for accumulation_verifier: 374.576542ms
 Time for prove_decider: 14.410719s
 Time for verify_decider: 338.679584ms
 
+##### stats
+k = 17, num_columns = 4, 
+Time for prove_steps: 48.716075542s
+copy_manager.advice_equalities 201042
+copy_manager.assigned_advices 439632
+Time for synthesize_accumulation_verifier: 407.343959ms
+
+k = 18, num_columns = 2, 
+Time for preprocess: 17.682898209s
+Time for prove_steps: 61.899697958s
+copy_manager.advice_equalities 166712
+copy_manager.assigned_advices 365946
+Time for synthesize_accumulation_verifier: 365.940208ms
+
+k = 19, num_columns = 1, 
+Time for preprocess: 33.020157417s
+Time for prove_steps: 89.373715s
+Time for prove_decider: 37.74634575s (batch open takes 80% of the time)
+    prove_decider-primary-19 ..........................6.348s   
+    prove_decider_with_last_nark-secondary-19 ........31.397s
+    
+copy_manager.advice_equalities 134351
+copy_manager.constant_equalities 83279
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 300961
+Time for synthesize_accumulation_verifier: 306.515791ms
 
 
 #### Han incomplete impl
@@ -45,31 +71,6 @@ Time for verify_decider: 338.679584ms
 Time for preprocess: 1.995075083s
 Time for prove_steps: 5.060839917s
 Time for prove_decider: 1.908527459s
-
-// permutation constraint
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 20)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 12461)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 12891)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 18235)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 18665)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 27852)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 28282)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 33626)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 34056)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 85425)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 85855)
-
-Equality constraint not satisfied by cell (Column('Advice', 0 - ), in Region 1 ('BaseCircuitBuilder generated circuit') at offset 371857)
 
 
 Start:   prove_accumulation_from_nark-primary-19

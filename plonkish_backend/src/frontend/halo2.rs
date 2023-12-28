@@ -211,10 +211,6 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
-    println!("preprocess_collector: {:?}", preprocess_collector.fixeds.len());
-    for (i, inner_vector) in preprocess_collector.fixeds.iter().enumerate() {
-        println!("Length of vector at index {}: {}", i, inner_vector.len());
-    }
     circuit_info.preprocess_polys = iter::empty()
         .chain(batch_invert_assigned(preprocess_collector.fixeds))
         .chain(preprocess_collector.selectors.into_iter().map(|selectors| {

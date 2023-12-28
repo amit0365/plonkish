@@ -357,8 +357,7 @@ where
         };
 
         let r = transcript.squeeze_challenge(builder)?;
-        // todo use r.le_bits instead challenge_to_le_bits needs to be constrained in circuit
-        let r_le_bits = transcript.challenge_to_le_bits(&r)?;
+        let r_le_bits = r.le_bits.clone();
 
         let (r_nark, acc_prime) = self.fold_accumulator_from_nark(
             builder,
@@ -554,6 +553,7 @@ where
     }
 }
 
+// todo remove value wrapper
 #[derive(Debug)]
 pub struct RecursiveCircuit<C, Sc>
 where

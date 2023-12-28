@@ -1598,7 +1598,8 @@ pub mod strawman {
             base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             le_bits: &[AssignedValue<C::Scalar>],
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            let max_bits = NUM_LIMB_BITS;
+            // challenge is already vec of bits -- removed num_bits from scalar_mul in halo2_lib
+            let max_bits = 1; 
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), max_bits, WINDOW_BITS))

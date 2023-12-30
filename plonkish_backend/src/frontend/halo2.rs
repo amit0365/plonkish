@@ -28,7 +28,6 @@ pub mod chip;
 #[cfg(test)]
 mod test;
 
-//todo check this
 pub trait CircuitExt<F: Field>: Circuit<F> {
     fn num_instance(&self) -> Vec<usize> {
         self.instances().iter().map(Vec::len).collect()

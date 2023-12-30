@@ -121,6 +121,11 @@ where
     fn set_output(&mut self, output: &[C::Scalar]) {
     }
 
+    fn next_output(&self) -> Vec<C::Scalar> {
+        Vec::new()
+    }
+
+
     fn step_idx(&self) -> usize {
         self.step_idx
     }
@@ -356,6 +361,15 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
         &self.output
     }
 
+    // define the calculation logic. This is done out of the zk_circuit
+    // Used in recursive_circuit.update to cal hash of the next iteration 
+    // And checked with the hash synthesize_accumulation_verifier.check_hash_state
+    fn next_output(&self) -> Vec<C::Scalar> {
+        let x = self.input().get(0).copied().unwrap();
+        let y = x + x;
+        vec![y]
+    }
+
     fn set_output(&mut self, output: &[C::Scalar]) {
         self.output = output.to_vec();
     }
@@ -393,6 +407,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
         let (inputs, outputs) = 
         match first_input {
             Some(first_input) => {
+                // define the calculation logic for the circuit, also done in the next_ouput function
                 // `x + x = y`, where `x` and `y` are respectively the input and output.
                 let x = ctx.load_witness(first_input);
                 let one = ctx.load_constant(C::Scalar::ONE);
@@ -723,7 +738,7 @@ where
     >(  
         primary_num_vars,
         primary_atp,
-        TrivialCircuit::default(), // nontrivial_circuit_primary,
+        nontrivial_circuit_primary,
         secondary_num_vars,
         secondary_atp,
         TrivialCircuit::default(),
@@ -1588,7 +1603,6 @@ pub mod strawman {
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
 
-        // assume x_1 != x_2 and lhs and rhs are not on infinity
         pub fn add_secondary(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,

@@ -122,13 +122,14 @@ where
 
     fn set_output(&mut self, output: &[C::Scalar]);
 
+    fn next_output(&self) -> Vec<C::Scalar>;
+
     fn step_idx(&self) -> usize;
 
     fn next(&mut self);
 
     fn num_constraints(&self) -> usize; 
 
-    //todo fix this with other synthesizes
     #[allow(clippy::type_complexity)]
     fn synthesize(
         &mut self,
@@ -611,14 +612,13 @@ where
         let hash_config = poseidon_spec.clone();
         let transcript_config = poseidon_spec.clone();
 
-        // let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Prover)
-        // .use_params(circuit_params.clone()).use_break_points(vec![vec![131061, 131062, 131062, 131060, 131062]]));
         let step_circuit = RefCell::new(step_circuit);
         let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Mock).use_params(circuit_params.clone()));
         let range_chip = inner.borrow().range_chip();
         let chip = Chip::<C>::create(range_chip);
         let hash_chip = Chip::<C>::new(hash_config.clone(), chip.clone());
-        let circuit = Self {
+
+        Self {
                 is_primary,
                 step_circuit,
                 tcc_chip: chip,
@@ -632,8 +632,7 @@ where
                 incoming_instances: [Value::known(C::Base::ZERO); 2],
                 incoming_proof: Value::known(PoseidonTranscriptChip::<C>::dummy_proof(&avp.clone().unwrap_or_default())),
                 inner,
-            };
-        circuit
+            }
     }
 
     pub fn update<Comm: AsRef<C::Secondary>>(
@@ -653,10 +652,9 @@ where
                 self.avp.vp_digest,
                 self.step_circuit.borrow().step_idx() + 1,
                 self.step_circuit.borrow().initial_input(),
-                self.step_circuit.borrow().output(),
+                &self.step_circuit.borrow().next_output(),
                 &acc_prime,
             ));
-
             self.acc = Value::known(acc.unwrap_comm());
             self.acc_prime = Value::known(acc_prime.unwrap_comm());
             self.incoming_instances = incoming_instances.map(Value::known);
@@ -730,8 +728,7 @@ where
         } else {
             rhs
         };
-        // todo check this -- fails because before prove_steps lhs = h == 0 initalised 
-        // since axiom api doesn't handle option
+
         if *lhs.value() != C::Scalar::ZERO {
             tcc_chip.constrain_equal(builder, lhs, &rhs)?;
         }
@@ -820,15 +817,8 @@ where
             &acc_prime,
         )?;
 
-        // todo check impl constrain instance these 
-        // tcc_chip.constrain_instance(builder, &mut layouter, &h_ohs_from_incoming, 0)?;
-        // todo check if poseidon hasher needs to be cleared?
         let assigned_instances = &mut circuit_builder.assigned_instances;
         assigned_instances[0].push(h_ohs_from_incoming);
-
-        // circuit_builder.set_copy_manager(SharedCopyConstraintManager::default());
-
-        let assigned_instances = &mut circuit_builder.assigned_instances;
         assigned_instances[0].push(h_prime);
 
         circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""));

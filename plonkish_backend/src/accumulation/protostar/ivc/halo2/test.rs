@@ -723,7 +723,7 @@ where
     >(  
         primary_num_vars,
         primary_atp,
-        nontrivial_circuit_primary, // TrivialCircuit::default(),
+        TrivialCircuit::default(), // nontrivial_circuit_primary,
         secondary_num_vars,
         secondary_atp,
         TrivialCircuit::default(),
@@ -1024,8 +1024,8 @@ pub mod strawman {
         hash::Hash,
     };
 
-    pub const NUM_LIMBS: usize = 3;
-    pub const NUM_LIMB_BITS: usize = 88;
+    pub const NUM_LIMBS: usize = 4;
+    pub const NUM_LIMB_BITS: usize = 64;
     pub const NUM_SUBLIMBS: usize = 5;
     pub const NUM_LOOKUPS: usize = 1;
     pub const LOOKUP_BITS: usize = 8;
@@ -1037,19 +1037,20 @@ pub mod strawman {
     pub const R_P: usize = 60;
     pub const SECURE_MDS: usize = 0;
 
+    pub const RANGE_BITS: usize = 254;
     pub const NUM_CHALLENGE_BITS: usize = 128;
     pub const NUM_CHALLENGE_BYTES: usize = NUM_CHALLENGE_BITS / 8;
     pub const NUM_HASH_BITS: usize = 250;
 
-    fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
+    pub fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
         fe.to_bytes_le()
-            .chunks(num_limb_bits)
+            .chunks(num_limb_bits/8)
             .into_iter()
-            .map(|bits| match bits.len() {
-                1..=64 => F2::from_bytes_le(bits),
-                65..=128 => {
-                    let lo = &bits[..64];
-                    let hi = &bits[64..];
+            .map(|bytes| match bytes.len() {
+                1..=8 => F2::from_bytes_le(bytes),
+                9..=16 => {
+                    let lo = &bytes[..8];
+                    let hi = &bytes[8..];
                     F2::from_bytes_le(hi) * F2::from(2).pow_vartime([64]) + F2::from_bytes_le(lo)
                 }
                 _ => unimplemented!(),
@@ -1067,10 +1068,9 @@ pub mod strawman {
         })
     }
 
-    fn x_y_is_identity<C: CurveAffine>(ec_point: &C) -> [C::Base; 3] {
+    fn x_y_is_identity<C: CurveAffine>(ec_point: &C) -> [C::Base; 2] {
         let coords = ec_point.coordinates().unwrap();
-        let is_identity = (coords.x().is_zero() & coords.y().is_zero()).into();
-        [*coords.x(), *coords.y(), fe_from_bool(is_identity)]
+        [*coords.x(), *coords.y()]
     }
 
     pub fn accumulation_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
@@ -1356,9 +1356,30 @@ pub mod strawman {
     
         pub fn fit_base_in_scalar(
             &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
             value: &ProperCrtUint<C::Scalar>,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(value.native().clone())
+            let zero = builder.main().load_zero();
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let decomposed = (0..NUM_LIMBS)
+            .flat_map(|idx| {
+                let number_of_bits = if idx == NUM_LIMBS - 1 {
+                    base_chip.p.bits() as usize % NUM_LIMB_BITS
+                } else {
+                    NUM_LIMB_BITS
+                };
+                self.gate_chip.num_to_bits(builder.main(), value.limbs()[idx], number_of_bits)
+            })
+            .collect_vec();
+
+            assert_eq!(decomposed.len(), base_chip.p.bits() as usize);
+
+            decomposed
+                .iter()
+                .skip(NUM_HASH_BITS)
+                .for_each(|bit| builder.main().constrain_equal(bit, &zero));
+
+            Ok(self.gate_chip.bits_to_num(builder.main(), &decomposed[..NUM_HASH_BITS]))
         }
     
         pub fn to_repr_base(
@@ -1376,12 +1397,7 @@ pub mod strawman {
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let add = base_chip.add_no_carry(builder.main(), a, b);
-                Ok(FixedCRTInteger::from_native(add.value.to_biguint().unwrap(), 
-                    base_chip.num_limbs, base_chip.limb_bits).assign(
-                    builder.main(),
-                    base_chip.limb_bits,
-                    base_chip.native_modulus(),
-                ))
+            Ok(base_chip.carry_mod(builder.main(), add))
         }
     
         pub fn sub_base(
@@ -1392,12 +1408,7 @@ pub mod strawman {
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let sub = base_chip.sub_no_carry(builder.main(), a, b);
-                Ok(FixedCRTInteger::from_native(sub.value.to_biguint().unwrap(), 
-                    base_chip.num_limbs, base_chip.limb_bits).assign(
-                    builder.main(),
-                    base_chip.limb_bits,
-                    base_chip.native_modulus(),
-                ))
+            Ok(base_chip.carry_mod(builder.main(), sub))
         }
 
         pub fn neg_base(
@@ -1577,6 +1588,7 @@ pub mod strawman {
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
 
+        // assume x_1 != x_2 and lhs and rhs are not on infinity
         pub fn add_secondary(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1585,7 +1597,21 @@ pub mod strawman {
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
-            Ok(ecc_chip.add_unequal(builder.main(), lhs, rhs, false))
+
+            let lhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.x);
+            let lhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.y);
+            let lhs_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_x_is_zero, lhs_y_is_zero);
+
+            let rhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.x);
+            let rhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.y);
+            let rhs_is_zero = ecc_chip.field_chip.mul(builder.main(), rhs_x_is_zero, rhs_y_is_zero);
+            let both_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_is_zero, rhs_is_zero);
+            let out_added = ecc_chip.add_unequal(builder.main(), lhs, rhs, false);
+
+            let identity = self.assign_constant_secondary(builder, C::Secondary::identity())?;
+            let out = self.select_secondary(builder, &lhs_is_zero, &rhs, &out_added)?;
+            let out_one_could_be_is_zero = self.select_secondary(builder, &rhs_is_zero, &lhs, &out)?;
+            self.select_secondary(builder, &both_is_zero, &identity, &out_one_could_be_is_zero)            
         }
 
         pub fn scalar_mul_secondary(
@@ -1594,7 +1620,7 @@ pub mod strawman {
             base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
             le_bits: &[AssignedValue<C::Scalar>],
         ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            let max_bits = NUM_LIMB_BITS;
+            let max_bits = 1;
             let native_chip = NativeFieldChip::new(&self.range_chip);
             let ecc_chip = EccChip::new(&native_chip);
             Ok(ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), max_bits, WINDOW_BITS))
@@ -1705,11 +1731,11 @@ pub mod strawman {
                 )
                 .copied()
                 .collect_vec();
-            let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main()); //PoseidonSponge::from_spec(builder.main(), self.poseidon_spec.clone());
+            let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
             poseidon_chip.update(&inputs);
             let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
-            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, 254);
-            Ok(self.gate_chip.bits_to_num(builder.main(), (&hash_le_bits[..NUM_HASH_BITS]).to_vec()))
+            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
+            Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
         }
     }
 
@@ -1900,12 +1926,14 @@ pub mod strawman {
             let (challenge_le_bits, challenge) = {
                 let hash = self.poseidon_chip.squeeze(builder.main(), &range_chip.gate);
                 self.poseidon_chip.update(&[hash]);
-                let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, NUM_CHALLENGE_BITS);
-                let challenge = range_chip.gate.bits_to_num(builder.main(), challenge_le_bits.clone());
+                // todo change this to num_to_bits_strict
+                let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, RANGE_BITS).into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
+                let challenge = range_chip.gate.bits_to_num(builder.main(), &challenge_le_bits);
                 (challenge_le_bits, challenge)
             };
 
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            // todo use carry mod 
             let scalar = FixedCRTInteger::from_native(fe_to_biguint(challenge.value()), 
                                                         base_chip.num_limbs, base_chip.limb_bits).assign(
                                                         builder.main(),

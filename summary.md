@@ -227,3 +227,107 @@ ec_sub_strict_copy_manager.assigned_advices 0
 num_to_bits_copy_manager.advice_equalities 54825
 num_to_bits_copy_manager.constant_equalities 34394
 num_to_bits_copy_manager.assigned_advices 0
+
+
+before_squeeze_challenge_copy_manager.advice_equalities 288
+copy_manager.constant_equalities 415
+copy_manager.assigned_constants 0
+before_squeeze_challenge_copy_manager.assigned_advices 0
+after_squeeze_challenge_copy_manager.advice_equalities 5945
+copy_manager.constant_equalities 4514
+copy_manager.assigned_constants 0
+after_squeeze_challenge_copy_manager.assigned_advices 0
+before_squeeze_challenge_copy_manager.advice_equalities 5968
+copy_manager.constant_equalities 4538
+copy_manager.assigned_constants 0
+before_squeeze_challenge_copy_manager.assigned_advices 0
+after_squeeze_challenge_copy_manager.advice_equalities 8448
+copy_manager.constant_equalities 6330
+copy_manager.assigned_constants 0
+after_squeeze_challenge_copy_manager.assigned_advices 0
+before_squeeze_challenge_copy_manager.advice_equalities 8494
+copy_manager.constant_equalities 6373
+copy_manager.assigned_constants 0
+before_squeeze_challenge_copy_manager.assigned_advices 0
+after_squeeze_challenge_copy_manager.advice_equalities 12561
+copy_manager.constant_equalities 9317
+copy_manager.assigned_constants 0
+after_squeeze_challenge_copy_manager.assigned_advices 0
+before_squeeze_challenge_copy_manager.advice_equalities 12584
+copy_manager.constant_equalities 9341
+copy_manager.assigned_constants 0
+before_squeeze_challenge_copy_manager.assigned_advices 0
+after_squeeze_challenge_copy_manager.advice_equalities 15064
+copy_manager.constant_equalities 11133
+copy_manager.assigned_constants 0
+after_squeeze_challenge_copy_manager.assigned_advices 0
+before_squeeze_challenge_copy_manager.advice_equalities 15197
+copy_manager.constant_equalities 11355
+copy_manager.assigned_constants 0
+before_squeeze_challenge_copy_manager.assigned_advices 0
+after_squeeze_challenge_copy_manager.advice_equalities 39923
+copy_manager.constant_equalities 29303
+copy_manager.assigned_constants 0
+after_squeeze_challenge_copy_manager.assigned_advices 0
+····Start:   fold_accumulator_from_nark witness_comms-5
+before_scalar_mul_secondary_copy_manager.advice_equalities 40219
+copy_manager.constant_equalities 29776
+copy_manager.assigned_constants 0
+before_scalar_mul_secondary_copy_manager.assigned_advices 0
+before_scalar_mul_secondary_copy_manager.advice_equalities 48521
+copy_manager.constant_equalities 33181
+copy_manager.assigned_constants 0
+before_scalar_mul_secondary_copy_manager.assigned_advices 0
+
+
+before_squeeze_challenge_ctx.advice.len() 1245
+after_squeeze_challenge_ctx.advice.len() 14778
+before_squeeze_challenge_ctx.advice.len() 14840
+after_squeeze_challenge_ctx.advice.len() 20792
+before_squeeze_challenge_ctx.advice.len() 20911
+after_squeeze_challenge_ctx.advice.len() 30649
+before_squeeze_challenge_ctx.advice.len() 30711
+after_squeeze_challenge_ctx.advice.len() 36663
+before_squeeze_challenge_ctx.advice.len() 37326
+after_squeeze_challenge_ctx.advice.len() 96366
+squeeze_challenge = 95k
+
+before_scalar_mul_secondary_ctx.advice.len() 97791
+after_scalar_mul_secondary_ctx.advice.len() 113550
+before_scalar_mul_secondary_ctx.advice.len() 113550
+after_scalar_mul_secondary_ctx.advice.len() 129309
+before_scalar_mul_secondary_ctx.advice.len() 129309
+after_scalar_mul_secondary_ctx.advice.len() 145068
+before_scalar_mul_secondary_ctx.advice.len() 145068
+after_scalar_mul_secondary_ctx.advice.len() 160827
+before_scalar_mul_secondary_ctx.advice.len() 160827
+after_scalar_mul_secondary_ctx.advice.len() 176586
+before_scalar_mul_secondary_ctx.advice.len() 181341
+after_scalar_mul_secondary_ctx.advice.len() 197100
+scalar_mul_secondary = 100k
+
+before_hash_assigned_state_poseidon_ctx.advice.len() 204899
+after_hash_assigned_state_poseidon_ctx.advice.len() 250402
+after_hash_assigned_state_num_to_bits_ctx.advice.len() 252178
+after_hash_assigned_state_bits_to_num_ctx.advice.len() 252926
+before_hash_assigned_state_poseidon_ctx.advice.len() 252934
+after_hash_assigned_state_poseidon_ctx.advice.len() 298437
+after_hash_assigned_state_num_to_bits_ctx.advice.len() 300213
+after_hash_assigned_state_bits_to_num_ctx.advice.len() 300961
+hash_assigned_state = 96k
+
+copy_manager.assigned_advices 300961
+Constant adds constant_equalities and assigns new advice - 84k 
+Existing adds advice_equalities and assigns new advice - 134k
+Witness: assigns new advice -  85703
+Witness_Fraction - witness_fraction 373
+
+total_dedup_advice 60k
+
+
+copy_manager.advice_equalities 134349
+copy_manager.constant_equalities 83279
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 300961
+total_advice 134048
+total_fixed 901

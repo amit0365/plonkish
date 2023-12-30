@@ -832,11 +832,38 @@ where
 
         binding.synthesize(config.clone(), layouter.namespace(|| ""));
 
+        let ctx = binding.main(0);
+        let total_advice: usize = ctx
+                                .advice
+                                .iter()
+                                .map(|(c)| c.evaluate())
+                                .sorted()
+                                .dedup()
+                                .count();
+        println!("ctx.count_witness {:?}", ctx.count_witness);
+        println!("ctx.count_witness_fraction {:?}", ctx.count_witness_fraction);
+        println!("total_dedup_advice {:?}", total_advice);
+        drop(ctx);
+
         let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
         println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
         println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
         println!("copy_manager.assigned_constants {:?}", copy_manager.assigned_constants.len());
         println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
+        // let total_advice: usize = copy_manager
+        //                         .assigned_advices
+        //                         .iter()
+        //                         .map(|(_, c)| *c)
+        //                         .dedup()
+        //                         .count();
+        let total_fixed: usize = copy_manager
+                                .constant_equalities
+                                .iter()
+                                .map(|(c, _)| *c)
+                                .sorted()
+                                .dedup()
+                                .count();
+        println!("total_fixed {:?}", total_fixed);
         drop(copy_manager);
 
         binding.clear();

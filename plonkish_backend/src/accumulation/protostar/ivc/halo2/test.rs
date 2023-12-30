@@ -1354,7 +1354,6 @@ pub mod strawman {
             Ok(value.limbs().to_vec())
         }
     
-        // todo: fix this
         pub fn add_base(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1364,13 +1363,7 @@ pub mod strawman {
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let one = base_chip.load_constant(builder.main(), C::Base::ONE);
             let add = base_chip.add_no_carry(builder.main(), a, b);
-            Ok(base_chip.mul(builder.main(), add, one))
-                // Ok(FixedCRTInteger::from_native(add.value.to_biguint().unwrap(), 
-                //     base_chip.num_limbs, base_chip.limb_bits).assign(
-                //     builder.main(),
-                //     base_chip.limb_bits,
-                //     base_chip.native_modulus(),
-                // ))
+            Ok(base_chip.carry_mod(builder.main(), add))
         }
     
         pub fn sub_base(

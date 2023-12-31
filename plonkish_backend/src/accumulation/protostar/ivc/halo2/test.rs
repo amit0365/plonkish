@@ -827,7 +827,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
-            num_advice_per_phase: vec![7],
+            num_advice_per_phase: vec![3],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
             lookup_bits: Some(13),

@@ -716,7 +716,7 @@ where
             rhs
         };
 
-        // todo check this fails because before prove_steps lhs = h == 0 initalised 
+        // todo check this -- fails because before prove_steps lhs = h == 0 initalised 
         // since axiom api doesn't handle option
         if *lhs.value() != C::Scalar::ZERO {
             tcc_chip.constrain_equal(builder, lhs, &rhs)?;

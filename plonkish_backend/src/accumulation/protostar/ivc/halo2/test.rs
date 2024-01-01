@@ -1899,7 +1899,7 @@ pub mod strawman {
             let (challenge_le_bits, challenge) = {
                 let hash = self.poseidon_chip.squeeze(builder.main(), &range_chip.gate);
                 self.poseidon_chip.update(&[hash]);
-                // todo change this to num_to_bits_strict and use as r_le_bits in the verifier
+                // todo change this to num_to_bits_strict
                 let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, RANGE_BITS).into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
                 let challenge = range_chip.gate.bits_to_num(builder.main(), &challenge_le_bits);
                 (challenge_le_bits, challenge)

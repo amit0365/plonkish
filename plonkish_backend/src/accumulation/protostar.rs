@@ -22,7 +22,7 @@ pub mod hyperplonk;
 pub mod ivc;
 
 #[derive(Clone, Debug)]
-pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);
+pub struct Protostar<Pb, const STRATEGY: usize = { NoCompressing as usize }>(PhantomData<Pb>);
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub enum ProtostarStrategy {
@@ -252,7 +252,7 @@ where
     fn from_nark(strategy: ProtostarStrategy, nark: PlonkishNarkInstance<F, C>) -> Self {
         Self {
             instances: nark.instances,
-            witness_comms: nark.witness_comms,
+            witness_comms: nark.witness_comms.unwrap(),
             challenges: nark.challenges,
             u: F::ONE,
             e_comm: C::default(),

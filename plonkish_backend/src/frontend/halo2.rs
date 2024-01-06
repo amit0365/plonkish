@@ -95,6 +95,7 @@ impl<F: Field, C: CircuitExt<F>> Halo2Circuit<F, C> {
         f(&mut self.circuit);
         self.instances = self.circuit.instances();
     }
+
 }
 
 impl<F: Field, C: Circuit<F>> AsRef<C> for Halo2Circuit<F, C> {

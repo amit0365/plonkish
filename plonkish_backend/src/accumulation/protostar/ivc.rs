@@ -2,7 +2,7 @@ use crate::{
     accumulation::protostar::{ProtostarAccumulatorInstance, ProtostarStrategy},
     util::{arithmetic::PrimeField, Deserialize, Serialize},
 };
-
+pub mod cyclefold;
 #[cfg(feature = "frontend-halo2")]
 pub mod halo2;
 

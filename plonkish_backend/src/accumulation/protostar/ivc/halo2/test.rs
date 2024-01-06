@@ -1,7 +1,7 @@
 use crate::{
     accumulation::protostar::{
         ivc::halo2::{
-            preprocess, prove_decider, prove_steps, verify_decider,
+            preprocess, prove_steps, prove_decider, verify_decider,
             ProtostarIvcAggregator, ProtostarIvcVerifierParam,
             StepCircuit, CircuitExt
         },
@@ -52,7 +52,6 @@ use std::{mem, rc::Rc};
 use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS, T, RATE, R_F, R_P, SECURE_MDS, Chip};
 
 use super::RecursiveCircuit;
-
 
 #[derive(Clone, Debug, Default)]
 struct TrivialCircuit<C> {
@@ -577,166 +576,165 @@ where
 //     }
 // }
 
-#[allow(clippy::type_complexity)]
-pub fn run_protostar_hyperplonk_ivc<C, P1, P2>(
-    num_vars: usize,
-    num_steps: usize,
-    circuit_params: BaseCircuitParams,
-) -> (
-    ProtostarIvcVerifierParam<
-        C,
-        P1,
-        P2,
-    >,
-    usize,
-    Vec<C::Scalar>,
-    Vec<C::Scalar>,
-    ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
-    Vec<u8>,
-    Vec<C::Base>,
-    Vec<C::Base>,
-    ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
-    Vec<C::Base>,
-    Vec<u8>,
-)
-where
-    C: TwoChainCurve,
-    C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
-    C::Scalar: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
-    P1: PolynomialCommitmentScheme<
-        C::ScalarExt,
-        Polynomial = MultilinearPolynomial<C::Scalar>,
-        CommitmentChunk = C,
-    >,
-    P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
-    P2: PolynomialCommitmentScheme<
-        C::Base,
-        Polynomial = MultilinearPolynomial<C::Base>,
-        CommitmentChunk = C::Secondary,
-    >,
-    P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
-{
-    let primary_num_vars = num_vars;
-    let primary_atp = strawman::accumulation_transcript_param();
-    let secondary_num_vars = num_vars;
-    let secondary_atp = strawman::accumulation_transcript_param();
+// #[allow(clippy::type_complexity)]
+// pub fn run_protostar_hyperplonk_ivc<C, P>(
+//     num_vars: usize,
+//     num_steps: usize,
+//     circuit_params: BaseCircuitParams,
+// ) -> (
+//     ProtostarIvcVerifierParam<
+//         C,
+//         P,
+//     >,
+//     usize,
+//     Vec<C::Scalar>,
+//     Vec<C::Scalar>,
+//     ProtostarAccumulatorInstance<C::Scalar, P::Commitment>,
+//     Vec<u8>,
+//     Vec<C::Base>,
+//     Vec<C::Base>,
+//     ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
+//     Vec<C::Base>,
+//     Vec<u8>,
+// )
+// where
+//     C: TwoChainCurve,
+//     C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+//     C::Scalar: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+//     P1: PolynomialCommitmentScheme<
+//         C::ScalarExt,
+//         Polynomial = MultilinearPolynomial<C::Scalar>,
+//         CommitmentChunk = C,
+//     >,
+//     P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
+//     P2: PolynomialCommitmentScheme<
+//         C::Base,
+//         Polynomial = MultilinearPolynomial<C::Base>,
+//         CommitmentChunk = C::Secondary,
+//     >,
+//     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
+// {
+//     let primary_num_vars = num_vars;
+//     let primary_atp = strawman::accumulation_transcript_param();
+//     let secondary_num_vars = num_vars;
+//     let secondary_atp = strawman::accumulation_transcript_param();
     
-    let preprocess_time = Instant::now();
-    let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
-        C,
-        P1,
-        P2,
-        _,
-        _,
-        strawman::PoseidonTranscript<_, _>,
-        strawman::PoseidonTranscript<_, _>,
-    >(  
-        primary_num_vars,
-        primary_atp,
-        TrivialCircuit::default(),
-        secondary_num_vars,
-        secondary_atp,
-        TrivialCircuit::default(),
-        circuit_params.clone(), 
-        seeded_std_rng(),
-    )
-    .unwrap();
-    let duration_preprocess = preprocess_time.elapsed();
-    println!("Time for preprocess: {:?}", duration_preprocess);
+//     let preprocess_time = Instant::now();
+//     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
+//         C,
+//         P1,
+//         P2,
+//         _,
+//         _,
+//         strawman::PoseidonTranscript<_, _>,
+//         strawman::PoseidonTranscript<_, _>,
+//     >(  
+//         primary_num_vars,
+//         primary_atp,
+//         TrivialCircuit::default(),
+//         secondary_num_vars,
+//         secondary_atp,
+//         TrivialCircuit::default(),
+//         circuit_params.clone(), 
+//         seeded_std_rng(),
+//     )
+//     .unwrap();
+//     let duration_preprocess = preprocess_time.elapsed();
+//     println!("Time for preprocess: {:?}", duration_preprocess);
 
-    let prove_steps_time = Instant::now();
-    let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
-        &ivc_pp, 
-        &mut primary_circuit,
-        &mut secondary_circuit,
-        num_steps,
-        seeded_std_rng(),
-    )
-    .unwrap();
-    let duration_prove_steps = prove_steps_time.elapsed();
-    println!("Time for prove_steps: {:?}", duration_prove_steps);
+//     let prove_steps_time = Instant::now();
+//     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
+//         &ivc_pp, 
+//         &mut primary_circuit,
+//         &mut secondary_circuit,
+//         num_steps,
+//         seeded_std_rng(),
+//     )
+//     .unwrap();
+//     let duration_prove_steps = prove_steps_time.elapsed();
+//     println!("Time for prove_steps: {:?}", duration_prove_steps);
 
-    let primary_dtp = strawman::decider_transcript_param();
-    let secondary_dtp = strawman::decider_transcript_param();
+//     let primary_dtp = strawman::decider_transcript_param();
+//     let secondary_dtp = strawman::decider_transcript_param();
 
-    let prove_decider_time = Instant::now();
-    let (
-        primary_acc,
-        primary_initial_input,
-        primary_output,
-        primary_proof,
-        secondary_acc_before_last,
-        secondary_initial_input,
-        secondary_output,
-        secondary_proof,
-    ) = {
-        let secondary_acc_before_last = secondary_acc.instance.clone();
-        let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
-        let mut secondary_transcript = strawman::PoseidonTranscript::new(secondary_dtp.clone());
-        prove_decider(
-            &ivc_pp,
-            &primary_acc,
-            &mut primary_transcript,
-            &mut secondary_acc,
-            &secondary_circuit,
-            &mut secondary_transcript,
-            seeded_std_rng(),
-        )
-        .unwrap();
+//     let prove_decider_time = Instant::now();
+//     let (
+//         primary_acc,
+//         primary_initial_input,
+//         primary_output,
+//         primary_proof,
+//         secondary_acc_before_last,
+//         secondary_initial_input,
+//         secondary_output,
+//         secondary_proof,
+//     ) = {
+//         let secondary_acc_before_last = secondary_acc.instance.clone();
+//         let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
+//         let mut secondary_transcript = strawman::PoseidonTranscript::new(secondary_dtp.clone());
+//         prove_decider(
+//             &ivc_pp,
+//             &primary_acc,
+//             &mut primary_transcript,
+//             &mut secondary_acc,
+//             &secondary_circuit,
+//             &mut secondary_transcript,
+//             seeded_std_rng(),
+//         )
+//         .unwrap();
 
-        (
-            primary_acc.instance,
-            StepCircuit::<C>::initial_input(&primary_circuit.circuit().step_circuit),
-            StepCircuit::<C>::output(&primary_circuit.circuit().step_circuit),
-            primary_transcript.into_proof(),
-            secondary_acc_before_last,
-            StepCircuit::<C::Secondary>::initial_input(&secondary_circuit.circuit().step_circuit),
-            StepCircuit::<C::Secondary>::output(&secondary_circuit.circuit().step_circuit),
-            secondary_transcript.into_proof(),
-        )
-    };
-    let duration_prove_decider = prove_decider_time.elapsed();
-    println!("Time for prove_decider: {:?}", duration_prove_decider);
+//         (
+//             primary_acc.instance,
+//             StepCircuit::<C>::initial_input(&primary_circuit.circuit().step_circuit),
+//             StepCircuit::<C>::output(&primary_circuit.circuit().step_circuit),
+//             primary_transcript.into_proof(),
+//             secondary_acc_before_last,
+//             StepCircuit::<C::Secondary>::initial_input(&secondary_circuit.circuit().step_circuit),
+//             StepCircuit::<C::Secondary>::output(&secondary_circuit.circuit().step_circuit),
+//             secondary_transcript.into_proof(),
+//         )
+//     };
+//     let duration_prove_decider = prove_decider_time.elapsed();
+//     println!("Time for prove_decider: {:?}", duration_prove_decider);
 
-    let verify_decider_time = Instant::now();
-    let result = {
-        let mut primary_transcript =
-            strawman::PoseidonTranscript::from_proof(primary_dtp, primary_proof.as_slice());
-        let mut secondary_transcript =
-            strawman::PoseidonTranscript::from_proof(secondary_dtp, secondary_proof.as_slice());
-        verify_decider::<_, _, _>(
-            &ivc_vp,
-            num_steps,
-            primary_initial_input,
-            primary_output,
-            &primary_acc,
-            &mut primary_transcript,
-            secondary_initial_input,
-            secondary_output,
-            secondary_acc_before_last.clone(),
-            &[secondary_last_instances.clone()],
-            &mut secondary_transcript,
-            seeded_std_rng(),
-        )
-    };
-    let duration_verify_decider = verify_decider_time.elapsed();
-    println!("Time for verify_decider: {:?}", duration_verify_decider);
-    assert_eq!(result, Ok(()));
+//     let verify_decider_time = Instant::now();
+//     let result = {
+//         let mut primary_transcript =
+//             strawman::PoseidonTranscript::from_proof(primary_dtp, primary_proof.as_slice());
+//         let mut secondary_transcript =
+//             strawman::PoseidonTranscript::from_proof(secondary_dtp, secondary_proof.as_slice());
+//         verify_decider::<_, _, _>(
+//             &ivc_vp,
+//             num_steps,
+//             primary_initial_input,
+//             primary_output,
+//             &primary_acc,
+//             &mut primary_transcript,
+//             secondary_initial_input,
+//             secondary_output,
+//             secondary_acc_before_last.clone(),
+//             &[secondary_last_instances.clone()],
+//             &mut secondary_transcript,
+//             seeded_std_rng(),
+//         )
+//     };
+//     let duration_verify_decider = verify_decider_time.elapsed();
+//     println!("Time for verify_decider: {:?}", duration_verify_decider);
+//     assert_eq!(result, Ok(()));
 
-    (
-        ivc_vp,
-        num_steps,
-        primary_initial_input.to_vec(),
-        primary_output.to_vec(),
-        primary_acc,
-        primary_proof,
-        secondary_initial_input.to_vec(),
-        secondary_output.to_vec(),
-        secondary_acc_before_last,
-        secondary_last_instances,
-        secondary_proof,
-    )
-}
+//     (
+//         ivc_vp,
+//         num_steps,
+//         primary_initial_input.to_vec(),
+//         primary_output.to_vec(),
+//         primary_acc,
+//         primary_proof,
+//         secondary_initial_input.to_vec(),
+//         secondary_output.to_vec(),
+//         secondary_acc_before_last,
+//         secondary_last_instances,
+//         secondary_proof,
+//     )
+// }
 
 // #[test]
 // fn gemini_kzg_ipa_protostar_hyperplonk_ivc_mock() {
@@ -959,7 +957,7 @@ pub mod strawman {
     
     use halo2_ecc::{
         fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip, Selectable},
-        bigint::{self, CRTInteger, FixedCRTInteger, ProperCrtUint},
+        bigint::{self, CRTInteger, FixedCRTInteger, ProperCrtUint, ProperUint},
         ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip, self},
     };
 
@@ -1013,7 +1011,6 @@ pub mod strawman {
             .collect()
     }
 
-    // fix this 
     pub fn fe_from_limbs<F1: ScalarField, F2: ScalarField>(
         limbs: &[F1],
         num_limb_bits: usize,
@@ -1023,10 +1020,9 @@ pub mod strawman {
         })
     }
 
-    pub fn x_y_is_identity<C: CurveAffine>(ec_point: &C) -> [C::Base; 2] {
+    pub fn into_coordinates<C: CurveAffine>(ec_point: &C) -> [C::Base; 2] {
         let coords = ec_point.coordinates().unwrap();
-        // let is_identity = (coords.x().is_zero() & coords.y().is_zero()).into();
-        [*coords.x(), *coords.y()] // fe_from_bool(is_identity)
+        [*coords.x(), *coords.y()]
     }
 
     pub fn accumulation_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
@@ -1116,7 +1112,7 @@ pub mod strawman {
         C::Scalar: ScalarField,
     {
         fn common_commitment(&mut self, ec_point: &C) -> Result<(), crate::Error> {
-            self.state.update(&x_y_is_identity(ec_point));
+            self.state.update(&into_coordinates(ec_point));
             Ok(())
         }
     }
@@ -1270,13 +1266,43 @@ pub mod strawman {
             Ok(self.gate_chip.mul(builder.main(), Existing(lhs.into()), Existing(rhs.into())))
         }
 
-        pub fn inner_product(
+        pub fn powers(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
-            lhs: &[C::Scalar],
-            rhs: &[C::Scalar],
-        ) -> Result<AssignedValue<C::Scalar>, Error> {
-            Ok(self.gate_chip.inner_product_unoptimised(builder.main(), lhs.iter().map(|c| Witness(*c)), rhs.iter().map(|c| Witness(*c))))
+            base: &AssignedValue<C::Scalar>,
+            n: usize,
+        ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
+            Ok(match n {
+                0 => Vec::new(),
+                1 => vec![self.assign_constant(builder, C::Scalar::ONE)?],
+                2 => vec![
+                    self.assign_constant(builder, C::Scalar::ONE)?,
+                    base.clone(),
+                ],
+                _ => {
+                    let mut powers = Vec::with_capacity(n);
+                    powers.push(self.assign_constant(builder, C::Scalar::ONE)?);
+                    powers.push(base.clone());
+                    for _ in 0..n - 2 {
+                        powers.push(self.mul(builder, powers.last().unwrap(), base)?);
+                    }
+                    powers
+                }
+            })
+        }
+
+        pub fn inner_product<'b, 'c>(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            lhs: impl IntoIterator<Item = &'b AssignedValue<C::Scalar>>,
+            rhs: impl IntoIterator<Item = &'c AssignedValue<C::Scalar>>,
+        ) -> Result<AssignedValue<C::Scalar>, Error> 
+        where
+        AssignedValue<C::Scalar>: 'c + 'b,
+        {
+            Ok(self.gate_chip.inner_product(builder.main(), lhs.into_iter().map(|ref_val| Existing(ref_val.into())).collect_vec()
+            ,rhs.into_iter().map(|ref_val| Existing(ref_val.into())).collect_vec()
+        ))
         }
 
         pub fn constrain_equal_base(
@@ -1354,7 +1380,6 @@ pub mod strawman {
             Ok(value.limbs().to_vec())
         }
     
-    //todo: fix this
         pub fn add_base(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1364,13 +1389,7 @@ pub mod strawman {
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let one = base_chip.load_constant(builder.main(), C::Base::ONE);
             let add = base_chip.add_no_carry(builder.main(), a, b);
-            Ok(base_chip.mul(builder.main(), add, one))
-                // Ok(FixedCRTInteger::from_native(add.value.to_biguint().unwrap(), 
-                //     base_chip.num_limbs, base_chip.limb_bits).assign(
-                //     builder.main(),
-                //     base_chip.limb_bits,
-                //     base_chip.native_modulus(),
-                // ))
+            Ok(base_chip.carry_mod(builder.main(), add))
         }
     
         pub fn sub_base(
@@ -1381,12 +1400,7 @@ pub mod strawman {
         ) -> Result<ProperCrtUint<C::Scalar>, Error> {
             let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let sub = base_chip.sub_no_carry(builder.main(), a, b);
-                Ok(FixedCRTInteger::from_native(sub.value.to_biguint().unwrap(), 
-                    base_chip.num_limbs, base_chip.limb_bits).assign(
-                    builder.main(),
-                    base_chip.limb_bits,
-                    base_chip.native_modulus(),
-                ))
+            Ok(base_chip.carry_mod(builder.main(), sub))
         }
 
         pub fn neg_base(
@@ -1522,7 +1536,7 @@ pub mod strawman {
                 .unwrap()
         }
 
-        pub fn constrain_equal_secondary(
+        pub fn constrain_equal_primary(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
@@ -1532,6 +1546,108 @@ pub mod strawman {
             let ecc_chip = EccChip::new(&native_chip);
             ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
             Ok(())
+        }
+
+        pub fn assign_constant_primary(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            constant: C::Secondary,
+        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
+            let native_chip = NativeFieldChip::new(&self.range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.assign_constant_point(builder.main(), constant))
+        }
+
+        pub fn assign_witness_primary(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            witness: C::Secondary,
+        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
+            let native_chip = NativeFieldChip::new(&self.range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.assign_point(builder.main(), witness))
+        }
+
+        pub fn select_primary(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            condition: &AssignedValue<C::Scalar>,
+            when_true: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+            when_false: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
+            let native_chip = NativeFieldChip::new(&self.range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
+        }
+
+        // assume x_1 != x_2 and lhs and rhs are not on infinity
+        pub fn add_primary(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+            rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
+            let native_chip = NativeFieldChip::new(&self.range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+
+            let lhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.x);
+            let lhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.y);
+            let lhs_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_x_is_zero, lhs_y_is_zero);
+
+            let rhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.x);
+            let rhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.y);
+            let rhs_is_zero = ecc_chip.field_chip.mul(builder.main(), rhs_x_is_zero, rhs_y_is_zero);
+            let both_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_is_zero, rhs_is_zero);
+            let out_added = ecc_chip.add_unequal(builder.main(), lhs, rhs, false);
+
+            let identity = self.assign_constant_primary(builder, C::Secondary::identity())?;
+            let out = self.select_primary(builder, &lhs_is_zero, &rhs, &out_added)?;
+            let out_one_could_be_is_zero = self.select_primary(builder, &rhs_is_zero, &lhs, &out)?;
+            self.select_primary(builder, &both_is_zero, &identity, &out_one_could_be_is_zero)            
+        }
+
+        pub fn scalar_mul_primary(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+            le_bits: &[AssignedValue<C::Scalar>],
+        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
+            let max_bits = 1;
+            let native_chip = NativeFieldChip::new(&self.range_chip);
+            let ecc_chip = EccChip::new(&native_chip);
+            Ok(ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), max_bits, WINDOW_BITS))
+        }
+
+        pub fn assign_constant_primary_non_native(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            constant: C,
+        ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let ecc_chip = EccChip::new(&non_native_chip);
+            Ok(ecc_chip.assign_constant_point(builder.main(), constant))
+        }
+
+        pub fn assign_witness_primary_non_native(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            witness: C,
+        ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let ecc_chip = EccChip::new(&non_native_chip);
+            Ok(ecc_chip.assign_point(builder.main(), witness))
+        }
+
+        pub fn select_primary_non_native(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            condition: &AssignedValue<C::Scalar>,
+            when_true: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+            when_false: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+        ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let ecc_chip = EccChip::new(&non_native_chip);
+            Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
 
         pub fn assign_constant_secondary(
@@ -1566,69 +1682,69 @@ pub mod strawman {
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
 
-        // assume x_1 != x_2 and lhs and rhs are not on infinity
-        pub fn add_secondary(
-            &self,
-            builder: &mut SinglePhaseCoreManager<C::Scalar>,
-            lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
-            rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
-        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            let native_chip = NativeFieldChip::new(&self.range_chip);
-            let ecc_chip = EccChip::new(&native_chip);
+        // // assume x_1 != x_2 and lhs and rhs are not on infinity
+        // pub fn add_secondary(
+        //     &self,
+        //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        //     lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+        //     rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+        // ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
+        //     let native_chip = NativeFieldChip::new(&self.range_chip);
+        //     let ecc_chip = EccChip::new(&native_chip);
 
-            let lhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.x);
-            let lhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.y);
-            let lhs_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_x_is_zero, lhs_y_is_zero);
+        //     let lhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.x);
+        //     let lhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &lhs.y);
+        //     let lhs_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_x_is_zero, lhs_y_is_zero);
 
-            let rhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.x);
-            let rhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.y);
-            let rhs_is_zero = ecc_chip.field_chip.mul(builder.main(), rhs_x_is_zero, rhs_y_is_zero);
-            let both_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_is_zero, rhs_is_zero);
-            let out_added = ecc_chip.add_unequal(builder.main(), lhs, rhs, false);
+        //     let rhs_x_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.x);
+        //     let rhs_y_is_zero = ecc_chip.field_chip.is_zero(builder.main(), &rhs.y);
+        //     let rhs_is_zero = ecc_chip.field_chip.mul(builder.main(), rhs_x_is_zero, rhs_y_is_zero);
+        //     let both_is_zero = ecc_chip.field_chip.mul(builder.main(), lhs_is_zero, rhs_is_zero);
+        //     let out_added = ecc_chip.add_unequal(builder.main(), lhs, rhs, false);
 
-            let identity = self.assign_constant_secondary(builder, C::Secondary::identity())?;
-            let out = self.select_secondary(builder, &lhs_is_zero, &rhs, &out_added)?;
-            let out_one_could_be_is_zero = self.select_secondary(builder, &rhs_is_zero, &lhs, &out)?;
-            self.select_secondary(builder, &both_is_zero, &identity, &out_one_could_be_is_zero)            
-        }
+        //     let identity = self.assign_constant_secondary(builder, C::Secondary::identity())?;
+        //     let out = self.select_secondary(builder, &lhs_is_zero, &rhs, &out_added)?;
+        //     let out_one_could_be_is_zero = self.select_secondary(builder, &rhs_is_zero, &lhs, &out)?;
+        //     self.select_secondary(builder, &both_is_zero, &identity, &out_one_could_be_is_zero)            
+        // }
 
-        pub fn scalar_mul_secondary(
-            &self,
-            builder: &mut SinglePhaseCoreManager<C::Scalar>,
-            base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
-            le_bits: &[AssignedValue<C::Scalar>],
-        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
-            let max_bits = NUM_LIMB_BITS;
-            let native_chip = NativeFieldChip::new(&self.range_chip);
-            let ecc_chip = EccChip::new(&native_chip);
-            Ok(ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), max_bits, WINDOW_BITS))
-        }
+        // pub fn scalar_mul_secondary(
+        //     &self,
+        //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        //     base: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+        //     le_bits: &[AssignedValue<C::Scalar>],
+        // ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error> {
+        //     let max_bits = 1;
+        //     let native_chip = NativeFieldChip::new(&self.range_chip);
+        //     let ecc_chip = EccChip::new(&native_chip);
+        //     Ok(ecc_chip.scalar_mult::<C::Secondary>(builder.main(), base.clone(), le_bits.to_vec(), max_bits, WINDOW_BITS))
+        // }
 
-        pub fn fixed_base_msm_secondary(
-            &self,
-            builder: &mut SinglePhaseCoreManager<C::Scalar>,
-            bases: &[C::Secondary],
-            scalars: Vec<ProperCrtUint<C::Scalar>>,
-        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
-            let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
-            let max_scalar_bits_per_cell = NUM_LIMB_BITS;
-            let native_chip = NativeFieldChip::new(&self.range_chip);
-            let ecc_chip = EccChip::new(&native_chip);
-            Ok(ecc_chip.fixed_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_scalar_bits_per_cell))
-        }
+        // pub fn fixed_base_msm_secondary(
+        //     &self,
+        //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        //     bases: &[C::Secondary],
+        //     scalars: Vec<ProperCrtUint<C::Scalar>>,
+        // ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
+        //     let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
+        //     let max_scalar_bits_per_cell = NUM_LIMB_BITS;
+        //     let native_chip = NativeFieldChip::new(&self.range_chip);
+        //     let ecc_chip = EccChip::new(&native_chip);
+        //     Ok(ecc_chip.fixed_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_scalar_bits_per_cell))
+        // }
 
-        pub fn variable_base_msm_secondary(
-            &self,
-            builder: &mut SinglePhaseCoreManager<C::Scalar>,
-            bases: &[EcPoint<C::Scalar, AssignedValue<C::Scalar>>],
-            scalars: Vec<ProperCrtUint<C::Scalar>>,
-        ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
-            let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
-            let max_bits = NUM_LIMB_BITS;
-            let native_chip = NativeFieldChip::new(&self.range_chip);
-            let ecc_chip = EccChip::new(&native_chip);
-            Ok(ecc_chip.variable_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_bits))
-        }
+        // pub fn variable_base_msm_secondary(
+        //     &self,
+        //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        //     bases: &[EcPoint<C::Scalar, AssignedValue<C::Scalar>>],
+        //     scalars: Vec<ProperCrtUint<C::Scalar>>,
+        // ) -> Result<EcPoint<C::Scalar, AssignedValue<C::Scalar>>, Error>{
+        //     let scalar_limbs_vec = scalars.iter().map(|scalar| scalar.limbs().to_vec()).collect();
+        //     let max_bits = NUM_LIMB_BITS;
+        //     let native_chip = NativeFieldChip::new(&self.range_chip);
+        //     let ecc_chip = EccChip::new(&native_chip);
+        //     Ok(ecc_chip.variable_base_msm::<C::Secondary>(builder, bases, scalar_limbs_vec, max_bits))
+        // }
 
     }
 
@@ -1643,36 +1759,62 @@ pub mod strawman {
             chip
         }
 
-        pub fn hash_state<Comm: AsRef<C::Secondary>>(
+        pub fn hash_state<Comm: AsRef<C>>(
             spec: &OptimizedPoseidonSpec<C::Scalar, T, RATE>,
             vp_digest: C::Scalar,
             step_idx: usize,
             initial_input: &[C::Scalar],
             output: &[C::Scalar],
-            acc: &ProtostarAccumulatorInstance<C::Base, Comm>,
+            acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
         ) -> C::Scalar {
             let mut poseidon = PoseidonHash::from_spec(spec.clone());
-            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
             let inputs = iter::empty()
                 .chain([vp_digest, C::Scalar::from(step_idx as u64)])
                 .chain(initial_input.iter().copied())
                 .chain(output.iter().copied())
-                .chain(fe_to_limbs(acc.instances[0][0]))
-                .chain(fe_to_limbs(acc.instances[0][1]))
-                .chain(
-                    acc.witness_comms
-                        .iter()
-                        .map(AsRef::as_ref)
-                        .flat_map(x_y_is_identity),
-                )
-                .chain(acc.challenges.iter().copied().flat_map(fe_to_limbs))
-                .chain(fe_to_limbs(acc.u))
-                .chain(x_y_is_identity(acc.e_comm.as_ref()))
-                .chain(acc.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
+                .chain(acc.instances[0])
+                // .chain(acc.instances[0][1])
+                // .chain(
+                //     acc.witness_comms
+                //         .iter()
+                //         .map(AsRef::as_ref)
+                //         .flat_map(into_coordinates),
+                // )
+                .chain(acc.challenges)
+                .chain(iter::once(acc.u))
+                // .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
+                .chain(acc.compressed_e_sum.into_iter())
                 .collect_vec();
             poseidon.update(inputs.as_slice());
             fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
         }
+
+        // pub fn hash_state_acc_prime<Comm: AsRef<C>>(
+        //     spec: &OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+        //     vp_digest: C::Scalar,
+        //     acc_prime: &ProtostarAccumulatorInstance<C::Base, Comm>,
+        // ) -> C::Scalar {
+        //     let mut poseidon = PoseidonHash::from_spec(spec.clone());
+        //     let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
+        //     let inputs = iter::empty()
+        //     // todo maybe dont need vpdigest
+        //         .chain(iter::once(vp_digest))
+        //         .chain(fe_to_limbs(acc_prime.instances[0][0]))
+        //         .chain(fe_to_limbs(acc_prime.instances[0][1]))
+        //         .chain(
+        //             acc_prime.witness_comms
+        //                 .iter()
+        //                 .map(AsRef::as_ref)
+        //                 .flat_map(into_coordinates),
+        //         )
+        //         .chain(acc_prime.challenges.iter().copied().flat_map(fe_to_limbs))
+        //         .chain(fe_to_limbs(acc_prime.u))
+        //         .chain(into_coordinates(acc_prime.e_comm.as_ref()))
+        //         .chain(acc_prime.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
+        //         .collect_vec();
+        //     poseidon.update(inputs.as_slice());
+        //     fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
+        // }
 
         pub fn hash_assigned_state(
             &self,
@@ -1682,26 +1824,63 @@ pub mod strawman {
             initial_input: &[AssignedValue<C::Scalar>],
             output: &[AssignedValue<C::Scalar>],
             acc: &AssignedProtostarAccumulatorInstance<
-                ProperCrtUint<C::Scalar>,
-                EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+                AssignedValue<C::Scalar>,
+                EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
             >,
         ) -> Result<AssignedValue<C::Scalar>, Error> {
             let inputs = iter::empty()
                 .chain([vp_digest, step_idx])
                 .chain(initial_input)
                 .chain(output)
-                .chain(acc.instances[0][0].limbs())
-                .chain(acc.instances[0][1].limbs())
+                .chain(acc.instances[0][0])
+                .chain(acc.instances[0][1])
                 .chain(
                     acc.witness_comms
                         .iter()
                         .flat_map(|point| vec![point.x(), point.y()].into_iter()),
                 )
-                .chain(acc.challenges.iter().flat_map(ProperCrtUint::limbs))
-                .chain(acc.u.limbs())
+                .chain(acc.challenges.iter())
+                .chain(acc.u)
                 .chain(vec![acc.e_comm.x(), acc.e_comm.y()].into_iter())
                 .chain(
                     acc.compressed_e_sum
+                        .as_ref()
+                        .into_iter()
+                        .flatten(),
+                )
+                .copied()
+                .collect_vec();
+            let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
+            poseidon_chip.update(&inputs);
+            let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
+            // change to strict
+            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
+            Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
+        }
+
+        pub fn hash_assigned_acc_prime(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            vp_digest: &AssignedValue<C::Scalar>,
+            acc_prime: &AssignedProtostarAccumulatorInstance<
+                ProperCrtUint<C::Scalar>,
+                EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+            >,
+        ) -> Result<AssignedValue<C::Scalar>, Error> {
+            let inputs = iter::empty()
+                .chain([vp_digest])
+                .chain(acc_prime.instances[0][0].limbs().iter())
+                .chain(acc_prime.instances[0][1].limbs().iter())
+                .chain(
+                    acc_prime.witness_comms
+                        .iter()
+                        .flat_map(|point| vec![point.x(), point.y()].into_iter()),
+                )
+                .chain(acc_prime.challenges.iter().flat_map(ProperCrtUint::limbs))
+                .chain(acc_prime.u.limbs())
+                .chain(vec![acc_prime.e_comm.x(), acc_prime.e_comm.y()].into_iter())
+                .chain(
+                    acc_prime.compressed_e_sum
                         .as_ref()
                         .map(ProperCrtUint::limbs)
                         .into_iter()
@@ -1715,6 +1894,205 @@ pub mod strawman {
             // change to strict
             let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
             Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
+        }
+
+    }
+
+    pub struct PoseidonNativeTranscriptChip<C: TwoChainCurve> 
+    where
+        C::Scalar: BigPrimeField,
+        C::Base: BigPrimeField,
+    {
+        poseidon_chip: PoseidonSponge<C::Scalar, T, RATE>,
+        chip: Chip<C>,
+        proof: Value<Cursor<Vec<u8>>>,
+    }
+
+    #[derive(Clone)]
+    pub struct NativeChallenge<F: BigPrimeField> {
+        pub challenge_le_bits: Vec<AssignedValue<F>>,
+        pub challenge: AssignedValue<F>,
+    }
+
+    impl<F: BigPrimeField> AsRef<AssignedValue<F>> for NativeChallenge<F> {
+        fn as_ref(&self) -> &AssignedValue<F> {
+            &self.challenge
+        }
+    }
+
+    impl<C: TwoChainCurve> PoseidonNativeTranscriptChip<C>
+    where
+        C: TwoChainCurve,
+        C::Base: BigPrimeField + PrimeFieldBits,
+        C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
+    {
+
+        pub fn new(ctx: &mut Context<C::Scalar>, spec: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+            chip: Chip<C>, proof: Value<Vec<u8>>) -> Self {
+            let poseidon_chip = PoseidonSponge::from_spec(ctx, spec);
+            PoseidonNativeTranscriptChip {
+                poseidon_chip,
+                chip,
+                proof: proof.map(Cursor::new),
+            }
+        }
+
+        pub fn dummy_proof(avp: &ProtostarAccumulationVerifierParam<C::Scalar>) -> Vec<u8> {
+            let uncompressed_comm_size = C::Scalar::ZERO.to_repr().as_ref().len() * 2;
+            let scalar_size = C::Base::ZERO.to_repr().as_ref().len();
+            let proof_size = avp.num_folding_witness_polys() * uncompressed_comm_size
+                + match avp.strategy {
+                    NoCompressing => avp.num_cross_terms * uncompressed_comm_size,
+                    Compressing => uncompressed_comm_size + avp.num_cross_terms * scalar_size,
+            };
+            vec![0; proof_size]
+        }
+
+        pub fn challenge_to_le_bits(
+            &self,
+            r: &NativeChallenge<C::Scalar>,
+        ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
+            Ok(r.challenge_le_bits.clone())
+        }
+
+        pub fn common_field_element(
+            &mut self,
+            value: &AssignedValue<C::Scalar>,
+        ) -> Result<(), Error> {
+            self.poseidon_chip.update(&[*value]);
+            Ok(())
+        }
+
+        pub fn common_commitment(
+            &mut self,
+            value: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+        ) -> Result<(), Error> {
+            [value.x(), value.y()].iter().filter_map(|&opt| Some(opt))
+            .for_each(|&v| v.limbs().iter()
+            .for_each(|&limb| self.poseidon_chip.update(&[limb])));
+            Ok(())
+        }
+
+        pub fn read_field_element(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        ) -> Result<AssignedValue<C::Scalar>, Error> {
+            let fe = self.proof.as_mut().and_then(|proof| {
+                let mut repr = <C::Scalar as PrimeField>::Repr::default();
+                if proof.read_exact(repr.as_mut()).is_err() {
+                    return Value::unknown();
+                }
+                C::Scalar::from_repr_vartime(repr)
+                    .map(Value::known)
+                    .unwrap_or_else(Value::unknown)
+            });
+            let fe = self.chip.assign_witness(builder, fe.assign().unwrap_or_default())?;
+            self.common_field_element(&fe)?;
+            Ok(fe)
+        }
+
+        pub fn read_commitment(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
+            let comm = self.proof.as_mut().and_then(|proof| {
+                let mut reprs = [<C::Base as PrimeField>::Repr::default(); 2];
+                for repr in &mut reprs {
+                    if proof.read_exact(repr.as_mut()).is_err() {
+                        return Value::unknown();
+                    }
+                }
+                let [x, y] = reprs.map(|repr| {
+                    C::Base::from_repr_vartime(repr)
+                        .map(Value::known)
+                        .unwrap_or_else(Value::unknown)
+                });
+                x.zip(y).and_then(|(x, y)| {
+                    Option::from(C::from_xy(x, y))
+                        .map(Value::known)
+                        .unwrap_or_else(Value::unknown)
+                })
+            });
+            let comm = self.chip.assign_witness_primary_non_native(builder, comm.assign().unwrap_or_default())?;
+            self.common_commitment(&comm)?;
+            Ok(comm)
+        }
+
+        pub fn squeeze_challenges(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            n: usize,
+        ) -> Result<Vec<NativeChallenge<C::Scalar>>, Error> {
+            (0..n).map(|_| self.squeeze_challenge(builder)).collect()
+        }
+    
+        pub fn common_field_elements(
+            &mut self,
+            fes: &[AssignedValue<C::Scalar>],
+        ) -> Result<(), Error> {
+            fes.iter().try_for_each(|fe| self.common_field_element(fe))
+        }
+    
+        pub fn read_field_elements(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            n: usize,
+        ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
+            (0..n).map(|_| self.read_field_element(builder)).collect()
+        }
+    
+        pub fn common_commitments(
+            &mut self,
+            comms: &[EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>],
+        ) -> Result<(), Error> {
+            comms
+                .iter()
+                .try_for_each(|comm| self.common_commitment(comm))
+        }
+    
+        pub fn read_commitments(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            n: usize,
+        ) -> Result<Vec<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>>, Error> {
+            (0..n).map(|_| self.read_commitment(builder)).collect()
+        }
+    
+        pub fn absorb_accumulator(
+            &mut self,
+            acc: &AssignedProtostarAccumulatorInstance<
+                AssignedValue<C::Scalar>,
+                EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+            >,
+        ) -> Result<(), Error> {
+            acc.instances
+                .iter()
+                .try_for_each(|instances| self.common_field_elements(instances))?;
+            self.common_commitments(&acc.witness_comms)?;
+            self.common_field_elements(&acc.challenges)?;
+            self.common_field_element(&acc.u)?;
+            self.common_commitment(&acc.e_comm)?;
+            if let Some(compressed_e_sum) = acc.compressed_e_sum.as_ref() {
+                self.common_field_element(compressed_e_sum)?;
+            }
+            Ok(())
+        }
+        
+        pub fn squeeze_challenge(
+            &mut self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        ) -> Result<NativeChallenge<C::Scalar>, Error> {
+            let range_chip = &self.chip.range_chip;
+            let hash = self.poseidon_chip.squeeze(builder.main(), &range_chip.gate);
+            self.poseidon_chip.update(&[hash]);
+            // todo change this to num_to_bits_strict and use as r_le_bits in the verifier
+            let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, RANGE_BITS).into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
+            let challenge = range_chip.gate.bits_to_num(builder.main(), &challenge_le_bits);                                   
+
+            Ok(NativeChallenge {
+                challenge_le_bits,
+                challenge,
+            })
         }
     }
 
@@ -1773,7 +2151,7 @@ pub mod strawman {
             &self,
             challenge: &Challenge<C::Scalar>,
         ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
-            Ok(challenge.scalar.limbs().to_vec())
+            Ok(challenge.le_bits.clone())
         }
 
         pub fn common_field_element(

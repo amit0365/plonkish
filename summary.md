@@ -75,6 +75,11 @@ Time for preprocess: 1.995075083s
 Time for prove_steps: 5.060839917s
 Time for prove_decider: 1.908527459s
 
+##### TODO
+
+check with no lookups, advice ~ 170k compared to with lookups 253k in nocompressing, why so many advices?
+
+no compressing ~ 253k compressing ~ 300k but only one scalar_mul extra which costs 18k where else?
 
 Start:   prove_accumulation_from_nark-primary-19
 ··Start:   witness_collector-0

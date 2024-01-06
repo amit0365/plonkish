@@ -205,7 +205,6 @@ pub(super) fn permutation_polys<F: PrimeField>(
         let (i0, j0) = cycle[0];
         let mut last = permutations[poly_index[i0]][j0];
         for &(i, j) in cycle.iter().cycle().skip(1).take(cycle.len()) {
-            // todo this gives error for multiple advice colns, maybe axiom api doing split and copying gates is causing this
             assert_ne!(j, 0);
             mem::swap(&mut permutations[poly_index[i]][j], &mut last);
         }

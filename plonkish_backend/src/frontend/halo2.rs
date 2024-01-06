@@ -154,7 +154,6 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             vec![(column_idx[&key], 1)]
         })
         .collect_vec();
-    // todo check these maybe errors when multiple advice cols are used
     let fixed_permutation_idx_for_permutation_constraints = cs
         .permutation()
         .get_fixed_columns()

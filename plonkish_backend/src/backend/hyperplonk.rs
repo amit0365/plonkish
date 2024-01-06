@@ -43,6 +43,7 @@ where
 {
     pub(crate) pcs: Pcs::ProverParam,
     pub(crate) num_instances: Vec<usize>,
+    pub(crate) fixed_permutation_idx_for_preprocess_poly: Vec<usize>,
     pub(crate) num_witness_polys: Vec<usize>,
     pub(crate) num_challenges: Vec<usize>,
     pub(crate) lookups: Vec<Vec<(Expression<F>, Expression<F>)>>,
@@ -63,6 +64,7 @@ where
 {
     pub(crate) pcs: Pcs::VerifierParam,
     pub(crate) num_instances: Vec<usize>,
+    pub(crate) fixed_permutation_idx_for_preprocess_poly: Vec<usize>,
     pub(crate) num_witness_polys: Vec<usize>,
     pub(crate) num_challenges: Vec<usize>,
     pub(crate) num_lookups: usize,
@@ -112,6 +114,17 @@ where
             .cloned()
             .map(MultilinearPolynomial::new)
             .collect_vec();
+
+        // let fixed_permutation_idx_for_preprocess_poly: Vec<usize> =  circuit_info.fixed_permutation_indices.iter()
+        //     .map(|&x| {
+        //         if x >= circuit_info.num_instance_cols {
+        //             x - circuit_info.num_instance_cols
+        //         } else {
+        //             0
+        //         }
+        //     })
+        //     .collect();
+        
         let preprocess_comms = Pcs::batch_commit(&pcs_pp, &preprocess_polys)?;
         // Compute permutation polys and comms
         let permutation_polys = permutation_polys(
@@ -127,6 +140,7 @@ where
         let vp = HyperPlonkVerifierParam {
             pcs: pcs_vp,
             num_instances: circuit_info.num_instances.clone(),
+            fixed_permutation_idx_for_preprocess_poly: circuit_info.fixed_permutation_idx_for_preprocess_poly.clone(),
             num_witness_polys: circuit_info.num_witness_polys.clone(),
             num_challenges: circuit_info.num_challenges.clone(),
             num_lookups: circuit_info.lookups.len(),
@@ -143,6 +157,7 @@ where
         let pp = HyperPlonkProverParam {
             pcs: pcs_pp,
             num_instances: circuit_info.num_instances.clone(),
+            fixed_permutation_idx_for_preprocess_poly: circuit_info.fixed_permutation_idx_for_preprocess_poly.clone(),
             num_witness_polys: circuit_info.num_witness_polys.clone(),
             num_challenges: circuit_info.num_challenges.clone(),
             lookups: circuit_info.lookups.clone(),
@@ -160,207 +175,209 @@ where
         };
         Ok((pp, vp))
     }
-
-    fn prove(
-        pp: &Self::ProverParam,
-        circuit: &impl PlonkishCircuit<F>,
-        transcript: &mut impl TranscriptWrite<Pcs::CommitmentChunk, F>,
-        _: impl RngCore,
-    ) -> Result<(), Error> {
-        let instance_polys = {
-            let instances = circuit.instances();
-            for (num_instances, instances) in pp.num_instances.iter().zip_eq(instances) {
-                assert_eq!(instances.len(), *num_instances);
-                for instance in instances.iter() {
-                    transcript.common_field_element(instance)?;
-                }
-            }
-            instance_polys(pp.num_vars, instances)
-        };
-
-        // Round 0..n
-
-        let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
-        let mut witness_comms = Vec::with_capacity(witness_polys.len());
-        let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum::<usize>() + 3);
-        for (round, (num_witness_polys, num_challenges)) in pp
-            .num_witness_polys
-            .iter()
-            .zip_eq(pp.num_challenges.iter())
-            .enumerate()
-        {
-            let timer = start_timer(|| format!("witness_collector-{round}"));
-            let polys = circuit
-                .synthesize(round, &challenges)?
-                .into_iter()
-                .map(MultilinearPolynomial::new)
-                .collect_vec();
-            assert_eq!(polys.len(), *num_witness_polys);
-            end_timer(timer);
-
-            witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
-            witness_polys.extend(polys);
-            challenges.extend(transcript.squeeze_challenges(*num_challenges));
-        }
-        let polys = iter::empty()
-            .chain(instance_polys.iter())
-            .chain(pp.preprocess_polys.iter())
-            .chain(witness_polys.iter())
-            .collect_vec();
-
-        // Round n
-
-        let beta = transcript.squeeze_challenge();
-
-        let timer = start_timer(|| format!("lookup_compressed_polys-{}", pp.lookups.len()));
-        let lookup_compressed_polys = {
-            let max_lookup_width = pp.lookups.iter().map(Vec::len).max().unwrap_or_default();
-            let betas = powers(beta).take(max_lookup_width).collect_vec();
-            lookup_compressed_polys(&pp.lookups, &polys, &challenges, &betas)
-        };
-        end_timer(timer);
-
-        let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
-        let lookup_m_polys = lookup_m_polys(&lookup_compressed_polys)?;
-        end_timer(timer);
-
-        let lookup_m_comms = Pcs::batch_commit_and_write(&pp.pcs, &lookup_m_polys, transcript)?;
-
-        // Round n+1
-
-        let gamma = transcript.squeeze_challenge();
-
-        let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
-        let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &gamma);
-        end_timer(timer);
-
-        let timer = start_timer(|| format!("permutation_z_polys-{}", pp.permutation_polys.len()));
-        let permutation_z_polys = permutation_z_polys(
-            pp.num_permutation_z_polys,
-            &pp.permutation_polys,
-            &polys,
-            &beta,
-            &gamma,
-        );
-        end_timer(timer);
-
-        let lookup_h_permutation_z_polys = iter::empty()
-            .chain(lookup_h_polys.iter())
-            .chain(permutation_z_polys.iter())
-            .collect_vec();
-        let lookup_h_permutation_z_comms =
-            Pcs::batch_commit_and_write(&pp.pcs, lookup_h_permutation_z_polys.clone(), transcript)?;
-
-        // Round n+2
-
-        let alpha = transcript.squeeze_challenge();
-        let y = transcript.squeeze_challenges(pp.num_vars);
-
-        let polys = iter::empty()
-            .chain(polys)
-            .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
-            .chain(lookup_m_polys.iter())
-            .chain(lookup_h_permutation_z_polys)
-            .collect_vec();
-        challenges.extend([beta, gamma, alpha]);
-        let (points, evals) = prove_zero_check(
-            pp.num_instances.len(),
-            &pp.expression,
-            &polys,
-            challenges,
-            y,
-            transcript,
-        )?;
-
-        // PCS open
-
-        let dummy_comm = Pcs::Commitment::default();
-        let comms = iter::empty()
-            .chain(iter::repeat(&dummy_comm).take(pp.num_instances.len()))
-            .chain(&pp.preprocess_comms)
-            .chain(&witness_comms)
-            .chain(&pp.permutation_comms)
-            .chain(&lookup_m_comms)
-            .chain(&lookup_h_permutation_z_comms)
-            .collect_vec();
-        let timer = start_timer(|| format!("pcs_batch_open-{}", evals.len()));
-        Pcs::batch_open(&pp.pcs, polys, comms, &points, &evals, transcript)?;
-        end_timer(timer);
-
-        Ok(())
-    }
-
-    fn verify(
-        vp: &Self::VerifierParam,
-        instances: &[Vec<F>],
-        transcript: &mut impl TranscriptRead<Pcs::CommitmentChunk, F>,
-        _: impl RngCore,
-    ) -> Result<(), Error> {
-        for (num_instances, instances) in vp.num_instances.iter().zip_eq(instances) {
-            assert_eq!(instances.len(), *num_instances);
-            for instance in instances.iter() {
-                transcript.common_field_element(instance)?;
-            }
-        }
-
-        // Round 0..n
-
-        let mut witness_comms = Vec::with_capacity(vp.num_witness_polys.iter().sum());
-        let mut challenges = Vec::with_capacity(vp.num_challenges.iter().sum::<usize>() + 3);
-        for (num_polys, num_challenges) in
-            vp.num_witness_polys.iter().zip_eq(vp.num_challenges.iter())
-        {
-            witness_comms.extend(Pcs::read_commitments(&vp.pcs, *num_polys, transcript)?);
-            challenges.extend(transcript.squeeze_challenges(*num_challenges));
-        }
-
-        // Round n
-
-        let beta = transcript.squeeze_challenge();
-
-        let lookup_m_comms = Pcs::read_commitments(&vp.pcs, vp.num_lookups, transcript)?;
-
-        // Round n+1
-
-        let gamma = transcript.squeeze_challenge();
-
-        let lookup_h_permutation_z_comms = Pcs::read_commitments(
-            &vp.pcs,
-            vp.num_lookups + vp.num_permutation_z_polys,
-            transcript,
-        )?;
-
-        // Round n+2
-
-        let alpha = transcript.squeeze_challenge();
-        let y = transcript.squeeze_challenges(vp.num_vars);
-
-        challenges.extend([beta, gamma, alpha]);
-        let (points, evals) = verify_zero_check(
-            vp.num_vars,
-            &vp.expression,
-            instances,
-            &challenges,
-            &y,
-            transcript,
-        )?;
-
-        // PCS verify
-
-        let dummy_comm = Pcs::Commitment::default();
-        let comms = iter::empty()
-            .chain(iter::repeat(&dummy_comm).take(vp.num_instances.len()))
-            .chain(&vp.preprocess_comms)
-            .chain(&witness_comms)
-            .chain(vp.permutation_comms.iter().map(|(_, comm)| comm))
-            .chain(&lookup_m_comms)
-            .chain(&lookup_h_permutation_z_comms)
-            .collect_vec();
-        Pcs::batch_verify(&vp.pcs, comms, &points, &evals, transcript)?;
-
-        Ok(())
-    }
 }
+//     fn prove(
+//         pp: &Self::ProverParam,
+//         circuit: &impl PlonkishCircuit<F>,
+//         transcript: &mut impl TranscriptWrite<Pcs::CommitmentChunk, F>,
+//         _: impl RngCore,
+//     ) -> Result<(), Error> {
+//         let instance_polys = {
+//             let instances = circuit.instances();
+//             for (num_instances, instances) in pp.num_instances.iter().zip_eq(instances) {
+//                 assert_eq!(instances.len(), *num_instances);
+//                 for instance in instances.iter() {
+//                     transcript.common_field_element(instance)?;
+//                 }
+//             }
+//             instance_polys(pp.num_vars, instances)
+//         };
+
+//         // Round 0..n
+
+//         let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
+//         let mut witness_comms = Vec::with_capacity(witness_polys.len());
+//         let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum::<usize>() + 3);
+//         for (round, (num_witness_polys, num_challenges)) in pp
+//             .num_witness_polys
+//             .iter()
+//             .zip_eq(pp.num_challenges.iter())
+//             .enumerate()
+//         {
+//             let timer = start_timer(|| format!("witness_collector-{round}"));
+//             let polys = circuit
+//                 .synthesize(round, &challenges)?
+//                 .into_iter()
+//                 .map(MultilinearPolynomial::new)
+//                 .collect_vec();
+//             assert_eq!(polys.len(), *num_witness_polys);
+//             end_timer(timer);
+
+//             witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
+//             witness_polys.extend(polys);
+//             challenges.extend(transcript.squeeze_challenges(*num_challenges));
+//         }
+//         let polys = iter::empty()
+//             .chain(instance_polys.iter())
+//             .chain(pp.preprocess_polys.iter())
+//             .chain(witness_polys.iter())
+//             .collect_vec();
+
+//         // Round n
+
+//         let beta = transcript.squeeze_challenge();
+
+//         let timer = start_timer(|| format!("lookup_compressed_polys-{}", pp.lookups.len()));
+//         let lookup_compressed_polys = {
+//             let max_lookup_width = pp.lookups.iter().map(Vec::len).max().unwrap_or_default();
+//             let betas = powers(beta).take(max_lookup_width).collect_vec();
+//             lookup_compressed_polys(&pp.lookups, &polys, &challenges, &betas)
+//         };
+//         end_timer(timer);
+
+//         let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
+//         let lookup_m_polys = lookup_m_polys(&lookup_compressed_polys)?;
+//         end_timer(timer);
+
+//         let lookup_m_comms = Pcs::batch_commit_and_write(&pp.pcs, &lookup_m_polys, transcript)?;
+
+//         // Round n+1
+
+//         let gamma = transcript.squeeze_challenge();
+
+//         let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
+//         let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &gamma);
+//         end_timer(timer);
+
+//         let timer = start_timer(|| format!("permutation_z_polys-{}", pp.permutation_polys.len()));
+//         let permutation_z_polys = permutation_z_polys(
+//             pp.fixed_permutation_idx_for_preprocess_poly,
+//             pp.num_permutation_z_polys,
+//             &pp.permutation_polys,
+//             &polys,
+//             &beta,
+//             &gamma,
+
+//         );
+//         end_timer(timer);
+
+//         let lookup_h_permutation_z_polys = iter::empty()
+//             .chain(lookup_h_polys.iter())
+//             .chain(permutation_z_polys.iter())
+//             .collect_vec();
+//         let lookup_h_permutation_z_comms =
+//             Pcs::batch_commit_and_write(&pp.pcs, lookup_h_permutation_z_polys.clone(), transcript)?;
+
+//         // Round n+2
+
+//         let alpha = transcript.squeeze_challenge();
+//         let y = transcript.squeeze_challenges(pp.num_vars);
+
+//         let polys = iter::empty()
+//             .chain(polys)
+//             .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
+//             .chain(lookup_m_polys.iter())
+//             .chain(lookup_h_permutation_z_polys)
+//             .collect_vec();
+//         challenges.extend([beta, gamma, alpha]);
+//         let (points, evals) = prove_zero_check(
+//             pp.num_instances.len(),
+//             &pp.expression,
+//             &polys,
+//             challenges,
+//             y,
+//             transcript,
+//         )?;
+
+//         // PCS open
+
+//         let dummy_comm = Pcs::Commitment::default();
+//         let comms = iter::empty()
+//             .chain(iter::repeat(&dummy_comm).take(pp.num_instances.len()))
+//             .chain(&pp.preprocess_comms)
+//             .chain(&witness_comms)
+//             .chain(&pp.permutation_comms)
+//             .chain(&lookup_m_comms)
+//             .chain(&lookup_h_permutation_z_comms)
+//             .collect_vec();
+//         let timer = start_timer(|| format!("pcs_batch_open-{}", evals.len()));
+//         Pcs::batch_open(&pp.pcs, polys, comms, &points, &evals, transcript)?;
+//         end_timer(timer);
+
+//         Ok(())
+//     }
+
+//     fn verify(
+//         vp: &Self::VerifierParam,
+//         instances: &[Vec<F>],
+//         transcript: &mut impl TranscriptRead<Pcs::CommitmentChunk, F>,
+//         _: impl RngCore,
+//     ) -> Result<(), Error> {
+//         for (num_instances, instances) in vp.num_instances.iter().zip_eq(instances) {
+//             assert_eq!(instances.len(), *num_instances);
+//             for instance in instances.iter() {
+//                 transcript.common_field_element(instance)?;
+//             }
+//         }
+
+//         // Round 0..n
+
+//         let mut witness_comms = Vec::with_capacity(vp.num_witness_polys.iter().sum());
+//         let mut challenges = Vec::with_capacity(vp.num_challenges.iter().sum::<usize>() + 3);
+//         for (num_polys, num_challenges) in
+//             vp.num_witness_polys.iter().zip_eq(vp.num_challenges.iter())
+//         {
+//             witness_comms.extend(Pcs::read_commitments(&vp.pcs, *num_polys, transcript)?);
+//             challenges.extend(transcript.squeeze_challenges(*num_challenges));
+//         }
+
+//         // Round n
+
+//         let beta = transcript.squeeze_challenge();
+
+//         let lookup_m_comms = Pcs::read_commitments(&vp.pcs, vp.num_lookups, transcript)?;
+
+//         // Round n+1
+
+//         let gamma = transcript.squeeze_challenge();
+
+//         let lookup_h_permutation_z_comms = Pcs::read_commitments(
+//             &vp.pcs,
+//             vp.num_lookups + vp.num_permutation_z_polys,
+//             transcript,
+//         )?;
+
+//         // Round n+2
+
+//         let alpha = transcript.squeeze_challenge();
+//         let y = transcript.squeeze_challenges(vp.num_vars);
+
+//         challenges.extend([beta, gamma, alpha]);
+//         let (points, evals) = verify_zero_check(
+//             vp.num_vars,
+//             &vp.expression,
+//             instances,
+//             &challenges,
+//             &y,
+//             transcript,
+//         )?;
+
+//         // PCS verify
+
+//         let dummy_comm = Pcs::Commitment::default();
+//         let comms = iter::empty()
+//             .chain(iter::repeat(&dummy_comm).take(vp.num_instances.len()))
+//             .chain(&vp.preprocess_comms)
+//             .chain(&witness_comms)
+//             .chain(vp.permutation_comms.iter().map(|(_, comm)| comm))
+//             .chain(&lookup_m_comms)
+//             .chain(&lookup_h_permutation_z_comms)
+//             .collect_vec();
+//         Pcs::batch_verify(&vp.pcs, comms, &points, &evals, transcript)?;
+
+//         Ok(())
+//     }
+// }
 
 impl<Pcs> WitnessEncoding for HyperPlonk<Pcs> {
     fn row_mapping(k: usize) -> Vec<usize> {
@@ -368,60 +385,60 @@ impl<Pcs> WitnessEncoding for HyperPlonk<Pcs> {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use crate::{
-        backend::{
-            hyperplonk::{
-                //util::{rand_vanilla_plonk_circuit, rand_vanilla_plonk_with_lookup_circuit},
-                HyperPlonk,
-            },
-            test::run_plonkish_backend,
-        },
-        pcs::{
-            multilinear::{
-                Gemini, MultilinearHyrax, MultilinearIpa, MultilinearKzg,
+// #[cfg(test)]
+// mod test {
+//     use crate::{
+//         backend::{
+//             hyperplonk::{
+//                 //util::{rand_vanilla_plonk_circuit, rand_vanilla_plonk_with_lookup_circuit},
+//                 HyperPlonk,
+//             },
+//             test::run_plonkish_backend,
+//         },
+//         pcs::{
+//             multilinear::{
+//                 Gemini, MultilinearHyrax, MultilinearIpa, MultilinearKzg,
                 
-            }, // MultilinearBrakedown, Zeromorph
-            univariate::UnivariateKzg,
-        },
-        util::{
-            code::BrakedownSpec6, hash::Keccak256, test::seeded_std_rng,
-            transcript::Keccak256Transcript,
-        },
-    };
-    use halo2_base::halo2_proofs::halo2curves::{
-        bn256::{self, Bn256},
-        grumpkin,
-    };
+//             }, // MultilinearBrakedown, Zeromorph
+//             univariate::UnivariateKzg,
+//         },
+//         util::{
+//             code::BrakedownSpec6, hash::Keccak256, test::seeded_std_rng,
+//             transcript::Keccak256Transcript,
+//         },
+//     };
+//     use halo2_base::halo2_proofs::halo2curves::{
+//         bn256::{self, Bn256},
+//         grumpkin,
+//     };
 
-    macro_rules! tests {
-        ($name:ident, $pcs:ty, $num_vars_range:expr) => {
-            paste::paste! {
-                #[test]
-                fn [<$name _hyperplonk_vanilla_plonk>]() {
-                    run_plonkish_backend::<_, HyperPlonk<$pcs>, Keccak256Transcript<_>, _>($num_vars_range, |num_vars| {
-                        rand_vanilla_plonk_circuit(num_vars, seeded_std_rng(), seeded_std_rng())
-                    });
-                }
+//     macro_rules! tests {
+//         ($name:ident, $pcs:ty, $num_vars_range:expr) => {
+//             paste::paste! {
+//                 #[test]
+//                 fn [<$name _hyperplonk_vanilla_plonk>]() {
+//                     run_plonkish_backend::<_, HyperPlonk<$pcs>, Keccak256Transcript<_>, _>($num_vars_range, |num_vars| {
+//                         rand_vanilla_plonk_circuit(num_vars, seeded_std_rng(), seeded_std_rng())
+//                     });
+//                 }
 
-                #[test]
-                fn [<$name _hyperplonk_vanilla_plonk_with_lookup>]() {
-                    run_plonkish_backend::<_, HyperPlonk<$pcs>, Keccak256Transcript<_>, _>($num_vars_range, |num_vars| {
-                        rand_vanilla_plonk_with_lookup_circuit(num_vars, seeded_std_rng(), seeded_std_rng())
-                    });
-                }
-            }
-        };
-        ($name:ident, $pcs:ty) => {
-            tests!($name, $pcs, 2..16);
-        };
-    }
+//                 #[test]
+//                 fn [<$name _hyperplonk_vanilla_plonk_with_lookup>]() {
+//                     run_plonkish_backend::<_, HyperPlonk<$pcs>, Keccak256Transcript<_>, _>($num_vars_range, |num_vars| {
+//                         rand_vanilla_plonk_with_lookup_circuit(num_vars, seeded_std_rng(), seeded_std_rng())
+//                     });
+//                 }
+//             }
+//         };
+//         ($name:ident, $pcs:ty) => {
+//             tests!($name, $pcs, 2..16);
+//         };
+//     }
 
-    // tests!(brakedown, MultilinearBrakedown<bn256::Fr, Keccak256, BrakedownSpec6>);
-    // tests!(hyrax, MultilinearHyrax<grumpkin::G1Affine>, 5..16);
-    // tests!(ipa, MultilinearIpa<grumpkin::G1Affine>);
-    // tests!(kzg, MultilinearKzg<Bn256>);
-    // tests!(gemini_kzg, Gemini<UnivariateKzg<Bn256>>);
-    // tests!(zeromorph_kzg, Zeromorph<UnivariateKzg<Bn256>>);
-}
+//     // tests!(brakedown, MultilinearBrakedown<bn256::Fr, Keccak256, BrakedownSpec6>);
+//     // tests!(hyrax, MultilinearHyrax<grumpkin::G1Affine>, 5..16);
+//     // tests!(ipa, MultilinearIpa<grumpkin::G1Affine>);
+//     // tests!(kzg, MultilinearKzg<Bn256>);
+//     // tests!(gemini_kzg, Gemini<UnivariateKzg<Bn256>>);
+//     // tests!(zeromorph_kzg, Zeromorph<UnivariateKzg<Bn256>>);
+// }

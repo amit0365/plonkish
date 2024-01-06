@@ -63,6 +63,9 @@ copy_manager.assigned_constants 0
 copy_manager.assigned_advices 300961
 Time for synthesize_accumulation_verifier: 306.515791ms
 
+for compressing decider takes 
+Time for prove_decider: 43.251567875s, 5 secs increase from compressing?
+Time for verify_decider: 1.130867084s
 
 #### Han incomplete impl
 

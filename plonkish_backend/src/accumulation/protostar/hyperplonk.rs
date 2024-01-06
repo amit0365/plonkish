@@ -27,7 +27,7 @@ use crate::{
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
     },
     pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme, Commitment},
-    poly::multilinear::MultilinearPolynomial,
+    poly::{Polynomial, multilinear::MultilinearPolynomial},
     util::{
         arithmetic::{powers, PrimeField},
         end_timer, start_timer,
@@ -36,6 +36,7 @@ use crate::{
     },
     Error,
 };
+use itertools::izip;
 use rand::RngCore;
 use std::{borrow::BorrowMut, hash::Hash, iter::{self, once}};
 
@@ -143,7 +144,6 @@ where
             witness_polys.extend(polys);
             challenges.extend(transcript.squeeze_challenges(*num_challenges));
         }
-
         // Round n
 
 
@@ -284,7 +284,7 @@ where
                 // Round 0
 
                 let r = transcript.squeeze_challenge();
-
+                
                 let timer = start_timer(|| "fold_uncompressed");
                 accumulator.fold_uncompressed(incoming, &cross_term_polys, &cross_term_comms, &r);
                 end_timer(timer);
@@ -474,18 +474,44 @@ where
         let timer = start_timer(|| format!("permutation_z_polys-{}", pp.permutation_polys.len()));
         let builtin_witness_poly_offset = pp.num_witness_polys.iter().sum::<usize>();
         let instance_polys = instance_polys(pp.num_vars, &accumulator.instance.instances);
+        let num_instance_polys = instance_polys.len();
+        let u = accumulator.instance.u.clone();
+        let preprocess_polys = pp.preprocess_polys.iter().map(|poly| poly.clone().into_evals()).collect_vec();
+
+        let fixed_permutation_idx_offset = &pp.fixed_permutation_idx_for_preprocess_poly; 
+        let fixed_preprocess_polys = preprocess_polys.clone().iter().enumerate()
+            .map(|(idx, poly)| {
+                MultilinearPolynomial::new(poly.iter().map(|poly_element| {
+                    if fixed_permutation_idx_offset.contains(&idx) {
+                        *poly_element * u
+                    } else {
+                        *poly_element
+                    }
+                }).collect_vec())
+            })
+            .collect_vec();
+
         let polys = iter::empty()
             .chain(&instance_polys)
             .chain(&pp.preprocess_polys)
             .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
             .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
             .collect_vec();
+
+        let polys_for_permutation = iter::empty()
+            .chain(&instance_polys)
+            .chain(&fixed_preprocess_polys)
+            .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
+            .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
+            .collect_vec();
+
         let permutation_z_polys = permutation_z_polys(
             pp.num_permutation_z_polys,
             &pp.permutation_polys,
-            &polys,
+            &polys_for_permutation,
             &beta,
             &gamma,
+            &u,
         );
         end_timer(timer);
 

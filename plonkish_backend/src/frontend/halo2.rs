@@ -1,7 +1,7 @@
 use crate::{
     backend::{PlonkishCircuit, PlonkishCircuitInfo, WitnessEncoding},
     util::{
-        arithmetic::{BatchInvert, Field},
+        arithmetic::{BatchInvert, Field, steps},
         expression::{Expression, Query, Rotation},
         Itertools,
     },
@@ -144,8 +144,6 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         .collect();
 
     let num_instances = instances.iter().map(Vec::len).collect_vec();
-    let preprocess_polys =
-        vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];
     let column_idx = column_idx(cs);
     let permutations = cs
         .permutation()
@@ -156,6 +154,29 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             vec![(column_idx[&key], 1)]
         })
         .collect_vec();
+    // todo check these maybe errors when multiple advice cols are used
+    let fixed_permutation_idx_for_permutation_constraints = cs
+        .permutation()
+        .get_fixed_columns()
+        .iter()
+        .map(|column| {
+            let key = (*column.column_type(), column.index());
+            column_idx[&key]
+        })
+        .collect_vec();
+    
+    let fixed_permutation_idx_for_preprocess_poly: Vec<usize> =  fixed_permutation_idx_for_permutation_constraints.clone().iter()
+        .map(|&x| {
+            if x >= cs.num_instance_columns() {
+                x - cs.num_instance_columns()
+            } else {
+                0
+            }
+        })
+        .collect();
+
+    let preprocess_polys =
+        vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];
 
     Ok(PlonkishCircuitInfo {
         k: *k as usize,
@@ -167,6 +188,8 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         lookups,
         permutations,
         max_degree: Some(cs.degree()),
+        fixed_permutation_idx_for_preprocess_poly,
+        fixed_permutation_idx_for_permutation_constraints,
     })
 }
 
@@ -210,7 +233,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         constants.clone(),
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
-
+    let preprocess_polys_without_fixed_col_permutation = preprocess_collector.fixeds.clone();
     circuit_info.preprocess_polys = iter::empty()
         .chain(batch_invert_assigned(preprocess_collector.fixeds))
         .chain(preprocess_collector.selectors.into_iter().map(|selectors| {
@@ -258,9 +281,9 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
 struct PreprocessCollector<'a, F: Field> {
     k: u32,
     num_instances: Vec<usize>,
-    fixeds: Vec<Vec<Assigned<F>>>,
+    pub fixeds: Vec<Vec<Assigned<F>>>,
     permutation: Permutation,
-    selectors: Vec<Vec<bool>>,
+    pub selectors: Vec<Vec<bool>>,
     row_mapping: &'a [usize],
 }
 

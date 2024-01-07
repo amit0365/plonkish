@@ -176,6 +176,15 @@ where
         Ok((pp, vp))
     }
 }
+
+
+impl<Pcs> WitnessEncoding for HyperPlonk<Pcs> {
+    fn row_mapping(k: usize) -> Vec<usize> {
+        BooleanHypercube::new(k).iter().skip(1).chain([0]).collect()
+    }
+}
+
+
 //     fn prove(
 //         pp: &Self::ProverParam,
 //         circuit: &impl PlonkishCircuit<F>,
@@ -379,11 +388,6 @@ where
 //     }
 // }
 
-impl<Pcs> WitnessEncoding for HyperPlonk<Pcs> {
-    fn row_mapping(k: usize) -> Vec<usize> {
-        BooleanHypercube::new(k).iter().skip(1).chain([0]).collect()
-    }
-}
 
 // #[cfg(test)]
 // mod test {

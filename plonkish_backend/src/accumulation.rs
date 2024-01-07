@@ -9,7 +9,9 @@ use crate::{
     Error, poly::multilinear::MultilinearPolynomial,
 };
 use rand::RngCore;
-use std::{borrow::BorrowMut, fmt::Debug, time::Instant};
+use std::{borrow::{BorrowMut, Borrow}, fmt::Debug, time::Instant};
+
+use self::protostar::ivc::cyclefold::CycleFoldInputs;
 
 pub mod protostar;
 pub mod sangria;
@@ -51,7 +53,7 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         incoming: &Self::Accumulator,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
         rng: impl RngCore,
-    ) -> Result<(), Error>;
+    ) -> Result<((F, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error>;
 
     fn prove_accumulation_from_nark(
         pp: &Self::ProverParam,
@@ -59,11 +61,11 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         circuit: &impl PlonkishCircuit<F>,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
         mut rng: impl RngCore,
-    ) -> Result<(), Error> {
+    ) -> Result<((F, Self::Accumulator, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
         let nark = Self::prove_nark(pp, circuit, transcript, &mut rng)?;
         let incoming = Self::init_accumulator_from_nark(pp, nark)?;
-        Self::prove_accumulation::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
-        Ok(())
+        let (r, cross_term_comms) = Self::prove_accumulation::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
+        Ok((r, incoming, cross_term_comms))
     }
 
     fn verify_accumulation_from_nark(
@@ -157,7 +159,7 @@ where
 pub struct PlonkishNarkInstance<F, C> {
     instances: Vec<Vec<F>>,
     challenges: Vec<F>,
-    witness_comms: Option<Vec<C>>,
+    witness_comms: Vec<C>,
 }
 
 impl<F, C> PlonkishNarkInstance<F, C> {
@@ -165,7 +167,7 @@ impl<F, C> PlonkishNarkInstance<F, C> {
         Self {
             instances,
             challenges,
-            witness_comms: Some(witness_comms),
+            witness_comms,
         }
     }
 }

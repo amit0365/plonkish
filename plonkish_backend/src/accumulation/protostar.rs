@@ -22,7 +22,7 @@ pub mod hyperplonk;
 pub mod ivc;
 
 #[derive(Clone, Debug)]
-pub struct Protostar<Pb, const STRATEGY: usize = { NoCompressing as usize }>(PhantomData<Pb>);
+pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub enum ProtostarStrategy {
@@ -218,7 +218,7 @@ where
             compressed_e_sum: match strategy {
                 NoCompressing => None,
                 Compressing => Some(F::ZERO),
-                //CompressingWithSqrtPowers => Some(F::ZERO),
+                // CompressingWithSqrtPowers => Some(F::ZERO),
             },
         }
     }
@@ -252,7 +252,7 @@ where
     fn from_nark(strategy: ProtostarStrategy, nark: PlonkishNarkInstance<F, C>) -> Self {
         Self {
             instances: nark.instances,
-            witness_comms: nark.witness_comms.unwrap(),
+            witness_comms: nark.witness_comms,
             challenges: nark.challenges,
             u: F::ONE,
             e_comm: C::default(),

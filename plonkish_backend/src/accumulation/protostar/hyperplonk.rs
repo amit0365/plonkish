@@ -37,7 +37,7 @@ use crate::{
     Error,
 };
 use rand::RngCore;
-use std::{borrow::BorrowMut, hash::Hash, iter::{self, once}};
+use std::{borrow::{BorrowMut, Borrow}, hash::Hash, iter::{self, once}};
 
 use super::ivc::cyclefold::CF_IO_LEN;
 
@@ -98,27 +98,6 @@ where
             nark,
         ))
     }
-
-    // fn init_ec_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error> {
-    //     Ok(ProtostarAccumulator::init(
-    //         pp.strategy,
-    //         pp.pp.num_vars,
-    //         &pp.pp.num_instances,
-    //         pp.num_folding_witness_polys,
-    //         pp.num_folding_challenges,
-    //     ))
-    // }
-
-    // fn init_ec_accumulator_from_nark(
-    //     pp: &Self::ProverParam,
-    //     nark: &PlonkishNark<F, Self::Pcs>,
-    // ) -> Result<Self::Accumulator, Error> {
-    //     Ok(ProtostarAccumulator::from_nark(
-    //         pp.strategy,
-    //         pp.pp.num_vars,
-    //         nark,
-    //     ))
-    // }
 
     fn prove_nark(
         pp: &Self::ProverParam,
@@ -272,7 +251,7 @@ where
         incoming: &Self::Accumulator,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
         _: impl RngCore,
-    ) -> Result<(), Error> {
+    ) -> Result<((F, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
         let ProtostarProverParam {
             pp,
             strategy,
@@ -287,7 +266,7 @@ where
             incoming.instance.absorb_into(transcript)?;
         }
 
-        match strategy {
+        let (r, cross_term_comms) = match strategy {
             NoCompressing => {
                 let timer = start_timer(|| {
                     format!("evaluate_cross_term_polys-{}", cross_term_expressions.len())
@@ -311,6 +290,7 @@ where
                 let timer = start_timer(|| "fold_uncompressed");
                 accumulator.fold_uncompressed(incoming, &cross_term_polys, &cross_term_comms, &r);
                 end_timer(timer);
+                (r, cross_term_comms)
             }
             Compressing => {
                 let timer = start_timer(|| "evaluate_zeta_cross_term_poly");
@@ -352,10 +332,11 @@ where
                     &r,
                 );
                 end_timer(timer);
+                (r, vec![zeta_cross_term_comm])
             }
-        }
+        };
 
-        Ok(())
+        Ok((r, cross_term_comms))
     }
 
     fn verify_accumulation_from_nark(

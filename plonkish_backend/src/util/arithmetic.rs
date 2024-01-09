@@ -1,4 +1,5 @@
 use crate::util::{BigUint, Itertools};
+use itertools::izip;
 use num_integer::Integer;
 use std::{borrow::Borrow, fmt::Debug, iter, hash::Hash};
 
@@ -192,4 +193,28 @@ pub fn div_rem(dividend: usize, divisor: usize) -> (usize, usize) {
 
 pub fn div_ceil(dividend: usize, divisor: usize) -> usize {
     Integer::div_ceil(&dividend, &divisor)
+}
+
+pub fn fe_to_bits_le<F: PrimeField>(fe: F) -> Vec<F> {
+    let mut fe_le_bits = Vec::new();
+    for fe_byte in fe.to_repr().as_ref().to_vec() {
+        for i in 0..8 {  // u64 has 64 bits
+            let bit = (fe_byte >> i) & 1;  // Extract the ith bit
+            fe_le_bits.push(bit);
+        }
+    }
+    fe_le_bits.iter().map(|bit| F::from(*bit as u64)).collect_vec()
+}
+
+pub fn fe_from_bits_le<F: PrimeField>(bits: Vec<F>) -> F {
+    let mut pow_of_two = Vec::with_capacity(F::NUM_BITS as usize);
+    let two = F::from(2);
+        pow_of_two.push(F::ONE);
+        pow_of_two.push(two);
+        for _ in 2..F::NUM_BITS {
+            pow_of_two.push(two * pow_of_two.last().unwrap());
+        }
+    izip!(bits, pow_of_two)
+    .map(|(bit, pow)| bit * pow)
+    .sum()
 }

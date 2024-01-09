@@ -8,7 +8,7 @@ use crate::{
                     evaluate_zeta_cross_term_poly, lookup_h_polys, powers_of_zeta_poly,
                 },
             },
-            ivc::ProtostarAccumulationVerifierParam,
+            ivc::{ProtostarAccumulationVerifierParam, halo2::test::strawman::NUM_CHALLENGE_BITS},
             Protostar, ProtostarAccumulator, ProtostarAccumulatorInstance, ProtostarProverParam,
             ProtostarStrategy::{Compressing, NoCompressing},
             ProtostarVerifierParam,
@@ -29,13 +29,14 @@ use crate::{
     pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme, Commitment},
     poly::multilinear::MultilinearPolynomial,
     util::{
-        arithmetic::{powers, PrimeField},
+        arithmetic::{powers, PrimeField, fe_to_bits_le, fe_from_bits_le},
         end_timer, start_timer,
         transcript::{TranscriptRead, TranscriptWrite},
         DeserializeOwned, Itertools, Serialize,
     },
     Error,
 };
+use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use rand::RngCore;
 use std::{borrow::{BorrowMut, Borrow}, hash::Hash, iter::{self, once}};
 
@@ -251,7 +252,7 @@ where
         incoming: &Self::Accumulator,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
         _: impl RngCore,
-    ) -> Result<((F, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
+    ) -> Result<((Vec<F>, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
         let ProtostarProverParam {
             pp,
             strategy,
@@ -266,7 +267,7 @@ where
             incoming.instance.absorb_into(transcript)?;
         }
 
-        let (r, cross_term_comms) = match strategy {
+        let (r_le_bits, cross_term_comms) = match strategy {
             NoCompressing => {
                 let timer = start_timer(|| {
                     format!("evaluate_cross_term_polys-{}", cross_term_expressions.len())
@@ -286,11 +287,14 @@ where
                 // Round 0
 
                 let r = transcript.squeeze_challenge();
+                let r_le_bits = fe_to_bits_le(r.clone());
+                assert_eq!(r_le_bits.len(), NUM_CHALLENGE_BITS);
+                assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
 
                 let timer = start_timer(|| "fold_uncompressed");
                 accumulator.fold_uncompressed(incoming, &cross_term_polys, &cross_term_comms, &r);
                 end_timer(timer);
-                (r, cross_term_comms)
+                (r_le_bits, cross_term_comms)
             }
             Compressing => {
                 let timer = start_timer(|| "evaluate_zeta_cross_term_poly");
@@ -322,6 +326,8 @@ where
                 // Round 0
 
                 let r = transcript.squeeze_challenge();
+                let r_le_bits = fe_to_bits_le(r.clone()).iter().copied().take(NUM_CHALLENGE_BITS).collect_vec();
+                assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
 
                 let timer = start_timer(|| "fold_compressed");
                 accumulator.fold_compressed(
@@ -332,11 +338,11 @@ where
                     &r,
                 );
                 end_timer(timer);
-                (r, vec![zeta_cross_term_comm])
+                (r_le_bits, vec![zeta_cross_term_comm])
             }
         };
 
-        Ok((r, cross_term_comms))
+        Ok((r_le_bits, cross_term_comms))
     }
 
     fn verify_accumulation_from_nark(
@@ -647,62 +653,62 @@ where
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test {
-    use crate::{
-        accumulation::{protostar::Protostar, test::run_accumulation_scheme},
-        backend::hyperplonk::{
-            //util::{rand_vanilla_plonk_circuit, rand_vanilla_plonk_with_lookup_circuit},
-            HyperPlonk,
-        },
-        pcs::{
-            multilinear::{Gemini, MultilinearIpa, MultilinearKzg}, // Zeromorph
-            univariate::UnivariateKzg,
-        },
-        util::{
-            test::{seeded_std_rng, std_rng},
-            transcript::Keccak256Transcript,
-            Itertools,
-        },
-    };
-    use halo2_base::halo2_proofs::halo2curves::{bn256::Bn256, grumpkin};
-    use std::iter;
+// #[cfg(test)]
+// pub(crate) mod test {
+//     use crate::{
+//         accumulation::{protostar::Protostar, test::run_accumulation_scheme},
+//         backend::hyperplonk::{
+//             //util::{rand_vanilla_plonk_circuit, rand_vanilla_plonk_with_lookup_circuit},
+//             HyperPlonk,
+//         },
+//         pcs::{
+//             multilinear::{Gemini, MultilinearIpa, MultilinearKzg}, // Zeromorph
+//             univariate::UnivariateKzg,
+//         },
+//         util::{
+//             test::{seeded_std_rng, std_rng},
+//             transcript::Keccak256Transcript,
+//             Itertools,
+//         },
+//     };
+//     use halo2_base::halo2_proofs::halo2curves::{bn256::Bn256, grumpkin};
+//     use std::iter;
 
-    macro_rules! tests {
-        ($name:ident, $pcs:ty, $num_vars_range:expr) => {
-            paste::paste! {
-                #[test]
-                fn [<$name _protostar_hyperplonk_vanilla_plonk>]() {
-                    run_accumulation_scheme::<_, Protostar<HyperPlonk<$pcs>>, Keccak256Transcript<_>, _>($num_vars_range, |num_vars| {
-                        let (circuit_info, _) = rand_vanilla_plonk_circuit(num_vars, std_rng(), seeded_std_rng());
-                        let circuits = iter::repeat_with(|| {
-                            let (_, circuit) = rand_vanilla_plonk_circuit(num_vars, std_rng(), seeded_std_rng());
-                            circuit
-                        }).take(3).collect_vec();
-                        (circuit_info, circuits)
-                    });
-                }
+//     macro_rules! tests {
+//         ($name:ident, $pcs:ty, $num_vars_range:expr) => {
+//             paste::paste! {
+//                 #[test]
+//                 fn [<$name _protostar_hyperplonk_vanilla_plonk>]() {
+//                     run_accumulation_scheme::<_, Protostar<HyperPlonk<$pcs>>, Keccak256Transcript<_>, _>($num_vars_range, |num_vars| {
+//                         let (circuit_info, _) = rand_vanilla_plonk_circuit(num_vars, std_rng(), seeded_std_rng());
+//                         let circuits = iter::repeat_with(|| {
+//                             let (_, circuit) = rand_vanilla_plonk_circuit(num_vars, std_rng(), seeded_std_rng());
+//                             circuit
+//                         }).take(3).collect_vec();
+//                         (circuit_info, circuits)
+//                     });
+//                 }
 
-                #[test]
-                fn [<$name _protostar_hyperplonk_vanilla_plonk_with_lookup>]() {
-                    run_accumulation_scheme::<_, Protostar<HyperPlonk<$pcs>>, Keccak256Transcript<_>, _>($num_vars_range, |num_vars| {
-                        let (circuit_info, _) = rand_vanilla_plonk_with_lookup_circuit(num_vars, std_rng(), seeded_std_rng());
-                        let circuits = iter::repeat_with(|| {
-                            let (_, circuit) = rand_vanilla_plonk_with_lookup_circuit(num_vars, std_rng(), seeded_std_rng());
-                            circuit
-                        }).take(3).collect_vec();
-                        (circuit_info, circuits)
-                    });
-                }
-            }
-        };
-        ($name:ident, $pcs:ty) => {
-            tests!($name, $pcs, 2..16);
-        };
-    }
+//                 #[test]
+//                 fn [<$name _protostar_hyperplonk_vanilla_plonk_with_lookup>]() {
+//                     run_accumulation_scheme::<_, Protostar<HyperPlonk<$pcs>>, Keccak256Transcript<_>, _>($num_vars_range, |num_vars| {
+//                         let (circuit_info, _) = rand_vanilla_plonk_with_lookup_circuit(num_vars, std_rng(), seeded_std_rng());
+//                         let circuits = iter::repeat_with(|| {
+//                             let (_, circuit) = rand_vanilla_plonk_with_lookup_circuit(num_vars, std_rng(), seeded_std_rng());
+//                             circuit
+//                         }).take(3).collect_vec();
+//                         (circuit_info, circuits)
+//                     });
+//                 }
+//             }
+//         };
+//         ($name:ident, $pcs:ty) => {
+//             tests!($name, $pcs, 2..16);
+//         };
+//     }
 
-    // tests!(ipa, MultilinearIpa<grumpkin::G1Affine>);
-    // tests!(kzg, MultilinearKzg<Bn256>);
-    // tests!(gemini_kzg, Gemini<UnivariateKzg<Bn256>>);
-    // tests!(zeromorph_kzg, Zeromorph<UnivariateKzg<Bn256>>);
-}
+//     // tests!(ipa, MultilinearIpa<grumpkin::G1Affine>);
+//     // tests!(kzg, MultilinearKzg<Bn256>);
+//     // tests!(gemini_kzg, Gemini<UnivariateKzg<Bn256>>);
+//     // tests!(zeromorph_kzg, Zeromorph<UnivariateKzg<Bn256>>);
+// }

@@ -38,15 +38,74 @@ Time for verify_decider: 338.679584ms
 
 
 
-#### Han incomplete impl
-
-10 steps, no compressing
-
-Time for preprocess: 1.995075083s
-Time for prove_steps: 5.060839917s
-Time for prove_decider: 1.908527459s
+#### Cyclefold time
 
 
+prove_accumulation_from_nark_ec-primary-17 ..............................943.219ms
+
+
+prove_accumulation_from_nark-primary-20 .................................6.617s
+
+
+total: 
+prove_nark_ec-cyclefold-17 ................................................7.561s
+
+
+cyclefold_circuit_copy_manager.advice_equalities 51065
+cyclefold_circuit_copy_manager.constant_equalities 21239
+cyclefold_circuit_copy_manager.assigned_constants 0
+cyclefold_circuit_copy_manager.assigned_advices 97439
+Time for synthesize_ec: 59.065667ms
+
+before_acc_verifier.assign_accumulator_copy_manager.advice_equalities 7
+after_acc_verifier.assign_accumulator_copy_manager.advice_equalities 1885
+before_verify_acc_from_nark_copy_manager.advice_equalities 1885
+num_witness_polys 5
+num_challenges 4
+num_cross_terms 3
+after_squeeze_nark_copy_manager.advice_equalities 7854
+after_squeeze_nark_copy_manager.advice_equalities 13822
+after_squeeze_nark_copy_manager.advice_equalities 23281
+after_squeeze_nark_copy_manager.advice_equalities 29249
+before_nark_copy_manager.advice_equalities 29251
+before_compress_copy_manager.advice_equalities 29251
+before_squeeze_copy_manager.advice_equalities 29564
+before_assign_cyclefold_copy_manager.advice_equalities 59053
+r_constrained
+nark_witness_comms_constrained
+cross_term_comms_constrained
+acc_e_comm_constrained
+acc_witness_comms_constrained
+after_check_cyclefold_copy_manager.advice_equalities 64800
+instances_folded
+challenges_folded
+after_fold_acc_from_nark_copy_manager.advice_equalities 64838
+after_acc_prime_copy_manager.advice_equalities 65246
+after_nark_copy_manager.advice_equalities 141719
+before_squeeze_copy_manager.advice_equalities 141778
+after_squeeze_copy_manager.advice_equalities 226898
+······Start:   fold_accumulator_from_nark witness_comms-5
+······End:     fold_accumulator_from_nark witness_comms-5 ..........................17.142ms
+witness_comms_folded
+challenges_folded
+acc_prime_instances_folded
+acc_prime_witness_comms_folded
+acc_prime_challenges_folded
+······Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+······End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ..........3.545ms
+after_fold_ec_copy_manager.advice_equalities 284008
+after_acc_ec_prime_copy_manager.advice_equalities 285460
+copy_manager.constant_equalities 207024
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 0
+copy_manager.advice_equalities 285460
+copy_manager.constant_equalities 207024
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 699086
+Time for synthesize_accumulation_verifier: 610.489709ms
+
+
+### Without Cyclefold time
 Start:   prove_accumulation_from_nark-primary-19
 ··Start:   witness_collector-0
 

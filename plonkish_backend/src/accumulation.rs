@@ -53,7 +53,7 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         incoming: &Self::Accumulator,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
         rng: impl RngCore,
-    ) -> Result<((F, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error>;
+    ) -> Result<((Vec<F>, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error>;
 
     fn prove_accumulation_from_nark(
         pp: &Self::ProverParam,
@@ -61,11 +61,11 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         circuit: &impl PlonkishCircuit<F>,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
         mut rng: impl RngCore,
-    ) -> Result<((F, Self::Accumulator, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
+    ) -> Result<((Vec<F>, Self::Accumulator, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
         let nark = Self::prove_nark(pp, circuit, transcript, &mut rng)?;
         let incoming = Self::init_accumulator_from_nark(pp, nark)?;
-        let (r, cross_term_comms) = Self::prove_accumulation::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
-        Ok((r, incoming, cross_term_comms))
+        let (r_le_bits, cross_term_comms) = Self::prove_accumulation::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
+        Ok((r_le_bits, incoming, cross_term_comms))
     }
 
     fn verify_accumulation_from_nark(

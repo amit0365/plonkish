@@ -27,7 +27,7 @@ use crate::{
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
     },
     pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme, Commitment},
-    poly::multilinear::MultilinearPolynomial,
+    poly::{Polynomial, multilinear::MultilinearPolynomial},
     util::{
         arithmetic::{powers, PrimeField, fe_to_bits_le, fe_from_bits_le},
         end_timer, start_timer,
@@ -466,147 +466,171 @@ where
         Ok(())
     }
 
-    // // todo decider for cyclefold part
-    // fn prove_decider(
-    //     pp: &Self::ProverParam,
-    //     accumulator: &Self::Accumulator,
-    //     transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
-    //     _: impl RngCore,
-    // ) -> Result<(), Error> {
-    //     let ProtostarProverParam { pp, .. } = pp;
+    // todo decider for cyclefold part
+    fn prove_decider(
+        pp: &Self::ProverParam,
+        accumulator: &Self::Accumulator,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
+        _: impl RngCore,
+    ) -> Result<(), Error> {
+        let ProtostarProverParam { pp, .. } = pp;
 
-    //     accumulator.instance.absorb_into(transcript)?;
+        accumulator.instance.absorb_into(transcript)?;
 
-    //     // Round 0
+        // Round 0
 
-    //     let beta = transcript.squeeze_challenge();
-    //     let gamma = transcript.squeeze_challenge();
+        let beta = transcript.squeeze_challenge();
+        let gamma = transcript.squeeze_challenge();
 
-    //     let timer = start_timer(|| format!("permutation_z_polys-{}", pp.permutation_polys.len()));
-    //     let builtin_witness_poly_offset = pp.num_witness_polys.iter().sum::<usize>();
-    //     let instance_polys = instance_polys(pp.num_vars, &accumulator.instance.instances);
-    //     let polys = iter::empty()
-    //         .chain(&instance_polys)
-    //         .chain(&pp.preprocess_polys)
-    //         .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
-    //         .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
-    //         .collect_vec();
-    //     let permutation_z_polys = permutation_z_polys(
-    //         pp.num_permutation_z_polys,
-    //         &pp.permutation_polys,
-    //         &polys,
-    //         &beta,
-    //         &gamma,
-    //     );
-    //     end_timer(timer);
+        let timer = start_timer(|| format!("permutation_z_polys-{}", pp.permutation_polys.len()));
+        let builtin_witness_poly_offset = pp.num_witness_polys.iter().sum::<usize>();
+        let instance_polys = instance_polys(pp.num_vars, &accumulator.instance.instances);
+        let u = accumulator.instance.u.clone();
+        let preprocess_polys = pp.preprocess_polys.iter().map(|poly| poly.clone().into_evals()).collect_vec();
 
-    //     let permutation_z_comms =
-    //         Pcs::batch_commit_and_write(&pp.pcs, &permutation_z_polys, transcript)?;
+        let fixed_permutation_idx_offset = &pp.fixed_permutation_idx_for_preprocess_poly; 
+        let fixed_preprocess_polys = preprocess_polys.clone().iter().enumerate()
+            .map(|(idx, poly)| {
+                MultilinearPolynomial::new(poly.iter().map(|poly_element| {
+                    if fixed_permutation_idx_offset.contains(&idx) {
+                        *poly_element * u
+                    } else {
+                        *poly_element
+                    }
+                }).collect_vec())
+            })
+            .collect_vec();
 
-    //     // Round 1
+        let polys = iter::empty()
+            .chain(&instance_polys)
+            .chain(&pp.preprocess_polys)
+            .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
+            .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
+            .collect_vec();
 
-    //     let alpha = transcript.squeeze_challenge();
-    //     let y = transcript.squeeze_challenges(pp.num_vars);
+        let polys_for_permutation = iter::empty()
+            .chain(&instance_polys)
+            .chain(&fixed_preprocess_polys)
+            .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
+            .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
+            .collect_vec();
 
-    //     let polys = iter::empty()
-    //         .chain(polys)
-    //         .chain(&accumulator.witness_polys[builtin_witness_poly_offset..])
-    //         .chain(permutation_z_polys.iter())
-    //         .chain(Some(&accumulator.e_poly))
-    //         .collect_vec();
-    //     let challenges = iter::empty()
-    //         .chain(accumulator.instance.challenges.iter().copied())
-    //         .chain([accumulator.instance.u])
-    //         .chain([beta, gamma, alpha])
-    //         .collect();
-    //     let (points, evals) = {
-    //         prove_sum_check(
-    //             pp.num_instances.len(),
-    //             &pp.expression,
-    //             accumulator.instance.claimed_sum(),
-    //             &polys,
-    //             challenges,
-    //             y,
-    //             transcript,
-    //         )?
-    //     };
+        let permutation_z_polys = permutation_z_polys(
+            pp.num_permutation_z_polys,
+            &pp.permutation_polys,
+            &polys_for_permutation,
+            &beta,
+            &gamma,
+        );
+        end_timer(timer);
 
-    //     // PCS open
+        let permutation_z_comms =
+            Pcs::batch_commit_and_write(&pp.pcs, &permutation_z_polys, transcript)?;
 
-    //     let dummy_comm = Pcs::Commitment::default();
-    //     let comms = iter::empty()
-    //         .chain(iter::repeat(&dummy_comm).take(pp.num_instances.len()))
-    //         .chain(&pp.preprocess_comms)
-    //         .chain(&accumulator.instance.witness_comms[..builtin_witness_poly_offset])
-    //         .chain(&pp.permutation_comms)
-    //         .chain(&accumulator.instance.witness_comms[builtin_witness_poly_offset..])
-    //         .chain(&permutation_z_comms)
-    //         .chain(Some(&accumulator.instance.e_comm))
-    //         .collect_vec();
-    //     let timer = start_timer(|| format!("pcs_batch_open-{}", evals.len()));
-    //     Pcs::batch_open(&pp.pcs, polys, comms, &points, &evals, transcript)?;
-    //     end_timer(timer);
+        // Round 1
 
-    //     Ok(())
-    // }
+        let alpha = transcript.squeeze_challenge();
+        let y = transcript.squeeze_challenges(pp.num_vars);
 
-    // fn verify_decider(
-    //     vp: &Self::VerifierParam,
-    //     accumulator: &Self::AccumulatorInstance,
-    //     transcript: &mut impl TranscriptRead<CommitmentChunk<F, Pcs>, F>,
-    //     _: impl RngCore,
-    // ) -> Result<(), Error> {
-    //     let ProtostarVerifierParam { vp, .. } = vp;
+        let polys = iter::empty()
+            .chain(polys)
+            .chain(&accumulator.witness_polys[builtin_witness_poly_offset..])
+            .chain(permutation_z_polys.iter())
+            .chain(Some(&accumulator.e_poly))
+            .collect_vec();
+        let challenges = iter::empty()
+            .chain(accumulator.instance.challenges.iter().copied())
+            .chain([accumulator.instance.u])
+            .chain([beta, gamma, alpha])
+            .collect();
+        let (points, evals) = {
+            prove_sum_check(
+                pp.num_instances.len(),
+                &pp.expression,
+                accumulator.instance.claimed_sum(),
+                &polys,
+                challenges,
+                y,
+                transcript,
+            )?
+        };
 
-    //     accumulator.absorb_into(transcript)?;
+        // PCS open
 
-    //     // Round 0
+        let dummy_comm = Pcs::Commitment::default();
+        let comms = iter::empty()
+            .chain(iter::repeat(&dummy_comm).take(pp.num_instances.len()))
+            .chain(&pp.preprocess_comms)
+            .chain(&accumulator.instance.witness_comms[..builtin_witness_poly_offset])
+            .chain(&pp.permutation_comms)
+            .chain(&accumulator.instance.witness_comms[builtin_witness_poly_offset..])
+            .chain(&permutation_z_comms)
+            .chain(Some(&accumulator.instance.e_comm))
+            .collect_vec();
+        let timer = start_timer(|| format!("pcs_batch_open-{}", evals.len()));
+        Pcs::batch_open(&pp.pcs, polys, comms, &points, &evals, transcript)?;
+        end_timer(timer);
 
-    //     let beta = transcript.squeeze_challenge();
-    //     let gamma = transcript.squeeze_challenge();
+        Ok(())
+    }
 
-    //     let permutation_z_comms =
-    //         Pcs::read_commitments(&vp.pcs, vp.num_permutation_z_polys, transcript)?;
+    fn verify_decider(
+        vp: &Self::VerifierParam,
+        accumulator: &Self::AccumulatorInstance,
+        transcript: &mut impl TranscriptRead<CommitmentChunk<F, Pcs>, F>,
+        _: impl RngCore,
+    ) -> Result<(), Error> {
+        let ProtostarVerifierParam { vp, .. } = vp;
 
-    //     // Round 1
+        accumulator.absorb_into(transcript)?;
 
-    //     let alpha = transcript.squeeze_challenge();
-    //     let y = transcript.squeeze_challenges(vp.num_vars);
+        // Round 0
 
-    //     let challenges = iter::empty()
-    //         .chain(accumulator.challenges.iter().copied())
-    //         .chain([accumulator.u])
-    //         .chain([beta, gamma, alpha])
-    //         .collect_vec();
-    //     let (points, evals) = {
-    //         verify_sum_check(
-    //             vp.num_vars,
-    //             &vp.expression,
-    //             accumulator.claimed_sum(),
-    //             accumulator.instances(),
-    //             &challenges,
-    //             &y,
-    //             transcript,
-    //         )?
-    //     };
+        let beta = transcript.squeeze_challenge();
+        let gamma = transcript.squeeze_challenge();
 
-    //     // PCS verify
+        let permutation_z_comms =
+            Pcs::read_commitments(&vp.pcs, vp.num_permutation_z_polys, transcript)?;
 
-    //     let builtin_witness_poly_offset = vp.num_witness_polys.iter().sum::<usize>();
-    //     let dummy_comm = Pcs::Commitment::default();
-    //     let comms = iter::empty()
-    //         .chain(iter::repeat(&dummy_comm).take(vp.num_instances.len()))
-    //         .chain(&vp.preprocess_comms)
-    //         .chain(&accumulator.witness_comms[..builtin_witness_poly_offset])
-    //         .chain(vp.permutation_comms.iter().map(|(_, comm)| comm))
-    //         .chain(&accumulator.witness_comms[builtin_witness_poly_offset..])
-    //         .chain(&permutation_z_comms)
-    //         .chain(Some(&accumulator.e_comm))
-    //         .collect_vec();
-    //     Pcs::batch_verify(&vp.pcs, comms, &points, &evals, transcript)?;
+        // Round 1
 
-    //     Ok(())
-    // }
+        let alpha = transcript.squeeze_challenge();
+        let y = transcript.squeeze_challenges(vp.num_vars);
+
+        let challenges = iter::empty()
+            .chain(accumulator.challenges.iter().copied())
+            .chain([accumulator.u])
+            .chain([beta, gamma, alpha])
+            .collect_vec();
+        let (points, evals) = {
+            verify_sum_check(
+                vp.num_vars,
+                &vp.expression,
+                accumulator.claimed_sum(),
+                accumulator.instances(),
+                &challenges,
+                &y,
+                transcript,
+            )?
+        };
+
+        // PCS verify
+
+        let builtin_witness_poly_offset = vp.num_witness_polys.iter().sum::<usize>();
+        let dummy_comm = Pcs::Commitment::default();
+        let comms = iter::empty()
+            .chain(iter::repeat(&dummy_comm).take(vp.num_instances.len()))
+            .chain(&vp.preprocess_comms)
+            .chain(&accumulator.witness_comms[..builtin_witness_poly_offset])
+            .chain(vp.permutation_comms.iter().map(|(_, comm)| comm))
+            .chain(&accumulator.witness_comms[builtin_witness_poly_offset..])
+            .chain(&permutation_z_comms)
+            .chain(Some(&accumulator.e_comm))
+            .collect_vec();
+        Pcs::batch_verify(&vp.pcs, comms, &points, &evals, transcript)?;
+
+        Ok(())
+    }
 }
 
 impl<F, Pcs, N> From<&ProtostarVerifierParam<F, HyperPlonk<Pcs>>>

@@ -76,12 +76,12 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         rng: impl RngCore,
     ) -> Result<(), Error>;
 
-    // fn prove_decider(
-    //     pp: &Self::ProverParam,
-    //     accumulator: &Self::Accumulator,
-    //     transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
-    //     rng: impl RngCore,
-    // ) -> Result<(), Error>;
+    fn prove_decider(
+        pp: &Self::ProverParam,
+        accumulator: &Self::Accumulator,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
+        rng: impl RngCore,
+    ) -> Result<(), Error>;
 
     // fn prove_decider_with_last_nark(
     //     pp: &Self::ProverParam,
@@ -101,12 +101,12 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
     //     Ok(())
     // }
 
-    // fn verify_decider(
-    //     vp: &Self::VerifierParam,
-    //     accumulator: &Self::AccumulatorInstance,
-    //     transcript: &mut impl TranscriptRead<CommitmentChunk<F, Self::Pcs>, F>,
-    //     rng: impl RngCore,
-    // ) -> Result<(), Error>;
+    fn verify_decider(
+        vp: &Self::VerifierParam,
+        accumulator: &Self::AccumulatorInstance,
+        transcript: &mut impl TranscriptRead<CommitmentChunk<F, Self::Pcs>, F>,
+        rng: impl RngCore,
+    ) -> Result<(), Error>;
 
     // fn verify_decider_with_last_nark(
     //     vp: &Self::VerifierParam,

@@ -157,6 +157,25 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             vec![(column_idx[&key], 1)]
         })
         .collect_vec();
+    let fixed_permutation_idx_for_permutation_constraints = cs
+        .permutation()
+        .get_fixed_columns()
+        .iter()
+        .map(|column| {
+            let key = (*column.column_type(), column.index());
+            column_idx[&key]
+        })
+        .collect_vec();
+
+    let fixed_permutation_idx_for_preprocess_poly: Vec<usize> =  fixed_permutation_idx_for_permutation_constraints.clone().iter()
+        .map(|&x| {
+            if x >= cs.num_instance_columns() {
+                x - cs.num_instance_columns()
+            } else {
+                0
+            }
+        })
+        .collect();
 
     Ok(PlonkishCircuitInfo {
         k: *k as usize,
@@ -168,6 +187,8 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         lookups,
         permutations,
         max_degree: Some(cs.degree()),
+        fixed_permutation_idx_for_preprocess_poly,
+        fixed_permutation_idx_for_permutation_constraints,
     })
 }
 

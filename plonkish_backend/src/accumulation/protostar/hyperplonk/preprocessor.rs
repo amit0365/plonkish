@@ -244,6 +244,7 @@ where
 
     let num_folding_witness_polys = num_witness_polys + num_builtin_witness_polys;
     let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
+    let u = num_folding_challenges;
 
     let [beta, gamma, alpha] =
         &array::from_fn(|idx| Expression::<F>::Challenge(num_folding_challenges + 1 + idx));
@@ -253,6 +254,7 @@ where
         beta,
         gamma,
         num_builtin_witness_polys,
+        Some(u),
     );
 
     let expression = {

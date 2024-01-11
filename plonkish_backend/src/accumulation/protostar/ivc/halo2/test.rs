@@ -1,7 +1,7 @@
 use crate::{
     accumulation::protostar::{
         ivc::{halo2::{
-            preprocess, prove_steps, //prove_decider, verify_decider, 
+            preprocess, prove_steps, prove_decider, verify_decider, 
             ProtostarIvcVerifierParam,
             StepCircuit, CircuitExt
         }, cyclefold::CycleFoldCircuit},
@@ -21,7 +21,7 @@ use crate::{
     util::{
         arithmetic::{
             fe_to_fe, CurveAffine, Field, FromUniformBytes, PrimeFieldBits,
-            TwoChainCurve, MultiMillerLoop,
+            TwoChainCurve, MultiMillerLoop, fe_from_bits_le,
         },
         chain,
         test::seeded_std_rng,
@@ -150,21 +150,13 @@ pub fn run_protostar_hyperplonk_ivc<C, P1, P2>(
     primary_circuit_params: BaseCircuitParams,
     cyclefold_circuit_params: BaseCircuitParams,
 ) -> (
-    // ProtostarIvcVerifierParam<
-    //     C,
-    //     P1,
-    //     P2
-    // >,
-    // usize,
-    // Vec<C::Scalar>,
-    // Vec<C::Scalar>,
-    // ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
-    // Vec<u8>,
-    // Vec<C::Base>,
-    // Vec<C::Base>,
-    // ProtostarAccumulatorInstance<C::Scalar, P2::Commitment>,
-    // Vec<C::Base>,
-    // Vec<u8>,
+    ProtostarIvcVerifierParam<
+        C,
+        P1,
+        P2
+    >,
+    ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
+    Vec<u8>,
 )
 where
     C: TwoChainCurve,
@@ -221,6 +213,54 @@ where
     .unwrap();
     let duration_prove_steps = prove_steps_time.elapsed();
     println!("Time for prove_steps: {:?}", duration_prove_steps);
+
+    let primary_dtp = strawman::decider_transcript_param();
+    let prove_decider_time = Instant::now();
+    let (
+        primary_acc,
+        primary_proof,
+    ) = {
+        let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
+        prove_decider(
+            &ivc_pp,
+            &primary_acc,
+            &mut primary_transcript,
+            seeded_std_rng(),
+        )
+        .unwrap();
+
+        (
+            primary_acc.instance,
+            primary_transcript.into_proof(),
+        )
+    };
+    let duration_prove_decider = prove_decider_time.elapsed();
+    println!("Time for prove_decider: {:?}", duration_prove_decider);
+
+    let verify_decider_time = Instant::now();
+    let result = {
+        let mut primary_transcript =
+            strawman::PoseidonTranscript::from_proof(primary_dtp, primary_proof.as_slice());
+        verify_decider::<_, _, _>(
+            &ivc_vp,
+            &primary_acc,
+            &mut primary_transcript,
+            seeded_std_rng(),
+        )
+    };
+    let duration_verify_decider = verify_decider_time.elapsed();
+    println!("Time for verify_decider: {:?}", duration_verify_decider);
+    assert_eq!(result, Ok(()));
+
+    (
+        ivc_vp,
+        primary_acc,
+        primary_proof,
+    )
+
+}
+
+
 
     // let primary_dtp = strawman::decider_transcript_param();
     // let secondary_dtp = strawman::decider_transcript_param();
@@ -302,7 +342,6 @@ where
     //     secondary_last_instances,
     //     secondary_proof,
     // )
-}
 
 // #[test]
 // fn gemini_kzg_ipa_protostar_hyperplonk_cyclefold_mock() {
@@ -322,13 +361,14 @@ where
 // }
 
 
+
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     
     const NUM_STEPS: usize = 3;
 
     let primary_circuit_params = BaseCircuitParams {
-            k: 20,
+            k: 19,
             num_advice_per_phase: vec![1],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
@@ -337,7 +377,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
         };
 
     let cyclefold_circuit_params = BaseCircuitParams {
-            k: 17,
+            k: 18,
             num_advice_per_phase: vec![1],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
@@ -362,7 +402,7 @@ pub mod strawman {
         },
         util::{
             arithmetic::{
-                fe_from_bool, fe_from_le_bytes, fe_to_fe, fe_truncated, BitField, CurveAffine,
+                fe_from_bool, fe_from_le_bytes, fe_from_bits_le, fe_to_fe, fe_truncated, BitField, CurveAffine,
                 Field, FromUniformBytes, Group, PrimeCurveAffine, PrimeField, PrimeFieldBits,
                 TwoChainCurve, OverridenCurveAffine,
             },
@@ -385,7 +425,7 @@ pub mod strawman {
         AssignedValue,
         gates::{
             circuit::{builder::BaseCircuitBuilder, BaseCircuitParams, BaseConfig},            
-            RangeChip,range::RangeConfig,
+            RangeChip, range::RangeConfig,
             flex_gate::{GateChip, GateInstructions, FlexGateConfig, FlexGateConfigParams},
         },
         gates::flex_gate::{threads::SinglePhaseCoreManager, BasicGateConfig}, poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, ContextCell,
@@ -1089,6 +1129,7 @@ pub mod strawman {
             Ok(ecc_chip.assign_constant_point(builder.main(), constant))
         }
 
+        // todo check this
         pub fn assign_witness_primary_non_native(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
@@ -1096,7 +1137,7 @@ pub mod strawman {
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
             let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
             let ecc_chip = EccChip::new(&non_native_chip);
-            Ok(ecc_chip.assign_point(builder.main(), witness))
+            Ok(ecc_chip.assign_point_unchecked(builder.main(), witness))
         }
 
         pub fn select_primary_non_native(
@@ -1220,35 +1261,50 @@ pub mod strawman {
             chip
         }
 
-        // pub fn hash_state<Comm: AsRef<C>>(
-        //     spec: &OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-        //     vp_digest: C::Scalar,
-        //     step_idx: usize,
-        //     initial_input: &[C::Scalar],
-        //     output: &[C::Scalar],
-        //     acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
-        // ) -> C::Scalar {
-        //     let mut poseidon = PoseidonHash::from_spec(spec.clone());
-        //     let inputs = iter::empty()
-        //         .chain([vp_digest, C::Scalar::from(step_idx as u64)])
-        //         .chain(initial_input.iter().copied())
-        //         .chain(output.iter().copied())
-        //         .chain(acc.instances[0])
-        //         // .chain(acc.instances[0][1])
-        //         // .chain(
-        //         //     acc.witness_comms
-        //         //         .iter()
-        //         //         .map(AsRef::as_ref)
-        //         //         .flat_map(into_coordinates),
-        //         // )
-        //         .chain(acc.challenges)
-        //         .chain(iter::once(acc.u))
-        //         // .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
-        //         .chain(acc.compressed_e_sum.into_iter())
-        //         .collect_vec();
-        //     poseidon.update(inputs.as_slice());
-        //     fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
-        // }
+        pub fn hash_cyclefold_inputs<Comm: AsRef<C>>(
+            spec: &OptimizedPoseidonSpec<C::Base, T, RATE>,
+            vp_digest: C::Scalar,
+            r_le_bits: Vec<C::Scalar>,
+            primary_nark_witness_comm: Vec<Comm>,
+            cross_term_comms: Vec<Comm>,
+            acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
+            acc_prime: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
+        ) -> C::Base {
+            // let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
+            let mut poseidon = PoseidonHash::from_spec(spec.clone());
+            let inputs = iter::empty()
+                //.chain([vp_digest]) // flat_map(fe_to_limbs)
+                .chain([fe_to_fe(fe_from_bits_le(r_le_bits))])
+                .chain(
+                    primary_nark_witness_comm
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .flat_map(into_coordinates),
+                )
+                .chain(
+                    cross_term_comms
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .flat_map(into_coordinates),
+                )
+                .chain(
+                    acc.witness_comms
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .flat_map(into_coordinates),
+                )
+                .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
+                .chain(
+                    acc_prime.witness_comms
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .flat_map(into_coordinates),
+                )
+                .chain(into_coordinates(acc_prime.e_comm.as_ref()).into_iter())
+                .collect_vec();
+            poseidon.update(inputs.as_slice());
+            fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
+        }
 
         // pub fn hash_state_acc_prime<Comm: AsRef<C>>(
         //     spec: &OptimizedPoseidonSpec<C::Scalar, T, RATE>,

@@ -40,16 +40,186 @@ Time for verify_decider: 338.679584ms
 
 #### Cyclefold time
 
+// TODO CHECK MSM TIME WHEN ZERO, LOOKS LIKE IT DOUBLES NOW WITH OR WITHOUT ZEROS
 
-prove_accumulation_from_nark_ec-primary-17 ..............................943.219ms
+// with assign_point unchechecked -- saves 20k 
+
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+before_acc_verifier.assign_accumulator_copy_manager.advice_equalities 31
+copy_manager.constant_equalities 61
+builder.advice.len() 184
+after_acc_verifier.assign_accumulator_copy_manager.advice_equalities 175
+copy_manager.constant_equalities 385
+builder.advice.len() 1176
+before_verify_acc_from_nark_copy_manager.advice_equalities 175
+copy_manager.constant_equalities 390
+builder.advice.len() 1181
+num_witness_polys 5
+num_challenges 4
+num_cross_terms 3
+after_squeeze_nark_copy_manager.advice_equalities 5855
+copy_manager.constant_equalities 4538
+builder.advice.len() 14875
+after_squeeze_nark_copy_manager.advice_equalities 11534
+copy_manager.constant_equalities 8686
+builder.advice.len() 28565
+after_squeeze_nark_copy_manager.advice_equalities 20415
+copy_manager.constant_equalities 15196
+builder.advice.len() 50003
+after_squeeze_nark_copy_manager.advice_equalities 26094
+copy_manager.constant_equalities 19344
+builder.advice.len() 63693
+before_nark_copy_manager.advice_equalities 26096
+copy_manager.constant_equalities 19346
+builder.advice.len() 63698
+before_compress_copy_manager.advice_equalities 26096
+copy_manager.constant_equalities 19346
+builder.advice.len() 63698
+before_squeeze_copy_manager.advice_equalities 26120
+copy_manager.constant_equalities 19400
+builder.advice.len() 63865
+before_assign_cyclefold_copy_manager.advice_equalities 55609
+copy_manager.constant_equalities 40802
+builder.advice.len() 134267
+after_check_cyclefold_copy_manager.advice_equalities 55753
+copy_manager.constant_equalities 41126
+builder.advice.len() 135251
+instances_folded
+challenges_folded
+after_fold_acc_from_nark_copy_manager.advice_equalities 55791
+copy_manager.constant_equalities 41144
+builder.advice.len() 135326
+after_acc_prime_copy_manager.advice_equalities 56199
+copy_manager.constant_equalities 41280
+builder.advice.len() 135938
+cyclefold_avp.num_instances [13]
+after_acc_ec_copy_manager.advice_equalities 56565
+copy_manager.constant_equalities 41907
+builder.advice.len() 137838
+after_nark_copy_manager.advice_equalities 89121
+copy_manager.constant_equalities 65904
+builder.advice.len() 216764
+before_squeeze_copy_manager.advice_equalities 89180
+copy_manager.constant_equalities 66004
+builder.advice.len() 217067
+after_squeeze_copy_manager.advice_equalities 131397
+copy_manager.constant_equalities 96668
+builder.advice.len() 317896
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................18.072ms
+witness_comms_folded
+challenges_folded
+r_nark.instances.len() 1
+acc.instances.len() 1
+acc_prime_instances_folded
+acc_prime_witness_comms_folded
+acc_prime_challenges_folded
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.757ms
+after_fold_ec_copy_manager.advice_equalities 184835
+copy_manager.constant_equalities 122551
+builder.advice.len() 428713
+after_acc_ec_prime_copy_manager.advice_equalities 185477
+copy_manager.constant_equalities 122765
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 0
+copy_manager.advice_equalities 185477
+copy_manager.constant_equalities 122765
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 429676
+Time for synthesize_accumulation_verifier: 405.956375ms
 
 
-prove_accumulation_from_nark-primary-20 .................................6.617s
+with assign pt checked 
+
+··Start:   witness_collector-0
+before_acc_verifier.assign_accumulator_copy_manager.advice_equalities 31
+copy_manager.constant_equalities 61
+builder.advice.len() 184
+after_acc_verifier.assign_accumulator_copy_manager.advice_equalities 1909
+copy_manager.constant_equalities 2977
+builder.advice.len() 8742
+before_verify_acc_from_nark_copy_manager.advice_equalities 1909
+copy_manager.constant_equalities 2982
+builder.advice.len() 8747
+num_witness_polys 5
+num_challenges 4
+num_cross_terms 3
+after_squeeze_nark_copy_manager.advice_equalities 7878
+copy_manager.constant_equalities 7562
+builder.advice.len() 23702
+after_squeeze_nark_copy_manager.advice_equalities 13846
+copy_manager.constant_equalities 12142
+builder.advice.len() 38653
+after_squeeze_nark_copy_manager.advice_equalities 23305
+copy_manager.constant_equalities 19516
+builder.advice.len() 62613
+after_squeeze_nark_copy_manager.advice_equalities 29273
+copy_manager.constant_equalities 24096
+builder.advice.len() 77564
+before_nark_copy_manager.advice_equalities 29275
+copy_manager.constant_equalities 24098
+builder.advice.len() 77569
+before_compress_copy_manager.advice_equalities 29275
+copy_manager.constant_equalities 24098
+builder.advice.len() 77569
+before_squeeze_copy_manager.advice_equalities 29588
+copy_manager.constant_equalities 24584
+builder.advice.len() 78997
+before_assign_cyclefold_copy_manager.advice_equalities 59077
+copy_manager.constant_equalities 45986
+builder.advice.len() 149399
+after_check_cyclefold_copy_manager.advice_equalities 60955
+copy_manager.constant_equalities 48902
+builder.advice.len() 157949
+instances_folded
+challenges_folded
+after_fold_acc_from_nark_copy_manager.advice_equalities 60993
+copy_manager.constant_equalities 48920
+builder.advice.len() 158024
+after_acc_prime_copy_manager.advice_equalities 61401
+copy_manager.constant_equalities 49056
+builder.advice.len() 158636
+cyclefold_avp.num_instances [13]
+after_acc_ec_copy_manager.advice_equalities 61767
+copy_manager.constant_equalities 49683
+builder.advice.len() 160536
+after_nark_copy_manager.advice_equalities 94323
+copy_manager.constant_equalities 73680
+builder.advice.len() 239462
+before_squeeze_copy_manager.advice_equalities 94382
+copy_manager.constant_equalities 73780
+builder.advice.len() 239765
+after_squeeze_copy_manager.advice_equalities 136599
+copy_manager.constant_equalities 104444
+builder.advice.len() 340594
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................16.674ms
+witness_comms_folded
+challenges_folded
+r_nark.instances.len() 1
+acc.instances.len() 1
+acc_prime_instances_folded
+acc_prime_witness_comms_folded
+acc_prime_challenges_folded
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.481ms
+after_fold_ec_copy_manager.advice_equalities 190037
+copy_manager.constant_equalities 130327
+builder.advice.len() 451411
+after_acc_ec_prime_copy_manager.advice_equalities 190679
+copy_manager.constant_equalities 130541
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 0
+copy_manager.advice_equalities 190679
+copy_manager.constant_equalities 130541
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 452374
+Time for synthesize_accumulation_verifier: 381.016666ms
 
 
-total: 
-prove_nark_ec-cyclefold-17 ................................................7.561s
-
+instance len 40
 
 cyclefold_circuit_copy_manager.advice_equalities 51065
 cyclefold_circuit_copy_manager.constant_equalities 21239

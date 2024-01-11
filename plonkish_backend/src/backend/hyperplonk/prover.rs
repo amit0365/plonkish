@@ -278,9 +278,7 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
                         .zip(polys[*poly][start..].iter())
                         .zip(permutation_poly[start..].iter())
                     {
-                        // println!("product: {:?}, value: {:?}, permutation: {:?}", product, value, permutation);
-                        // *product *= (*beta * permutation) + gamma + value;
-                        *product *= (*permutation) + value;
+                        *product *= (*beta * permutation) + gamma + value;
                     }
                 });
             }
@@ -295,12 +293,9 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
                     for ((product, value), beta_id) in product
                         .iter_mut()
                         .zip(polys[*poly][start..].iter())
-                        //.zip(steps_by(F::from((id_offset + start) as u64) * beta, *beta))
-                        .zip(steps_by(F::from((id_offset + start) as u64), F::ONE))
+                        .zip(steps_by(F::from((id_offset + start) as u64) * beta, *beta))
                     {
-                        // println!("product: {:?}, value: {:?}, beta_id: {:?}", product, value, beta_id);
-                        // *product *= beta_id + gamma + value;
-                        *product *= beta_id + value;
+                        *product *= beta_id + gamma + value;
                     }
                 });
             }
@@ -311,99 +306,26 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
     end_timer(timer);
 
     let timer = start_timer(|| "z_polys");
-    // let z = iter::empty()
-    //     .chain(iter::repeat(F::ZERO).take(num_chunks))
-    //     .chain(Some(F::ONE))
-    //     .chain(
-    //         BooleanHypercube::new(num_vars)
-    //             .iter()
-    //             .skip(1)
-    //             .flat_map(|b| iter::repeat(b).take(num_chunks))
-    //             .zip(products.iter().cycle())
-    //             .scan(F::ONE, |state, (b, product)| {
-    //                 *state *= &product[b];
-    //                 Some(*state)
-    //             }),
-    //     )
-    //     .take(num_chunks << num_vars)
-    //     .collect_vec();
-
-    println!("products.len(): {:?}", products.len());
-    // Assuming `vectors` is your vector of vectors
-    for (i, inner_vector) in products.iter().enumerate() {
-        println!("Length of vector at index {}: {}", i, inner_vector.len());
-    }
-
-    // let mut i = 0;
-
     let z = iter::empty()
-    .chain(iter::repeat(F::ZERO).take(num_chunks))
-    .chain(Some(F::ONE))
-    .chain(
-        BooleanHypercube::new(num_vars)
-            .iter()
-            .skip(1)
-            .flat_map(|b| {
-                // println!("BooleanHypercube iteration value: {:?}", b);
-                iter::repeat(b).take(num_chunks)
-            })
-            .zip(products.iter().cycle())
-            .scan(F::ONE, |state, (b, product)| {
-                // println!("Before scan, state: {:?}, b: {:?}, product[b]: {:?}", state, b, product[b]);
-                *state *= &product[b];
-
-                if *&product[b] != F::ONE && *state == F::ONE {
-                    println!("product[b] != 1 and state == 1 at b {:?}", b);
-                }
-                // println!("After scan, updated state: {:?}", state);
-                Some(*state)
-            }),
+        .chain(iter::repeat(F::ZERO).take(num_chunks))
+        .chain(Some(F::ONE))
+        .chain(
+            BooleanHypercube::new(num_vars)
+                .iter()
+                .skip(1)
+                .flat_map(|b| iter::repeat(b).take(num_chunks))
+                .zip(products.iter().cycle())
+                .scan(F::ONE, |state, (b, product)| {
+                    *state *= &product[b];
+                    Some(*state)
+                }),
         )
         .take(num_chunks << num_vars)
         .collect_vec();
 
-    // println!("i: {:?}", i);
-
-    // let z = iter::empty()
-    // .chain(iter::repeat(F::ZERO).take(num_chunks))
-    // .chain(Some(F::ONE))
-    // .chain(
-    //     (0..1<<num_vars)
-    //         .skip(1)
-    //         .flat_map(|b| {
-    //             iter::repeat(b).take(num_chunks)
-    //         })
-    //         .zip(products.iter().cycle())
-    //         .scan(F::ONE, |state, (b, product)| {
-    //             println!("Before scan, state: {:?}, b: {:?}, product[b]: {:?}", state, b, product[b]);
-    //             *state *= &product[b];
-
-    //             if b == 262163 as usize {
-    //                 println!("product {:?} and state {:?} at b {:?}", *&product[b], *state, b);
-    //             }
-
-    //             // if *&product[b] == F::ONE {
-    //             //     println!("product[b] = 1 at b {:?}", b);
-    //             // }
-
-    //             if *&product[b] != F::ONE && *state == F::ONE {
-    //                 println!("product[b] != 1 and state == 1 at b {:?}", b);
-    //             }
-    //             println!("After scan, updated state: {:?}", state);
-    //             Some(*state)
-    //         }),
-    //     )
-    //     .take(num_chunks << num_vars)
-    //     .collect_vec();
-
-    // println!("Final z vector: {:?}", z);
-    println!("Final z vector length: {:?}", z.len());
 
     if cfg!(feature = "sanity-check") {
         let b_last = BooleanHypercube::new(num_vars).iter().last().unwrap();
-        println!("b_last = {:?}", b_last);
-        println!("z.last().unwrap() = {:?}", z.last().unwrap());
-        println!("products.last().unwrap()[b_last] = {:?}", products.last().unwrap()[b_last]);
         assert_eq!(
             *z.last().unwrap() * products.last().unwrap()[b_last],
             F::ONE

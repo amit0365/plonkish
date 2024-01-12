@@ -234,6 +234,7 @@ where
             primary_transcript.into_proof(),
         )
     };
+    println!("primary_proof: {:?}", primary_proof.len());
     let duration_prove_decider = prove_decider_time.elapsed();
     println!("Time for prove_decider: {:?}", duration_prove_decider);
 
@@ -364,11 +365,10 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    
     const NUM_STEPS: usize = 3;
 
     let primary_circuit_params = BaseCircuitParams {
-            k: 19,
+            k: 18,
             num_advice_per_phase: vec![1],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
@@ -379,9 +379,9 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     let cyclefold_circuit_params = BaseCircuitParams {
             k: 18,
             num_advice_per_phase: vec![1],
-            num_lookup_advice_per_phase: vec![1],
+            num_lookup_advice_per_phase: vec![0],
             num_fixed: 1,
-            lookup_bits: Some(13),
+            lookup_bits: Some(1),
             num_instance_columns: 1,
         };
 
@@ -458,8 +458,8 @@ pub mod strawman {
     use halo2_base::halo2_proofs::halo2curves::{
         bn256::{self, Bn256}, grumpkin};
 
-    pub const NUM_LIMBS: usize = 4;
-    pub const NUM_LIMB_BITS: usize = 64;
+    pub const NUM_LIMBS: usize = 3;
+    pub const NUM_LIMB_BITS: usize = 88;
     pub const NUM_SUBLIMBS: usize = 5;
     pub const NUM_LOOKUPS: usize = 1;
     pub const LOOKUP_BITS: usize = 8;
@@ -1113,7 +1113,7 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
         ) -> Result<(), Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
             let ecc_chip = EccChip::new(&non_native_chip);
             ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
             Ok(())
@@ -1124,7 +1124,7 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.assign_constant_point(builder.main(), constant))
         }
@@ -1135,7 +1135,7 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.assign_point_unchecked(builder.main(), witness))
         }
@@ -1147,7 +1147,7 @@ pub mod strawman {
             when_true: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
             when_false: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }

@@ -21,7 +21,7 @@ use crate::{util::{
 use rand::RngCore;
 
 // public inputs length for the CycleFoldInputs for compressing 
-pub const CF_IO_LEN: usize = 13;
+pub const CF_IO_LEN: usize = 1;
 
 pub type AssignedCycleFoldInputs<Assigned, AssignedSecondary> =
     CycleFoldInputs<Assigned, AssignedSecondary>;
@@ -422,9 +422,7 @@ where
         self.compute_and_constrain(builder, &assigned_inputs)?;
 
         let r = tcc_chip.gate_chip.bits_to_num(builder.main(), &assigned_inputs.r_le_bits[..NUM_CHALLENGE_BITS]);
-        // let scalar = tcc_chip.assign_witness_base(builder, fe_to_fe(r.value().clone()))?;
-        // let scalar_in_base = scalar.native();
-        // tcc_chip.constrain_equal(builder, &r, scalar_in_base).unwrap();  
+ 
         // let flattened_assigned_inputs = self.flatten_assigned_inputs(&scalar, &assigned_inputs)?;
         // assert_eq!(flattened_assigned_inputs.len(), CF_IO_LEN, "CycleFoldInputs must have exactly 38 elements");
 
@@ -442,7 +440,8 @@ where
         // MockProver::run(14, &*binding, instances.clone()).unwrap().assert_satisfied();
 
         binding.synthesize(config.clone(), layouter.namespace(|| "cyclefold_circuit"));
-
+        let total_lookup = binding.statistics().total_lookup_advice_per_phase;
+        println!("cyclefold_circuit_advice_lookup {:?}", total_lookup);
         let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
         println!("cyclefold_circuit_copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
         println!("cyclefold_circuit_copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
@@ -512,7 +511,7 @@ where
         let inputs = &self.inputs;
 
         let mut flattened_inputs = vec![self.hash_inputs(inputs)];
-        flattened_inputs.extend(self.flatten_inputs_acc_prime_comm(inputs).unwrap());
+        //flattened_inputs.extend(self.flatten_inputs_acc_prime_comm(inputs).unwrap());
 
         //assert!(flattened_inputs.len() == CF_IO_LEN); 
             for (i, input) in flattened_inputs.into_iter().enumerate() {

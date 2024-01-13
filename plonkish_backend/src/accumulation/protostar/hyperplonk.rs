@@ -40,8 +40,6 @@ use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use rand::RngCore;
 use std::{borrow::{BorrowMut, Borrow}, hash::Hash, iter::{self, once}};
 
-use super::ivc::cyclefold::CF_IO_LEN;
-
 mod preprocessor;
 mod prover;
 
@@ -78,6 +76,15 @@ where
 
         preprocess(param, circuit_info, STRATEGY.into())
     }
+
+    // fn preprocess_ec(
+    //     param: &Pcs::Param,
+    //     circuit_info: &PlonkishCircuitInfo<F>,
+    // ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
+    //     assert!(circuit_info.is_well_formed());
+
+    //     preprocess_ec(param, circuit_info, STRATEGY.into())
+    // }
 
     fn init_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error> {
         Ok(ProtostarAccumulator::init(
@@ -148,7 +155,7 @@ where
         }
 
         // Round n
-
+        println!("pp.lookups: {:?}", pp.lookups);
 
 
         let theta_primes = powers(transcript.squeeze_challenge())
@@ -288,7 +295,7 @@ where
 
                 let r = transcript.squeeze_challenge();
                 let r_le_bits = fe_to_bits_le(r.clone());
-                assert_eq!(r_le_bits.len(), NUM_CHALLENGE_BITS);
+                //assert_eq!(r_le_bits.len(), NUM_CHALLENGE_BITS);
                 assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
 
                 let timer = start_timer(|| "fold_uncompressed");
@@ -343,6 +350,200 @@ where
         };
 
         Ok((r_le_bits, cross_term_comms))
+    }
+
+    fn prove_nark_ec(
+        pp: &Self::ProverParam,
+        circuit: &impl PlonkishCircuit<F>,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
+        _: impl RngCore,
+    ) -> Result<PlonkishNark<F, Pcs>, Error> {
+        let ProtostarProverParam {
+            pp,
+            strategy,
+            num_theta_primes,
+            num_alpha_primes,
+            ..
+        } = pp;
+
+        let instances = circuit.instances();
+        for (num_instances, instances) in pp.num_instances.iter().zip_eq(instances) {
+            assert_eq!(instances.len(), *num_instances);
+            for instance in instances.iter() {
+                transcript.common_field_element(instance)?;
+            }
+        }
+
+        // Round 0..n
+
+        let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
+        let mut witness_comms = Vec::with_capacity(witness_polys.len());
+        let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
+        for (round, (num_witness_polys, num_challenges)) in pp
+            .num_witness_polys
+            .iter()
+            .zip_eq(pp.num_challenges.iter())
+            .enumerate()
+        {
+            let timer = start_timer(|| format!("witness_collector-{round}"));
+            let polys = circuit
+                .synthesize(round, &challenges)?
+                .into_iter()
+                .map(MultilinearPolynomial::new)
+                .collect_vec();
+            assert_eq!(polys.len(), *num_witness_polys);
+            end_timer(timer);
+
+            witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
+            witness_polys.extend(polys);
+            challenges.extend(transcript.squeeze_challenges(*num_challenges));
+        }
+        println!("pp.lookups_prove_nark_ec: {:?}", pp.lookups);
+        println!("num_witness_polys: {:?}", pp.num_witness_polys);
+        println!("num_challenges: {:?}", pp.num_challenges);
+        println!("challenges: {:?}", challenges);
+        // no lookups req ec
+        // Round n+2
+
+        let (zeta, powers_of_zeta_poly, powers_of_zeta_comm) = match strategy {
+            NoCompressing => (None, None, None),
+            Compressing => {
+                let zeta = transcript.squeeze_challenge();
+
+                let timer = start_timer(|| "powers_of_zeta_poly");
+                let powers_of_zeta_poly = powers_of_zeta_poly(pp.num_vars, zeta);
+                end_timer(timer);
+
+                let powers_of_zeta_comm =
+                    Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_poly, transcript)?;
+
+                (
+                    Some(zeta),
+                    Some(powers_of_zeta_poly),
+                    Some(powers_of_zeta_comm),
+                )
+            }
+        };
+
+        // Round n+3
+        let alpha_primes = powers(transcript.squeeze_challenge())
+            .skip(1)
+            .take(*num_alpha_primes)
+            .collect_vec();
+
+        println!("num_alpha_primes_ec: {}", num_alpha_primes);
+
+        let nark = PlonkishNark::new(
+            instances.to_vec(),
+            iter::empty()
+                .chain(challenges)
+                .chain(zeta)
+                .chain(alpha_primes)
+                .collect(),
+            iter::empty()
+                .chain(witness_comms)
+                .chain(powers_of_zeta_comm)
+                .collect(),
+            iter::empty()
+                .chain(witness_polys)
+                .chain(powers_of_zeta_poly)
+                .collect(),
+        );
+        println!("nark_ec.challenges: {:?}", nark.instance.challenges.len());
+        Ok(nark)
+
+    }
+
+    fn prove_accumulation_ec<const IS_INCOMING_ABSORBED: bool>(
+        pp: &Self::ProverParam,
+        mut accumulator: impl BorrowMut<Self::Accumulator>,
+        incoming: &Self::Accumulator,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
+        _: impl RngCore,
+    ) -> Result<(), Error> {
+        let ProtostarProverParam {
+            pp,
+            strategy,
+            num_alpha_primes,
+            cross_term_expressions,
+            ..
+        } = pp;
+        let accumulator = accumulator.borrow_mut();
+
+        accumulator.instance.absorb_into(transcript)?;
+        if !IS_INCOMING_ABSORBED {
+            incoming.instance.absorb_into(transcript)?;
+        }
+
+        match strategy {
+            NoCompressing => {
+                let timer = start_timer(|| {
+                    format!("evaluate_cross_term_polys-{}", cross_term_expressions.len())
+                });
+                let cross_term_polys = evaluate_cross_term_polys(
+                    cross_term_expressions,
+                    pp.num_vars,
+                    &pp.preprocess_polys,
+                    accumulator,
+                    incoming,
+                );
+                end_timer(timer);
+
+                let cross_term_comms =
+                    Pcs::batch_commit_and_write(&pp.pcs, &cross_term_polys, transcript)?;
+
+                // Round 0
+
+                let r = transcript.squeeze_challenge();
+
+                let timer = start_timer(|| "fold_uncompressed");
+                accumulator.fold_uncompressed(incoming, &cross_term_polys, &cross_term_comms, &r);
+                end_timer(timer);
+            }
+            Compressing => {
+                let timer = start_timer(|| "evaluate_zeta_cross_term_poly");
+                let zeta_cross_term_poly = evaluate_zeta_cross_term_poly(
+                    pp.num_vars,
+                    *num_alpha_primes,
+                    accumulator,
+                    incoming,
+                );
+                end_timer(timer);
+
+                let timer = start_timer(|| {
+                    let len = cross_term_expressions.len();
+                    format!("evaluate_compressed_cross_term_sums-{len}")
+                });
+                let compressed_cross_term_sums = evaluate_compressed_cross_term_sums(
+                    cross_term_expressions,
+                    pp.num_vars,
+                    &pp.preprocess_polys,
+                    accumulator,
+                    incoming,
+                );
+                end_timer(timer);
+
+                let zeta_cross_term_comm =
+                    Pcs::commit_and_write(&pp.pcs, &zeta_cross_term_poly, transcript)?;
+                transcript.write_field_elements(&compressed_cross_term_sums)?;
+
+                // Round 0
+
+                let r = transcript.squeeze_challenge();
+
+                let timer = start_timer(|| "fold_compressed");
+                accumulator.fold_compressed(
+                    incoming,
+                    &zeta_cross_term_poly,
+                    &zeta_cross_term_comm,
+                    &compressed_cross_term_sums,
+                    &r,
+                );
+                end_timer(timer);
+            }
+        };
+
+        Ok(())
     }
 
     fn verify_accumulation_from_nark(
@@ -466,7 +667,6 @@ where
         Ok(())
     }
 
-    // todo decider for cyclefold part
     fn prove_decider(
         pp: &Self::ProverParam,
         accumulator: &Self::Accumulator,

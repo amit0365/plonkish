@@ -33,6 +33,11 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         circuit_info: &PlonkishCircuitInfo<F>,
     ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
 
+    // fn preprocess_ec(
+    //     param: &<Self::Pcs as PolynomialCommitmentScheme<F>>::Param,
+    //     circuit_info: &PlonkishCircuitInfo<F>,
+    // ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
+
     fn init_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error>;
 
     fn init_accumulator_from_nark(
@@ -66,6 +71,34 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         let incoming = Self::init_accumulator_from_nark(pp, nark)?;
         let (r_le_bits, cross_term_comms) = Self::prove_accumulation::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
         Ok((r_le_bits, incoming, cross_term_comms))
+    }
+
+    fn prove_nark_ec(
+        pp: &Self::ProverParam,
+        circuit: &impl PlonkishCircuit<F>,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
+        rng: impl RngCore,
+    ) -> Result<PlonkishNark<F, Self::Pcs>, Error>;
+
+    fn prove_accumulation_ec<const IS_INCOMING_ABSORBED: bool>(
+        pp: &Self::ProverParam,
+        accumulator: impl BorrowMut<Self::Accumulator>,
+        incoming: &Self::Accumulator,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
+        rng: impl RngCore,
+    ) -> Result<(), Error>;
+
+    fn prove_accumulation_from_nark_ec(
+        pp: &Self::ProverParam,
+        accumulator: impl BorrowMut<Self::Accumulator>,
+        circuit: &impl PlonkishCircuit<F>,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
+        mut rng: impl RngCore,
+    ) -> Result<(), Error> {
+        let nark = Self::prove_nark_ec(pp, circuit, transcript, &mut rng)?;
+        let incoming = Self::init_accumulator_from_nark(pp, nark)?;
+        Self::prove_accumulation_ec::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
+        Ok(())
     }
 
     fn verify_accumulation_from_nark(

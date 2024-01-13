@@ -40,9 +40,113 @@ Time for verify_decider: 338.679584ms
 
 #### Cyclefold time
 
-// TODO CHECK MSM TIME WHEN ZERO, LOOKS LIKE IT DOUBLES NOW WITH OR WITHOUT ZEROS
+// todo without lookups  -- check this
 
-// with assign_point unchechecked -- saves 20k 
+// both lookups 1
+--main lookups increase, maybe taking from avp check? or maybe coming from cyclefold nark ??
+
+cyclefold_circuit_advice_lookup [0, 0, 0]
+cyclefold_circuit_copy_manager.advice_equalities 67952
+cyclefold_circuit_copy_manager.constant_equalities 33510
+cyclefold_circuit_copy_manager.assigned_constants 0
+cyclefold_circuit_copy_manager.assigned_advices 137797
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1
+
+
+main_circuit_advice_lookup [2636, 0, 0]
+copy_manager.advice_equalities 122037
+copy_manager.constant_equalities 74856
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 273325
+
+
+// cyclefold circuit with 0 num_lookups and main circuit with 1 
+
+cyclefold_circuit_advice_lookup [0, 0, 0]
+
+main_circuit_advice_lookup [2010, 0, 0]
+copy_manager.advice_equalities 88185
+copy_manager.constant_equalities 57643
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 203271
+
+
+// both circuit 0 num_lookups
+
+cyclefold_circuit_advice_lookup [0, 0, 0]
+
+0 lookup columns still give some lookups? WTF CHECK THIS main_circuit_advice_lookup [1614, 0, 0]
+copy_manager.advice_equalities 76821
+copy_manager.constant_equalities 49106
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 175260
+
+cyclefold_circuit_copy_manager.advice_equalities 34548
+cyclefold_circuit_copy_manager.constant_equalities 17200
+cyclefold_circuit_copy_manager.assigned_constants 0
+cyclefold_circuit_copy_manager.assigned_advices 70420
+
+
+// TODO CHECK MSM TIME WHEN ZERO, LOOKS LIKE IT DOUBLES NOW WITH OR WITHOUT ZEROS. even with 100k less constraints take same time
+
+// save 7k if use 88, 3 for base_chip - needed to do base ops for acc_ec
+
+cyclefold_circuit_copy_manager.advice_equalities 67952
+cyclefold_circuit_copy_manager.constant_equalities 33510
+cyclefold_circuit_copy_manager.assigned_constants 0
+cyclefold_circuit_copy_manager.assigned_advices 137797
+
+copy_manager.advice_equalities 122037
+copy_manager.constant_equalities 74856
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 273325
+
+
+// num limbs 2 for only primary_non-native - which only assigns witness, no computation -- saves 48k 
+
+copy_manager.advice_equalities 125719
+copy_manager.constant_equalities 77502
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281956
+
+
+// all i/o hashed as instances -- saves 100k instead of instances.len = 13
+
+copy_manager.advice_equalities 145147
+copy_manager.constant_equalities 91542
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 328108
+Time for synthesize_accumulation_verifier: 266.264166ms
+
+primary_proof: 7808
+Time for prove_decider: 7.817340667s
+Start:   variable_base_msm-13
+End:     variable_base_msm-13 ......................................................842.709µs
+Start:   variable_base_msm-20
+End:     variable_base_msm-20 ......................................................902.333µs
+Time for verify_decider: 14.784791ms
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 49.40s
+
+
+// with assign_point unchecked -- saves 20k, 450k -> 430
+
+// decider 
+prove_decider-primary-19 ..................................................7.513s
+primary_proof: 7808
+Time for prove_decider: 7.513353542s
+Start:   variable_base_msm-13
+End:     variable_base_msm-13 ......................................................836.250µs
+Start:   variable_base_msm-20
+End:     variable_base_msm-20 ......................................................892.125µs
+Time for verify_decider: 15.111833ms
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 51.05s
+
+
 
 Start:   prove_accumulation_from_nark-primary-19
 ··Start:   witness_collector-0

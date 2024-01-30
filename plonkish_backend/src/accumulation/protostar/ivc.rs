@@ -5,7 +5,6 @@ use crate::{
 pub mod poseidon_chip;
 pub mod poseidon_spec;
 pub mod poseidon_params;
-pub mod range_check;
 pub mod cyclefold;
 #[cfg(feature = "frontend-halo2")]
 pub mod halo2;

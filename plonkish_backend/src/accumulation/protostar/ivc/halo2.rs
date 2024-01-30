@@ -1379,8 +1379,8 @@ where
 {
     assert_eq!(S1::HashChip::NUM_HASH_BITS, S2::HashChip::NUM_HASH_BITS);
 
-    let primary_param = P1::setup(1 << primary_num_vars, 0, &mut rng).unwrap();
-    let secondary_param = P2::setup(1 << secondary_num_vars, 0, &mut rng).unwrap();
+    let primary_param = P1::setup(1 << (primary_num_vars + 1), 0, &mut rng).unwrap();
+    let secondary_param = P2::setup(1 << (secondary_num_vars + 1), 0, &mut rng).unwrap();
 
     let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, None);
     let mut primary_circuit =

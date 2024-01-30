@@ -101,7 +101,8 @@ where
         assert!(circuit_info.is_well_formed());
 
         let num_vars = circuit_info.k;
-        let poly_size = 1 << num_vars;
+        // todo changed here
+        let poly_size = 1 << (num_vars + 1);
         let batch_size = batch_size(circuit_info);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, poly_size, batch_size)?;
 

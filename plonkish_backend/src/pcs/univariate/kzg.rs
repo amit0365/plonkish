@@ -222,6 +222,9 @@ where
         poly_size: usize,
         _: usize,
     ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
+        println!("trim_kzg");
+        println!("poly_size: {}", poly_size);
+        println!("param.powers_of_s_g1.len(): {}", param.powers_of_s_g1.len());
         if param.powers_of_s_g1.len() < poly_size {
             return Err(Error::InvalidPcsParam(format!(
                 "Too large poly_size to trim to (param supports poly_size up to {} but got {poly_size})",
@@ -240,6 +243,7 @@ where
     }
 
     fn commit(pp: &Self::ProverParam, poly: &Self::Polynomial) -> Result<Self::Commitment, Error> {
+        println!("commit_kzg");
         if pp.degree() < poly.degree() {
             return Err(Error::InvalidPcsParam(format!(
                 "Too large degree of poly to commit (param supports degree up to {} but got {})",
@@ -255,6 +259,7 @@ where
         pp: &Self::ProverParam,
         polys: impl IntoIterator<Item = &'a Self::Polynomial>,
     ) -> Result<Vec<Self::Commitment>, Error> {
+        println!("batch_commit_kzg");
         polys
             .into_iter()
             .map(|poly| Self::commit(pp, poly))

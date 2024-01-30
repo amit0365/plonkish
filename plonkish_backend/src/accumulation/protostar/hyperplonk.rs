@@ -27,7 +27,7 @@ use crate::{
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
     },
     pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme},
-    poly::multilinear::MultilinearPolynomial,
+    poly::{Polynomial, multilinear::MultilinearPolynomial},
     util::{
         arithmetic::{powers, PrimeField},
         end_timer, start_timer,
@@ -144,12 +144,17 @@ where
             challenges.extend(transcript.squeeze_challenges(*num_challenges));
         }
 
+        println!("challenge len: {}", challenges.len());
+        println!("witness_comms len: {}", witness_comms.len());
+
         // Round n
 
         let theta_primes = powers(transcript.squeeze_challenge())
             .skip(1)
             .take(*num_theta_primes)
             .collect_vec();
+
+        println!("theta_primes len: {}", theta_primes.len());
 
         let timer = start_timer(|| format!("lookup_compressed_polys-{}", pp.lookups.len()));
         let lookup_compressed_polys = {
@@ -179,12 +184,15 @@ where
 
         let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
         let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &beta_prime);
+        let lookup_h_poly_concat =  MultilinearPolynomial::new(lookup_h_polys[0][0].evals().iter().chain(lookup_h_polys[0][1].evals().iter()).cloned().collect());
         end_timer(timer);
 
-        let lookup_h_comms = {
-            let polys = lookup_h_polys.iter().flatten();
-            Pcs::batch_commit_and_write(&pp.pcs, polys, transcript)?
-        };
+        // let lookup_h_comms = {
+        //     let polys = lookup_h_polys.iter().flatten();
+        //     Pcs::batch_commit_and_write(&pp.pcs, polys, transcript)?
+        // };
+
+        let lookup_h_comms = Pcs::commit_and_write(&pp.pcs, &lookup_h_poly_concat, transcript)?;
 
         // Round n+2
 
@@ -214,6 +222,7 @@ where
             .skip(1)
             .take(*num_alpha_primes)
             .collect_vec();
+        println!("alpha_primes len: {}", alpha_primes.len());
 
         Ok(PlonkishNark::new(
             instances.to_vec(),
@@ -227,13 +236,14 @@ where
             iter::empty()
                 .chain(witness_comms)
                 .chain(lookup_m_comms)
-                .chain(lookup_h_comms)
+                .chain([lookup_h_comms])
                 .chain(powers_of_zeta_comm)
                 .collect(),
             iter::empty()
                 .chain(witness_polys)
                 .chain(lookup_m_polys)
-                .chain(lookup_h_polys.into_iter().flatten())
+                .chain([lookup_h_poly_concat])
+                //.chain(lookup_h_polys.into_iter().flatten())
                 .chain(powers_of_zeta_poly)
                 .collect(),
         ))

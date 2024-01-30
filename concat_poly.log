@@ -1,0 +1,1301 @@
+warning: virtual workspace defaulting to `resolver = "1"` despite one or more workspace members being on edition 2021 which implies `resolver = "2"`
+note: to keep the current resolver, specify `workspace.resolver = "1"` in the workspace root's manifest
+note: to use the edition 2021 resolver, specify `workspace.resolver = "2"` in the workspace root's manifest
+note: for more details see https://doc.rust-lang.org/cargo/reference/resolver.html#resolver-versions
+   Compiling plonkish_backend v0.1.0 (/Users/ak36/Desktop/bunz/plonkish-multiopen/plonkish/plonkish_backend)
+    Finished release [optimized] target(s) in 32.97s
+     Running unittests src/lib.rs (target/release/deps/plonkish_backend-782df6c69525a7d1)
+
+running 1 test
+lookup_constraints_hp_preprcoessor
+m_offset: 33, h_offset: 34
+trim_gemini
+trim_kzg
+poly_size: 32768
+param.powers_of_s_g1.len(): 32768
+batch_commit_gemini
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.122ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.605ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.587ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.388ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.859ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................9.027ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................9.470ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................6.795ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................10.512ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.784ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.652ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.459ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.343ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.372ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................6.021ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.267ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.031ms
+batch_commit_gemini
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................9.304ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.823ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.263ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.352ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................9.002ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.428ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................9.961ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................12.083ms
+m_offset: 33, h_offset: 34
+lookup_constraints_hp_preprcoessor
+trim_gemini
+trim_kzg
+poly_size: 32768
+param.powers_of_s_g1.len(): 32768
+lookup_constraints_hp_preprcoessor
+m_offset: 33, h_offset: 34
+batch_commit_ipa
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.848ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.095ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................13.429ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.285ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.981ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.009ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................17.690ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................6.384ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.275ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.630ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.764ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.475ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.332ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.395ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.159ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.258ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.537ms
+batch_commit_ipa
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................6.944ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.777ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.134ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.739ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.674ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.193ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.134ms
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.099ms
+m_offset: 33, h_offset: 34
+lookup_constraints_hp_preprcoessor
+lookup_constraints_hp_preprcoessor
+m_offset: 33, h_offset: 34
+trim_gemini
+trim_kzg
+poly_size: 32768
+param.powers_of_s_g1.len(): 32768
+batch_commit_gemini
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.799ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.036ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................12.059ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.225ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.084ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.938ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................16.696ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................6.362ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.374ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.792ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................5.558ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................7.034ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.576ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.472ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.376ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.685ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................4.412ms
+batch_commit_gemini
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................6.854ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................9.272ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.142ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.153ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.909ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.327ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.899ms
+commit_gemini
+Start:   variable_base_msm-16384
+End:     variable_base_msm-16384 ...................................................8.671ms
+m_offset: 33, h_offset: 34
+lookup_constraints_hp_preprcoessor
+trim_gemini
+trim_kzg
+poly_size: 32768
+param.powers_of_s_g1.len(): 32768
+Start:   prove_accumulation_from_nark-primary-14
+··Start:   witness_collector-0
+··End:     witness_collector-0 .....................................................50.081ms
+batch_commit_gemini
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................4.639ms
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................4.589ms
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................4.806ms
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................5.200ms
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................4.668ms
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................7.428ms
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................4.277ms
+challenge len: 0
+witness_comms len: 7
+theta_primes len: 1
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................452.958µs
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................331.625µs
+··End:     lookup_compressed_polys-1 ...............................................913.666µs
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................796.250µs
+batch_commit_gemini
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................4.544ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................1.242ms
+commit_gemini
+··Start:   variable_base_msm-32768
+··End:     variable_base_msm-32768 .................................................67.175ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................683.792µs
+commit_gemini
+··Start:   variable_base_msm-16384
+··End:     variable_base_msm-16384 .................................................55.845ms
+alpha_primes len: 4
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................447.750µs
+··Start:   evaluate_compressed_cross_term_sums-3
+num_vars: 14
+num_threads: 8
+chunk_size: 2048
+num_cross_terms: 3
+query: Query { poly: 3, rotation: Rotation(0) }
+query: Query { poly: 3, rotation: Rotation(0) }
+query: Query { poly: 3, rotation: Rotation(0) }
+b: 12288
+query: Query { poly: 3, rotation: Rotation(0) }
+b: 8192
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 3, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 13, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 18, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 19, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 28, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 15, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 7, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 14, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 21, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 22, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 16, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 24, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 26, rotation: Rotation(0) }
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 3, rotation: Rotation(0) }
+b: 0
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 13, rotation: Rotation(0) }
+b: 12288
+query: Query { poly: 3, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 0, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 13, rotation: Rotation(0) }
+query: Query { poly: 13, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 13, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+query: Query { poly: 3, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 8192
+query: Query { poly: 18, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 19, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 13, rotation: Rotation(0) }
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 1, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 2, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 20, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+query: Query { poly: 40, rotation: Rotation(0) }
+b: 6144
+bh.rotate(b, query.rotation()): 6144
+polys.len(): 40
+polys.len(): 40
+query: Query { poly: 13, rotation: Rotation(0) }
+thread '<unnamed>' panicked at plonkish_backend/src/accumulation/protostar/hyperplonk/prover.rs:336:36:
+index out of bounds: the len is 40 but the index is 40
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 18, rotation: Rotation(0) }
+b: 0
+query: Query { poly: 18, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 13, rotation: Rotation(0) }
+stack backtrace:
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 18, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 19, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+polys.len(): 40
+query: Query { poly: 18, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 28, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 19, rotation: Rotation(0) }
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 28, rotation: Rotation(0) }
+b: 4096
+polys.len(): 40
+query: Query { poly: 15, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 7, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 14, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 19, rotation: Rotation(0) }
+b: 0
+query: Query { poly: 19, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 28, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 15, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 7, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 14, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 21, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 22, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 16, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 24, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+query: Query { poly: 18, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 19, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 28, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 15, rotation: Rotation(0) }
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 28, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 15, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 7, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 7, rotation: Rotation(0) }
+polys.len(): 40
+query: Query { poly: 26, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 0, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 15, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 7, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 14, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 21, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 22, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 16, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 24, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 26, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 0, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+b: 2048
+polys.len(): 40
+query: Query { poly: 1, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 2, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 20, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+query: Query { poly: 40, rotation: Rotation(0) }
+b: 14336
+bh.rotate(b, query.rotation()): 14336
+polys.len(): 40
+thread '<unnamed>' panicked at plonkish_backend/src/accumulation/protostar/hyperplonk/prover.rs:336:36:
+index out of bounds: the len is 40 but the index is 40
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 28, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 15, rotation: Rotation(0) }
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 1, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+query: Query { poly: 2, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 14, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 21, rotation: Rotation(0) }
+b: 12288
+polys.len(): 40
+query: Query { poly: 20, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 22, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 16, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 24, rotation: Rotation(0) }
+b: 12288
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 14, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 21, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 22, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 16, rotation: Rotation(0) }
+b: 0
+polys.len(): 40
+query: Query { poly: 40, rotation: Rotation(0) }
+b: 4096
+bh.rotate(b, query.rotation()): 4096
+polys.len(): 40
+thread '<unnamed>' panicked at plonkish_backend/src/accumulation/protostar/hyperplonk/prover.rs:336:36:
+index out of bounds: the len is 40 but the index is 40
+query: Query { poly: 21, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 22, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 7, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 14, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 21, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 22, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 16, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 24, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 24, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 18, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 19, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 28, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 26, rotation: Rotation(0) }
+b: 0
+query: Query { poly: 26, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 0, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 26, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 0, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 0, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 16, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 24, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 26, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 0, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 1, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 2, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 20, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+query: Query { poly: 40, rotation: Rotation(0) }
+b: 8192
+bh.rotate(b, query.rotation()): 8192
+polys.len(): 40
+thread '<unnamed>' panicked at plonkish_backend/src/accumulation/protostar/hyperplonk/prover.rs:336:36:
+index out of bounds: the len is 40 but the index is 40
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+polys.len(): 40
+query: Query { poly: 1, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+query: Query { poly: 1, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 2, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+query: Query { poly: 20, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+polys.len(): 40
+query: Query { poly: 2, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 20, rotation: Rotation(0) }
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 40, rotation: Rotation(0) }
+b: 12288
+bh.rotate(b, query.rotation()): 12288
+polys.len(): 40
+thread '<unnamed>' panicked at plonkish_backend/src/accumulation/protostar/hyperplonk/prover.rs:336:36:
+index out of bounds: the len is 40 but the index is 40
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 15, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+polys.len(): 40
+query: Query { poly: 1, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 7, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 2, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 20, rotation: Rotation(0) }
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 40, rotation: Rotation(0) }
+query: Query { poly: 40, rotation: Rotation(0) }
+b: 0
+bh.rotate(b, query.rotation()): 0
+polys.len(): 40
+query: Query { poly: 14, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 21, rotation: Rotation(0) }
+thread '<unnamed>' panicked at plonkish_backend/src/accumulation/protostar/hyperplonk/prover.rs:336:36:
+index out of bounds: the len is 40 but the index is 40
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 22, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 16, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 24, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 26, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 0, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+b: 2048
+bh.rotate(b, query.rotation()): 2048
+polys.len(): 40
+query: Query { poly: 1, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+thread '<unnamed>' panicked at plonkish_backend/src/accumulation/protostar/hyperplonk/prover.rs:336:36:
+index out of bounds: the len is 40 but the index is 40
+query: Query { poly: 2, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 20, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+query: Query { poly: 40, rotation: Rotation(0) }
+b: 10240
+bh.rotate(b, query.rotation()): 10240
+polys.len(): 40
+thread '<unnamed>' panicked at plonkish_backend/src/accumulation/protostar/hyperplonk/prover.rs:336:36:
+index out of bounds: the len is 40 but the index is 40
+   0:        0x100914934 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x100914934 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x100914934 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x100914934 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x100930bf0 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x100930bf0 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x100912824 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x100914770 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x100914770 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x100916228 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x100915f70 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x100916650 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x100916550 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x100914d9c - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x1009162ec - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x10095d8f0 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x10095da34 - core::panicking::panic_bounds_check::h8941b86d97d3d11b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:190:5
+  17:        0x1005b00a8 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_calculations::h047d05c50d11122e
+  18:        0x1005afb28 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_and_sum::hc67ce361623932a4
+  19:        0x1005cee3c - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h021d9817562a33e5
+  20:        0x1007babbc - <rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute::he54844655735d200
+  21:        0x100959920 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  22:        0x1008c21e8 - rayon_core::registry::ThreadBuilder::run::h927c759b1b4466f7
+  23:        0x1008c47c4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h13925ae6fb439e42
+  24:        0x1008c6028 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h52e0ea45705a375f
+  25:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  26:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  27:        0x10091a4d8 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  28:        0x1a4c4826c - __pthread_deallocate
+stack backtrace:
+   0:        0x100914934 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x100914934 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x100914934 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x100914934 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x100930bf0 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x100930bf0 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x100912824 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x100914770 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x100914770 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x100916228 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x100915f70 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x100916650 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x100916550 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x100914d9c - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x1009162ec - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x10095d8f0 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x10095da34 - core::panicking::panic_bounds_check::h8941b86d97d3d11b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:190:5
+  17:        0x1005b00a8 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_calculations::h047d05c50d11122e
+  18:        0x1005afb28 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_and_sum::hc67ce361623932a4
+  19:        0x1005cee3c - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h021d9817562a33e5
+  20:        0x1007babbc - <rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute::he54844655735d200
+  21:        0x1009598e4 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  22:        0x1007a0534 - rayon_core::scope::ScopeBase::complete::h3366982b65f7784b
+  23:        0x1005e83b0 - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::hc70df605bc3e580e
+  24:        0x1007d3dec - <rayon_core::job::StackJob<L,F,R> as rayon_core::job::Job>::execute::h9e6e4b6e1396d230
+  25:        0x100959920 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  26:        0x1008c21e8 - rayon_core::registry::ThreadBuilder::run::h927c759b1b4466f7
+  27:        0x1008c47c4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h13925ae6fb439e42
+  28:        0x1008c6028 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h52e0ea45705a375f
+  29:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  30:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  31:        0x10091a4d8 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  32:        0x1a4c4826c - __pthread_deallocate
+stack backtrace:
+   0:        0x100914934 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x100914934 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x100914934 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x100914934 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x100930bf0 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x100930bf0 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x100912824 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x100914770 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x100914770 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x100916228 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x100915f70 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x100916650 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x100916550 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x100914d9c - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x1009162ec - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x10095d8f0 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x10095da34 - core::panicking::panic_bounds_check::h8941b86d97d3d11b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:190:5
+  17:        0x1005b00a8 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_calculations::h047d05c50d11122e
+  18:        0x1005afb28 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_and_sum::hc67ce361623932a4
+  19:        0x1005cee3c - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h021d9817562a33e5
+  20:        0x1007babbc - <rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute::he54844655735d200
+  21:        0x100959920 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  22:        0x1008c21e8 - rayon_core::registry::ThreadBuilder::run::h927c759b1b4466f7
+  23:        0x1008c47c4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h13925ae6fb439e42
+  24:        0x1008c6028 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h52e0ea45705a375f
+  25:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  26:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  27:        0x10091a4d8 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  28:        0x1a4c4826c - __pthread_deallocate
+stack backtrace:
+   0:        0x100914934 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x100914934 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x100914934 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x100914934 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x100930bf0 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x100930bf0 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x100912824 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x100914770 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x100914770 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x100916228 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x100915f70 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x100916650 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x100916550 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x100914d9c - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x1009162ec - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x10095d8f0 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x10095da34 - core::panicking::panic_bounds_check::h8941b86d97d3d11b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:190:5
+  17:        0x1005b00a8 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_calculations::h047d05c50d11122e
+  18:        0x1005afb28 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_and_sum::hc67ce361623932a4
+  19:        0x1005cee3c - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h021d9817562a33e5
+  20:        0x1007babbc - <rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute::he54844655735d200
+  21:        0x100959920 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  22:        0x1008c21e8 - rayon_core::registry::ThreadBuilder::run::h927c759b1b4466f7
+  23:        0x1008c47c4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h13925ae6fb439e42
+  24:        0x1008c6028 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h52e0ea45705a375f
+  25:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  26:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  27:        0x10091a4d8 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  28:        0x1a4c4826c - __pthread_deallocate
+stack backtrace:
+   0:        0x100914934 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x100914934 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x100914934 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x100914934 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x100930bf0 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x100930bf0 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x100912824 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x100914770 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x100914770 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x100916228 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x100915f70 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x100916650 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x100916550 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x100914d9c - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x1009162ec - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x10095d8f0 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x10095da34 - core::panicking::panic_bounds_check::h8941b86d97d3d11b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:190:5
+  17:        0x1005b00a8 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_calculations::h047d05c50d11122e
+  18:        0x1005afb28 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_and_sum::hc67ce361623932a4
+  19:        0x1005cee3c - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h021d9817562a33e5
+  20:        0x1007babbc - <rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute::he54844655735d200
+  21:        0x100959920 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  22:        0x1008c21e8 - rayon_core::registry::ThreadBuilder::run::h927c759b1b4466f7
+  23:        0x1008c47c4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h13925ae6fb439e42
+  24:        0x1008c6028 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h52e0ea45705a375f
+  25:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  26:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  27:        0x10091a4d8 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  28:        0x1a4c4826c - __pthread_deallocate
+stack backtrace:
+   0:        0x100914934 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x100914934 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x100914934 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x100914934 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x100930bf0 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x100930bf0 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x100912824 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x100914770 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x100914770 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x100916228 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x100915f70 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x100916650 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x100916550 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x100914d9c - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x1009162ec - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x10095d8f0 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x10095da34 - core::panicking::panic_bounds_check::h8941b86d97d3d11b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:190:5
+  17:        0x1005b00a8 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_calculations::h047d05c50d11122e
+  18:        0x1005afb28 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_and_sum::hc67ce361623932a4
+  19:        0x1005cee3c - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h021d9817562a33e5
+  20:        0x1007babbc - <rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute::he54844655735d200
+  21:        0x100959920 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  22:        0x1008c21e8 - rayon_core::registry::ThreadBuilder::run::h927c759b1b4466f7
+  23:        0x1008c47c4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h13925ae6fb439e42
+  24:        0x1008c6028 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h52e0ea45705a375f
+  25:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  26:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  27:        0x10091a4d8 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  28:        0x1a4c4826c - __pthread_deallocate
+stack backtrace:
+   0:        0x100914934 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x100914934 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x100914934 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x100914934 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x100930bf0 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x100930bf0 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x100912824 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x100914770 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x100914770 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x100916228 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x100915f70 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x100916650 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x100916550 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x100914d9c - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x1009162ec - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x10095d8f0 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x10095da34 - core::panicking::panic_bounds_check::h8941b86d97d3d11b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:190:5
+  17:        0x1005b00a8 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_calculations::h047d05c50d11122e
+  18:        0x1005afb28 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_and_sum::hc67ce361623932a4
+  19:        0x1005cee3c - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h021d9817562a33e5
+  20:        0x1007babbc - <rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute::he54844655735d200
+  21:        0x100959920 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  22:        0x1008c21e8 - rayon_core::registry::ThreadBuilder::run::h927c759b1b4466f7
+  23:        0x1008c47c4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h13925ae6fb439e42
+  24:        0x1008c6028 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h52e0ea45705a375f
+  25:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  26:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  27:        0x10091a4d8 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  28:        0x1a4c4826c - __pthread_deallocate
+stack backtrace:
+   0:        0x100914934 - std::backtrace_rs::backtrace::libunwind::trace::hd5710a7611e3d56e
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:        0x100914934 - std::backtrace_rs::backtrace::trace_unsynchronized::h68665fd17e5f8a7d
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:        0x100914934 - std::sys_common::backtrace::_print_fmt::h57ac50d3be70ca63
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:67:5
+   3:        0x100914934 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9e6f5b6dff7351ee
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:44:22
+   4:        0x100930bf0 - core::fmt::rt::Argument::fmt::hced102f619adf930
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/rt.rs:142:9
+   5:        0x100930bf0 - core::fmt::write::hd695f6f323113fa4
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/fmt/mod.rs:1117:17
+   6:        0x100912824 - std::io::Write::write_fmt::h2d56978b54c1b9c0
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/io/mod.rs:1762:15
+   7:        0x100914770 - std::sys_common::backtrace::_print::h728db9ad119c4970
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:47:5
+   8:        0x100914770 - std::sys_common::backtrace::print::h65ce5b2d0dc0d357
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:34:9
+   9:        0x100916228 - std::panicking::default_hook::{{closure}}::h558f50bfdaa8c01a
+  10:        0x100915f70 - std::panicking::default_hook::ha412fc42696c192f
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:292:9
+  11:        0x100916650 - std::panicking::rust_panic_with_hook::ha4a7cf37f717c783
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:731:13
+  12:        0x100916550 - std::panicking::begin_panic_handler::{{closure}}::hf2ed6b7d223c4c15
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:609:13
+  13:        0x100914d9c - std::sys_common::backtrace::__rust_end_short_backtrace::h57d45a3109dcf9d2
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys_common/backtrace.rs:170:18
+  14:        0x1009162ec - rust_begin_unwind
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/panicking.rs:597:5
+  15:        0x10095d8f0 - core::panicking::panic_fmt::h37068c283f2fbb8b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:72:14
+  16:        0x10095da34 - core::panicking::panic_bounds_check::h8941b86d97d3d11b
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/core/src/panicking.rs:190:5
+  17:        0x1005b00a8 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_calculations::h047d05c50d11122e
+  18:        0x1005afb28 - plonkish_backend::accumulation::protostar::hyperplonk::prover::HadamardEvaluator<F>::evaluate_and_sum::hc67ce361623932a4
+  19:        0x1005cee3c - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h021d9817562a33e5
+  20:        0x1007babbc - <rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute::he54844655735d200
+  21:        0x100959920 - rayon_core::registry::WorkerThread::wait_until_cold::hec76facd1274f7b0
+  22:        0x1008c21e8 - rayon_core::registry::ThreadBuilder::run::h927c759b1b4466f7
+  23:        0x1008c47c4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h13925ae6fb439e42
+  24:        0x1008c6028 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h52e0ea45705a375f
+  25:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::haa20b21355512876
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  26:        0x10091a4d8 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h125a5fe0ba757b77
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/alloc/src/boxed.rs:2007:9
+  27:        0x10091a4d8 - std::sys::unix::thread::Thread::new::thread_start::h25b50e615a42f137
+                               at /rustc/1c05d50c8403c56d9a8b6fb871f15aaa26fb5d07/library/std/src/sys/unix/thread.rs:108:17
+  28:        0x1a4c4826c - __pthread_deallocate
+··End:     evaluate_compressed_cross_term_sums-3 ...................................27.290ms
+End:     prove_accumulation_from_nark-primary-14 ...................................246.209ms
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... FAILED
+
+failures:
+
+failures:
+    accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 58 filtered out; finished in 3.78s
+
+error: test failed, to rerun pass `-p plonkish_backend --lib`

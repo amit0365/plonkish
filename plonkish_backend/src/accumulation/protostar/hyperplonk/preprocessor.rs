@@ -272,7 +272,7 @@ where
     let (pp, vp) = {
         let (mut pp, mut vp) = HyperPlonk::preprocess(param, circuit_info)?;
         let batch_size = batch_size(circuit_info, strategy);
-        let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << circuit_info.k, batch_size)?;
+        let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << (circuit_info.k + 1), batch_size)?;
         pp.pcs = pcs_pp;
         vp.pcs = pcs_vp;
         pp.num_permutation_z_polys = num_permutation_z_polys;
@@ -347,6 +347,7 @@ pub(crate) fn lookup_constraints<F: PrimeField>(
     theta_primes: &[Expression<F>],
     beta_prime: &Expression<F>,
 ) -> (Vec<Expression<F>>, Vec<Expression<F>>) {
+    println!("lookup_constraints_hp_preprcoessor");
     let one = &Expression::one();
     let m_offset = circuit_info.num_poly() + circuit_info.permutation_polys().len();
     let h_offset = m_offset + circuit_info.lookups.len();
@@ -356,7 +357,7 @@ pub(crate) fn lookup_constraints<F: PrimeField>(
         .zip(m_offset..)
         .zip((h_offset..).step_by(2))
         .flat_map(|((lookup, m), h)| {
-            let [m, h_input, h_table] = &[m, h, h + 1]
+            let [m, h_input, h_table] = &[m, h, h]
                 .map(|poly| Query::new(poly, Rotation::cur()))
                 .map(Expression::<F>::Polynomial);
             let (inputs, tables) = lookup
@@ -385,7 +386,7 @@ pub(crate) fn lookup_constraints<F: PrimeField>(
         .step_by(2)
         .take(circuit_info.lookups.len())
         .map(|h| {
-            let [h_input, h_table] = &[h, h + 1]
+            let [h_input, h_table] = &[h, h]
                 .map(|poly| Query::new(poly, Rotation::cur()))
                 .map(Expression::<F>::Polynomial);
             h_input - h_table

@@ -22,6 +22,8 @@ halo2-base = { path = "/Users/ak36/Desktop/axiom/halo2-lib/halo2-base"}
 
 halo2-ecc = { path = "/Users/ak36/Desktop/axiom/halo2-lib/halo2-ecc" }
 
+halo2_gadgets = { path = "/Users/ak36/Desktop/axiom/halo2/halo2_gadgets", package="halo2_gadgets"}
+
 # timer
 ark-std = { version = "^0.4.0", default-features = false, optional = true }
 

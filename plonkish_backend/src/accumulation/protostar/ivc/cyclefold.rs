@@ -354,12 +354,13 @@ where
                     .iter()
                     .flat_map(into_coordinates))  
             .chain(into_coordinates(&unassigned_inputs.acc_e_comm).into_iter())              
-            .chain(
-                unassigned_inputs.acc_prime_witness_comms
-                    .iter()
-                    .flat_map(into_coordinates))
-            .chain(into_coordinates(&unassigned_inputs.acc_prime_e_comm).into_iter())          
+            // .chain(
+            //     unassigned_inputs.acc_prime_witness_comms
+            //         .iter()
+            //         .flat_map(into_coordinates))
+            // .chain(into_coordinates(&unassigned_inputs.acc_prime_e_comm).into_iter())          
             .collect_vec();
+        println!("hash_inputs: {:?}", inputs.len());
         poseidon.update(inputs.as_slice());
         fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
     }
@@ -391,15 +392,16 @@ where
                     .flat_map(|point| vec![point.x(), point.y()].into_iter()),
             )
             .chain(vec![assigned_inputs.acc_e_comm.x(), assigned_inputs.acc_e_comm.y()].into_iter())
-            .chain(
-                assigned_inputs.acc_prime_witness_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(vec![assigned_inputs.acc_prime_e_comm.x(), assigned_inputs.acc_prime_e_comm.y()].into_iter())
+            // .chain(
+            //     assigned_inputs.acc_prime_witness_comms
+            //         .iter()
+            //         .flat_map(|point| vec![point.x(), point.y()].into_iter()),
+            // )
+            // .chain(vec![assigned_inputs.acc_prime_e_comm.x(), assigned_inputs.acc_prime_e_comm.y()].into_iter())
             .copied()
             .collect_vec();
         let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
+        println!("hash_assigned_inputs: {:?}", inputs.len());
         poseidon_chip.update(&inputs);
         let hash = poseidon_chip.squeeze(builder.main(), &self.tcc_chip.gate_chip);
         // change to strict
@@ -434,7 +436,7 @@ where
         assert!(assigned_instances[0].is_empty());
 
         assigned_instances[0].push(inputs_hash);
-        assigned_instances[0].extend(scalar_mul_outputs);
+        // assigned_instances[0].extend(scalar_mul_outputs);
 
         // let instances = self.instances();
         // MockProver::run(14, &*binding, instances.clone()).unwrap().assert_satisfied();
@@ -510,13 +512,14 @@ where
         let mut instances = vec![vec![C::Scalar::ZERO; CF_IO_LEN]];
         let inputs = &self.inputs;
 
-        let mut flattened_inputs = vec![self.hash_inputs(inputs)];
+        instances[0][0] = self.hash_inputs(inputs);
+        
+        // let mut flattened_inputs = vec![self.hash_inputs(inputs)];
         //flattened_inputs.extend(self.flatten_inputs_acc_prime_comm(inputs).unwrap());
-
         //assert!(flattened_inputs.len() == CF_IO_LEN); 
-            for (i, input) in flattened_inputs.into_iter().enumerate() {
-                    instances[0][i] = input;
-            }
+            // for (i, input) in flattened_inputs.into_iter().enumerate() {
+            //         instances[0][i] = input;
+            // }
 
         instances
     }

@@ -1294,13 +1294,13 @@ pub mod strawman {
                         .flat_map(into_coordinates),
                 )
                 .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
-                .chain(
-                    acc_prime.witness_comms
-                        .iter()
-                        .map(AsRef::as_ref)
-                        .flat_map(into_coordinates),
-                )
-                .chain(into_coordinates(acc_prime.e_comm.as_ref()).into_iter())
+                // .chain(
+                //     acc_prime.witness_comms
+                //         .iter()
+                //         .map(AsRef::as_ref)
+                //         .flat_map(into_coordinates),
+                // )
+                // .chain(into_coordinates(acc_prime.e_comm.as_ref()).into_iter())
                 .collect_vec();
             poseidon.update(inputs.as_slice());
             fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)

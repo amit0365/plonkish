@@ -1,6 +1,6 @@
 //! An easy-to-use implementation of the Poseidon Hash in the form of a Halo2 Chip. While the Poseidon Hash function
 //! is already implemented in halo2_gadgets, there is no wrapper chip that makes it easy to use in other circuits.
-use halo2_gadgets::{poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config}, sinsemilla::Message};
+use halo2_gadgets::{poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config}};
 use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Chip, Value},
     halo2curves::bn256::Fr as Fp,
@@ -94,7 +94,7 @@ const L: usize = 20;
 
 struct PoseidonHashCircuit{
     message: [Fp; L],
-    //output: Fp,
+    // output: Fp,
     //_marker: PhantomData<S>,
 }
 

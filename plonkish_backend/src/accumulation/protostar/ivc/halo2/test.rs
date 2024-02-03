@@ -53,8 +53,6 @@ use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS, T, RATE, R_F, R_P, SECURE_MDS, Ch
 
 use super::RecursiveCircuit;
 
-
-
 #[derive(Clone, Debug, Default)]
 struct TrivialCircuit<C> {
     step_idx: usize,

@@ -88,6 +88,7 @@ use halo2_base::halo2_proofs::halo2curves::{
 };
 
 pub mod test;
+pub mod chips;
 use test::strawman::{self, T, RANGE_BITS, RATE, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS, R_F, R_P, SECURE_MDS, Chip};
 
 use self::test::strawman::{PoseidonNativeTranscriptChip, fe_from_limbs};

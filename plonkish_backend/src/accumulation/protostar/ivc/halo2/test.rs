@@ -259,8 +259,6 @@ where
 
 }
 
-
-
     // let primary_dtp = strawman::decider_transcript_param();
     // let secondary_dtp = strawman::decider_transcript_param();
 
@@ -358,8 +356,6 @@ where
 //     // println!("instances: {:?}", instances.len());
 //     MockProver::run(16, &cyclefold_circuit, vec![]).unwrap().assert_satisfied();
 // }
-
-
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {

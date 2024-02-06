@@ -250,7 +250,6 @@ where
         );
 
         Ok(nark)
-
     }
 
     fn prove_accumulation<const IS_INCOMING_ABSORBED: bool>(

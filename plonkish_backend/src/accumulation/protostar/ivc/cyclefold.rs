@@ -2,23 +2,29 @@ use halo2_base::{halo2_proofs::
     {plonk::{Circuit, Error, ConstraintSystem}, 
     dev::MockProver, 
     arithmetic::Field,
-    halo2curves::group::prime::PrimeCurveAffine,
-    circuit::{SimpleFloorPlanner, Layouter}}, 
+    halo2curves::group::{prime::PrimeCurveAffine, Curve, Group},
+    circuit::{Layouter, SimpleFloorPlanner, Value}}, 
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
     gates::{circuit::{builder::{BaseCircuitBuilder, self}, BaseCircuitParams, CircuitBuilderStage, BaseConfig}, GateInstructions, flex_gate::threads::SinglePhaseCoreManager}, AssignedValue, poseidon::hasher::{spec::OptimizedPoseidonSpec, PoseidonSponge, PoseidonHash}};
 use halo2_ecc::{ecc::EcPoint, bigint::ProperCrtUint};
 use itertools::Itertools;
 use core::{borrow::Borrow, marker::PhantomData};
 use std::{iter, time::Instant, cell::RefCell};
-use super::halo2::test::strawman::{self, T, RANGE_BITS, RATE, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS, R_F, R_P, SECURE_MDS, NUM_HASH_BITS};
+use super::halo2::{chips::{poseidon::spec_t13::PoseidonSpec, scalar_mul::ec_chip::{ScalarMulChip}}, test::strawman::{self, RANGE_BITS, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS, R_F, R_P, SECURE_MDS, NUM_HASH_BITS}};
 use super::halo2::test::strawman::{Chip, PoseidonTranscriptChip, fe_to_limbs, into_coordinates};
 use ivc::ProtostarAccumulationVerifierParam;
 use crate::{util::{
     end_timer, 
     transcript::{TranscriptRead, TranscriptWrite},
     arithmetic::{PrimeFieldBits, CurveAffine, TwoChainCurve, fe_to_fe, fe_from_bits_le, fe_to_bits_le, fe_truncated}, izip_eq, start_timer}, 
-    accumulation::{PlonkishNarkInstance, protostar::{ProtostarAccumulatorInstance, ivc, ProtostarStrategy::{Compressing, NoCompressing}}}, frontend::halo2::CircuitExt, backend::PlonkishCircuit, poly::multilinear::MultilinearPolynomial};
+    accumulation::{PlonkishNarkInstance, protostar::{ProtostarAccumulatorInstance, ivc::{self, halo2::chips::scalar_mul::ec_chip::ScalarMulConfigInputs}, ProtostarStrategy::{Compressing, NoCompressing}}}, frontend::halo2::CircuitExt, backend::PlonkishCircuit, poly::multilinear::MultilinearPolynomial};
 use rand::RngCore;
+
+pub const T: usize = 5;
+pub const R: usize = 4;
+pub const L: usize = 20;
+pub const NUM_ADVICE: usize = 1;
+pub const NUM_FIXED: usize = 1;
 
 // public inputs length for the CycleFoldInputs for compressing 
 pub const CF_IO_LEN: usize = 1;
@@ -45,13 +51,10 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    pub tcc_chip: Chip<C>,
     pub primary_avp: ProtostarAccumulationVerifierParam<C::Scalar>,
     // pub cyclefold_avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
-    pub hash_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    pub transcript_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+    pub hash_config: OptimizedPoseidonSpec<C::Scalar, T, R>,
     pub inputs: CycleFoldInputs<C::Scalar, C::Secondary>,
-    pub circuit_builder: RefCell<BaseCircuitBuilder<C::Scalar>>,
 }
 
 impl<C> CycleFoldCircuit<C> 
@@ -61,54 +64,46 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 {
 
-    pub const R_LE_BITS: [C::Scalar; NUM_CHALLENGE_BITS] = [C::Scalar::ZERO; NUM_CHALLENGE_BITS];
+        pub const R_LE_BITS: [C::Scalar; NUM_CHALLENGE_BITS] = [C::Scalar::ZERO; NUM_CHALLENGE_BITS];
 
-    pub fn new(
-        primary_avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
-        builder_params: BaseCircuitParams
-    ) -> Self {
-        let primary_avp = primary_avp.unwrap_or_default();
-        let poseidon_spec = OptimizedPoseidonSpec::new::<R_F, R_P, SECURE_MDS>();
-        let hash_config = poseidon_spec.clone();
-        let transcript_config = poseidon_spec.clone(); 
+        pub fn new(
+            primary_avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
+            builder_params: BaseCircuitParams
+        ) -> Self {
+            let primary_avp = primary_avp.unwrap_or_default();
+            let poseidon_spec = OptimizedPoseidonSpec::<C::Scalar, T, R>::new::<R_F, R_P, SECURE_MDS>();
+            let hash_config = poseidon_spec.clone();
 
-        let num_witness_comm = primary_avp.num_folding_witness_polys();
-        let num_cross_comms = match primary_avp.strategy {
-            NoCompressing => primary_avp.num_cross_terms,
-            Compressing => 1
-        };
-
-        let circuit_builder = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Mock).use_params(builder_params.clone()));
-        let range_chip = circuit_builder.borrow().range_chip();
-        let tcc_chip = Chip::<C>::create(range_chip);
-
-        let bytes: &[u8] = &[44, 74, 155, 202, 230, 209, 105, 242, 77, 222, 213, 71, 58, 97, 34, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let inputs = 
-            CycleFoldInputs::<C::Scalar, C::Secondary>{
-                r_le_bits: fe_to_bits_le(C::Scalar::from_bytes_le(bytes)).into_iter().take(NUM_CHALLENGE_BITS).collect_vec(), // Self::R_LE_BITS.to_vec(),
-                nark_witness_comms: vec![C::Secondary::identity(); num_witness_comm],
-                cross_term_comms: vec![C::Secondary::identity(); num_cross_comms],
-                acc_witness_comms: vec![C::Secondary::identity(); num_witness_comm],
-                acc_e_comm: C::Secondary::identity(),
-                acc_prime_witness_comms: vec![C::Secondary::identity(); num_witness_comm],
-                acc_prime_e_comm: C::Secondary::identity(),
+            let num_witness_comm = primary_avp.num_folding_witness_polys();
+            let num_cross_comms = match primary_avp.strategy {
+                NoCompressing => primary_avp.num_cross_terms,
+                Compressing => 1
             };
 
-        Self {
-            tcc_chip,
-            primary_avp: primary_avp.clone(),
-            //cyclefold_avp: None,
-            hash_config,
-            transcript_config,
-            inputs,
-            circuit_builder,
-        }
-    }
+            let bytes: &[u8] = &[44, 74, 155, 202, 230, 209, 105, 242, 77, 222, 213, 71, 58, 97, 34, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            let inputs = 
+                CycleFoldInputs::<C::Scalar, C::Secondary>{
+                    r_le_bits: fe_to_bits_le(C::Scalar::from_bytes_le(bytes)).into_iter().take(NUM_CHALLENGE_BITS).collect_vec(), // Self::R_LE_BITS.to_vec(),
+                    nark_witness_comms: vec![C::Secondary::identity(); num_witness_comm],
+                    cross_term_comms: vec![C::Secondary::identity(); num_cross_comms],
+                    acc_witness_comms: vec![C::Secondary::identity(); num_witness_comm],
+                    acc_e_comm: C::Secondary::identity(),
+                    acc_prime_witness_comms: vec![C::Secondary::identity(); num_witness_comm],
+                    acc_prime_e_comm: C::Secondary::identity(),
+                };
 
-    pub fn init(&mut self, vp_digest: C::Scalar) {
-        // assert_eq!(&self.cyclefold_avp.unwrap().num_instances, &[CF_IO_LEN]);
-        self.primary_avp.vp_digest = vp_digest;
-    }
+            Self {
+                primary_avp: primary_avp.clone(),
+                //cyclefold_avp: None,
+                hash_config,
+                inputs,
+            }
+        }
+
+        pub fn init(&mut self, vp_digest: C::Scalar) {
+            // assert_eq!(&self.cyclefold_avp.unwrap().num_instances, &[CF_IO_LEN]);
+            self.primary_avp.vp_digest = vp_digest;
+        }
 
     pub fn update_cyclefold_inputs<Comm: AsRef<C::Secondary>>(
         &mut self,
@@ -129,335 +124,190 @@ where
             acc_prime_e_comm: *acc_prime.e_comm.as_ref(),
         };
     }
-    
 
-    pub fn assign_cyclefold_inputs(
-        &self,
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
-    ) -> Result<AssignedCycleFoldInputs<
-        AssignedValue<C::Scalar>,
-        EcPoint<C::Scalar, AssignedValue<C::Scalar>>>, Error> 
-    {
-        let tcc_chip = &self.tcc_chip;
-        let inputs = &self.inputs;
+    // pub fn prepare_inputs_scalar_chip(
+    //     &self,
+    //     inputs: &CycleFoldInputs<C::Scalar, C::Secondary>
+    // ) -> Result<ScalarMulChipInputs<C::Scalar, C::Secondary>, Error> {
 
-        let r_le_bits = inputs.r_le_bits
-            .iter()
-            .map(|bit| tcc_chip.assign_witness(builder, *bit))
-            .try_collect::<_, Vec<_>, _>()?;
-        let nark_witness_comms = inputs.nark_witness_comms
-            .iter()
-            .map(|comm| tcc_chip.assign_witness_primary(builder, *comm))
-            .try_collect::<_, Vec<_>, _>()?; 
-        let cross_term_comms = inputs.cross_term_comms
-            .iter()
-            .map(|comm| tcc_chip.assign_witness_primary(builder, *comm))
-            .try_collect::<_, Vec<_>, _>()?; 
+    // }
 
-        let acc_e_comm = tcc_chip.assign_witness_primary(builder, inputs.acc_e_comm)?;
-        let acc_witness_comms = inputs.acc_witness_comms
-            .iter()
-            .map(|comm| tcc_chip.assign_witness_primary(builder, *comm))
-            .try_collect::<_, Vec<_>, _>()?; 
+    // pub fn form_scalar_chip_inputs(
+    //     &self,
+    //     inputs: &ScalarMulChipInputs<C::Scalar, C::Secondary>
+    // ) -> Result<ScalarMulConfigInputs<C::Scalar>, Error> {
+
+    //     let vec_len: usize = 129;
+    //     let mut nark_x_vec = Vec::new();
+    //     let mut nark_y_vec = Vec::new();
+    //     let mut rnark_x_vec = Vec::new();
+    //     let mut rnark_y_vec = Vec::new();
+
+    //     let one = C::Scalar::ONE;
+    //     let zero = C::Scalar::ZERO;
+    //     let r_le_bits = &inputs.r_le_bits;
+    //     let r_le_bits_value = r_le_bits.iter().map(|fe| Value::known(*fe)).collect_vec();
+    //     let r_window_bits = r_le_bits[1..].chunks(2).collect_vec();
+
+    //     // push last element as the first rbit
+    //     let mut rbits_vec = Vec::new();
+    //     rbits_vec = r_le_bits_value.clone();
+    //     rbits_vec.push(r_le_bits_value[0]);
+
+    //     let p_zero = C::Secondary::identity();
+    //     let mut p = inputs.nark_comm; 
+    //     let acc = inputs.acc_comm;
+    //     let p_single = p;
         
-        let acc_prime_e_comm = tcc_chip.assign_witness_primary(builder, inputs.acc_prime_e_comm)?;
-        let acc_prime_witness_comms = inputs.acc_prime_witness_comms
-            .iter()
-            .map(|comm| tcc_chip.assign_witness_primary(builder, *comm))
-            .try_collect::<_, Vec<_>, _>()?; 
+    //     // initial assumption: rbits[0] = 1
+    //     let p_single_x = into_coordinates(&p_single)[0];
+    //     let p_single_y = into_coordinates(&p_single)[1];
+    //     nark_x_vec.push(Value::known(p_single_x));
+    //     nark_y_vec.push(Value::known(p_single_y));
+    //     rnark_x_vec.push(Value::known(p_single_x));
+    //     rnark_y_vec.push(Value::known(p_single_y)); 
 
-        Ok(AssignedCycleFoldInputs {
-            r_le_bits,
-            nark_witness_comms,
-            cross_term_comms,
-            acc_witness_comms,
-            acc_e_comm,
-            acc_prime_witness_comms,
-            acc_prime_e_comm,
-        })
+    //     for idx in (1..vec_len-2).step_by(2) {
+    //         p = <C::Secondary as CurveAffine>::CurveExt::double(&p.into()).into(); 
+    //         nark_x_vec.push(Value::known(into_coordinates(&p)[0]));
+    //         nark_y_vec.push(Value::known(into_coordinates(&p)[1]));
+    //         let p_single = p;
 
-    }
+    //         p = <C::Secondary as CurveAffine>::CurveExt::double(&p.into()).into();
+    //         nark_x_vec.push(Value::known(into_coordinates(&p)[0]));
+    //         nark_y_vec.push(Value::known(into_coordinates(&p)[1])); 
 
+    //         let p_triple = (p + p_single).to_affine();
+    //         rnark_x_vec.push(Value::known(into_coordinates(&p_triple)[0]));
+    //         rnark_y_vec.push(Value::known(into_coordinates(&p_triple)[0])); 
 
-    pub fn compute_and_constrain(
-        &self, 
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        assigned_inputs: &AssignedCycleFoldInputs<
-            AssignedValue<C::Scalar>, 
-            EcPoint<C::Scalar, AssignedValue<C::Scalar>>>,
-        ) -> Result<(), Error> 
-    {
-        let tcc_chip = &self.tcc_chip;
-        let r_le_bits = &assigned_inputs.r_le_bits;
-        let r_nark_witness_comms = assigned_inputs
-            .nark_witness_comms
-            .iter()
-            .map(|comm| tcc_chip.scalar_mul_primary(builder, comm, &r_le_bits))
-            .try_collect::<_, Vec<_>, _>()?;
-        let acc_prime_witness_comms = 
-            izip_eq!(&assigned_inputs.acc_witness_comms, &r_nark_witness_comms)
-            .map(|(lhs, rhs)| 
-            tcc_chip.add_primary(builder, lhs, rhs))
-            .try_collect::<_, Vec<_>, _>()?;
+    //         let acc_sel = match r_window_bits[idx/2] {
+    //             [z, o] if *z == zero && *o == zero => p_zero,    // 00
+    //             [z, o] if *z == one && *o == zero => p_single,   // 10
+    //             [z, o] if *z == zero && *o == one => p,          // 01
+    //             [z, o] if *z == one && *o == one => p_triple,    // 11
+    //             _ => panic!("Invalid window"),
+    //         };
 
-        let acc_prime_e_comm = if assigned_inputs.cross_term_comms.is_empty() {
-            assigned_inputs.acc_e_comm.clone()
-        } else {
-            let timer = start_timer(|| format!("cyclefold_compute_e_comm-cross_term_comms.len()-{}", assigned_inputs.cross_term_comms.len()));
-            let mut e_comm = assigned_inputs.cross_term_comms.last().unwrap().clone();
-                for item in assigned_inputs.cross_term_comms.iter().rev().skip(1).chain([&assigned_inputs.acc_e_comm]) {
-                    e_comm = tcc_chip.scalar_mul_primary(builder, &e_comm, &r_le_bits)?;
-                    e_comm = tcc_chip.add_primary(builder, &e_comm, item)?;
-                }
-                end_timer(timer);
-                e_comm
-        };
+    //         let acc_prev = C::Secondary::from_xy(rnark_x_vec[idx-1].assign().unwrap(), rnark_y_vec[idx-1].assign().unwrap()).unwrap();
+    //         let acc_next = (acc_prev + acc_sel).to_affine();
 
-        // constrains scalar_mul natively in circuit
-        izip_eq!(&acc_prime_witness_comms, &assigned_inputs.acc_prime_witness_comms)
-            .map(|(lhs, rhs)| {
-                tcc_chip.constrain_equal_primary(builder, lhs, rhs);
-            });
+    //         rnark_x_vec.push(Value::known(into_coordinates(&acc_next)[0]));
+    //         rnark_y_vec.push(Value::known(into_coordinates(&acc_next)[1]));
 
-        tcc_chip.constrain_equal_primary(builder, &acc_prime_e_comm, &assigned_inputs.acc_prime_e_comm)?;
+    //     }
 
-        Ok(())
-    }
+    //     // push last rbit 
+    //     p = <C::Secondary as CurveAffine>::CurveExt::double(&p.into()).into(); 
+    //     nark_x_vec.push(Value::known(into_coordinates(&p)[0]));
+    //     nark_y_vec.push(Value::known(into_coordinates(&p)[1]));
 
+    //     if r_le_bits[vec_len-2] == one {
+    //         let acc_prev = C::Secondary::from_xy(rnark_x_vec[vec_len-3].assign().unwrap(), rnark_y_vec[vec_len-3].assign().unwrap()).unwrap();
+    //         let acc_next = (acc_prev + p).to_affine();
+    //         rnark_x_vec.push(Value::known(into_coordinates(&acc_next)[0]));
+    //         rnark_y_vec.push(Value::known(into_coordinates(&acc_next)[1]));
+    //     } else {
+    //         rnark_x_vec.push(Value::known(rnark_x_vec[vec_len-3].assign().unwrap()));
+    //         rnark_y_vec.push(Value::known(rnark_y_vec[vec_len-3].assign().unwrap()));
+    //     }
 
-    pub fn flatten_inputs(
-        &self,
-        unassigned_inputs: &CycleFoldInputs<C::Scalar, C::Secondary>
-    ) -> Result<Vec<C::Scalar>, Error> {
-        let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
-        let r = fe_from_bits_le(unassigned_inputs.r_le_bits.clone());
-        let r_base = fe_to_fe::<C::Scalar, C::Base>(r);
-        let inputs = iter::empty()
-            .chain(fe_to_limbs(r_base))
-            .chain(
-                unassigned_inputs.nark_witness_comms
-                    .iter()
-                    .flat_map(into_coordinates))
-            .chain(
-                unassigned_inputs.cross_term_comms
-                    .iter()
-                    .flat_map(into_coordinates))
-            .chain(
-                unassigned_inputs.acc_witness_comms
-                    .iter()
-                    .flat_map(into_coordinates))  
-            .chain(into_coordinates(&unassigned_inputs.acc_e_comm).into_iter())              
-            .chain(
-                unassigned_inputs.acc_prime_witness_comms
-                    .iter()
-                    .flat_map(into_coordinates))
-            .chain(into_coordinates(&unassigned_inputs.acc_prime_e_comm).into_iter())              
-            .collect_vec();
+    //     // push last element as the first rbit
+    //     nark_x_vec.push(Value::known(into_coordinates(&p_single)[0]));
+    //     nark_y_vec.push(Value::known(into_coordinates(&p_single)[1]));
 
-        Ok(inputs)
-    }
+    //     // correct initial assumption
+    //     if r_le_bits[0] == one {
+    //         rnark_x_vec.push(Value::known(rnark_x_vec[vec_len-2].assign().unwrap()));
+    //         rnark_y_vec.push(Value::known(rnark_y_vec[vec_len-2].assign().unwrap()));
+    //     } else {
+    //         let acc_prev = C::Secondary::from_xy(rnark_x_vec[vec_len-2].assign().unwrap(), rnark_y_vec[vec_len-2].assign().unwrap()).unwrap();
+    //         let acc_next = (acc_prev - p_single).to_affine();
+    //         rnark_x_vec.push(Value::known(into_coordinates(&acc_next)[0]));
+    //         rnark_y_vec.push(Value::known(into_coordinates(&acc_next)[1]));
+    //     }
 
+    //     let scalar_mul_calc = C::Secondary::from_xy(rnark_x_vec[vec_len-1].assign().unwrap(), rnark_y_vec[vec_len-1].assign().unwrap()).unwrap();
+    //     let acc_prime_calc  = (scalar_mul_calc + acc).to_affine();
+    //     let acc_prime_given = inputs.acc_prime_comm; 
+    //     assert_eq!(acc_prime_calc, acc_prime_given);
 
-    pub fn flatten_inputs_acc_prime_comm(
-        &self,
-        unassigned_inputs: &CycleFoldInputs<C::Scalar, C::Secondary>
-    ) -> Result<Vec<C::Scalar>, Error> {
-        let inputs = iter::empty()           
-            .chain(
-                unassigned_inputs.acc_prime_witness_comms
-                    .iter()
-                    .flat_map(into_coordinates))
-            .chain(into_coordinates(&unassigned_inputs.acc_prime_e_comm).into_iter())              
-            .collect_vec();
+    //     let inputs =
+    //         ScalarMulConfigInputs::<C::Scalar> { 
+    //             rbits_vec, nark_x_vec, nark_y_vec, rnark_x_vec, rnark_y_vec, 
+    //             acc_x: Value::known(into_coordinates(&acc)[0]), 
+    //             acc_y: Value::known(into_coordinates(&acc)[1]), 
+    //             acc_prime_calc_x: Value::known(into_coordinates(&acc_prime_calc)[0]), 
+    //             acc_prime_calc_y: Value::known(into_coordinates(&acc_prime_calc)[1]), 
+    //             acc_prime_given_x: Value::known(into_coordinates(&acc_prime_given)[0]), 
+    //             acc_prime_given_y: Value::known(into_coordinates(&acc_prime_given)[1])
+    //         };
 
-        Ok(inputs)
-    }
+    //     Ok(inputs)
+    // }
 
-
-    pub fn flatten_assigned_inputs(
-        &self,
-        r: &ProperCrtUint<C::Scalar>,
-        assigned_inputs: &AssignedCycleFoldInputs<
-            AssignedValue<C::Scalar>, 
-            EcPoint<C::Scalar, AssignedValue<C::Scalar>>>
-    ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
-        let inputs = iter::empty()
-            .chain(r.limbs())
-            .chain(
-                assigned_inputs.nark_witness_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(
-                assigned_inputs.cross_term_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(
-                assigned_inputs.acc_witness_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(vec![assigned_inputs.acc_e_comm.x(), assigned_inputs.acc_e_comm.y()].into_iter())
-            .chain(
-                assigned_inputs.acc_prime_witness_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(vec![assigned_inputs.acc_prime_e_comm.x(), assigned_inputs.acc_prime_e_comm.y()].into_iter())
-            .copied()
-            .collect_vec();
-
-        Ok(inputs)
-    }
-
-
-    pub fn flatten_assigned_inputs_acc_prime_comm(
-        &self,
-        assigned_inputs: &AssignedCycleFoldInputs<
-            AssignedValue<C::Scalar>, 
-            EcPoint<C::Scalar, AssignedValue<C::Scalar>>>
-    ) -> Result<Vec<AssignedValue<C::Scalar>>, Error> {
-        let inputs = iter::empty()
-            .chain(
-                assigned_inputs.acc_prime_witness_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(vec![assigned_inputs.acc_prime_e_comm.x(), assigned_inputs.acc_prime_e_comm.y()].into_iter())
-            .copied()
-            .collect_vec();
-
-        Ok(inputs)
-    }
-
-    // todo do we include this in hash - vp_digest
-    pub fn hash_inputs(
-        &self,
-        unassigned_inputs: &CycleFoldInputs<C::Scalar, C::Secondary>
-    ) -> C::Scalar {
-        let spec = &self.hash_config;
-        let mut poseidon = PoseidonHash::from_spec(spec.clone());
-        let inputs = iter::empty()
-            //.chain([vp_digest]).flat_map(fe_to_limbs)
-            .chain([fe_from_bits_le(unassigned_inputs.r_le_bits.clone())])
-            .chain(
-                unassigned_inputs.nark_witness_comms
-                    .iter()
-                    .flat_map(into_coordinates))
-            .chain(
-                unassigned_inputs.cross_term_comms
-                    .iter()
-                    .flat_map(into_coordinates))
-            .chain(
-                unassigned_inputs.acc_witness_comms
-                    .iter()
-                    .flat_map(into_coordinates))  
-            .chain(into_coordinates(&unassigned_inputs.acc_e_comm).into_iter())              
-            // .chain(
-            //     unassigned_inputs.acc_prime_witness_comms
-            //         .iter()
-            //         .flat_map(into_coordinates))
-            // .chain(into_coordinates(&unassigned_inputs.acc_prime_e_comm).into_iter())          
-            .collect_vec();
-        println!("hash_inputs: {:?}", inputs.len());
-        poseidon.update(inputs.as_slice());
-        fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
-    }
-
-
-    pub fn hash_assigned_inputs(
-        &self,
-        builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        r: &AssignedValue<C::Scalar>,
-        assigned_inputs: &AssignedCycleFoldInputs<
-            AssignedValue<C::Scalar>, 
-            EcPoint<C::Scalar, AssignedValue<C::Scalar>>>,
-    ) -> Result<AssignedValue<C::Scalar>, Error> {
-        let inputs = iter::empty()
-            .chain([r])
-            .chain(
-                assigned_inputs.nark_witness_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(
-                assigned_inputs.cross_term_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(
-                assigned_inputs.acc_witness_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(vec![assigned_inputs.acc_e_comm.x(), assigned_inputs.acc_e_comm.y()].into_iter())
-            // .chain(
-            //     assigned_inputs.acc_prime_witness_comms
-            //         .iter()
-            //         .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            // )
-            // .chain(vec![assigned_inputs.acc_prime_e_comm.x(), assigned_inputs.acc_prime_e_comm.y()].into_iter())
-            .copied()
-            .collect_vec();
-        let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
-        println!("hash_assigned_inputs: {:?}", inputs.len());
-        poseidon_chip.update(&inputs);
-        let hash = poseidon_chip.squeeze(builder.main(), &self.tcc_chip.gate_chip);
-        // change to strict
-        let hash_le_bits = self.tcc_chip.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
-        Ok(self.tcc_chip.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
-    }
-
-
-    pub fn synthesize_circuit(
-        &self,
-        mut layouter: impl Layouter<C::Scalar>,
-        config: BaseConfig<C::Scalar>,
-    ) -> Result<(), Error> 
-    {
-        let tcc_chip = &self.tcc_chip;
-        let mut binding = self.circuit_builder.borrow_mut();
-        let builder = binding.pool(0);
-        let assigned_inputs = self.assign_cyclefold_inputs(builder)?;
-        // check scalar_mul 
-        self.compute_and_constrain(builder, &assigned_inputs)?;
-
-        let r = tcc_chip.gate_chip.bits_to_num(builder.main(), &assigned_inputs.r_le_bits[..NUM_CHALLENGE_BITS]);
- 
-        // let flattened_assigned_inputs = self.flatten_assigned_inputs(&scalar, &assigned_inputs)?;
-        // assert_eq!(flattened_assigned_inputs.len(), CF_IO_LEN, "CycleFoldInputs must have exactly 38 elements");
-
-        let inputs_hash = self.hash_assigned_inputs(builder, &r, &assigned_inputs)?;
-        let scalar_mul_outputs = self.flatten_assigned_inputs_acc_prime_comm(&assigned_inputs)?;
-        
-        let assigned_instances = &mut binding.assigned_instances;
-        assert_eq!(assigned_instances.len(), 1, "CycleFoldCircuit must have exactly 1 instance column");
-        assert!(assigned_instances[0].is_empty());
-
-        assigned_instances[0].push(inputs_hash);
-        // assigned_instances[0].extend(scalar_mul_outputs);
-
-        // let instances = self.instances();
-        // MockProver::run(14, &*binding, instances.clone()).unwrap().assert_satisfied();
-
-        binding.synthesize(config.clone(), layouter.namespace(|| "cyclefold_circuit"));
-        let total_lookup = binding.statistics().total_lookup_advice_per_phase;
-        println!("cyclefold_circuit_advice_lookup {:?}", total_lookup);
-        let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
-        println!("cyclefold_circuit_copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
-        println!("cyclefold_circuit_copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        println!("cyclefold_circuit_copy_manager.assigned_constants {:?}", copy_manager.assigned_constants.len());
-        println!("cyclefold_circuit_copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
-        drop(copy_manager);
-
-
-        binding.clear();
-        drop(binding);
-
-        Ok(())
-    }
 }
+
+//     // todo do we include this in hash - vp_digest
+//     pub fn hash_inputs(
+//         &self,
+//         unassigned_inputs: &CycleFoldInputs<C::Scalar, C::Secondary>
+//     ) -> C::Scalar {
+//         let spec = &self.hash_config;
+//         let mut poseidon = PoseidonHash::from_spec(spec.clone());
+//         let inputs = iter::empty()
+//             //.chain([vp_digest]).flat_map(fe_to_limbs)
+//             .chain([fe_from_bits_le(unassigned_inputs.r_le_bits.clone())])
+//             .chain(
+//                 unassigned_inputs.nark_witness_comms
+//                     .iter()
+//                     .flat_map(into_coordinates))
+//             .chain(
+//                 unassigned_inputs.cross_term_comms
+//                     .iter()
+//                     .flat_map(into_coordinates))
+//             .chain(
+//                 unassigned_inputs.acc_witness_comms
+//                     .iter()
+//                     .flat_map(into_coordinates))  
+//             .chain(into_coordinates(&unassigned_inputs.acc_e_comm).into_iter())              
+//             // .chain(
+//             //     unassigned_inputs.acc_prime_witness_comms
+//             //         .iter()
+//             //         .flat_map(into_coordinates))
+//             // .chain(into_coordinates(&unassigned_inputs.acc_prime_e_comm).into_iter())          
+//             .collect_vec();
+//         println!("hash_inputs: {:?}", inputs.len());
+//         poseidon.update(inputs.as_slice());
+//         fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
+//     }
+
+//     pub fn synthesize_circuit(
+//         &self,
+//         mut layouter: impl Layouter<C::Scalar>,
+//         config: BaseConfig<C::Scalar>,
+//     ) -> Result<(), Error> 
+//     {
+//         let tcc_chip = &self.tcc_chip;
+
+//         // check scalar_mul 
+//         self.compute_and_constrain(builder, &assigned_inputs)?;
+
+//         let r = tcc_chip.gate_chip.bits_to_num(builder.main(), &assigned_inputs.r_le_bits[..NUM_CHALLENGE_BITS]);
+        
+//         let assigned_instances = &mut binding.assigned_instances;
+//         assert_eq!(assigned_instances.len(), 1, "CycleFoldCircuit must have exactly 1 instance column");
+//         assert!(assigned_instances[0].is_empty());
+
+//         assigned_instances[0].push(inputs_hash);
+//         // assigned_instances[0].extend(scalar_mul_outputs);
+
+//         // let instances = self.instances();
+//         // MockProver::run(14, &*binding, instances.clone()).unwrap().assert_satisfied();
+
+//         Ok(())
+//     }
+// }
 
 impl<C> Circuit<C::Scalar> for CycleFoldCircuit<C>
 where
@@ -472,12 +322,9 @@ where
 
     fn without_witnesses(&self) -> Self {
         Self {
-            tcc_chip: self.tcc_chip.clone(),
             primary_avp: self.primary_avp.clone(),
             hash_config: self.hash_config.clone(),
-            transcript_config: self.transcript_config.clone(),
             inputs: self.inputs.clone(),
-            circuit_builder: self.circuit_builder.clone(),
         }
     }
 
@@ -495,7 +342,7 @@ where
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
         let synthesize_ec_time = Instant::now();
-        self.synthesize_circuit(layouter.namespace(|| ""), config.clone())?;
+        //self.synthesize_circuit(layouter.namespace(|| ""), config.clone())?;
         let duration_ec_synthesize = synthesize_ec_time.elapsed();
         println!("Time for synthesize_ec: {:?}", duration_ec_synthesize);
         Ok(())
@@ -511,16 +358,7 @@ where
     fn instances(&self) -> Vec<Vec<C::Scalar>> {
         let mut instances = vec![vec![C::Scalar::ZERO; CF_IO_LEN]];
         let inputs = &self.inputs;
-
-        instances[0][0] = self.hash_inputs(inputs);
-        
-        // let mut flattened_inputs = vec![self.hash_inputs(inputs)];
-        //flattened_inputs.extend(self.flatten_inputs_acc_prime_comm(inputs).unwrap());
-        //assert!(flattened_inputs.len() == CF_IO_LEN); 
-            // for (i, input) in flattened_inputs.into_iter().enumerate() {
-            //         instances[0][i] = input;
-            // }
-
+        //instances[0][0] = self.hash_inputs(inputs);
         instances
     }
 

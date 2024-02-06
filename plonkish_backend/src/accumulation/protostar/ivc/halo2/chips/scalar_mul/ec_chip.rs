@@ -1,8 +1,8 @@
 use halo2_base::{halo2_proofs::
-    {circuit::{Layouter, SimpleFloorPlanner, Value},
+    {circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
     plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Selector, Expression, Assigned, Fixed},
     poly::Rotation, 
-    halo2curves::{bn256::{G1Affine, G1}, grumpkin},
+    halo2curves::{bn256::{G1Affine, G2Affine, G1}, grumpkin::{self, Fr as Fq}},
 }, 
 gates::flex_gate::{FlexGateConfig, FlexGateConfigParams},
 utils::{CurveAffineExt, ScalarField, BigPrimeField},
@@ -12,7 +12,7 @@ use halo2_base::{
     utils::bit_length,
     AssignedValue, Context,
 };
-use halo2_proofs::halo2curves::{Coordinates, group::Group, CurveAffine};
+use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use itertools::Itertools;
 use std::{
     iter,
@@ -20,20 +20,20 @@ use std::{
     sync::{RwLock, RwLockReadGuard},
 };
 
-use crate::util::arithmetic::{TwoChainCurve, PrimeFieldBits};
+use crate::{accumulation::protostar::ivc::cyclefold::CycleFoldInputs, util::arithmetic::{TwoChainCurve, PrimeFieldBits}};
 
 pub const NUM_ADVICE: usize = 1;
 pub const NUM_FIXED: usize = 1;
 
 #[derive(Clone, Debug)]
-pub struct ScalarMulChipConfig<F: ScalarField> {
+pub struct ScalarMulChipConfig {
     witness: [Column<Advice>; 5],
     selector: [Selector; 5],
-    _marker: PhantomData<F>,
+    _marker: PhantomData<Fq>,
 }
 
-impl<F: ScalarField> ScalarMulChipConfig<F> {
-    pub fn configure(meta: &mut ConstraintSystem<F>) -> Self {
+impl ScalarMulChipConfig {
+    pub fn configure(meta: &mut ConstraintSystem<Fq>) -> Self {
 
         // | row | r_bits_le | witness.x | witness.y | witness.x  |  witness.y |
         // | 0   |   1       |     x     |   y       |    x       |    y       |
@@ -46,6 +46,10 @@ impl<F: ScalarField> ScalarMulChipConfig<F> {
         let [col_rbits, col_px, col_py, col_acc_x, col_acc_y] = 
             [(); 5].map(|_| meta.advice_column());
 
+        for col in &[col_rbits, col_px, col_py, col_acc_x, col_acc_y] {
+                meta.enable_equality(*col);
+            }
+    
         let [q_ec_double, q_ec_add_unequal, q_ec_acc_add_unequal, q_ec_add_unequal_last, q_ec_sub_unequal_last] = 
             [(); 5].map(|_| meta.selector());
         
@@ -57,10 +61,10 @@ impl<F: ScalarField> ScalarMulChipConfig<F> {
                 let x2 = meta.query_advice(col_px, Rotation(1));
                 let y2 = meta.query_advice(col_py, Rotation(1));
 
-                let two = Expression::Constant(F::from(2));
-                let three = Expression::Constant(F::from(3));
-                let four = Expression::Constant(F::from(4));
-                let nine = Expression::Constant(F::from(9));
+                let two = Expression::Constant(Fq::from(2));
+                let three = Expression::Constant(Fq::from(3));
+                let four = Expression::Constant(Fq::from(4));
+                let nine = Expression::Constant(Fq::from(9));
 
                 let x_sq = x.clone() * x.clone();
                 let x_pow3 = x_sq.clone() * x.clone();
@@ -102,33 +106,6 @@ impl<F: ScalarField> ScalarMulChipConfig<F> {
             });
 
 
-            meta.create_gate("ec_add_unequal_last", |meta| {
-
-                let q_ec_add_unequal_last = meta.query_selector(q_ec_add_unequal_last);
-                let acc_prev_x = meta.query_advice(col_acc_x, Rotation(-1));
-                let acc_prev_y = meta.query_advice(col_acc_y, Rotation(-1));
-                let x2 = meta.query_advice(col_px, Rotation(0));
-                let y2 = meta.query_advice(col_py, Rotation(0));
-                let x3 = meta.query_advice(col_acc_x, Rotation(0));
-                let y3 = meta.query_advice(col_acc_y, Rotation(0));
-                let r0 = meta.query_advice(col_rbits, Rotation(0));
-
-                let dx = x2.clone() - acc_prev_x.clone();
-                let dy = y2.clone() - acc_prev_y.clone();
-                let dx_sq = dx.clone() * dx.clone();
-                let dy_sq = dy.clone() * dy.clone();
-                let one = Expression::Constant(F::ONE);
-
-                //  x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
-                //  y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
-
-                vec![q_ec_add_unequal_last.clone() * (r0.clone() * (x3.clone() * dx_sq.clone() - dy_sq.clone() + acc_prev_x.clone() * dx_sq.clone() + x2.clone() * dx_sq.clone()) +
-                    ((one.clone() - r0.clone()) * (x3.clone() - acc_prev_x.clone()))),
-                     q_ec_add_unequal_last * (r0.clone() * (y3.clone() * dx.clone() - dy.clone() * (acc_prev_x.clone() - x3.clone()) + acc_prev_y.clone() * dx.clone()) + 
-                    ((one.clone() - r0.clone()) * (y3.clone() - acc_prev_y.clone())))]
-            });
-
-
 
         // | row | r_bits_le | witness.x | witness.y | witness.x  |  witness.y |
         // | 0   |   1       |     x     |   y       |    x       |    y       |
@@ -154,8 +131,8 @@ impl<F: ScalarField> ScalarMulChipConfig<F> {
 
                 let r0 = meta.query_advice(col_rbits, Rotation(0));
                 let r1 = meta.query_advice(col_rbits, Rotation(1));
-                let one = Expression::Constant(F::ONE);
-                let zero = Expression::Constant(F::ZERO);
+                let one = Expression::Constant(Fq::one());
+                let zero = Expression::Constant(Fq::zero());
 
                 // (1-q0)(1-q1)*zero + q0(1-q1)*x + (1-q0)q1*2x + q0q1*3x 
                 let sel_x = r0.clone() * r1.clone() * x3.clone() + 
@@ -186,6 +163,33 @@ impl<F: ScalarField> ScalarMulChipConfig<F> {
             });
 
 
+            meta.create_gate("ec_add_unequal_r0_last", |meta| {
+
+                let q_ec_add_unequal_last = meta.query_selector(q_ec_add_unequal_last);
+                let acc_prev_x = meta.query_advice(col_acc_x, Rotation(-1));
+                let acc_prev_y = meta.query_advice(col_acc_y, Rotation(-1));
+                let x2 = meta.query_advice(col_px, Rotation(0));
+                let y2 = meta.query_advice(col_py, Rotation(0));
+                let x3 = meta.query_advice(col_acc_x, Rotation(0));
+                let y3 = meta.query_advice(col_acc_y, Rotation(0));
+                let r0 = meta.query_advice(col_rbits, Rotation(0));
+
+                let dx = x2.clone() - acc_prev_x.clone();
+                let dy = y2.clone() - acc_prev_y.clone();
+                let dx_sq = dx.clone() * dx.clone();
+                let dy_sq = dy.clone() * dy.clone();
+                let one = Expression::Constant(Fq::one());
+
+                //  x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
+                //  y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
+
+                vec![q_ec_add_unequal_last.clone() * (r0.clone() * (x3.clone() * dx_sq.clone() - dy_sq.clone() + acc_prev_x.clone() * dx_sq.clone() + x2.clone() * dx_sq.clone()) +
+                    ((one.clone() - r0.clone()) * (x3.clone() - acc_prev_x.clone()))),
+                     q_ec_add_unequal_last * (r0.clone() * (y3.clone() * dx.clone() - dy.clone() * (acc_prev_x.clone() - x3.clone()) + acc_prev_y.clone() * dx.clone()) + 
+                    ((one.clone() - r0.clone()) * (y3.clone() - acc_prev_y.clone())))]
+            });
+            
+
             meta.create_gate("ec_sub_unequal_last", |meta| {
     
                 let q_ec_sub_unequal_last = meta.query_selector(q_ec_sub_unequal_last);
@@ -201,7 +205,7 @@ impl<F: ScalarField> ScalarMulChipConfig<F> {
                 let sy = y2.clone() + y1.clone();
                 let dx_sq = dx.clone() * dx.clone();
                 let sy_sq = sy.clone() * sy.clone();
-                let one = Expression::Constant(F::ONE);
+                let one = Expression::Constant(Fq::one());
 
 
                 //  x_3 * dx_sq = sy_sq - x_1 * dx_sq - x_2 * dx_sq
@@ -220,42 +224,17 @@ impl<F: ScalarField> ScalarMulChipConfig<F> {
             _marker: PhantomData 
         }
     }
-}
 
-
-#[derive(Clone, Default)]
-pub struct ScalarMulChip<F: ScalarField> 
-{
-    pub x_vec: Vec<Value<F>>,
-    pub y_vec: Vec<Value<F>>,
-    pub r_vec: Vec<Value<F>>,
-    pub acc_x_vec: Vec<Value<F>>,
-    pub acc_y_vec: Vec<Value<F>>,
-}
-
-impl<F: ScalarField> Circuit<F> for ScalarMulChip<F> 
-{
-    type Params = FlexGateConfigParams;
-    type Config = ScalarMulChipConfig<F>; 
-    type FloorPlanner = SimpleFloorPlanner;
-
-    fn without_witnesses(&self) -> Self {
-        unimplemented!()
-    }
-
-    fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-        ScalarMulChipConfig::configure(meta)
-    }
-
-    fn synthesize(
+    pub fn assign(
         &self,
-        config: Self::Config,
-        mut layouter: impl Layouter<F>,
-    ) -> Result<(), Error> {
-        layouter.assign_region(
-            || "ScalarMulChip",
-            |mut region| {
+        mut layouter: impl Layouter<Fq>,
+        inputs: ScalarMulConfigInputs,
+        iteration: usize,
+    ) -> Result<[AssignedCell<Fq, Fq>; 4], Error> {
 
+        layouter.assign_region(
+            || "ScalarMulChipConfig assign",
+            |mut region| {
 
         // | row | r_bits_le | witness.x | witness.y | witness.x  |  witness.y |
         // | 0   |   1       |     x     |   y       |    x       |    y       |
@@ -265,44 +244,120 @@ impl<F: ScalarField> Circuit<F> for ScalarMulChip<F>
         // | 4   |   1       |    16x    |  16y      |    29x     |   29y      |
 
 
-            let nrows = self.x_vec.len();
-            assert_eq!(self.x_vec.len(), self.y_vec.len());
+            let nark_vec_len = inputs.nark_x_vec.len();
+            assert_eq!(inputs.nark_x_vec.len(), inputs.nark_y_vec.len());
+            assert_eq!(inputs.rnark_y_vec.len(), inputs.rnark_x_vec.len());
 
-                for row in 0..nrows {
+                for row in 0..nark_vec_len {
+                    let row_offset = row + (iteration - 1) * nark_vec_len;
+                    region.assign_advice(|| "r_vec",self.witness[0], row_offset, || inputs.rbits_vec[row])?;
+                    region.assign_advice(|| "nark_x_vec",self.witness[1], row_offset, || inputs.nark_x_vec[row])?;
+                    region.assign_advice(|| "nark_y_vec",self.witness[2], row_offset, || inputs.nark_y_vec[row])?;
+                    region.assign_advice(|| "rnark_x_vec",self.witness[3], row_offset, || inputs.rnark_x_vec[row])?;
+                    region.assign_advice(|| "rnark_y_vec",self.witness[4], row_offset, || inputs.rnark_y_vec[row])?;
 
-                    region.assign_advice(|| "x",config.witness[1], row, || self.x_vec[row])?;
-                    region.assign_advice(|| "y",config.witness[2], row, || self.y_vec[row])?;
-                    region.assign_advice(|| "acc_x",config.witness[3], row, || self.acc_x_vec[row])?;
-                    region.assign_advice(|| "acc_y",config.witness[4], row, || self.acc_y_vec[row])?;
-                    region.assign_advice(|| "r_vec",config.witness[0], row, || self.r_vec[row])?;
+                    let row_mod = row_offset % nark_vec_len;
 
-
-                    if row != 0 {
-
-                        if row != nrows - 1 {
-                            config.selector[0].enable(&mut region, row - 1)?;
+                    if row_mod != 0 {
+                        if row_mod != nark_vec_len - 1 {
+                            self.selector[0].enable(&mut region, row - 1)?;
                         }
 
-                        if row % 2 != 0 && row < nrows - 3 {
-                            config.selector[1].enable(&mut region, row)?;
-                            config.selector[2].enable(&mut region, row)?;
+                        if row_mod % 2 != 0 && row_mod < nark_vec_len - 3 {
+                            self.selector[1].enable(&mut region, row_offset)?;
+                            self.selector[2].enable(&mut region, row_offset)?;
                         }
 
-                        if row == nrows - 2 {
-                            config.selector[3].enable(&mut region, row)?;
+                        if row_mod == nark_vec_len - 2 {
+                            self.selector[3].enable(&mut region, row_offset)?;
                         }
 
-                        if row == nrows - 1 {
-                            config.selector[4].enable(&mut region, row)?;
+                        if row_mod == nark_vec_len - 1 {
+                            self.selector[4].enable(&mut region, row_offset)?;
                         }
-
                     }
-                    
                 }
 
-                Ok(())
+                let row_offset = (iteration - 1) * nark_vec_len;
+                let second_last_row = nark_vec_len + row_offset;
+                let third_last_row = second_last_row - 1;
+                let last_row = second_last_row + 1;
+                self.selector[3].enable(&mut region, second_last_row)?;
+
+                region.assign_advice(|| "r0_is_one_always_add", self.witness[0], second_last_row, || Value::known(Fq::one()))?;
+                let nark_x = region.assign_advice(|| "nark_x", self.witness[3], last_row, || inputs.nark_x_vec[0])?;
+                let nark_y = region.assign_advice(|| "nark_y", self.witness[4], last_row, || inputs.nark_y_vec[0])?;
+                let acc_x = region.assign_advice(|| "acc_x", self.witness[1], second_last_row, || inputs.acc_x)?;
+                let acc_y = region.assign_advice(|| "acc_y", self.witness[2], second_last_row, || inputs.acc_y)?;
+
+                let acc_prime_calc_x = region.assign_advice(|| "acc_prime_calc_x", self.witness[3], second_last_row, || inputs.acc_prime_calc_x)?;
+                let acc_prime_calc_y = region.assign_advice(|| "acc_prime_calc_y", self.witness[4], second_last_row, || inputs.acc_prime_calc_y)?;
+                let acc_prime_given_x = region.assign_advice(|| "acc_prime_given_x", self.witness[1], last_row, || inputs.acc_prime_given_x)?;
+                let acc_prime_given_y = region.assign_advice(|| "acc_prime_given_y", self.witness[2], last_row, || inputs.acc_prime_given_y)?;
+                region.constrain_equal(acc_prime_calc_x.cell(), acc_prime_given_x.cell());
+                region.constrain_equal(acc_prime_calc_y.cell(), acc_prime_given_y.cell());
+
+                Ok([nark_x, nark_y, acc_x, acc_y])
             },
         )
+    }
+}
+
+// #[derive(Debug, Clone)]
+// pub struct ScalarMulChipInputs<F, C> 
+// where
+//     C: CurveAffine,
+// {   
+//     pub r_le_bits: Vec<Fq>,
+//     pub nark_comm: C,
+//     pub acc_comm: C,
+//     pub acc_prime_comm: C,
+// }
+
+#[derive(Clone, Default)]
+pub struct ScalarMulConfigInputs 
+{
+    pub rbits_vec: Vec<Value<Fq>>,
+    pub nark_x_vec: Vec<Value<Fq>>,
+    pub nark_y_vec: Vec<Value<Fq>>,
+    pub rnark_x_vec: Vec<Value<Fq>>,
+    pub rnark_y_vec: Vec<Value<Fq>>,
+    pub acc_x: Value<Fq>,
+    pub acc_y: Value<Fq>,
+    pub acc_prime_calc_x: Value<Fq>,
+    pub acc_prime_calc_y: Value<Fq>,
+    pub acc_prime_given_x: Value<Fq>,
+    pub acc_prime_given_y: Value<Fq>,
+}
+
+#[derive(Clone, Default)]
+pub struct ScalarMulChip { pub inputs: Vec<ScalarMulConfigInputs> }
+
+impl Circuit<Fq> for ScalarMulChip 
+{
+    type Params = ();
+    type Config = ScalarMulChipConfig; 
+    type FloorPlanner = SimpleFloorPlanner;
+
+    fn without_witnesses(&self) -> Self {
+        unimplemented!()
+    }
+
+    fn configure(meta: &mut ConstraintSystem<Fq>) -> Self::Config {
+        ScalarMulChipConfig::configure(meta)
+    }
+
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<Fq>,
+    ) -> Result<(), Error> {
+
+        for inputs in self.inputs.iter() {
+            config.assign(layouter.namespace(|| "ScalarMulChip"), inputs.clone(), 1)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -311,40 +366,45 @@ mod test {
     use halo2_base::halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fr, Fq, G1Affine, G1}, grumpkin}};
     use halo2_proofs::{halo2curves::{Coordinates, group::{Group, Curve, cofactor::CofactorCurveAffine}, CurveAffine}, arithmetic::Field};
     use itertools::Itertools;
-    use crate::util::arithmetic::{fe_to_fe, fe_from_bits_le};
+    use crate::{accumulation::protostar::ivc::halo2::chips::scalar_mul::ec_chip::ScalarMulConfigInputs, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
     use super::ScalarMulChip;
     use rand::{rngs::OsRng, Rng};
 
+    // fn form_circuit(){
+        
+    // }
         
     #[test]
-    fn test_ec_vec() {
-        let k = 8; 
+    fn ec_vec() {
+
+        let k = 10; 
         let mut rng = OsRng;
         let vec_len: usize = 129;
-        let mut x_vec = Vec::new();
-        let mut y_vec = Vec::new();
-        let mut acc_x_vec = Vec::new();
-        let mut acc_y_vec = Vec::new();
+        let mut nark_x_vec = Vec::new();
+        let mut nark_y_vec = Vec::new();
+        let mut rnark_x_vec = Vec::new();
+        let mut rnark_y_vec = Vec::new();
         let rbits = (0..vec_len-1).map(|_| rng.gen_bool(1.0 / 3.0)).collect_vec();
         let r_window_bits = rbits[1..].chunks(2).collect_vec();
         let r_le_bits = rbits.iter().map(|bit| 
-            Value::known(if *bit {Fq::ONE} else {Fq::ZERO}))
+            Value::known(if *bit {Fq::one()} else {Fq::zero()}))
             .collect_vec();
 
         // push last element as the first rbit
-        let mut r_vec = Vec::new();
-        r_vec = r_le_bits.clone();
-        r_vec.push(r_le_bits[0]);
+        let mut rbits_vec = Vec::new();
+        rbits_vec = r_le_bits.clone();
+        rbits_vec.push(r_le_bits[0]);
 
         let zero = G1Affine::identity();
         let mut p = G1Affine::random(&mut rng); 
+        let acc = G1Affine::random(&mut rng);
         let p_single = p;
         
         // initial assumption: rbits[0] = 1
-        x_vec.push(Value::known(p_single.x));
-        y_vec.push(Value::known(p_single.y));
-        acc_x_vec.push(Value::known(p_single.x));
-        acc_y_vec.push(Value::known(p_single.y)); 
+        nark_x_vec.push(Value::known(p_single.x));
+        nark_y_vec.push(Value::known(p_single.y));
+        rnark_x_vec.push(Value::known(p_single.x));
+        rnark_y_vec.push(Value::known(p_single.y)); 
 
 
         // | row | r_bits_le | witness.x | witness.y | witness.x  |  witness.y |
@@ -355,20 +415,23 @@ mod test {
         // | 4   |   1       |    16x    |  16y      |    29x     |   29y      |
         // | 5   |   1       |    32x    |  32y      |    61x     |   61y      |
         // |last | rbits[0]  |    x      |   y       |    60x     |   60y      |
+        // |last | rbits[0]  |   acc.x   |  acc.y    |    62x     |   62y      |
+        // |last | rbits[0]  |   acc`.x  |  acc`.y   |            |            |
+
 
         for idx in (1..vec_len-2).step_by(2) {
             p = <G1Affine as CurveAffine>::CurveExt::double(&p.into()).into(); 
-            x_vec.push(Value::known(p.x));
-            y_vec.push(Value::known(p.y));
+            nark_x_vec.push(Value::known(p.x));
+            nark_y_vec.push(Value::known(p.y));
             let p_single = p;
 
             p = <G1Affine as CurveAffine>::CurveExt::double(&p.into()).into();
-            x_vec.push(Value::known(p.x));
-            y_vec.push(Value::known(p.y)); 
+            nark_x_vec.push(Value::known(p.x));
+            nark_y_vec.push(Value::known(p.y)); 
 
             let p_triple = (p + p_single).to_affine();
-            acc_x_vec.push(Value::known(p_triple.x));
-            acc_y_vec.push(Value::known(p_triple.y)); 
+            rnark_x_vec.push(Value::known(p_triple.x));
+            rnark_y_vec.push(Value::known(p_triple.y)); 
 
             let acc_sel = match r_window_bits[idx/2] {
                 [false, false] => zero,                             // 00
@@ -378,55 +441,92 @@ mod test {
                 _ => panic!("Invalid window"),
             };
 
-            let acc_prev = G1Affine::from_xy(acc_x_vec[idx-1].assign().unwrap(), acc_y_vec[idx-1].assign().unwrap()).unwrap();
+            let acc_prev = G1Affine::from_xy(rnark_x_vec[idx-1].assign().unwrap(), rnark_y_vec[idx-1].assign().unwrap()).unwrap();
             let acc_next = (acc_prev + acc_sel).to_affine();
 
-            acc_x_vec.push(Value::known(acc_next.x));
-            acc_y_vec.push(Value::known(acc_next.y));
-
+            rnark_x_vec.push(Value::known(acc_next.x));
+            rnark_y_vec.push(Value::known(acc_next.y));
         }
 
         // push last rbit 
         p = <G1Affine as CurveAffine>::CurveExt::double(&p.into()).into(); 
-        x_vec.push(Value::known(p.x));
-        y_vec.push(Value::known(p.y));
+        nark_x_vec.push(Value::known(p.x));
+        nark_y_vec.push(Value::known(p.y));
 
         if rbits[vec_len-2] {
-            let acc_prev = G1Affine::from_xy(acc_x_vec[vec_len-3].assign().unwrap(), acc_y_vec[vec_len-3].assign().unwrap()).unwrap();
+            let acc_prev = G1Affine::from_xy(rnark_x_vec[vec_len-3].assign().unwrap(), rnark_y_vec[vec_len-3].assign().unwrap()).unwrap();
             let acc_next = (acc_prev + p).to_affine();
-            acc_x_vec.push(Value::known(acc_next.x));
-            acc_y_vec.push(Value::known(acc_next.y));
+            rnark_x_vec.push(Value::known(acc_next.x));
+            rnark_y_vec.push(Value::known(acc_next.y));
         } else {
-            acc_x_vec.push(Value::known(acc_x_vec[vec_len-3].assign().unwrap()));
-            acc_y_vec.push(Value::known(acc_y_vec[vec_len-3].assign().unwrap()));
+            rnark_x_vec.push(Value::known(rnark_x_vec[vec_len-3].assign().unwrap()));
+            rnark_y_vec.push(Value::known(rnark_y_vec[vec_len-3].assign().unwrap()));
         }
 
         // push last element as the first rbit
-        x_vec.push(Value::known(p_single.x));
-        y_vec.push(Value::known(p_single.y));
+        nark_x_vec.push(Value::known(p_single.x));
+        nark_y_vec.push(Value::known(p_single.y));
 
         // correct initial assumption
         if rbits[0] {
-            acc_x_vec.push(Value::known(acc_x_vec[vec_len-2].assign().unwrap()));
-            acc_y_vec.push(Value::known(acc_y_vec[vec_len-2].assign().unwrap()));
+            rnark_x_vec.push(Value::known(rnark_x_vec[vec_len-2].assign().unwrap()));
+            rnark_y_vec.push(Value::known(rnark_y_vec[vec_len-2].assign().unwrap()));
         } else {
-            let acc_prev = G1Affine::from_xy(acc_x_vec[vec_len-2].assign().unwrap(), acc_y_vec[vec_len-2].assign().unwrap()).unwrap();
+            let acc_prev = G1Affine::from_xy(rnark_x_vec[vec_len-2].assign().unwrap(), rnark_y_vec[vec_len-2].assign().unwrap()).unwrap();
             let acc_next = (acc_prev - p_single).to_affine();
-            acc_x_vec.push(Value::known(acc_next.x));
-            acc_y_vec.push(Value::known(acc_next.y));
+            rnark_x_vec.push(Value::known(acc_next.x));
+            rnark_y_vec.push(Value::known(acc_next.y));
         }
 
         let r_lebits = rbits.iter().map(|bit| 
-            if *bit {Fr::ONE} else {Fr::ZERO})
+            if *bit {Fr::one()} else {Fr::zero()})
             .collect_vec();
-        let r_lebits_num = fe_from_bits_le(r_lebits);
-        let result = (p_single * r_lebits_num).to_affine();
-        let circuit_result = G1Affine::from_xy(acc_x_vec[vec_len-1].assign().unwrap(), acc_y_vec[vec_len-1].assign().unwrap()).unwrap();
-        assert_eq!(result, circuit_result);
 
-        let circuit = ScalarMulChip::<Fq> { x_vec, y_vec, r_vec, acc_x_vec, acc_y_vec };
+        let r_lebits_num = fe_from_bits_le(r_lebits);
+        let scalar_mul_given = (p_single * r_lebits_num).to_affine();
+        let scalar_mul_calc = G1Affine::from_xy(rnark_x_vec[vec_len-1].assign().unwrap(), rnark_y_vec[vec_len-1].assign().unwrap()).unwrap();
+        let acc_prime_calc  = (scalar_mul_calc + acc).to_affine();
+        let acc_prime_given = (scalar_mul_given + acc).to_affine(); // todo this should be from cyclefold struct
+        assert_eq!(scalar_mul_given, scalar_mul_calc);
+        assert_eq!(acc_prime_calc, acc_prime_given);
+
+        let inputs =
+            ScalarMulConfigInputs { 
+                nark_x_vec: nark_x_vec.clone(), nark_y_vec: nark_y_vec.clone(), 
+                rbits_vec: rbits_vec.clone(), rnark_x_vec: rnark_x_vec.clone(), rnark_y_vec: rnark_y_vec.clone(), 
+                acc_x: Value::known(acc.x), acc_y: Value::known(acc.y), 
+                acc_prime_calc_x: Value::known(acc_prime_calc.x), 
+                acc_prime_calc_y: Value::known(acc_prime_calc.y), 
+                acc_prime_given_x: Value::known(acc_prime_given.x), 
+                acc_prime_given_y: Value::known(acc_prime_given.y) 
+            };
+
+        let inputs_wrong =
+            ScalarMulConfigInputs { 
+                nark_x_vec, nark_y_vec, rbits_vec, rnark_x_vec, rnark_y_vec, 
+                acc_x: Value::known(acc.x), acc_y: Value::known(acc.y), 
+                acc_prime_calc_x: Value::known(acc_prime_calc.x), 
+                acc_prime_calc_y: Value::known(acc_prime_calc.y), 
+                acc_prime_given_x: Value::known(acc_prime_given.x), 
+                acc_prime_given_y: Value::known(acc_prime_given.y) 
+            };    
+
+        let circuit = ScalarMulChip { inputs: vec![inputs; 6] };
         MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
-    
+
     }
+
+    // #[test]
+    // fn plot_fibo2() {
+    //     use plotters::prelude::*;
+    //     let root = BitMapBackend::new("fib-2-layout.png", (1024, 3096)).into_drawing_area();
+    //     root.fill(&WHITE).unwrap();
+    //     let root = root.titled("Fib 2 Layout", ("sans-serif", 60)).unwrap();
+
+    //     let circuit = MyCircuit::<Fp>(PhantomData);
+    //     halo2_proofs::dev::CircuitLayout::default()
+    //         .render(4, &circuit, &root)
+    //         .unwrap();
+    // }
 
 }

@@ -3,12 +3,12 @@
 use halo2_gadgets::{poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config}};
 use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Chip, Value},
-    halo2curves::bn256::Fr as Fp,
+    halo2curves::bn256::Fq as Fp,
     plonk::{Advice, Column, ConstraintSystem, Error, Fixed, Circuit}, dev::MockProver,
 };
 use halo2_base::halo2_proofs::arithmetic::Field;
 use rand::rngs::OsRng;
-use super::poseidon_spec_t5::PoseidonSpec;
+use super::spec::PoseidonSpec;
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone)]

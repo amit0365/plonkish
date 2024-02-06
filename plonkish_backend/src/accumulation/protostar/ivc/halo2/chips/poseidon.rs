@@ -1,7 +1,9 @@
-pub mod poseidon_chip;
-pub mod poseidon_params_t13;
-pub mod poseidon_params_t2;
-pub mod poseidon_params_t5;
-pub mod poseidon_spec_t13;
-pub mod poseidon_spec_t2;
-pub mod poseidon_spec_t5;
+pub mod hash_chip;
+pub mod params_t13;
+pub mod params_t2;
+pub mod params_t5;
+pub mod spec_t13;
+pub mod spec_t2;
+pub mod spec_t5;
+pub mod spec;
+pub mod params;

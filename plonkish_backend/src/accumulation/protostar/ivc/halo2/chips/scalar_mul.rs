@@ -1,1 +1,1 @@
-pub mod scalar_mul;
+pub mod ec_chip;

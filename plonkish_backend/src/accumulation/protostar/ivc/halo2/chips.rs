@@ -8,7 +8,6 @@ use halo2_base::{
     halo2curves::{bn256::Fr as Fp, grumpkin::Fr as Fq},
     plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance}, dev::MockProver},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
-
 };
 use halo2_base::halo2_proofs::arithmetic::Field;
 use rand::rngs::OsRng;
@@ -19,26 +18,26 @@ use crate::{
     util::arithmetic::{PrimeFieldBits, CurveAffine, TwoChainCurve, fe_to_fe, fe_from_bits_le, fe_to_bits_le, fe_truncated}, 
 };
 use rand::RngCore;
-use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE}};
+use self::{poseidon::{hash_chip::{PoseidonChipTest, PoseidonConfigTest}, spec::PoseidonSpecFp as PoseidonSpec}, scalar_mul::ec_chip::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE}};
 
 pub const T: usize = 5;
 pub const R: usize = 4;
 pub const L: usize = 25;
 
 #[derive(Clone)]
-pub struct CycleFoldChipConfig {
-    poseidon: PoseidonConfig<T, R, L>,
+pub struct CycleFoldTestChipConfig {
+    poseidon: PoseidonConfigTest<T, R, L>,
     scalar_mul: ScalarMulChipConfig,
     instance: Column<Instance>,
 }
 
 #[derive(Clone, Default)]
-pub struct CyclefoldChip { pub inputs: Vec<ScalarMulConfigInputs> }
+pub struct CyclefoldTestChip { pub inputs: Vec<ScalarMulConfigInputs> }
 
-impl Circuit<Fq> for CyclefoldChip
+impl Circuit<Fq> for CyclefoldTestChip
 {
     type Params = ();
-    type Config = CycleFoldChipConfig; 
+    type Config = CycleFoldTestChipConfig; 
     type FloorPlanner = SimpleFloorPlanner;
 
     fn without_witnesses(&self) -> Self {
@@ -63,7 +62,7 @@ impl Circuit<Fq> for CyclefoldChip
         meta.enable_equality(instance);
 
         let poseidon = 
-            PoseidonChip::<PoseidonSpec, T, R, L>::configure(
+            PoseidonChipTest::<PoseidonSpec, T, R, L>::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
                 advices[5],
@@ -87,7 +86,7 @@ impl Circuit<Fq> for CyclefoldChip
     ) -> Result<(), Error> {
 
         let mut hash_inputs = Vec::new();
-        let hash_chip = PoseidonChip::<PoseidonSpec, 5, 4, L>::construct(
+        let hash_chip = PoseidonChipTest::<PoseidonSpec, 5, 4, L>::construct(
             config.poseidon,
         );
 
@@ -121,8 +120,8 @@ mod test {
     use halo2_base::halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fr, Fq, G1Affine, G1}, grumpkin}};
     use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
     use halo2_proofs::{halo2curves::{Coordinates, group::{Group, Curve, cofactor::CofactorCurveAffine}, CurveAffine}, arithmetic::Field};
-    use crate::{accumulation::protostar::ivc::halo2::{chips::{poseidon::spec::PoseidonSpec, scalar_mul::ec_chip::ScalarMulConfigInputs}, test::strawman::into_coordinates}, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
-    use super::{CyclefoldChip, L};
+    use crate::{accumulation::protostar::ivc::halo2::{chips::{poseidon::spec::{PoseidonSpec, PoseidonSpecFp}, scalar_mul::ec_chip::ScalarMulConfigInputs}, test::strawman::into_coordinates}, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
+    use super::{CyclefoldTestChip, L};
     use rand::{rngs::OsRng, Rng};
     use itertools::Itertools;
     use std::iter;
@@ -135,9 +134,9 @@ mod test {
     fn cyclefold_chip() {
 
         use plotters::prelude::*;
-        let root = BitMapBackend::new("CyclefoldChip.png", (1024, 3096)).into_drawing_area();
+        let root = BitMapBackend::new("CyclefoldTestChip.png", (1024, 3096)).into_drawing_area();
         root.fill(&WHITE).unwrap();
-        let root = root.titled("CyclefoldChip", ("sans-serif", 60)).unwrap();
+        let root = root.titled("CyclefoldTestChip", ("sans-serif", 60)).unwrap();
 
         let k = 11; 
         let mut rng = OsRng;
@@ -293,9 +292,9 @@ mod test {
         assert_eq!(L, message.len());
 
         let hash =
-            inlineHash::<_, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
+            inlineHash::<_, PoseidonSpecFp, ConstantLength<L>, 5, 4>::init().hash(message);
 
-        let circuit = CyclefoldChip { inputs: vec![inputs; input_len] };
+        let circuit = CyclefoldTestChip { inputs: vec![inputs; input_len] };
         MockProver::run(k, &circuit, vec![vec![hash]]).unwrap().assert_satisfied();
 
         halo2_base::halo2_proofs::dev::CircuitLayout::default()

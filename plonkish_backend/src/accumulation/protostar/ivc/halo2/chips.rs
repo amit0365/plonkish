@@ -18,33 +18,49 @@ use crate::{
     util::arithmetic::{PrimeFieldBits, CurveAffine, TwoChainCurve, fe_to_fe, fe_from_bits_le, fe_to_bits_le, fe_truncated}, 
 };
 use rand::RngCore;
-use self::{poseidon::{hash_chip::{PoseidonChipTest, PoseidonConfigTest}, spec::PoseidonSpecFp as PoseidonSpec}, scalar_mul::ec_chip::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE}};
+use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE}};
 
 pub const T: usize = 5;
 pub const R: usize = 4;
 pub const L: usize = 25;
 
 #[derive(Clone)]
-pub struct CycleFoldTestChipConfig {
-    poseidon: PoseidonConfigTest<T, R, L>,
-    scalar_mul: ScalarMulChipConfig,
+pub struct CycleFoldChipConfig<C> 
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
+{
+    poseidon: PoseidonConfig<C, T, R, L>,
+    scalar_mul: ScalarMulChipConfig<C>,
     instance: Column<Instance>,
 }
 
 #[derive(Clone, Default)]
-pub struct CyclefoldTestChip { pub inputs: Vec<ScalarMulConfigInputs> }
+pub struct CyclefoldChip<C> 
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
+{ 
+    pub inputs: Vec<ScalarMulConfigInputs<C>> 
+}
 
-impl Circuit<Fq> for CyclefoldTestChip
+impl<C> Circuit<C::Scalar> for CyclefoldChip<C>
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
 {
     type Params = ();
-    type Config = CycleFoldTestChipConfig; 
+    type Config = CycleFoldChipConfig<C>; 
     type FloorPlanner = SimpleFloorPlanner;
 
     fn without_witnesses(&self) -> Self {
         unimplemented!()
     }
 
-    fn configure(meta: &mut ConstraintSystem<Fq>) -> Self::Config {
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
         
         let advices = [0; 6].map(|_| meta.advice_column());
         let constants = [0; 10].map(|_| meta.fixed_column());
@@ -62,7 +78,7 @@ impl Circuit<Fq> for CyclefoldTestChip
         meta.enable_equality(instance);
 
         let poseidon = 
-            PoseidonChipTest::<PoseidonSpec, T, R, L>::configure(
+            PoseidonChip::<C, PoseidonSpec, T, R, L>::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
                 advices[5],
@@ -70,7 +86,7 @@ impl Circuit<Fq> for CyclefoldTestChip
                 constants[5..].try_into().unwrap(), 
             );
 
-        let scalar_mul = ScalarMulChipConfig::configure(meta, advices[..NUM_ADVICE].try_into().unwrap());
+        let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices[..NUM_ADVICE].try_into().unwrap());
 
         Self::Config {
             poseidon,
@@ -82,11 +98,11 @@ impl Circuit<Fq> for CyclefoldTestChip
     fn synthesize(
         &self,
         config: Self::Config,
-        mut layouter: impl Layouter<Fq>,
+        mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
 
         let mut hash_inputs = Vec::new();
-        let hash_chip = PoseidonChipTest::<PoseidonSpec, 5, 4, L>::construct(
+        let hash_chip = PoseidonChip::<C, PoseidonSpec, 5, 4, L>::construct(
             config.poseidon,
         );
 
@@ -98,7 +114,7 @@ impl Circuit<Fq> for CyclefoldTestChip
             }
         }
 
-        let message: [AssignedCell<Fq, Fq>; L] =
+        let message: [AssignedCell<C::Scalar, C::Scalar>; L] =
         match hash_inputs.try_into() {
             Ok(arr) => arr,
             Err(_) => panic!("Failed to convert Vec to Array"),
@@ -121,7 +137,7 @@ mod test {
     use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
     use halo2_proofs::{halo2curves::{Coordinates, group::{Group, Curve, cofactor::CofactorCurveAffine}, CurveAffine}, arithmetic::Field};
     use crate::{accumulation::protostar::ivc::halo2::{chips::{poseidon::spec::{PoseidonSpec, PoseidonSpecFp}, scalar_mul::ec_chip::ScalarMulConfigInputs}, test::strawman::into_coordinates}, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
-    use super::{CyclefoldTestChip, L};
+    use super::{CyclefoldChip, L};
     use rand::{rngs::OsRng, Rng};
     use itertools::Itertools;
     use std::iter;
@@ -134,9 +150,9 @@ mod test {
     fn cyclefold_chip() {
 
         use plotters::prelude::*;
-        let root = BitMapBackend::new("CyclefoldTestChip.png", (1024, 3096)).into_drawing_area();
+        let root = BitMapBackend::new("CyclefoldChip.png", (1024, 3096)).into_drawing_area();
         root.fill(&WHITE).unwrap();
-        let root = root.titled("CyclefoldTestChip", ("sans-serif", 60)).unwrap();
+        let root = root.titled("CyclefoldChip", ("sans-serif", 60)).unwrap();
 
         let k = 11; 
         let mut rng = OsRng;
@@ -254,7 +270,7 @@ mod test {
         assert_eq!(acc_prime_calc, acc_prime_given);
 
         let inputs =
-            ScalarMulConfigInputs { 
+            ScalarMulConfigInputs::<grumpkin::G1Affine> { 
                 nark_x_vec: nark_x_vec.clone(), nark_y_vec: nark_y_vec.clone(), r: Value::known(r_non_native),
                 rbits_vec: rbits_vec.clone(), rnark_x_vec: rnark_x_vec.clone(), rnark_y_vec: rnark_y_vec.clone(), 
                 acc_x: Value::known(acc.x), acc_y: Value::known(acc.y), 
@@ -272,10 +288,6 @@ mod test {
             .collect_vec();
         
         let input_len = L/4;
-        // for _ in 0..input_len {
-        //     messages_vec.extend_from_slice(&message_vec);
-        // }
-
         for i in 0..input_len {
             if i == 0 {
                 messages_vec.extend_from_slice(&message_vec);
@@ -292,9 +304,9 @@ mod test {
         assert_eq!(L, message.len());
 
         let hash =
-            inlineHash::<_, PoseidonSpecFp, ConstantLength<L>, 5, 4>::init().hash(message);
+            inlineHash::<Fq, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
 
-        let circuit = CyclefoldTestChip { inputs: vec![inputs; input_len] };
+        let circuit = CyclefoldChip::<grumpkin::G1Affine> { inputs: vec![inputs; input_len] };
         MockProver::run(k, &circuit, vec![vec![hash]]).unwrap().assert_satisfied();
 
         halo2_base::halo2_proofs::dev::CircuitLayout::default()

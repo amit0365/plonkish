@@ -12,7 +12,7 @@ use halo2_base::{
     utils::bit_length,
     AssignedValue, Context,
 };
-use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
+use halo2_base::halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use itertools::Itertools;
 use std::{
     iter,
@@ -20,20 +20,30 @@ use std::{
     sync::{RwLock, RwLockReadGuard},
 };
 
-use crate::{accumulation::protostar::ivc::cyclefold::CycleFoldInputs, util::arithmetic::{TwoChainCurve, PrimeFieldBits}};
+use crate::{accumulation::protostar::ivc::cyclefold::CycleFoldInputs, util::arithmetic::{TwoChainCurve, PrimeFieldBits, Field}};
 
 pub const NUM_ADVICE: usize = 5;
 pub const NUM_FIXED: usize = 1;
 
 #[derive(Clone, Debug)]
-pub struct ScalarMulChipConfig {
+pub struct ScalarMulChipConfig<C>
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
+{
     witness: [Column<Advice>; NUM_ADVICE],
     selector: [Selector; NUM_ADVICE],
-    _marker: PhantomData<Fq>,
+    _marker: PhantomData<C>,
 }
 
-impl ScalarMulChipConfig {
-    pub fn configure(meta: &mut ConstraintSystem<Fq>, advices: [Column<Advice>; NUM_ADVICE]) -> Self {
+impl<C> ScalarMulChipConfig<C> 
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
+{
+    pub fn configure(meta: &mut ConstraintSystem<C::Scalar>, advices: [Column<Advice>; NUM_ADVICE]) -> Self {
 
         // | row | r_bits_le | witness.x | witness.y | witness.x  |  witness.y |
         // | 0   |   1       |     x     |   y       |    x       |    y       |
@@ -57,10 +67,10 @@ impl ScalarMulChipConfig {
                 let x2 = meta.query_advice(col_px, Rotation(1));
                 let y2 = meta.query_advice(col_py, Rotation(1));
 
-                let two = Expression::Constant(Fq::from(2));
-                let three = Expression::Constant(Fq::from(3));
-                let four = Expression::Constant(Fq::from(4));
-                let nine = Expression::Constant(Fq::from(9));
+                let two = Expression::Constant(C::Scalar::from(2));
+                let three = Expression::Constant(C::Scalar::from(3));
+                let four = Expression::Constant(C::Scalar::from(4));
+                let nine = Expression::Constant(C::Scalar::from(9));
 
                 let x_sq = x.clone() * x.clone();
                 let x_pow3 = x_sq.clone() * x.clone();
@@ -127,8 +137,8 @@ impl ScalarMulChipConfig {
 
                 let r0 = meta.query_advice(col_rbits, Rotation(0));
                 let r1 = meta.query_advice(col_rbits, Rotation(1));
-                let one = Expression::Constant(Fq::one());
-                let zero = Expression::Constant(Fq::zero());
+                let one = Expression::Constant(C::Scalar::ONE);
+                let zero = Expression::Constant(C::Scalar::ZERO);
 
                 // (1-q0)(1-q1)*zero + q0(1-q1)*x + (1-q0)q1*2x + q0q1*3x 
                 let sel_x = r0.clone() * r1.clone() * x3.clone() + 
@@ -174,7 +184,7 @@ impl ScalarMulChipConfig {
                 let dy = y2.clone() - acc_prev_y.clone();
                 let dx_sq = dx.clone() * dx.clone();
                 let dy_sq = dy.clone() * dy.clone();
-                let one = Expression::Constant(Fq::one());
+                let one = Expression::Constant(C::Scalar::ONE);
 
                 //  x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
                 //  y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
@@ -201,7 +211,7 @@ impl ScalarMulChipConfig {
                 let sy = y2.clone() + y1.clone();
                 let dx_sq = dx.clone() * dx.clone();
                 let sy_sq = sy.clone() * sy.clone();
-                let one = Expression::Constant(Fq::one());
+                let one = Expression::Constant(C::Scalar::ONE);
 
 
                 //  x_3 * dx_sq = sy_sq - x_1 * dx_sq - x_2 * dx_sq
@@ -223,10 +233,10 @@ impl ScalarMulChipConfig {
 
     pub fn assign(
         &self,
-        mut layouter: impl Layouter<Fq>,
-        inputs: ScalarMulConfigInputs,
+        mut layouter: impl Layouter<C::Scalar>,
+        inputs: ScalarMulConfigInputs<C>,
         iteration: usize,
-    ) -> Result<[AssignedCell<Fq, Fq>; 5], Error> {
+    ) -> Result<[AssignedCell<C::Scalar, C::Scalar>; 5], Error> {
 
         layouter.assign_region(
             || "ScalarMulChipConfig assign",
@@ -279,7 +289,7 @@ impl ScalarMulChipConfig {
                 let second_last_row = third_last_row + 1;
                 self.selector[3].enable(&mut region, third_last_row)?;
 
-                region.assign_advice(|| "r0_is_one_always_add", self.witness[0], third_last_row, || Value::known(Fq::one()))?;
+                region.assign_advice(|| "r0_is_one_always_add", self.witness[0], third_last_row, || Value::known(C::Scalar::ONE))?;
                 let nark_x = region.assign_advice(|| "nark_x", self.witness[3], second_last_row, || inputs.nark_x_vec[0])?;
                 let nark_y = region.assign_advice(|| "nark_y", self.witness[4], second_last_row, || inputs.nark_y_vec[0])?;
                 let acc_x = region.assign_advice(|| "acc_x", self.witness[1], third_last_row, || inputs.acc_x)?;
@@ -304,43 +314,58 @@ impl ScalarMulChipConfig {
 // where
 //     C: CurveAffine,
 // {   
-//     pub r_le_bits: Vec<Fq>,
+//     pub r_le_bits: Vec<C::Scalar>,
 //     pub nark_comm: C,
 //     pub acc_comm: C,
 //     pub acc_prime_comm: C,
 // }
 
 #[derive(Clone, Default)]
-pub struct ScalarMulConfigInputs 
+pub struct ScalarMulConfigInputs<C>
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
 {
-    pub rbits_vec: Vec<Value<Fq>>,
-    pub nark_x_vec: Vec<Value<Fq>>,
-    pub nark_y_vec: Vec<Value<Fq>>,
-    pub rnark_x_vec: Vec<Value<Fq>>,
-    pub rnark_y_vec: Vec<Value<Fq>>,
-    pub r: Value<Fq>,
-    pub acc_x: Value<Fq>,
-    pub acc_y: Value<Fq>,
-    pub acc_prime_calc_x: Value<Fq>,
-    pub acc_prime_calc_y: Value<Fq>,
-    pub acc_prime_given_x: Value<Fq>,
-    pub acc_prime_given_y: Value<Fq>,
+    pub rbits_vec: Vec<Value<C::Scalar>>,
+    pub nark_x_vec: Vec<Value<C::Scalar>>,
+    pub nark_y_vec: Vec<Value<C::Scalar>>,
+    pub rnark_x_vec: Vec<Value<C::Scalar>>,
+    pub rnark_y_vec: Vec<Value<C::Scalar>>,
+    pub r: Value<C::Scalar>,
+    pub acc_x: Value<C::Scalar>,
+    pub acc_y: Value<C::Scalar>,
+    pub acc_prime_calc_x: Value<C::Scalar>,
+    pub acc_prime_calc_y: Value<C::Scalar>,
+    pub acc_prime_given_x: Value<C::Scalar>,
+    pub acc_prime_given_y: Value<C::Scalar>,
 }
 
 #[derive(Clone, Default)]
-pub struct ScalarMulChip { pub inputs: Vec<ScalarMulConfigInputs> }
+pub struct ScalarMulChip<C>
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
+{ 
+    pub inputs: Vec<ScalarMulConfigInputs<C>> 
+}
 
-impl Circuit<Fq> for ScalarMulChip 
+impl<C> Circuit<C::Scalar> for ScalarMulChip<C>
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
 {
     type Params = ();
-    type Config = ScalarMulChipConfig; 
+    type Config = ScalarMulChipConfig<C>; 
     type FloorPlanner = SimpleFloorPlanner;
 
     fn without_witnesses(&self) -> Self {
         unimplemented!()
     }
 
-    fn configure(meta: &mut ConstraintSystem<Fq>) -> Self::Config {
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
         let advices = [0; NUM_ADVICE].map(|_| meta.advice_column());
         ScalarMulChipConfig::configure(meta, advices)
     }
@@ -348,7 +373,7 @@ impl Circuit<Fq> for ScalarMulChip
     fn synthesize(
         &self,
         config: Self::Config,
-        mut layouter: impl Layouter<Fq>,
+        mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
 
         for inputs in self.inputs.iter() {
@@ -390,7 +415,7 @@ mod test {
         let rbits = (0..vec_len-1).map(|_| rng.gen_bool(1.0 / 3.0)).collect_vec();
         let r_window_bits = rbits[1..].chunks(2).collect_vec();
         let r_le_bits = rbits.iter().map(|bit| 
-            Value::known(if *bit {Fq::one()} else {Fq::zero()}))
+            Value::known(if *bit {Fq::ONE} else {Fq::ZERO}))
             .collect_vec();
 
         // push last element as the first rbit
@@ -482,7 +507,7 @@ mod test {
         }
 
         let r_lebits = rbits.iter().map(|bit| 
-            if *bit {Fr::one()} else {Fr::zero()})
+            if *bit {Fr::ONE} else {Fr::ZERO})
             .collect_vec();
 
         let r = fe_from_bits_le(r_lebits);
@@ -496,7 +521,7 @@ mod test {
         assert_eq!(acc_prime_calc, acc_prime_given);
 
         let inputs =
-            ScalarMulConfigInputs { 
+            ScalarMulConfigInputs::<grumpkin::G1Affine> { 
                 nark_x_vec: nark_x_vec.clone(), nark_y_vec: nark_y_vec.clone(), r: Value::known(r_non_native),
                 rbits_vec: rbits_vec.clone(), rnark_x_vec: rnark_x_vec.clone(), rnark_y_vec: rnark_y_vec.clone(), 
                 acc_x: Value::known(acc.x), acc_y: Value::known(acc.y), 
@@ -506,7 +531,7 @@ mod test {
                 acc_prime_given_y: Value::known(acc_prime_given.y) 
             };   
 
-        let circuit = ScalarMulChip { inputs: vec![inputs; 6] };
+        let circuit = ScalarMulChip::<grumpkin::G1Affine> { inputs: vec![inputs; 6] };
         MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
 
         halo2_base::halo2_proofs::dev::CircuitLayout::default()

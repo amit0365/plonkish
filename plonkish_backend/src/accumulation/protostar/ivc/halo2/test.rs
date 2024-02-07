@@ -39,11 +39,12 @@ use halo2_base::{Context,
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
     poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
 };
-use halo2_ecc::{fields::{fp::FpChip, native_fp::NativeFieldChip}, ecc::EccChip};
+use halo2_ecc::{fields::{fp::FpChip, native_fp::NativeFieldChip}, ecc::EccChip, secp256k1::{ecdsa, random_ecdsa_input}};
 use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value, SimpleFloorPlanner},
     plonk::{Circuit, Selector, ConstraintSystem, Error},
 };
+use rand::{rngs::StdRng, SeedableRng};
 
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant, cell::{RefCell, RefMut}, borrow::BorrowMut};
 use std::{mem, rc::Rc};
@@ -411,7 +412,10 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
                 // `x + x = y`, where `x` and `y` are respectively the input and output.
                 let x = ctx.load_witness(first_input);
                 let one = ctx.load_constant(C::Scalar::ONE);
-
+                let mut rng = StdRng::seed_from_u64(0);
+                let ecdsa_input = random_ecdsa_input(&mut rng);
+                let result = ecdsa(ctx, &range_chip, ecdsa_input, NUM_LIMB_BITS, NUM_LIMBS);
+                assert_eq!(result, C::Scalar::ONE);
                 // checks if synthesize has been called for the first time (preprocessing), initiates the input and output same as the intial_input
                 // when synthesize is called for second time by prove_steps, updates the input to the output value for the next step
                 let setup_done = ctx.load_constant(self.setup_done);
@@ -747,7 +751,7 @@ where
     )
     .unwrap();
     let duration_preprocess = preprocess_time.elapsed();
-
+    println!("Time for preprocess: {:?}", duration_preprocess);
 
     let prove_steps_time = Instant::now();
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
@@ -759,7 +763,7 @@ where
     )
     .unwrap();
     let duration_prove_steps = prove_steps_time.elapsed();
-
+    println!("Time for prove_steps: {:?}", duration_prove_steps);
 
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();
@@ -804,7 +808,7 @@ where
         )
     };
     let duration_prove_decider = prove_decider_time.elapsed();
-
+    println!("Time for prove_decider: {:?}", duration_prove_decider);
     (
         ivc_vp,
         num_steps,
@@ -822,12 +826,12 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_VARS: usize = 17;
-    const NUM_STEPS: usize = 5;
+    const NUM_VARS: usize = 18;
+    const NUM_STEPS: usize = 70;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
-            num_advice_per_phase: vec![3],
+            num_advice_per_phase: vec![4],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
             lookup_bits: Some(13),
@@ -1039,8 +1043,8 @@ pub mod strawman {
         hash::Hash,
     };
 
-    pub const NUM_LIMBS: usize = 4;
-    pub const NUM_LIMB_BITS: usize = 64;
+    pub const NUM_LIMBS: usize = 3;
+    pub const NUM_LIMB_BITS: usize = 88;
     pub const NUM_SUBLIMBS: usize = 5;
     pub const NUM_LOOKUPS: usize = 1;
     pub const LOOKUP_BITS: usize = 8;

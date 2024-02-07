@@ -822,6 +822,13 @@ where
         assigned_instances[0].push(h_prime);
 
         circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""));
+
+        let copy_manager = circuit_builder.pool(0).copy_manager.lock().unwrap();
+        println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
+        println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
+        println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
+        drop(copy_manager);
+
         circuit_builder.clear();
         drop(circuit_builder);
 
@@ -1021,7 +1028,7 @@ where
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
-
+    println!("primary_preprocess_no_circuit_info_done");
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,
@@ -1036,7 +1043,7 @@ where
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };
-
+    println!("secondary_preprocess_done");
     primary_circuit.update_witness(|circuit| {
         circuit.avp = ProtostarAccumulationVerifierParam::from(&secondary_vp);
         circuit.update_acc();
@@ -1044,7 +1051,7 @@ where
     let primary_circuit_info = primary_circuit.circuit_info().unwrap();
     let (primary_pp, primary_vp) =
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
-
+    println!("primary_preprocess_done");
     let vp_digest = fe_truncated_from_le_bytes(
         Keccak256::digest(bincode::serialize(&(&primary_vp, &secondary_vp)).unwrap()),
         Chip::<C>::NUM_HASH_BITS,

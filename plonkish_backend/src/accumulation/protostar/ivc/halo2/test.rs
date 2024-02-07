@@ -434,7 +434,7 @@ pub mod strawman {
     use halo2_ecc::{
         fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip, Selectable},
         bigint::{self, CRTInteger, FixedCRTInteger, ProperCrtUint, ProperUint},
-        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip, self, EcPointNonInfinity},
+        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip, self},
     };
 
     use std::{

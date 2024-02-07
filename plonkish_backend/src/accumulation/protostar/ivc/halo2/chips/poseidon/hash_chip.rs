@@ -90,7 +90,7 @@ impl<S: Spec<Fp, WIDTH, RATE>, const WIDTH: usize, const RATE: usize, const L: u
     }
 }
 
-const L: usize = 20;
+const L: usize = 25;
 
 struct PoseidonHashCircuit{
     message: [Fp; L],
@@ -168,78 +168,14 @@ impl Circuit<Fp> for PoseidonHashCircuit
     }
 }
 
-// impl Circuit<Fp> for PoseidonHashCircuit
-// {
-//     type Config = (PoseidonConfig<13, 12, L>, [Column<Advice>; 14]);
-//     type FloorPlanner = SimpleFloorPlanner;
-//     type Params = ();
-
-//     fn without_witnesses(&self) -> Self {
-//         unimplemented!()
-//     }
-
-//     fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
-//         let advices = [0; 14].map(|_| meta.advice_column());
-//         let constants = [0; 26].map(|_| meta.fixed_column());
-//         meta.enable_constant(constants[13]);
-
-
-//         let poseidon_config = PoseidonChip::<PoseidonSpec, 13, 12, L>::configure(
-//             meta,
-//             advices[..13].try_into().unwrap(),
-//             advices[13],
-//             constants[..13].try_into().unwrap(), 
-//             constants[13..].try_into().unwrap(), 
-//         );
-
-//         (poseidon_config, advices)
-//     }
-
-//     fn synthesize(
-//         &self,
-//         config: Self::Config,
-//         mut layouter: impl Layouter<Fp>,
-//     ) -> Result<(), Error> {
-
-//         let chip = PoseidonChip::<PoseidonSpec, 13, 12, L>::construct(
-//             config.0,
-//         ); 
-
-//         let mut messages_vec: Vec<AssignedCell<Fp, Fp>> = vec![];
-//         for message in self.message.iter() {
-//             messages_vec.push(layouter.assign_region(
-//                 || "load message",
-//                 |mut region| {
-//                     region.assign_advice(
-//                         || "value",
-//                         config.1[0],
-//                         0,
-//                         || Value::known(*message)
-//                     )
-//                 },
-//             )?);
-//         };
-
-//         let message: [AssignedCell<Fp, Fp>; L] =
-//         match messages_vec.try_into() {
-//             Ok(arr) => arr,
-//             Err(_) => panic!("Failed to convert Vec to Array"),
-//         };
-    
-//         let hash = chip.hash(
-//             layouter.namespace(|| "perform poseidon entry hash"),
-//             message,
-//         )?;
-
-//         print!("hash: {:?}", hash.value_field());
-
-//         Ok(())
-
-//     }
-// }
-
 #[test]
 fn poseidon_hash_longer_input_custom() {
+
+    use plotters::prelude::*;
+    let root = BitMapBackend::new("HashChip.png", (1024, 3096)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let root = root.titled("HashChip", ("sans-serif", 60)).unwrap();
+
     let rng = OsRng;
 
     let message = [0; L].map(|_| Fp::random(rng));
@@ -247,31 +183,16 @@ fn poseidon_hash_longer_input_custom() {
         inlineHash::<_, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
     println!("output: {:?}", output);
 
-    let k = 8;
+    let k = 9;
     let circuit = PoseidonHashCircuit {
         message,
         //_marker: PhantomData,
     };
 
     let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-    assert_eq!(prover.verify(), Ok(()))
+    assert_eq!(prover.verify(), Ok(()));
+
+    halo2_base::halo2_proofs::dev::CircuitLayout::default()
+    .render(k, &circuit, &root)
+    .unwrap();
 }
-
-// #[test]
-// fn poseidon_hash_longer_input_custom() {
-//     let rng = OsRng;
-
-//     let message = [0; L].map(|_| Fp::random(rng));
-//     let output =
-//         inlineHash::<_, PoseidonSpec, ConstantLength<L>, 13, 12>::init().hash(message);
-//     println!("output: {:?}", output);
-
-//     let k = 7;
-//     let circuit = PoseidonHashCircuit {
-//         message,
-//         //_marker: PhantomData,
-//     };
-
-//     let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-//     assert_eq!(prover.verify(), Ok(()))
-// }

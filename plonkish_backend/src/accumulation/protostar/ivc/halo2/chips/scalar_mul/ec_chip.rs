@@ -22,18 +22,18 @@ use std::{
 
 use crate::{accumulation::protostar::ivc::cyclefold::CycleFoldInputs, util::arithmetic::{TwoChainCurve, PrimeFieldBits}};
 
-pub const NUM_ADVICE: usize = 1;
+pub const NUM_ADVICE: usize = 5;
 pub const NUM_FIXED: usize = 1;
 
 #[derive(Clone, Debug)]
 pub struct ScalarMulChipConfig {
-    witness: [Column<Advice>; 5],
-    selector: [Selector; 5],
+    witness: [Column<Advice>; NUM_ADVICE],
+    selector: [Selector; NUM_ADVICE],
     _marker: PhantomData<Fq>,
 }
 
 impl ScalarMulChipConfig {
-    pub fn configure(meta: &mut ConstraintSystem<Fq>) -> Self {
+    pub fn configure(meta: &mut ConstraintSystem<Fq>, advices: [Column<Advice>; NUM_ADVICE]) -> Self {
 
         // | row | r_bits_le | witness.x | witness.y | witness.x  |  witness.y |
         // | 0   |   1       |     x     |   y       |    x       |    y       |
@@ -44,11 +44,7 @@ impl ScalarMulChipConfig {
 
 
         let [col_rbits, col_px, col_py, col_acc_x, col_acc_y] = 
-            [(); 5].map(|_| meta.advice_column());
-
-        for col in &[col_rbits, col_px, col_py, col_acc_x, col_acc_y] {
-                meta.enable_equality(*col);
-            }
+            advices;
     
         let [q_ec_double, q_ec_add_unequal, q_ec_acc_add_unequal, q_ec_add_unequal_last, q_ec_sub_unequal_last] = 
             [(); 5].map(|_| meta.selector());
@@ -230,7 +226,7 @@ impl ScalarMulChipConfig {
         mut layouter: impl Layouter<Fq>,
         inputs: ScalarMulConfigInputs,
         iteration: usize,
-    ) -> Result<[AssignedCell<Fq, Fq>; 4], Error> {
+    ) -> Result<[AssignedCell<Fq, Fq>; 5], Error> {
 
         layouter.assign_region(
             || "ScalarMulChipConfig assign",
@@ -279,25 +275,25 @@ impl ScalarMulChipConfig {
                 }
 
                 let row_offset = (iteration - 1) * nark_vec_len;
-                let second_last_row = nark_vec_len + row_offset;
-                let third_last_row = second_last_row - 1;
-                let last_row = second_last_row + 1;
-                self.selector[3].enable(&mut region, second_last_row)?;
+                let third_last_row = nark_vec_len + row_offset;
+                let second_last_row = third_last_row + 1;
+                self.selector[3].enable(&mut region, third_last_row)?;
 
-                region.assign_advice(|| "r0_is_one_always_add", self.witness[0], second_last_row, || Value::known(Fq::one()))?;
-                let nark_x = region.assign_advice(|| "nark_x", self.witness[3], last_row, || inputs.nark_x_vec[0])?;
-                let nark_y = region.assign_advice(|| "nark_y", self.witness[4], last_row, || inputs.nark_y_vec[0])?;
-                let acc_x = region.assign_advice(|| "acc_x", self.witness[1], second_last_row, || inputs.acc_x)?;
-                let acc_y = region.assign_advice(|| "acc_y", self.witness[2], second_last_row, || inputs.acc_y)?;
+                region.assign_advice(|| "r0_is_one_always_add", self.witness[0], third_last_row, || Value::known(Fq::one()))?;
+                let nark_x = region.assign_advice(|| "nark_x", self.witness[3], second_last_row, || inputs.nark_x_vec[0])?;
+                let nark_y = region.assign_advice(|| "nark_y", self.witness[4], second_last_row, || inputs.nark_y_vec[0])?;
+                let acc_x = region.assign_advice(|| "acc_x", self.witness[1], third_last_row, || inputs.acc_x)?;
+                let acc_y = region.assign_advice(|| "acc_y", self.witness[2], third_last_row, || inputs.acc_y)?;
+                let r = region.assign_advice(|| "r", self.witness[0], second_last_row, || inputs.r)?;
 
-                let acc_prime_calc_x = region.assign_advice(|| "acc_prime_calc_x", self.witness[3], second_last_row, || inputs.acc_prime_calc_x)?;
-                let acc_prime_calc_y = region.assign_advice(|| "acc_prime_calc_y", self.witness[4], second_last_row, || inputs.acc_prime_calc_y)?;
-                let acc_prime_given_x = region.assign_advice(|| "acc_prime_given_x", self.witness[1], last_row, || inputs.acc_prime_given_x)?;
-                let acc_prime_given_y = region.assign_advice(|| "acc_prime_given_y", self.witness[2], last_row, || inputs.acc_prime_given_y)?;
+                let acc_prime_calc_x = region.assign_advice(|| "acc_prime_calc_x", self.witness[3], third_last_row, || inputs.acc_prime_calc_x)?;
+                let acc_prime_calc_y = region.assign_advice(|| "acc_prime_calc_y", self.witness[4], third_last_row, || inputs.acc_prime_calc_y)?;
+                let acc_prime_given_x = region.assign_advice(|| "acc_prime_given_x", self.witness[1], second_last_row, || inputs.acc_prime_given_x)?;
+                let acc_prime_given_y = region.assign_advice(|| "acc_prime_given_y", self.witness[2], second_last_row, || inputs.acc_prime_given_y)?;
                 region.constrain_equal(acc_prime_calc_x.cell(), acc_prime_given_x.cell());
                 region.constrain_equal(acc_prime_calc_y.cell(), acc_prime_given_y.cell());
 
-                Ok([nark_x, nark_y, acc_x, acc_y])
+                Ok([r, nark_x, nark_y, acc_x, acc_y])
             },
         )
     }
@@ -322,6 +318,7 @@ pub struct ScalarMulConfigInputs
     pub nark_y_vec: Vec<Value<Fq>>,
     pub rnark_x_vec: Vec<Value<Fq>>,
     pub rnark_y_vec: Vec<Value<Fq>>,
+    pub r: Value<Fq>,
     pub acc_x: Value<Fq>,
     pub acc_y: Value<Fq>,
     pub acc_prime_calc_x: Value<Fq>,
@@ -344,7 +341,8 @@ impl Circuit<Fq> for ScalarMulChip
     }
 
     fn configure(meta: &mut ConstraintSystem<Fq>) -> Self::Config {
-        ScalarMulChipConfig::configure(meta)
+        let advices = [0; NUM_ADVICE].map(|_| meta.advice_column());
+        ScalarMulChipConfig::configure(meta, advices)
     }
 
     fn synthesize(
@@ -376,6 +374,11 @@ mod test {
         
     #[test]
     fn ec_vec() {
+
+        use plotters::prelude::*;
+        let root = BitMapBackend::new("ECChip.png", (1024, 3096)).into_drawing_area();
+        root.fill(&WHITE).unwrap();
+        let root = root.titled("ECChip", ("sans-serif", 60)).unwrap();
 
         let k = 10; 
         let mut rng = OsRng;
@@ -482,8 +485,10 @@ mod test {
             if *bit {Fr::one()} else {Fr::zero()})
             .collect_vec();
 
-        let r_lebits_num = fe_from_bits_le(r_lebits);
-        let scalar_mul_given = (p_single * r_lebits_num).to_affine();
+        let r = fe_from_bits_le(r_lebits);
+        let r_non_native: Fq = fe_to_fe(r);
+        rbits_vec.push(Value::known(r_non_native)); // push last element as r
+        let scalar_mul_given = (p_single * r).to_affine();
         let scalar_mul_calc = G1Affine::from_xy(rnark_x_vec[vec_len-1].assign().unwrap(), rnark_y_vec[vec_len-1].assign().unwrap()).unwrap();
         let acc_prime_calc  = (scalar_mul_calc + acc).to_affine();
         let acc_prime_given = (scalar_mul_given + acc).to_affine(); // todo this should be from cyclefold struct
@@ -492,41 +497,21 @@ mod test {
 
         let inputs =
             ScalarMulConfigInputs { 
-                nark_x_vec: nark_x_vec.clone(), nark_y_vec: nark_y_vec.clone(), 
+                nark_x_vec: nark_x_vec.clone(), nark_y_vec: nark_y_vec.clone(), r: Value::known(r_non_native),
                 rbits_vec: rbits_vec.clone(), rnark_x_vec: rnark_x_vec.clone(), rnark_y_vec: rnark_y_vec.clone(), 
                 acc_x: Value::known(acc.x), acc_y: Value::known(acc.y), 
                 acc_prime_calc_x: Value::known(acc_prime_calc.x), 
                 acc_prime_calc_y: Value::known(acc_prime_calc.y), 
                 acc_prime_given_x: Value::known(acc_prime_given.x), 
                 acc_prime_given_y: Value::known(acc_prime_given.y) 
-            };
-
-        let inputs_wrong =
-            ScalarMulConfigInputs { 
-                nark_x_vec, nark_y_vec, rbits_vec, rnark_x_vec, rnark_y_vec, 
-                acc_x: Value::known(acc.x), acc_y: Value::known(acc.y), 
-                acc_prime_calc_x: Value::known(acc_prime_calc.x), 
-                acc_prime_calc_y: Value::known(acc_prime_calc.y), 
-                acc_prime_given_x: Value::known(acc_prime_given.x), 
-                acc_prime_given_y: Value::known(acc_prime_given.y) 
-            };    
+            };   
 
         let circuit = ScalarMulChip { inputs: vec![inputs; 6] };
         MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
 
+        halo2_base::halo2_proofs::dev::CircuitLayout::default()
+        .render(k, &circuit, &root)
+        .unwrap();
     }
-
-    // #[test]
-    // fn plot_fibo2() {
-    //     use plotters::prelude::*;
-    //     let root = BitMapBackend::new("fib-2-layout.png", (1024, 3096)).into_drawing_area();
-    //     root.fill(&WHITE).unwrap();
-    //     let root = root.titled("Fib 2 Layout", ("sans-serif", 60)).unwrap();
-
-    //     let circuit = MyCircuit::<Fp>(PhantomData);
-    //     halo2_proofs::dev::CircuitLayout::default()
-    //         .render(4, &circuit, &root)
-    //         .unwrap();
-    // }
 
 }

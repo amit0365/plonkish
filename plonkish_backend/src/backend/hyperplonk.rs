@@ -114,16 +114,6 @@ where
             .cloned()
             .map(MultilinearPolynomial::new)
             .collect_vec();
-
-        // let fixed_permutation_idx_for_preprocess_poly: Vec<usize> =  circuit_info.fixed_permutation_indices.iter()
-        //     .map(|&x| {
-        //         if x >= circuit_info.num_instance_cols {
-        //             x - circuit_info.num_instance_cols
-        //         } else {
-        //             0
-        //         }
-        //     })
-        //     .collect();
         
         let preprocess_comms = Pcs::batch_commit(&pcs_pp, &preprocess_polys)?;
         // Compute permutation polys and comms

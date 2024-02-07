@@ -121,7 +121,7 @@ verify_accumulation_from_nark_cross_term_copy_manager.constant_equalities: 10799
 verify_accumulation_from_nark_cross_term_copy_manager.assigned_advices: 0
 verify_accumulation_from_nark_cross_term_copy_manager.assigned_constants: 0
 
-has one squeeze challenge but takes 15k -- seems odd! but its beacause of abosorbing the acc -- checked with halo2lib
+has one squeeze challenge but takes 21k -- seems odd! but its beacause of abosorbing the acc -- checked with halo2lib
 verify_accumulation_from_nark_squeeze_challenge_copy_manager.advice_equalities: 36697
 verify_accumulation_from_nark_squeeze_challenge_copy_manager.constant_equalities: 26314
 verify_accumulation_from_nark_squeeze_challenge_copy_manager.assigned_advices: 0
@@ -203,6 +203,30 @@ binding.borrow().statistics().gate_advice: [371902]
 binding.borrow().statistics().gate_fixed: 918
 binding.borrow().statistics().lookups: [1126, 0, 0]
 Time for synthesize_accumulation_verifier: 426.85925ms
+
+challenge
+
+before_squeeze_copy_manager.advice_equalities 288
+copy_manager.constant_equalities 415
+after_squeeze_copy_manager.advice_equalities 5957
+copy_manager.constant_equalities 4536
+before_squeeze_copy_manager.advice_equalities 5980
+copy_manager.constant_equalities 4560
+after_squeeze_copy_manager.advice_equalities 8472
+copy_manager.constant_equalities 6374
+before_squeeze_copy_manager.advice_equalities 8518
+copy_manager.constant_equalities 6417
+after_squeeze_copy_manager.advice_equalities 12597
+copy_manager.constant_equalities 9383
+before_squeeze_copy_manager.advice_equalities 12620
+copy_manager.constant_equalities 9407
+after_squeeze_copy_manager.advice_equalities 15112
+copy_manager.constant_equalities 11221
+before_squeeze_copy_manager.advice_equalities 15245
+copy_manager.constant_equalities 11443
+after_squeeze_copy_manager.advice_equalities 39983
+copy_manager.constant_equalities 29413
+
 
 
 scalar_mul 

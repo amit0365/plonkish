@@ -637,16 +637,18 @@ mod test {
             Polynomial,
         },
         util::{
-            arithmetic::{BooleanHypercube, Field},
+            arithmetic::{BooleanHypercube, Field, fe_to_bits_le, fe_from_bits_le, fe_to_fe},
             expression::Rotation,
             test::rand_vec,
-            Itertools,
+            Itertools, izip_eq,
         }, accumulation::protostar::ivc::halo2::test::strawman::{fe_to_limbs, fe_from_limbs, NUM_LIMBS, NUM_LIMB_BITS},
     };
-    use halo2_base::{halo2_proofs::halo2curves::bn256::{Fr, Fq}, gates::circuit::{builder::BaseCircuitBuilder, CircuitBuilderStage}};
+    use halo2_base::{halo2_proofs::halo2curves::bn256::{Fr, Fq}, gates::circuit::{builder::BaseCircuitBuilder, CircuitBuilderStage}, utils::ScalarField};
     use halo2_base::utils::PrimeField;
     use halo2_ecc::{bn254, fields::{FieldChip, fp::FpChip}};
+    use halo2_proofs::halo2curves::ff::PrimeFieldBits;
     use rand::{rngs::OsRng, RngCore};
+    use core::num;
     use std::iter;
 
     fn fix_vars<F: Field>(evals: &[F], x: &[F]) -> Vec<F> {
@@ -737,22 +739,72 @@ mod test {
             0xb85045b68181585d,
             0x30644e72e131a029,
         ]);
+
+        let r = Fr::from_raw( [
+            0x0000000000000000,
+            0x0000000000000000,
+            0x7122613a47d5de4d,
+            0xf269d1e6ca9b4a2c
+        ]);
+
+        
+        // println!("f3 {:?}", &r);
+        // println!("f3.to_bytes_le {:?}", r.to_bytes_le());
+        
+        // let mut r_le_bits = Vec::new();
+        // for r_byte in r.to_bytes_le().iter() {
+        //     for i in 0..8 {  // u64 has 64 bits
+        //         let bit = (r_byte >> i) & 1;  // Extract the ith bit
+        //         r_le_bits.push(bit);
+        //     }
+        // }
+
+        let r_le_bits = fe_to_bits_le(r);
+        println!("r_le_bits {:?}", &r_le_bits[..8]);
+
+        let r_le_bits_fq: Vec<Fq> = r_le_bits[..8].iter().map(|b| fe_to_fe(*b)).collect_vec();
+        println!("r_le_bits_fq {:?}", &r_le_bits_fq[..]);
+
+        //izip_eq!(r_le_bits_fq, &r_le_bits[..8]).map(|(lhs, rhs)| assert_eq!(lhs, rhs));
+        let fe = fe_from_bits_le(r_le_bits);
+        assert_eq!(fe, r);
+
+        // let f3_le_bits = f3.to_le_bits().iter().map(|b| Fr::from(b.data)).collect_vec();
+        // println!("f3_le_bits {:?}", f3_le_bits);
+
+        // let bytes: &[u8] = &[114, 5, 6, 79, 210, 231, 190, 135, 229, 106, 28, 47, 221, 42, 253, 208, 54, 250, 133, 116, 136, 104, 178, 195, 102, 129, 207, 116, 92, 111, 94, 27];
+        // let fe = Fq::from_bytes_le(bytes);
+        // println!("{:?}", fe);
+
+        // let mut bytes = Vec::new();
+        // for &num in &u64_array {
+        //     // Choose `to_be_bytes()` for big-endian, `to_le_bytes()` for little-endian
+        //     bytes.extend_from_slice(&num.to_le_bytes());
+        // }
+    
+        // // `bytes` now contains the `u8` representation
+        // // println!("{:?}", bytes);
+
+        // let hex_strings: Vec<String> = bytes.iter().map(|&b| format!("{:02x}", b)).collect();
+
+        // println!("{:?}", hex_strings);
+
         // let fe = fe_from_limbs::<Fr, Fr>(&limbs, NUM_LIMB_BITS);
-        let mut circuit_builder = BaseCircuitBuilder::<Fq>::from_stage(CircuitBuilderStage::Mock).use_k(10).use_lookup_bits(9);
-        let range_chip = circuit_builder.range_chip();
-        let fp_chip = FpChip::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
-        let ctx = circuit_builder.main(0);
-        let acc_fe = f1; // Fr::from(2);
-        let acc = fp_chip.load_private(ctx, acc_fe);
-        // let acc_native = acc.native();
-        let r_nark_fe = f2; // Fr::one();
-        let r_nark = fp_chip.load_private(ctx, r_nark_fe);
-        // let r_nark_native = r_nark.native();
-        let result = fp_chip.add_no_carry(ctx, acc.clone(), r_nark.clone());
-        println!("acc_native: {:?}", acc.native());
-        println!("r_nark_native: {:?}", r_nark.native());
-        //println!("result {:?}", result);
-        println!("result_native: {:?}", result.native());
+        // let mut circuit_builder = BaseCircuitBuilder::<Fq>::from_stage(CircuitBuilderStage::Mock).use_k(10).use_lookup_bits(9);
+        // let range_chip = circuit_builder.range_chip();
+        // let fp_chip = FpChip::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+        // let ctx = circuit_builder.main(0);
+        // let acc_fe = f1; // Fr::from(2);
+        // let acc = fp_chip.load_private(ctx, acc_fe);
+        // // let acc_native = acc.native();
+        // let r_nark_fe = f2; // Fr::one();
+        // let r_nark = fp_chip.load_private(ctx, r_nark_fe);
+        // // let r_nark_native = r_nark.native();
+        // let result = fp_chip.add_no_carry(ctx, acc.clone(), r_nark.clone());
+        // println!("acc_native: {:?}", acc.native());
+        // println!("r_nark_native: {:?}", r_nark.native());
+        // //println!("result {:?}", result);
+        // println!("result_native: {:?}", result.native());
         // assert_eq!(fe, f1);
     }
 

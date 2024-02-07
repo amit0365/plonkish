@@ -1,9 +1,12 @@
+use halo2_base::halo2_proofs::halo2curves::bn256::{Fr, Fq, G1Affine};
+use rand::rngs::OsRng;
+
 use crate::util::{
     arithmetic::{div_ceil, CurveAffine, Field, Group, PrimeField},
     parallel::{num_threads, parallelize, parallelize_iter},
     start_timer, Itertools,
 };
-use std::mem::size_of;
+use std::{mem::size_of, time::Instant};
 
 pub fn window_size(num_scalars: usize) -> usize {
     if num_scalars < 32 {
@@ -178,5 +181,24 @@ fn variable_base_msm_serial<C: CurveAffine>(
             running_sum = bucket.add(running_sum);
             *result += &running_sum;
         }
+    }
+}
+
+#[test]
+fn test_variable_base_msm() {
+    let rng = OsRng;
+
+    let scalars = (0..10).map(|_| Fr::random(rng)).collect::<Vec<_>>();
+    let bases = (0..10).map(|_| G1Affine::random(rng)).collect::<Vec<_>>();
+
+    let scalar_zero = Fr::zero();
+
+    for coeffs in 1..10 {
+        let scalars = &scalars[0..coeffs];
+        let bases = &bases[0..coeffs];
+
+        variable_base_msm(scalars, bases); //.to_affine()
+
+
     }
 }

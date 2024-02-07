@@ -474,7 +474,6 @@ where
         let timer = start_timer(|| format!("permutation_z_polys-{}", pp.permutation_polys.len()));
         let builtin_witness_poly_offset = pp.num_witness_polys.iter().sum::<usize>();
         let instance_polys = instance_polys(pp.num_vars, &accumulator.instance.instances);
-        let num_instance_polys = instance_polys.len();
         let u = accumulator.instance.u.clone();
         let preprocess_polys = pp.preprocess_polys.iter().map(|poly| poly.clone().into_evals()).collect_vec();
 

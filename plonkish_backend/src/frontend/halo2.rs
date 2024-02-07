@@ -232,7 +232,6 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         constants.clone(),
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
-    let preprocess_polys_without_fixed_col_permutation = preprocess_collector.fixeds.clone();
     circuit_info.preprocess_polys = iter::empty()
         .chain(batch_invert_assigned(preprocess_collector.fixeds))
         .chain(preprocess_collector.selectors.into_iter().map(|selectors| {
@@ -280,9 +279,9 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
 struct PreprocessCollector<'a, F: Field> {
     k: u32,
     num_instances: Vec<usize>,
-    pub fixeds: Vec<Vec<Assigned<F>>>,
+    fixeds: Vec<Vec<Assigned<F>>>,
     permutation: Permutation,
-    pub selectors: Vec<Vec<bool>>,
+    selectors: Vec<Vec<bool>>,
     row_mapping: &'a [usize],
 }
 

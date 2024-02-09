@@ -5,6 +5,7 @@ use crate::{
 
 #[cfg(feature = "frontend-halo2")]
 pub mod halo2;
+pub mod aggregation;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ProtostarAccumulationVerifierParam<F> {

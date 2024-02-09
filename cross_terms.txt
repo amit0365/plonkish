@@ -1,0 +1,1021 @@
+
+running 1 test
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................45.796ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................43.085ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................48.437ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................41.802ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................132.301ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................128.005ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................126.962ms
+before_squeeze_ctx.advice_len 1145
+after_squeeze_copy_manager.advice_equalities 14739
+before_squeeze_ctx.advice_len 14800
+after_squeeze_copy_manager.advice_equalities 20819
+before_squeeze_ctx.advice_len 20937
+after_squeeze_copy_manager.advice_equalities 30742
+before_squeeze_ctx.advice_len 30803
+after_squeeze_copy_manager.advice_equalities 36822
+before_squeeze_ctx.advice_len 37413
+after_squeeze_copy_manager.advice_equalities 88927
+Start:   fold_accumulator_from_nark witness_comms-5
+End:     fold_accumulator_from_nark witness_comms-5 ................................21.952ms
+Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ................3.539ms
+ctx.count_witness 79999
+ctx.count_witness_fraction 375
+total_dedup_advice 42650
+copy_manager.advice_equalities 127222
+copy_manager.constant_equalities 76852
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281011
+total_fixed 886
+Time for synthesize_accumulation_verifier: 570.467834ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................52.589ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................46.976ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................49.953ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................45.970ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................129.569ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................139.153ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................195.436ms
+before_squeeze_ctx.advice_len 1145
+after_squeeze_copy_manager.advice_equalities 14739
+before_squeeze_ctx.advice_len 14800
+after_squeeze_copy_manager.advice_equalities 20819
+before_squeeze_ctx.advice_len 20937
+after_squeeze_copy_manager.advice_equalities 30742
+before_squeeze_ctx.advice_len 30803
+after_squeeze_copy_manager.advice_equalities 36822
+before_squeeze_ctx.advice_len 37413
+after_squeeze_copy_manager.advice_equalities 88927
+Start:   fold_accumulator_from_nark witness_comms-5
+End:     fold_accumulator_from_nark witness_comms-5 ................................21.355ms
+Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ................3.987ms
+ctx.count_witness 79999
+ctx.count_witness_fraction 375
+total_dedup_advice 42696
+copy_manager.advice_equalities 127222
+copy_manager.constant_equalities 76896
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281055
+total_fixed 887
+Time for synthesize_accumulation_verifier: 567.007625ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................43.635ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................43.055ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................54.564ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................45.983ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................144.444ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................123.380ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................121.359ms
+Time for preprocess: 34.834437042s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+before_squeeze_ctx.advice_len 1145
+after_squeeze_copy_manager.advice_equalities 14739
+before_squeeze_ctx.advice_len 14800
+after_squeeze_copy_manager.advice_equalities 20819
+before_squeeze_ctx.advice_len 20937
+after_squeeze_copy_manager.advice_equalities 30742
+before_squeeze_ctx.advice_len 30803
+after_squeeze_copy_manager.advice_equalities 36822
+before_squeeze_ctx.advice_len 37413
+after_squeeze_copy_manager.advice_equalities 88927
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................16.434ms
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.300ms
+ctx.count_witness 79999
+ctx.count_witness_fraction 375
+total_dedup_advice 44786
+copy_manager.advice_equalities 127222
+copy_manager.constant_equalities 76896
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281055
+total_fixed 887
+Time for synthesize_accumulation_verifier: 456.252791ms
+··End:     witness_collector-0 .....................................................465.110ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................398.764ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.408ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.358ms
+··End:     lookup_compressed_polys-1 ...............................................12.338ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.187ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................50.639ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................31.025ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.068s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................44.068ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................21.927ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.134s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.136ms
+··Start:   evaluate_compressed_cross_term_sums-3
+expressions_start
+expressions: Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(8)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(4)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(2) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(1) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(4)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(3) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(7)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(3)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(2)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Sum(Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(4)), Challenge(2)), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(9)), Challenge(2))), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 12, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 15, rotation: Rotation(0) }), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)), Challenge(2))))
+expressions_degree: 4
+··End:     evaluate_compressed_cross_term_sums-3 ...................................220.170ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.961ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................415.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.541µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................421.834µs
+··End:     fold_compressed .........................................................20.581ms
+End:     prove_accumulation_from_nark-primary-19 ...................................3.544s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+before_squeeze_ctx.advice_len 1145
+after_squeeze_copy_manager.advice_equalities 14739
+before_squeeze_ctx.advice_len 14800
+after_squeeze_copy_manager.advice_equalities 20819
+before_squeeze_ctx.advice_len 20937
+after_squeeze_copy_manager.advice_equalities 30742
+before_squeeze_ctx.advice_len 30803
+after_squeeze_copy_manager.advice_equalities 36822
+before_squeeze_ctx.advice_len 37413
+after_squeeze_copy_manager.advice_equalities 88927
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.830ms
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.375ms
+ctx.count_witness 79999
+ctx.count_witness_fraction 375
+total_dedup_advice 54028
+copy_manager.advice_equalities 127222
+copy_manager.constant_equalities 76852
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281011
+total_fixed 886
+Time for synthesize_accumulation_verifier: 465.380959ms
+··End:     witness_collector-0 .....................................................474.332ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................442.952ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.524ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.028ms
+··End:     lookup_compressed_polys-1 ...............................................11.150ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.525ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.906ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................24.829ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.067s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................40.141ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................22.823ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.043s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.452ms
+··Start:   evaluate_compressed_cross_term_sums-3
+expressions_start
+expressions: Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(8)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(4)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(2) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(1) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(4)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(3) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(7)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(3)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(2)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Sum(Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(4)), Challenge(2)), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(9)), Challenge(2))), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 12, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 15, rotation: Rotation(0) }), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)), Challenge(2))))
+expressions_degree: 4
+··End:     evaluate_compressed_cross_term_sums-3 ...................................247.171ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................39.632ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.416µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.334µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.667µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................412.375µs
+··End:     fold_compressed .........................................................23.831ms
+End:     prove_accumulation_from_nark-secondary-19 .................................3.514s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+before_squeeze_ctx.advice_len 1145
+after_squeeze_copy_manager.advice_equalities 14739
+before_squeeze_ctx.advice_len 14800
+after_squeeze_copy_manager.advice_equalities 20819
+before_squeeze_ctx.advice_len 20937
+after_squeeze_copy_manager.advice_equalities 30742
+before_squeeze_ctx.advice_len 30803
+after_squeeze_copy_manager.advice_equalities 36822
+before_squeeze_ctx.advice_len 37413
+after_squeeze_copy_manager.advice_equalities 88927
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.444ms
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.299ms
+ctx.count_witness 79999
+ctx.count_witness_fraction 375
+total_dedup_advice 54264
+copy_manager.advice_equalities 127222
+copy_manager.constant_equalities 76896
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281055
+total_fixed 887
+Time for synthesize_accumulation_verifier: 464.594958ms
+··End:     witness_collector-0 .....................................................473.789ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................403.007ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.284ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.099ms
+··End:     lookup_compressed_polys-1 ...............................................10.868ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.246ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.440ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................22.910ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.076s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................44.943ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................21.938ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.117s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.050ms
+··Start:   evaluate_compressed_cross_term_sums-3
+expressions_start
+expressions: Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(8)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(4)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(2) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(1) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(4)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(3) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(7)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(3)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(2)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Sum(Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(4)), Challenge(2)), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(9)), Challenge(2))), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 12, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 15, rotation: Rotation(0) }), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)), Challenge(2))))
+expressions_degree: 4
+··End:     evaluate_compressed_cross_term_sums-3 ...................................452.198ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.002s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.959µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.959µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.667µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................417.708µs
+··End:     fold_compressed .........................................................20.983ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.721s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+before_squeeze_ctx.advice_len 1145
+after_squeeze_copy_manager.advice_equalities 14739
+before_squeeze_ctx.advice_len 14800
+after_squeeze_copy_manager.advice_equalities 20819
+before_squeeze_ctx.advice_len 20937
+after_squeeze_copy_manager.advice_equalities 30742
+before_squeeze_ctx.advice_len 30803
+after_squeeze_copy_manager.advice_equalities 36822
+before_squeeze_ctx.advice_len 37413
+after_squeeze_copy_manager.advice_equalities 88927
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................18.170ms
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.558ms
+ctx.count_witness 79999
+ctx.count_witness_fraction 375
+total_dedup_advice 57248
+copy_manager.advice_equalities 127222
+copy_manager.constant_equalities 76852
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281011
+total_fixed 886
+Time for synthesize_accumulation_verifier: 466.331542ms
+··End:     witness_collector-0 .....................................................475.650ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................389.658ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................4.550ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.299ms
+··End:     lookup_compressed_polys-1 ...............................................11.315ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.406ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.707ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................24.501ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.027s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................51.182ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................22.300ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.045s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................9.538ms
+··Start:   evaluate_compressed_cross_term_sums-3
+expressions_start
+expressions: Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(8)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(4)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(2) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(1) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(4)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(3) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(7)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(3)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(2)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Sum(Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(4)), Challenge(2)), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(9)), Challenge(2))), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 12, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 15, rotation: Rotation(0) }), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)), Challenge(2))))
+expressions_degree: 4
+··End:     evaluate_compressed_cross_term_sums-3 ...................................474.395ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.130s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................401.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................383.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.041µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.000µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................416.125µs
+··End:     fold_compressed .........................................................24.739ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.752s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+before_squeeze_ctx.advice_len 1145
+after_squeeze_copy_manager.advice_equalities 14739
+before_squeeze_ctx.advice_len 14800
+after_squeeze_copy_manager.advice_equalities 20819
+before_squeeze_ctx.advice_len 20937
+after_squeeze_copy_manager.advice_equalities 30742
+before_squeeze_ctx.advice_len 30803
+after_squeeze_copy_manager.advice_equalities 36822
+before_squeeze_ctx.advice_len 37413
+after_squeeze_copy_manager.advice_equalities 88927
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................21.285ms
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.824ms
+ctx.count_witness 79999
+ctx.count_witness_fraction 375
+total_dedup_advice 57376
+copy_manager.advice_equalities 127222
+copy_manager.constant_equalities 76896
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281055
+total_fixed 887
+Time for synthesize_accumulation_verifier: 506.535792ms
+··End:     witness_collector-0 .....................................................516.202ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................410.882ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.532ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................11.866ms
+··End:     lookup_compressed_polys-1 ...............................................21.948ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.074ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.861ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................28.538ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.022s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.289ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................28.218ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.032s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.197ms
+··Start:   evaluate_compressed_cross_term_sums-3
+expressions_start
+expressions: Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(8)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(4)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(2) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(1) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(4)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(3) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(7)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(3)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(2)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Sum(Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(9)), Challenge(4)), Challenge(2)), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(9)), Challenge(2))), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 12, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 15, rotation: Rotation(0) }), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000), Challenge(4)), Challenge(4)), Challenge(2))))
+expressions_degree: 4
+··End:     evaluate_compressed_cross_term_sums-3 ...................................432.243ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................990.225ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................385.416µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................386.125µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................420.250µs
+··End:     fold_compressed .........................................................27.957ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.626s
+Time for prove_steps: 21.17561175s
+Start:   prove_decider-primary-19
+··Start:   permutation_z_polys-3
+····Start:   products
+····End:     products ..............................................................45.969ms
+····Start:   z_polys
+····End:     z_polys ...............................................................28.171ms
+····Start:   into_bh_order
+····End:     into_bh_order .........................................................3.566ms
+··End:     permutation_z_polys-3 ...................................................119.428ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................571.304ms
+··Start:   sum_check_prove-19-5
+····Start:   sum_check_prove_round-0
+····End:     sum_check_prove_round-0 ...............................................419.193ms
+····Start:   sum_check_next_round-0
+····End:     sum_check_next_round-0 ................................................187.719ms
+····Start:   sum_check_prove_round-1
+····End:     sum_check_prove_round-1 ...............................................213.537ms
+····Start:   sum_check_next_round-1
+····End:     sum_check_next_round-1 ................................................24.657ms
+····Start:   sum_check_prove_round-2
+····End:     sum_check_prove_round-2 ...............................................92.648ms
+····Start:   sum_check_next_round-2
+····End:     sum_check_next_round-2 ................................................12.685ms
+····Start:   sum_check_prove_round-3
+····End:     sum_check_prove_round-3 ...............................................72.847ms
+····Start:   sum_check_next_round-3
+····End:     sum_check_next_round-3 ................................................6.341ms
+····Start:   sum_check_prove_round-4
+····End:     sum_check_prove_round-4 ...............................................23.653ms
+····Start:   sum_check_next_round-4
+····End:     sum_check_next_round-4 ................................................5.155ms
+····Start:   sum_check_prove_round-5
+····End:     sum_check_prove_round-5 ...............................................15.044ms
+····Start:   sum_check_next_round-5
+····End:     sum_check_next_round-5 ................................................2.485ms
+····Start:   sum_check_prove_round-6
+····End:     sum_check_prove_round-6 ...............................................7.694ms
+····Start:   sum_check_next_round-6
+····End:     sum_check_next_round-6 ................................................19.644ms
+····Start:   sum_check_prove_round-7
+····End:     sum_check_prove_round-7 ...............................................5.053ms
+····Start:   sum_check_next_round-7
+····End:     sum_check_next_round-7 ................................................1.477ms
+····Start:   sum_check_prove_round-8
+····End:     sum_check_prove_round-8 ...............................................2.625ms
+····Start:   sum_check_next_round-8
+····End:     sum_check_next_round-8 ................................................909.375µs
+····Start:   sum_check_prove_round-9
+····End:     sum_check_prove_round-9 ...............................................2.089ms
+····Start:   sum_check_next_round-9
+····End:     sum_check_next_round-9 ................................................2.018ms
+····Start:   sum_check_prove_round-10
+····End:     sum_check_prove_round-10 ..............................................1.014ms
+····Start:   sum_check_next_round-10
+····End:     sum_check_next_round-10 ...............................................589.333µs
+····Start:   sum_check_prove_round-11
+····End:     sum_check_prove_round-11 ..............................................515.000µs
+····Start:   sum_check_next_round-11
+····End:     sum_check_next_round-11 ...............................................546.292µs
+····Start:   sum_check_prove_round-12
+····End:     sum_check_prove_round-12 ..............................................267.166µs
+····Start:   sum_check_next_round-12
+····End:     sum_check_next_round-12 ...............................................540.667µs
+····Start:   sum_check_prove_round-13
+····End:     sum_check_prove_round-13 ..............................................154.708µs
+····Start:   sum_check_next_round-13
+····End:     sum_check_next_round-13 ...............................................52.833µs
+····Start:   sum_check_prove_round-14
+····End:     sum_check_prove_round-14 ..............................................99.708µs
+····Start:   sum_check_next_round-14
+····End:     sum_check_next_round-14 ...............................................42.083µs
+····Start:   sum_check_prove_round-15
+····End:     sum_check_prove_round-15 ..............................................117.042µs
+····Start:   sum_check_next_round-15
+····End:     sum_check_next_round-15 ...............................................36.833µs
+····Start:   sum_check_prove_round-16
+····End:     sum_check_prove_round-16 ..............................................66.500µs
+····Start:   sum_check_next_round-16
+····End:     sum_check_next_round-16 ...............................................34.500µs
+····Start:   sum_check_prove_round-17
+····End:     sum_check_prove_round-17 ..............................................42.084µs
+····Start:   sum_check_next_round-17
+····End:     sum_check_next_round-17 ...............................................33.500µs
+····Start:   sum_check_prove_round-18
+····End:     sum_check_prove_round-18 ..............................................36.125µs
+····Start:   sum_check_next_round-18
+····End:     sum_check_next_round-18 ...............................................32.750µs
+··End:     sum_check_prove-19-5 ....................................................1.137s
+··Start:   evals-19
+··End:     evals-19 ................................................................19.694ms
+··Start:   pcs_batch_open-32
+····Start:   merged_polys
+····End:     merged_polys ..........................................................57.380ms
+····Start:   sum_check_prove-19-2
+······Start:   sum_check_prove_round-0
+······End:     sum_check_prove_round-0 .............................................55.813ms
+······Start:   sum_check_next_round-0
+······End:     sum_check_next_round-0 ..............................................39.724ms
+······Start:   sum_check_prove_round-1
+······End:     sum_check_prove_round-1 .............................................27.195ms
+······Start:   sum_check_next_round-1
+······End:     sum_check_next_round-1 ..............................................18.886ms
+······Start:   sum_check_prove_round-2
+······End:     sum_check_prove_round-2 .............................................14.220ms
+······Start:   sum_check_next_round-2
+······End:     sum_check_next_round-2 ..............................................10.688ms
+······Start:   sum_check_prove_round-3
+······End:     sum_check_prove_round-3 .............................................7.435ms
+······Start:   sum_check_next_round-3
+······End:     sum_check_next_round-3 ..............................................5.515ms
+······Start:   sum_check_prove_round-4
+······End:     sum_check_prove_round-4 .............................................4.366ms
+······Start:   sum_check_next_round-4
+······End:     sum_check_next_round-4 ..............................................3.562ms
+······Start:   sum_check_prove_round-5
+······End:     sum_check_prove_round-5 .............................................2.697ms
+······Start:   sum_check_next_round-5
+······End:     sum_check_next_round-5 ..............................................2.199ms
+······Start:   sum_check_prove_round-6
+······End:     sum_check_prove_round-6 .............................................1.756ms
+······Start:   sum_check_next_round-6
+······End:     sum_check_next_round-6 ..............................................1.295ms
+······Start:   sum_check_prove_round-7
+······End:     sum_check_prove_round-7 .............................................1.042ms
+······Start:   sum_check_next_round-7
+······End:     sum_check_next_round-7 ..............................................958.667µs
+······Start:   sum_check_prove_round-8
+······End:     sum_check_prove_round-8 .............................................628.625µs
+······Start:   sum_check_next_round-8
+······End:     sum_check_next_round-8 ..............................................753.125µs
+······Start:   sum_check_prove_round-9
+······End:     sum_check_prove_round-9 .............................................549.167µs
+······Start:   sum_check_next_round-9
+······End:     sum_check_next_round-9 ..............................................612.791µs
+······Start:   sum_check_prove_round-10
+······End:     sum_check_prove_round-10 ............................................450.417µs
+······Start:   sum_check_next_round-10
+······End:     sum_check_next_round-10 .............................................540.166µs
+······Start:   sum_check_prove_round-11
+······End:     sum_check_prove_round-11 ............................................406.583µs
+······Start:   sum_check_next_round-11
+······End:     sum_check_next_round-11 .............................................500.167µs
+······Start:   sum_check_prove_round-12
+······End:     sum_check_prove_round-12 ............................................401.000µs
+······Start:   sum_check_next_round-12
+······End:     sum_check_next_round-12 .............................................503.958µs
+······Start:   sum_check_prove_round-13
+······End:     sum_check_prove_round-13 ............................................337.792µs
+······Start:   sum_check_next_round-13
+······End:     sum_check_next_round-13 .............................................20.209µs
+······Start:   sum_check_prove_round-14
+······End:     sum_check_prove_round-14 ............................................313.875µs
+······Start:   sum_check_next_round-14
+······End:     sum_check_next_round-14 .............................................10.125µs
+······Start:   sum_check_prove_round-15
+······End:     sum_check_prove_round-15 ............................................260.750µs
+······Start:   sum_check_next_round-15
+······End:     sum_check_next_round-15 .............................................5.459µs
+······Start:   sum_check_prove_round-16
+······End:     sum_check_prove_round-16 ............................................4.750µs
+······Start:   sum_check_next_round-16
+······End:     sum_check_next_round-16 .............................................2.792µs
+······Start:   sum_check_prove_round-17
+······End:     sum_check_prove_round-17 ............................................2.875µs
+······Start:   sum_check_next_round-17
+······End:     sum_check_next_round-17 .............................................1.625µs
+······Start:   sum_check_prove_round-18
+······End:     sum_check_prove_round-18 ............................................2.125µs
+······Start:   sum_check_next_round-18
+······End:     sum_check_next_round-18 .............................................1.208µs
+····End:     sum_check_prove-19-2 ..................................................304.555ms
+····Start:   g_prime
+····End:     g_prime ...............................................................58.243ms
+····Start:   variable_base_msm-262144
+····End:     variable_base_msm-262144 ..............................................574.032ms
+····Start:   variable_base_msm-131072
+····End:     variable_base_msm-131072 ..............................................336.407ms
+····Start:   variable_base_msm-65536
+····End:     variable_base_msm-65536 ...............................................161.514ms
+····Start:   variable_base_msm-32768
+····End:     variable_base_msm-32768 ...............................................94.275ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................52.401ms
+····Start:   variable_base_msm-8192
+····End:     variable_base_msm-8192 ................................................34.962ms
+····Start:   variable_base_msm-4096
+····End:     variable_base_msm-4096 ................................................20.042ms
+····Start:   variable_base_msm-2048
+····End:     variable_base_msm-2048 ................................................11.405ms
+····Start:   variable_base_msm-1024
+····End:     variable_base_msm-1024 ................................................6.409ms
+····Start:   variable_base_msm-512
+····End:     variable_base_msm-512 .................................................4.823ms
+····Start:   variable_base_msm-256
+····End:     variable_base_msm-256 .................................................2.461ms
+····Start:   variable_base_msm-128
+····End:     variable_base_msm-128 .................................................1.636ms
+····Start:   variable_base_msm-64
+····End:     variable_base_msm-64 ..................................................1.411ms
+····Start:   variable_base_msm-32
+····End:     variable_base_msm-32 ..................................................1.263ms
+····Start:   variable_base_msm-16
+····End:     variable_base_msm-16 ..................................................939.583µs
+····Start:   variable_base_msm-8
+····End:     variable_base_msm-8 ...................................................644.917µs
+····Start:   variable_base_msm-4
+····End:     variable_base_msm-4 ...................................................499.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................434.000µs
+····Start:   variable_base_msm-524286
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc has been running for over 60 seconds
+····End:     variable_base_msm-524286 ..............................................1.005s
+····Start:   variable_base_msm-524287
+····End:     variable_base_msm-524287 ..............................................1.043s
+··End:     pcs_batch_open-32 .......................................................3.963s
+End:     prove_decider-primary-19 ..................................................5.814s
+Start:   prove_decider_with_last_nark-secondary-19
+··Start:   witness_collector-0
+before_squeeze_ctx.advice_len 1145
+after_squeeze_copy_manager.advice_equalities 14739
+before_squeeze_ctx.advice_len 14800
+after_squeeze_copy_manager.advice_equalities 20819
+before_squeeze_ctx.advice_len 20937
+after_squeeze_copy_manager.advice_equalities 30742
+before_squeeze_ctx.advice_len 30803
+after_squeeze_copy_manager.advice_equalities 36822
+before_squeeze_ctx.advice_len 37413
+after_squeeze_copy_manager.advice_equalities 88927
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.954ms
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.424ms
+ctx.count_witness 79999
+ctx.count_witness_fraction 375
+total_dedup_advice 57406
+copy_manager.advice_equalities 127222
+copy_manager.constant_equalities 76852
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 281011
+total_fixed 886
+Time for synthesize_accumulation_verifier: 470.375417ms
+··End:     witness_collector-0 .....................................................478.787ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................399.897ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.380ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................4.721ms
+··End:     lookup_compressed_polys-1 ...............................................14.591ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.951ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.870ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................26.734ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.066s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................43.876ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................23.411ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.005s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.437ms
+··Start:   evaluate_compressed_cross_term_sums-3
+expressions_start
+expressions: Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Sum(Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(8)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 8, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 0, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(3)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)), Challenge(4)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(9)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(1) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(2) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(2) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(1) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(4)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(9))))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(3) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(4)), Challenge(4)))), Product(Product(Product(Polynomial(Query { poly: 2, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(3) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(7)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Product(Product(Polynomial(Query { poly: 3, rotation: Rotation(0) }), Polynomial(Query { poly: 7, rotation: Rotation(0) })), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Polynomial(Query { poly: 11, rotation: Rotation(0) })), Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(2)))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(3)), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 6, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(2)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 7, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 9, rotation: Rotation(0) })), Sum(Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(5)), Challenge(3)), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(8))))), Product(Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Polynomial(Query { poly: 15, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Sum(Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(9)), Challenge(4)), Challenge(2)), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(9)), Challenge(2))), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)), Challenge(7))))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 12, rotation: Rotation(0) })), Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(3)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 13, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(2)))), Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Polynomial(Query { poly: 14, rotation: Rotation(0) })), Product(Product(Constant(0x0000000000000000000000000000000000000000000000000000000000000001), Challenge(0)), Challenge(3)))), Product(Polynomial(Query { poly: 15, rotation: Rotation(0) }), Product(Product(Product(Constant(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46), Challenge(4)), Challenge(4)), Challenge(2))))
+expressions_degree: 4
+··End:     evaluate_compressed_cross_term_sums-3 ...................................442.675ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................983.036ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.334µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.791µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................382.541µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................384.584µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................416.292µs
+··End:     fold_compressed .........................................................27.462ms
+··Start:   permutation_z_polys-3
+····Start:   products
+····End:     products ..............................................................59.628ms
+····Start:   z_polys
+····End:     z_polys ...............................................................30.654ms
+····Start:   into_bh_order
+····End:     into_bh_order .........................................................3.665ms
+··End:     permutation_z_polys-3 ...................................................130.373ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................565.970ms
+··Start:   sum_check_prove-19-5
+····Start:   sum_check_prove_round-0
+····End:     sum_check_prove_round-0 ...............................................359.370ms
+····Start:   sum_check_next_round-0
+····End:     sum_check_next_round-0 ................................................70.049ms
+····Start:   sum_check_prove_round-1
+····End:     sum_check_prove_round-1 ...............................................173.244ms
+····Start:   sum_check_next_round-1
+····End:     sum_check_next_round-1 ................................................20.617ms
+····Start:   sum_check_prove_round-2
+····End:     sum_check_prove_round-2 ...............................................87.347ms
+····Start:   sum_check_next_round-2
+····End:     sum_check_next_round-2 ................................................11.179ms
+····Start:   sum_check_prove_round-3
+····End:     sum_check_prove_round-3 ...............................................45.140ms
+····Start:   sum_check_next_round-3
+····End:     sum_check_next_round-3 ................................................6.195ms
+····Start:   sum_check_prove_round-4
+····End:     sum_check_prove_round-4 ...............................................22.565ms
+····Start:   sum_check_next_round-4
+····End:     sum_check_next_round-4 ................................................3.770ms
+····Start:   sum_check_prove_round-5
+····End:     sum_check_prove_round-5 ...............................................12.110ms
+····Start:   sum_check_next_round-5
+····End:     sum_check_next_round-5 ................................................2.383ms
+····Start:   sum_check_prove_round-6
+····End:     sum_check_prove_round-6 ...............................................6.881ms
+····Start:   sum_check_next_round-6
+····End:     sum_check_next_round-6 ................................................1.210ms
+····Start:   sum_check_prove_round-7
+····End:     sum_check_prove_round-7 ...............................................3.892ms
+····Start:   sum_check_next_round-7
+····End:     sum_check_next_round-7 ................................................923.625µs
+····Start:   sum_check_prove_round-8
+····End:     sum_check_prove_round-8 ...............................................1.881ms
+····Start:   sum_check_next_round-8
+····End:     sum_check_next_round-8 ................................................852.416µs
+····Start:   sum_check_prove_round-9
+····End:     sum_check_prove_round-9 ...............................................1.012ms
+····Start:   sum_check_next_round-9
+····End:     sum_check_next_round-9 ................................................700.625µs
+····Start:   sum_check_prove_round-10
+····End:     sum_check_prove_round-10 ..............................................483.666µs
+····Start:   sum_check_next_round-10
+····End:     sum_check_next_round-10 ...............................................643.541µs
+····Start:   sum_check_prove_round-11
+····End:     sum_check_prove_round-11 ..............................................268.292µs
+····Start:   sum_check_next_round-11
+····End:     sum_check_next_round-11 ...............................................632.959µs
+····Start:   sum_check_prove_round-12
+····End:     sum_check_prove_round-12 ..............................................184.834µs
+····Start:   sum_check_next_round-12
+····End:     sum_check_next_round-12 ...............................................541.583µs
+····Start:   sum_check_prove_round-13
+····End:     sum_check_prove_round-13 ..............................................83.333µs
+····Start:   sum_check_next_round-13
+····End:     sum_check_next_round-13 ...............................................56.709µs
+····Start:   sum_check_prove_round-14
+····End:     sum_check_prove_round-14 ..............................................74.541µs
+····Start:   sum_check_next_round-14
+····End:     sum_check_next_round-14 ...............................................45.708µs
+····Start:   sum_check_prove_round-15
+····End:     sum_check_prove_round-15 ..............................................57.375µs
+····Start:   sum_check_next_round-15
+····End:     sum_check_next_round-15 ...............................................41.375µs
+····Start:   sum_check_prove_round-16
+····End:     sum_check_prove_round-16 ..............................................65.834µs
+····Start:   sum_check_next_round-16
+····End:     sum_check_next_round-16 ...............................................38.083µs
+····Start:   sum_check_prove_round-17
+····End:     sum_check_prove_round-17 ..............................................42.708µs
+····Start:   sum_check_next_round-17
+····End:     sum_check_next_round-17 ...............................................34.458µs
+····Start:   sum_check_prove_round-18
+····End:     sum_check_prove_round-18 ..............................................31.709µs
+····Start:   sum_check_next_round-18
+····End:     sum_check_next_round-18 ...............................................33.791µs
+··End:     sum_check_prove-19-5 ....................................................850.007ms
+··Start:   evals-19
+··End:     evals-19 ................................................................18.262ms
+··Start:   pcs_batch_open-32
+····Start:   merged_polys
+····End:     merged_polys ..........................................................53.952ms
+····Start:   sum_check_prove-19-2
+······Start:   sum_check_prove_round-0
+······End:     sum_check_prove_round-0 .............................................53.882ms
+······Start:   sum_check_next_round-0
+······End:     sum_check_next_round-0 ..............................................38.092ms
+······Start:   sum_check_prove_round-1
+······End:     sum_check_prove_round-1 .............................................26.923ms
+······Start:   sum_check_next_round-1
+······End:     sum_check_next_round-1 ..............................................18.763ms
+······Start:   sum_check_prove_round-2
+······End:     sum_check_prove_round-2 .............................................14.689ms
+······Start:   sum_check_next_round-2
+······End:     sum_check_next_round-2 ..............................................9.586ms
+······Start:   sum_check_prove_round-3
+······End:     sum_check_prove_round-3 .............................................7.649ms
+······Start:   sum_check_next_round-3
+······End:     sum_check_next_round-3 ..............................................5.659ms
+······Start:   sum_check_prove_round-4
+······End:     sum_check_prove_round-4 .............................................4.329ms
+······Start:   sum_check_next_round-4
+······End:     sum_check_next_round-4 ..............................................3.763ms
+······Start:   sum_check_prove_round-5
+······End:     sum_check_prove_round-5 .............................................2.748ms
+······Start:   sum_check_next_round-5
+······End:     sum_check_next_round-5 ..............................................2.196ms
+······Start:   sum_check_prove_round-6
+······End:     sum_check_prove_round-6 .............................................1.722ms
+······Start:   sum_check_next_round-6
+······End:     sum_check_next_round-6 ..............................................1.109ms
+······Start:   sum_check_prove_round-7
+······End:     sum_check_prove_round-7 .............................................1.161ms
+······Start:   sum_check_next_round-7
+······End:     sum_check_next_round-7 ..............................................761.417µs
+······Start:   sum_check_prove_round-8
+······End:     sum_check_prove_round-8 .............................................619.375µs
+······Start:   sum_check_next_round-8
+······End:     sum_check_next_round-8 ..............................................670.792µs
+······Start:   sum_check_prove_round-9
+······End:     sum_check_prove_round-9 .............................................569.625µs
+······Start:   sum_check_next_round-9
+······End:     sum_check_next_round-9 ..............................................572.000µs
+······Start:   sum_check_prove_round-10
+······End:     sum_check_prove_round-10 ............................................462.333µs
+······Start:   sum_check_next_round-10
+······End:     sum_check_next_round-10 .............................................562.875µs
+······Start:   sum_check_prove_round-11
+······End:     sum_check_prove_round-11 ............................................413.333µs
+······Start:   sum_check_next_round-11
+······End:     sum_check_next_round-11 .............................................514.417µs
+······Start:   sum_check_prove_round-12
+······End:     sum_check_prove_round-12 ............................................429.917µs
+······Start:   sum_check_next_round-12
+······End:     sum_check_next_round-12 .............................................570.167µs
+······Start:   sum_check_prove_round-13
+······End:     sum_check_prove_round-13 ............................................410.209µs
+······Start:   sum_check_next_round-13
+······End:     sum_check_next_round-13 .............................................20.083µs
+······Start:   sum_check_prove_round-14
+······End:     sum_check_prove_round-14 ............................................323.000µs
+······Start:   sum_check_next_round-14
+······End:     sum_check_next_round-14 .............................................10.125µs
+······Start:   sum_check_prove_round-15
+······End:     sum_check_prove_round-15 ............................................270.334µs
+······Start:   sum_check_next_round-15
+······End:     sum_check_next_round-15 .............................................5.500µs
+······Start:   sum_check_prove_round-16
+······End:     sum_check_prove_round-16 ............................................4.875µs
+······Start:   sum_check_next_round-16
+······End:     sum_check_next_round-16 .............................................2.875µs
+······Start:   sum_check_prove_round-17
+······End:     sum_check_prove_round-17 ............................................2.958µs
+······Start:   sum_check_next_round-17
+······End:     sum_check_next_round-17 .............................................1.625µs
+······Start:   sum_check_prove_round-18
+······End:     sum_check_prove_round-18 ............................................2.125µs
+······Start:   sum_check_next_round-18
+······End:     sum_check_next_round-18 .............................................9.625µs
+····End:     sum_check_prove-19-2 ..................................................307.906ms
+····Start:   g_prime
+····End:     g_prime ...............................................................58.944ms
+····Start:   variable_base_msm-262145
+····End:     variable_base_msm-262145 ..............................................558.819ms
+····Start:   variable_base_msm-262145
+····End:     variable_base_msm-262145 ..............................................554.536ms
+····Start:   variable_base_msm-131073
+····End:     variable_base_msm-131073 ..............................................304.045ms
+····Start:   variable_base_msm-131073
+····End:     variable_base_msm-131073 ..............................................301.629ms
+····Start:   variable_base_msm-65537
+····End:     variable_base_msm-65537 ...............................................234.960ms
+····Start:   variable_base_msm-65537
+····End:     variable_base_msm-65537 ...............................................234.093ms
+····Start:   variable_base_msm-32769
+····End:     variable_base_msm-32769 ...............................................94.731ms
+····Start:   variable_base_msm-32769
+····End:     variable_base_msm-32769 ...............................................90.839ms
+····Start:   variable_base_msm-16385
+····End:     variable_base_msm-16385 ...............................................51.596ms
+····Start:   variable_base_msm-16385
+····End:     variable_base_msm-16385 ...............................................50.544ms
+····Start:   variable_base_msm-8193
+····End:     variable_base_msm-8193 ................................................38.161ms
+····Start:   variable_base_msm-8193
+····End:     variable_base_msm-8193 ................................................33.336ms
+····Start:   variable_base_msm-4097
+····End:     variable_base_msm-4097 ................................................20.630ms
+····Start:   variable_base_msm-4097
+····End:     variable_base_msm-4097 ................................................21.513ms
+····Start:   variable_base_msm-2049
+····End:     variable_base_msm-2049 ................................................13.419ms
+····Start:   variable_base_msm-2049
+····End:     variable_base_msm-2049 ................................................13.034ms
+····Start:   variable_base_msm-1025
+····End:     variable_base_msm-1025 ................................................9.123ms
+····Start:   variable_base_msm-1025
+····End:     variable_base_msm-1025 ................................................6.627ms
+····Start:   variable_base_msm-513
+····End:     variable_base_msm-513 .................................................4.821ms
+····Start:   variable_base_msm-513
+····End:     variable_base_msm-513 .................................................3.770ms
+····Start:   variable_base_msm-257
+····End:     variable_base_msm-257 .................................................2.534ms
+····Start:   variable_base_msm-257
+····End:     variable_base_msm-257 .................................................2.710ms
+····Start:   variable_base_msm-129
+····End:     variable_base_msm-129 .................................................1.949ms
+····Start:   variable_base_msm-129
+····End:     variable_base_msm-129 .................................................1.821ms
+····Start:   variable_base_msm-65
+····End:     variable_base_msm-65 ..................................................1.569ms
+····Start:   variable_base_msm-65
+····End:     variable_base_msm-65 ..................................................1.320ms
+····Start:   variable_base_msm-33
+····End:     variable_base_msm-33 ..................................................952.292µs
+····Start:   variable_base_msm-33
+····End:     variable_base_msm-33 ..................................................1.011ms
+····Start:   variable_base_msm-17
+····End:     variable_base_msm-17 ..................................................878.667µs
+····Start:   variable_base_msm-17
+····End:     variable_base_msm-17 ..................................................879.792µs
+····Start:   variable_base_msm-9
+····End:     variable_base_msm-9 ...................................................785.375µs
+····Start:   variable_base_msm-9
+····End:     variable_base_msm-9 ...................................................807.625µs
+····Start:   variable_base_msm-5
+····End:     variable_base_msm-5 ...................................................611.458µs
+····Start:   variable_base_msm-5
+····End:     variable_base_msm-5 ...................................................522.292µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................470.334µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................457.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................439.083µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................428.667µs
+··End:     pcs_batch_open-32 .......................................................24.452s
+End:     prove_decider_with_last_nark-secondary-19 .................................30.610s
+Time for prove_decider: 36.425717459s
+Start:   variable_base_msm-14
+End:     variable_base_msm-14 ......................................................858.459µs
+Start:   variable_base_msm-20
+End:     variable_base_msm-20 ......................................................879.083µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................382.875µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................410.208µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................382.667µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................394.500µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................382.542µs
+Start:   variable_base_msm-3
+End:     variable_base_msm-3 .......................................................415.416µs
+Start:   variable_base_msm-14
+End:     variable_base_msm-14 ......................................................816.750µs
+Start:   variable_base_msm-39
+End:     variable_base_msm-39 ......................................................880.916µs
+Start:   variable_base_msm-2
+End:     variable_base_msm-2 .......................................................441.750µs
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................1.134s
+Time for verify_decider: 1.170589792s
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 93.78s
+

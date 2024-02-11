@@ -262,7 +262,6 @@ where
 }
 
 
-
     // let primary_dtp = strawman::decider_transcript_param();
     // let secondary_dtp = strawman::decider_transcript_param();
 
@@ -377,7 +376,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
         };
 
     let cyclefold_circuit_params = BaseCircuitParams {
-            k: 18,
+            k: 17,
             num_advice_per_phase: vec![1],
             num_lookup_advice_per_phase: vec![0],
             num_fixed: 1,
@@ -440,7 +439,7 @@ pub mod strawman {
     use halo2_ecc::{
         fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip, Selectable},
         bigint::{self, CRTInteger, FixedCRTInteger, ProperCrtUint, ProperUint},
-        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip, self, EcPointNonInfinity},
+        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip, self},
     };
 
     use std::{
@@ -1294,13 +1293,13 @@ pub mod strawman {
                         .flat_map(into_coordinates),
                 )
                 .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
-                .chain(
-                    acc_prime.witness_comms
-                        .iter()
-                        .map(AsRef::as_ref)
-                        .flat_map(into_coordinates),
-                )
-                .chain(into_coordinates(acc_prime.e_comm.as_ref()).into_iter())
+                // .chain(
+                //     acc_prime.witness_comms
+                //         .iter()
+                //         .map(AsRef::as_ref)
+                //         .flat_map(into_coordinates),
+                // )
+                // .chain(into_coordinates(acc_prime.e_comm.as_ref()).into_iter())
                 .collect_vec();
             poseidon.update(inputs.as_slice());
             fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)

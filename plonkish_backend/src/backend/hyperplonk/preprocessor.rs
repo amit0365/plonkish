@@ -29,9 +29,14 @@ pub(super) fn compose<F: PrimeField>(
     let [beta, gamma, alpha] =
         &array::from_fn(|idx| Expression::<F>::Challenge(challenge_offset + idx));
 
-    let (lookup_constraints, lookup_zero_checks) = lookup_constraints(circuit_info, beta, gamma);
+    let (lookup_constraints, lookup_zero_checks) = if circuit_info.lookups.is_empty() {
+        (None, None)
+    } else {
+        let result = lookup_constraints(circuit_info, beta, gamma);
+        (Some(result.0), Some(result.1))
+    };
 
-    let max_degree = max_degree(circuit_info, Some(&lookup_constraints));
+    let max_degree = max_degree(circuit_info, Some(&lookup_constraints.clone().unwrap_or(Vec::new())));
     let (num_permutation_z_polys, permutation_constraints) = permutation_constraints(
         circuit_info,
         max_degree,
@@ -42,16 +47,17 @@ pub(super) fn compose<F: PrimeField>(
     );
 
     let expression = {
+        let lookup_constraints_vec = lookup_constraints.unwrap_or(Vec::new());
         let constraints = iter::empty()
             .chain(circuit_info.constraints.iter())
-            .chain(lookup_constraints.iter())
+            .chain(lookup_constraints_vec.iter())
             .chain(permutation_constraints.iter())
             .collect_vec();
         let eq = Expression::eq_xy(0);
         let zero_check_on_every_row = Expression::distribute_powers(constraints, alpha) * eq;
         Expression::distribute_powers(
             iter::empty()
-                .chain(lookup_zero_checks.iter())
+                .chain(lookup_zero_checks.unwrap_or_else(Vec::new).iter())
                 .chain(Some(&zero_check_on_every_row)),
             alpha,
         )
@@ -185,8 +191,6 @@ pub(super) fn permutation_polys<F: PrimeField>(
     permutation_polys: &[usize],
     cycles: &[Vec<(usize, usize)>],
 ) -> Vec<MultilinearPolynomial<F>> {
-    // println!("cycles: {:?}", cycles);
-    // println!("permutation_polys: {:?}", permutation_polys);
     let poly_index = {
         let mut poly_index = vec![0; permutation_polys.last().map(|poly| 1 + poly).unwrap_or(0)];
         for (idx, poly) in permutation_polys.iter().enumerate() {

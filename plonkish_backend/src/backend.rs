@@ -28,6 +28,11 @@ pub trait PlonkishBackend<F: Field>: Clone + Debug {
         circuit_info: &PlonkishCircuitInfo<F>,
     ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
 
+    fn preprocess_ec(
+        param: &<Self::Pcs as PolynomialCommitmentScheme<F>>::Param,
+        circuit_info: &PlonkishCircuitInfo<F>,
+    ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
+
     // fn prove(
     //     pp: &Self::ProverParam,
     //     circuit: &impl PlonkishCircuit<F>,

@@ -106,7 +106,6 @@ where
         let poly_size = 1 << num_vars;
         let batch_size = batch_size(circuit_info);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, poly_size, batch_size)?;
-
         // Compute preprocesses comms
         let preprocess_polys = circuit_info
             .preprocess_polys
@@ -124,6 +123,75 @@ where
 
         let permutation_comms = Pcs::batch_commit(&pcs_pp, &permutation_polys)?;
 
+        // Compose `VirtualPolynomialInfo`
+        let (num_permutation_z_polys, expression) = compose(circuit_info);
+        let vp = HyperPlonkVerifierParam {
+            pcs: pcs_vp,
+            num_instances: circuit_info.num_instances.clone(),
+            fixed_permutation_idx_for_preprocess_poly: circuit_info.fixed_permutation_idx_for_preprocess_poly.clone(),
+            num_witness_polys: circuit_info.num_witness_polys.clone(),
+            num_challenges: circuit_info.num_challenges.clone(),
+            num_lookups: circuit_info.lookups.len(),
+            num_permutation_z_polys,
+            num_vars,
+            expression: expression.clone(),
+            preprocess_comms: preprocess_comms.clone(),
+            permutation_comms: circuit_info
+                .permutation_polys()
+                .into_iter()
+                .zip(permutation_comms.clone())
+                .collect(),
+        };
+        let pp = HyperPlonkProverParam {
+            pcs: pcs_pp,
+            num_instances: circuit_info.num_instances.clone(),
+            fixed_permutation_idx_for_preprocess_poly: circuit_info.fixed_permutation_idx_for_preprocess_poly.clone(),
+            num_witness_polys: circuit_info.num_witness_polys.clone(),
+            num_challenges: circuit_info.num_challenges.clone(),
+            lookups: circuit_info.lookups.clone(),
+            num_permutation_z_polys,
+            num_vars,
+            expression,
+            preprocess_polys,
+            preprocess_comms,
+            permutation_polys: circuit_info
+                .permutation_polys()
+                .into_iter()
+                .zip(permutation_polys)
+                .collect(),
+            permutation_comms,
+        };
+        Ok((pp, vp))
+    }
+
+    fn preprocess_ec(
+        param: &Pcs::Param,
+        circuit_info: &PlonkishCircuitInfo<F>,
+    ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
+        assert!(circuit_info.is_well_formed());
+
+        let num_vars = circuit_info.k;
+        let poly_size = 1 << num_vars;
+        let batch_size = batch_size(circuit_info);
+        let (pcs_pp, pcs_vp) = Pcs::trim(param, poly_size, batch_size)?;
+
+        // Compute preprocesses comms
+        let preprocess_polys = circuit_info
+            .preprocess_polys
+            .iter()
+            .cloned()
+            .map(MultilinearPolynomial::new)
+            .collect_vec();
+        let preprocess_comms = Pcs::batch_commit(&pcs_pp, &preprocess_polys)?;
+        // Compute permutation polys and comms
+        let permutation_polys = permutation_polys(
+            num_vars,
+            &circuit_info.permutation_polys(),
+            &circuit_info.permutations,
+        );
+
+        let permutation_comms = Pcs::batch_commit(&pcs_pp, &permutation_polys)?;
+        
         // Compose `VirtualPolynomialInfo`
         let (num_permutation_z_polys, expression) = compose(circuit_info);
         let vp = HyperPlonkVerifierParam {

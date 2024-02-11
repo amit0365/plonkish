@@ -97,7 +97,7 @@ where
         Self {
             tcc_chip,
             primary_avp: primary_avp.clone(),
-            //cyclefold_avp: None,
+            // cyclefold_avp: None,
             hash_config,
             transcript_config,
             inputs,
@@ -354,11 +354,11 @@ where
                     .iter()
                     .flat_map(into_coordinates))  
             .chain(into_coordinates(&unassigned_inputs.acc_e_comm).into_iter())              
-            .chain(
-                unassigned_inputs.acc_prime_witness_comms
-                    .iter()
-                    .flat_map(into_coordinates))
-            .chain(into_coordinates(&unassigned_inputs.acc_prime_e_comm).into_iter())          
+            // .chain(
+            //     unassigned_inputs.acc_prime_witness_comms
+            //         .iter()
+            //         .flat_map(into_coordinates))
+            // .chain(into_coordinates(&unassigned_inputs.acc_prime_e_comm).into_iter())          
             .collect_vec();
         poseidon.update(inputs.as_slice());
         fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
@@ -391,12 +391,12 @@ where
                     .flat_map(|point| vec![point.x(), point.y()].into_iter()),
             )
             .chain(vec![assigned_inputs.acc_e_comm.x(), assigned_inputs.acc_e_comm.y()].into_iter())
-            .chain(
-                assigned_inputs.acc_prime_witness_comms
-                    .iter()
-                    .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-            )
-            .chain(vec![assigned_inputs.acc_prime_e_comm.x(), assigned_inputs.acc_prime_e_comm.y()].into_iter())
+            // .chain(
+            //     assigned_inputs.acc_prime_witness_comms
+            //         .iter()
+            //         .flat_map(|point| vec![point.x(), point.y()].into_iter()),
+            // )
+            // .chain(vec![assigned_inputs.acc_prime_e_comm.x(), assigned_inputs.acc_prime_e_comm.y()].into_iter())
             .copied()
             .collect_vec();
         let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
@@ -448,7 +448,6 @@ where
         println!("cyclefold_circuit_copy_manager.assigned_constants {:?}", copy_manager.assigned_constants.len());
         println!("cyclefold_circuit_copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
-
 
         binding.clear();
         drop(binding);

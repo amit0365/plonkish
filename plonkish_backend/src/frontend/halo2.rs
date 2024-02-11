@@ -126,7 +126,7 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         })
         .collect();
 
-    let lookups = cs
+    let lookups: Vec<Vec<(Expression<F>, Expression<F>)>> = cs
         .lookups()
         .iter()
         .map(|lookup| {
@@ -143,7 +143,7 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .collect_vec()
         })
         .collect();
-
+    
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
         vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];

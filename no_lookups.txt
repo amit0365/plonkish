@@ -1,0 +1,331 @@
+
+running 1 test
+primary_preprocess_without_circuit_info_started
+[(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 1, rotation: Rotation(0) }))]
+Length of lookups: 1
+circuit_info_without_preprocess_done
+challenge_offset: 0
+max_lookup_width: 1
+num_theta_primes: 0
+lookup_constraints: Some([Sum(Product(Polynomial(Query { poly: 10, rotation: Rotation(0) }), Sum(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Challenge(0))), Negated(Constant(0x0000000000000000000000000000000000000000000000000000000000000001))), Sum(Product(Polynomial(Query { poly: 11, rotation: Rotation(0) }), Sum(Polynomial(Query { poly: 1, rotation: Rotation(0) }), Challenge(0))), Negated(Polynomial(Query { poly: 9, rotation: Rotation(0) })))])
+lookup_constraints: 2
+lookup_constraints: [3, 2]
+num_alpha_primes: 2
+num_witness_polys: 1
+lookup_constraints_vec: 2
+lookup_constraints_vec: [3, 2]
+constraints: 3
+num_folding_witness_polys: 5
+alpha_prime_offset: 2
+num_alpha_primes: 2
+num_folding_challenges: 4
+hyperplonk_max_degree
+hyperplonk_preprocess_started
+circuit_info.lookups 1
+circuit_info.num_challenges [0]
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................25.830ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................23.999ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................25.076ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................22.190ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................64.907ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................71.774ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................67.375ms
+lookup_constraints: Some([Sum(Sum(Product(Product(Polynomial(Query { poly: 10, rotation: Rotation(0) }), Sum(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Challenge(1))), Sum(Polynomial(Query { poly: 1, rotation: Rotation(0) }), Challenge(1))), Negated(Sum(Polynomial(Query { poly: 1, rotation: Rotation(0) }), Challenge(1)))), Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Challenge(1))))])
+hyperplonk_max_degree
+hyperplonk_preprocess_done
+num_lookups: 1
+lookup_constraints: None
+lookup_constraints_max_degree: None
+lookup_constraints: 2
+lookup_constraints: [3, 2]
+preprocessor_preprocess_done
+primary_preprocess_without_circuit_info_done
+vp.vp.num_challenges: [0]
+vp.num_theta_primes: 0
+cyclefold_preprocess_started
+circuit_info.num_challenges: [0]
+circuit_info.num_witness_polys: [1]
+permutation_column_idx: {(Fixed, 0): 1, (Advice, 0): 3, (Instance, 0): 0}
+Start:   cyclefold_compute_e_comm-cross_term_comms.len()-1
+End:     cyclefold_compute_e_comm-cross_term_comms.len()-1 .........................3.516ms
+cyclefold_circuit_advice_lookup [0, 0, 0]
+cyclefold_circuit_copy_manager.advice_equalities 67952
+cyclefold_circuit_copy_manager.constant_equalities 33510
+cyclefold_circuit_copy_manager.assigned_constants 0
+cyclefold_circuit_copy_manager.assigned_advices 137797
+Time for synthesize_ec: 145.671333ms
+challenge_offset: 0
+max_lookup_width: 0
+num_theta_primes: 0
+lookup_constraints_preprocess: None
+lookup_constraints: Some([])
+lookup_constraints: 0
+lookup_constraints: []
+num_alpha_primes: 0
+num_witness_polys: 1
+lookup_constraints_vec: 0
+lookup_constraints_vec: []
+constraints: 1
+num_folding_witness_polys: 2
+alpha_prime_offset: 1
+num_alpha_primes: 0
+num_folding_challenges: 1
+hyperplonk_max_degree
+hyperplonk_preprocess_started
+circuit_info.lookups 0
+circuit_info.num_challenges [0]
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................27.078ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................23.838ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................62.668ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................64.228ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................64.096ms
+circuit_info.lookups.is_empty()
+lookup_constraints: None
+hyperplonk_max_degree
+hyperplonk_preprocess_done
+num_lookups: 0
+lookup_constraints: None
+lookup_constraints_max_degree: None
+lookup_constraints: 0
+lookup_constraints: []
+preprocessor_preprocess_done
+cyclefold_preprocess_done
+vp.vp.num_challenges: [0]
+vp.num_theta_primes: 0
+vp.vp.num_challenges: [0]
+vp.num_theta_primes: 0
+primary_preprocess_started
+[(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 1, rotation: Rotation(0) }))]
+Length of lookups: 1
+circuit_info.num_challenges: [0]
+circuit_info.num_witness_polys: [1]
+permutation_column_idx: {(Advice, 0): 5, (Instance, 0): 0, (Fixed, 1): 2}
+cyclefold.avp ProtostarAccumulationVerifierParam { vp_digest: 0x0000000000000000000000000000000000000000000000000000000000000000, strategy: Compressing, num_instances: [1], num_witness_polys: [1, 0, 0, 1], num_challenges: [[0], [1], [1], [0]], num_cross_terms: 2 }
+num_challenges_verify_accumulation_from_nark_ec: [[0], [1], [1], [0]]
+num_witness_polys: [1, 0, 0, 1]
+num_cross_terms: 2
+Start:   fold_accumulator_from_nark witness_comms-2
+End:     fold_accumulator_from_nark witness_comms-2 ................................7.033ms
+Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ................3.430ms
+main_circuit_advice_lookup [2010, 0, 0]
+copy_manager.advice_equalities 88185
+copy_manager.constant_equalities 57643
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 203271
+Time for synthesize_accumulation_verifier: 183.946792ms
+challenge_offset: 0
+max_lookup_width: 1
+num_theta_primes: 0
+lookup_constraints: Some([Sum(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Challenge(0))), Negated(Constant(0x0000000000000000000000000000000000000000000000000000000000000001))), Sum(Product(Polynomial(Query { poly: 10, rotation: Rotation(0) }), Sum(Polynomial(Query { poly: 1, rotation: Rotation(0) }), Challenge(0))), Negated(Polynomial(Query { poly: 8, rotation: Rotation(0) })))])
+lookup_constraints: 2
+lookup_constraints: [3, 2]
+num_alpha_primes: 2
+num_witness_polys: 1
+lookup_constraints_vec: 2
+lookup_constraints_vec: [3, 2]
+constraints: 3
+num_folding_witness_polys: 5
+alpha_prime_offset: 2
+num_alpha_primes: 2
+num_folding_challenges: 4
+hyperplonk_max_degree
+hyperplonk_preprocess_started
+circuit_info.lookups 1
+circuit_info.num_challenges [0]
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................22.966ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................23.311ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................29.177ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................21.114ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................63.405ms
+Start:   variable_base_msm-262144
+End:     variable_base_msm-262144 ..................................................61.045ms
+lookup_constraints: Some([Sum(Sum(Product(Product(Polynomial(Query { poly: 9, rotation: Rotation(0) }), Sum(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Challenge(1))), Sum(Polynomial(Query { poly: 1, rotation: Rotation(0) }), Challenge(1))), Negated(Sum(Polynomial(Query { poly: 1, rotation: Rotation(0) }), Challenge(1)))), Product(Polynomial(Query { poly: 8, rotation: Rotation(0) }), Sum(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Challenge(1))))])
+hyperplonk_max_degree
+hyperplonk_preprocess_done
+num_lookups: 1
+lookup_constraints: None
+lookup_constraints_max_degree: None
+lookup_constraints: 2
+lookup_constraints: [3, 2]
+preprocessor_preprocess_done
+primary_preprocess_done
+Time for preprocess: 15.856120833s
+Start:   prove_accumulation_from_nark_ec-primary-18
+··Start:   witness_collector-0
+····Start:   cyclefold_compute_e_comm-cross_term_comms.len()-1
+····End:     cyclefold_compute_e_comm-cross_term_comms.len()-1 .....................3.609ms
+cyclefold_circuit_advice_lookup [0, 0, 0]
+cyclefold_circuit_copy_manager.advice_equalities 67952
+cyclefold_circuit_copy_manager.constant_equalities 33510
+cyclefold_circuit_copy_manager.assigned_constants 0
+cyclefold_circuit_copy_manager.assigned_advices 137797
+Time for synthesize_ec: 123.830958ms
+··End:     witness_collector-0 .....................................................128.294ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................188.152ms
+pp.lookups_prove_nark_ec: []
+num_witness_polys: [1]
+num_challenges: [0]
+challenges: []
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................10.940ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................568.610ms
+num_alpha_primes_ec: 0
+nark_ec.challenges: 1
+nark_ec.polys: 2
+nark_ec.comms: 2
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................5.865ms
+··Start:   evaluate_compressed_cross_term_sums-2
+init_hadamard_evaluator_start
+init_hadamard_evaluator_done
+··End:     evaluate_compressed_cross_term_sums-2 ...................................49.059ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................23.367ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................403.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................383.833µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................412.750µs
+··End:     fold_compressed .........................................................6.761ms
+End:     prove_accumulation_from_nark_ec-primary-18 ................................983.783ms
+Start:   prove_accumulation_from_nark-primary-18
+··Start:   witness_collector-0
+cyclefold.avp ProtostarAccumulationVerifierParam { vp_digest: 0x0000000000000000000000000000000000000000000000000000000000000000, strategy: Compressing, num_instances: [1], num_witness_polys: [1, 0, 0, 1], num_challenges: [[0], [1], [1], [0]], num_cross_terms: 2 }
+num_challenges_verify_accumulation_from_nark_ec: [[0], [1], [1], [0]]
+num_witness_polys: [1, 0, 0, 1]
+num_cross_terms: 2
+····Start:   fold_accumulator_from_nark witness_comms-2
+····End:     fold_accumulator_from_nark witness_comms-2 ............................6.483ms
+····Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+····End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ............3.526ms
+main_circuit_advice_lookup [2010, 0, 0]
+copy_manager.advice_equalities 88185
+copy_manager.constant_equalities 57643
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 203271
+Time for synthesize_accumulation_verifier: 143.976041ms
+··End:     witness_collector-0 .....................................................148.511ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................348.322ms
+pp.lookups: [[(Product(Polynomial(Query { poly: 4, rotation: Rotation(0) }), Polynomial(Query { poly: 5, rotation: Rotation(0) })), Polynomial(Query { poly: 1, rotation: Rotation(0) }))]]
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................2.954ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................1.191ms
+··End:     lookup_compressed_polys-1 ...............................................6.512ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................8.641ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................24.503ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................15.708ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................595.456ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................24.009ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................11.034ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................583.734ms
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................5.310ms
+··Start:   evaluate_compressed_cross_term_sums-3
+init_hadamard_evaluator_start
+init_hadamard_evaluator_done
+··End:     evaluate_compressed_cross_term_sums-3 ...................................114.698ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................23.688ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.041µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................388.666µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................387.375µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................418.416µs
+··End:     fold_compressed .........................................................12.317ms
+End:     prove_accumulation_from_nark-primary-18 ...................................1.925s
+Start:   prove_accumulation_from_nark_ec-primary-18
+··Start:   witness_collector-0
+····Start:   cyclefold_compute_e_comm-cross_term_comms.len()-1
+····End:     cyclefold_compute_e_comm-cross_term_comms.len()-1 .....................3.568ms
+cyclefold_circuit_advice_lookup [0, 0, 0]
+cyclefold_circuit_copy_manager.advice_equalities 67952
+cyclefold_circuit_copy_manager.constant_equalities 33510
+cyclefold_circuit_copy_manager.assigned_constants 0
+cyclefold_circuit_copy_manager.assigned_advices 137797
+Time for synthesize_ec: 122.784834ms
+··End:     witness_collector-0 .....................................................127.378ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................204.149ms
+pp.lookups_prove_nark_ec: []
+num_witness_polys: [1]
+num_challenges: [0]
+challenges: []
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................11.021ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................590.384ms
+num_alpha_primes_ec: 0
+nark_ec.challenges: 1
+nark_ec.polys: 2
+nark_ec.comms: 2
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................5.585ms
+··Start:   evaluate_compressed_cross_term_sums-2
+init_hadamard_evaluator_start
+init_hadamard_evaluator_done
+··End:     evaluate_compressed_cross_term_sums-2 ...................................63.689ms
+··Start:   variable_base_msm-262144
+··End:     variable_base_msm-262144 ................................................565.680ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................381.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................389.791µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................411.125µs
+··End:     fold_compressed .........................................................6.697ms
+End:     prove_accumulation_from_nark_ec-primary-18 ................................1.576s
+Start:   prove_accumulation_from_nark-primary-18
+··Start:   witness_collector-0
+cyclefold.avp ProtostarAccumulationVerifierParam { vp_digest: 0x0000000000000000000000000000000000000000000000000000000000000000, strategy: Compressing, num_instances: [1], num_witness_polys: [1, 0, 0, 1], num_challenges: [[0], [1], [1], [0]], num_cross_terms: 2 }
+··End:     witness_collector-0 .....................................................15.150ms
+End:     prove_accumulation_from_nark-primary-18 ...................................15.210ms
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... FAILED
+
+failures:
+
+failures:
+    accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 20.45s
+

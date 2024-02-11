@@ -140,7 +140,6 @@ where
     if cross_term_expressions.is_empty() {
         return Vec::new();
     }
-
     let ev = init_hadamard_evaluator(
         cross_term_expressions,
         num_vars,
@@ -148,7 +147,6 @@ where
         accumulator,
         incoming,
     );
-
     let size = 1 << ev.num_vars;
     let num_threads = num_threads();
     let chunk_size = div_ceil(size, num_threads);

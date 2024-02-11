@@ -155,7 +155,6 @@ where
         }
 
         // Round n
-        println!("pp.lookups: {:?}", pp.lookups);
 
 
         let theta_primes = powers(transcript.squeeze_challenge())
@@ -398,10 +397,7 @@ where
             witness_polys.extend(polys);
             challenges.extend(transcript.squeeze_challenges(*num_challenges));
         }
-        println!("pp.lookups_prove_nark_ec: {:?}", pp.lookups);
-        println!("num_witness_polys: {:?}", pp.num_witness_polys);
-        println!("num_challenges: {:?}", pp.num_challenges);
-        println!("challenges: {:?}", challenges);
+
         // no lookups req ec
         // Round n+2
 
@@ -431,8 +427,6 @@ where
             .take(*num_alpha_primes)
             .collect_vec();
 
-        println!("num_alpha_primes_ec: {}", num_alpha_primes);
-
         let nark = PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
@@ -449,7 +443,6 @@ where
                 .chain(powers_of_zeta_poly)
                 .collect(),
         );
-        println!("nark_ec.challenges: {:?}", nark.instance.challenges.len());
         Ok(nark)
 
     }
@@ -859,10 +852,16 @@ where
             iter::empty()
                 .chain(num_challenges)
                 .chain([vec![1]])
-                .chain(match vp.strategy {
-                    NoCompressing => None,
-                    Compressing => Some(vec![1]),
-                })
+                .chain(
+                    if vp.vp.num_lookups == 0 {
+                        Some(vec![0])
+                    }
+                    else { 
+                        match vp.strategy {
+                            NoCompressing => None,
+                            Compressing => Some(vec![1]),
+                        }
+                    })
                 .chain([vec![vp.num_alpha_primes]])
                 .collect()
         };

@@ -186,7 +186,7 @@ where
         P1,
         P2,
         _,
-        strawman::PoseidonTranscript<_, _>,
+        strawman::PoseidonNativeTranscript<_, _>,
         strawman::PoseidonTranscript<_, _>,
     >(  
         primary_num_vars,
@@ -224,6 +224,7 @@ where
         prove_decider(
             &ivc_pp,
             &primary_acc,
+            &cyclefold_acc,
             &mut primary_transcript,
             seeded_std_rng(),
         )
@@ -367,7 +368,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_STEPS: usize = 3;
 
     let primary_circuit_params = BaseCircuitParams {
-            k: 18,
+            k: 19,
             num_advice_per_phase: vec![1],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
@@ -395,39 +396,22 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
 pub mod strawman {
     use crate::{
         accumulation::protostar::{
-            ProtostarStrategy::{Compressing, NoCompressing},
-            ivc::{ProtostarAccumulationVerifierParam, halo2::AssignedProtostarAccumulatorInstance},
-            ProtostarAccumulatorInstance,
-        },
-        util::{
+            ivc::{halo2::{test::strawman, AssignedProtostarAccumulatorInstance}, ProtostarAccumulationVerifierParam}, ProtostarAccumulatorInstance, ProtostarStrategy::{Compressing, NoCompressing}
+        }, pcs::{multilinear::{Gemini, MultilinearHyrax}, univariate::UnivariateKzg, PolynomialCommitmentScheme}, util::{
             arithmetic::{
-                fe_from_bool, fe_from_le_bytes, fe_from_bits_le, fe_to_fe, fe_truncated, BitField, CurveAffine,
-                Field, FromUniformBytes, Group, PrimeCurveAffine, PrimeField, PrimeFieldBits,
-                TwoChainCurve, OverridenCurveAffine,
-            },
-            hash::{poseidon::Spec, Poseidon},
-            izip_eq,
-            transcript::{
+                fe_from_bits_le, fe_from_bool, fe_from_le_bytes, fe_to_fe, fe_truncated, BitField, CurveAffine, Field, FromUniformBytes, Group, OverridenCurveAffine, PrimeCurveAffine, PrimeField, PrimeFieldBits, TwoChainCurve
+            }, end_timer, hash::{poseidon::Spec, Poseidon}, izip_eq, start_timer, transcript::{
                 FieldTranscript, FieldTranscriptRead, FieldTranscriptWrite, InMemoryTranscript,
                 Transcript, TranscriptRead, TranscriptWrite,
-            },
-            Itertools, start_timer, end_timer,
-        },
+            }, Itertools
+        }
     };
 
     use ark_std::end_timer;
     use halo2_base::{
-        Context,
-        utils::{BigPrimeField, ScalarField, CurveAffineExt, decompose, decompose_fe_to_u64_limbs, fe_to_biguint},
-        QuantumCell::{Constant, Existing, Witness, WitnessFraction},
-        halo2_proofs::{plonk::Assigned, circuit::Cell},
-        AssignedValue,
         gates::{
-            circuit::{builder::BaseCircuitBuilder, BaseCircuitParams, BaseConfig},            
-            RangeChip, range::RangeConfig,
-            flex_gate::{GateChip, GateInstructions, FlexGateConfig, FlexGateConfigParams},
-        },
-        gates::flex_gate::{threads::SinglePhaseCoreManager, BasicGateConfig}, poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, ContextCell,
+            circuit::{builder::BaseCircuitBuilder, BaseCircuitParams, BaseConfig, CircuitBuilderStage}, flex_gate::{threads::SinglePhaseCoreManager, BasicGateConfig, FlexGateConfig, FlexGateConfigParams, GateChip, GateInstructions}, range::RangeConfig, RangeChip
+        }, halo2_proofs::{circuit::Cell, plonk::Assigned, transcript}, poseidon::hasher::{spec::OptimizedPoseidonSpec, PoseidonHash, PoseidonHasher, PoseidonSponge}, utils::{decompose, decompose_fe_to_u64_limbs, fe_to_biguint, testing::base_test, BigPrimeField, CurveAffineExt, ScalarField}, AssignedValue, Context, ContextCell, QuantumCell::{Constant, Existing, Witness, WitnessFraction}
     };
     use halo2_base::halo2_proofs::plonk::Circuit;
     
@@ -455,10 +439,12 @@ pub mod strawman {
     };
 
     use halo2_base::halo2_proofs::halo2curves::{
-        bn256::{self, Bn256}, grumpkin};
+        bn256::{self, Bn256, Fr, Fq}, grumpkin};
 
     pub const NUM_LIMBS: usize = 3;
     pub const NUM_LIMB_BITS: usize = 88;
+    pub const NUM_LIMB_BITS_PRIMARY_NON_NATIVE: usize = NUM_LIMB_BITS;
+    pub const NUM_LIMBS_PRIMARY_NON_NATIVE: usize = NUM_LIMBS;
     pub const NUM_SUBLIMBS: usize = 5;
     pub const NUM_LOOKUPS: usize = 1;
     pub const LOOKUP_BITS: usize = 8;
@@ -475,7 +461,7 @@ pub mod strawman {
     pub const NUM_CHALLENGE_BYTES: usize = NUM_CHALLENGE_BITS / 8;
     pub const NUM_HASH_BITS: usize = 250;
 
-    pub fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize) -> Vec<F2> {
+    pub fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize, num_limbs: usize) -> Vec<F2> {
         fe.to_bytes_le()
             .chunks(num_limb_bits/8)
             .into_iter()
@@ -488,7 +474,7 @@ pub mod strawman {
                 }
                 _ => unimplemented!(),
             })
-            .take(NUM_LIMBS)
+            .take(num_limbs)
             .collect()
     }
 
@@ -513,6 +499,137 @@ pub mod strawman {
     pub fn decider_transcript_param<F: ScalarField>() -> OptimizedPoseidonSpec<F, T, RATE> {
         OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>()
     }
+
+    pub struct PoseidonNativeTranscript<F: ScalarField, S> {
+        state: PoseidonHash<F, T, RATE>,
+        stream: S,
+    }
+
+    impl<F: ScalarField> InMemoryTranscript for PoseidonNativeTranscript<F, Cursor<Vec<u8>>> {
+        type Param = OptimizedPoseidonSpec<F, T, RATE>;
+
+        fn new(spec: Self::Param) -> Self {
+            Self {
+                state: PoseidonHash::from_spec(spec),
+                stream: Default::default(),
+            }
+        }
+
+        fn into_proof(self) -> Vec<u8> {
+            self.stream.into_inner()
+        }
+
+        fn from_proof(spec: Self::Param, proof: &[u8]) -> Self {
+            Self {
+                state: PoseidonHash::from_spec(spec),
+                stream: Cursor::new(proof.to_vec()),
+            }
+        }
+    }
+
+    impl<F: ScalarField, S> FieldTranscript<F>
+        for PoseidonNativeTranscript<F, S>
+    {
+        fn squeeze_challenge(&mut self) -> F {
+            let hash = self.state.squeeze();
+            self.state.update(&[hash]);
+            fe_from_le_bytes(&hash.to_repr().as_ref()[..NUM_CHALLENGE_BYTES])
+        }
+
+        fn common_field_element(&mut self, fe: &F) -> Result<(), crate::Error> {
+            self.state.update(&[*fe]);
+            Ok(())
+        }
+    }
+
+    impl<F: ScalarField, R: io::Read> FieldTranscriptRead<F>
+        for PoseidonNativeTranscript<F, R>
+    {
+        fn read_field_element(&mut self) -> Result<F, crate::Error> {
+            let mut repr = <F as PrimeField>::Repr::default();
+            self.stream
+                .read_exact(repr.as_mut())
+                .map_err(|err| crate::Error::Transcript(err.kind(), err.to_string()))?;
+            let fe = F::from_repr_vartime(repr).ok_or_else(|| {
+                crate::Error::Transcript(
+                    io::ErrorKind::Other,
+                    "Invalid field element encoding in proof".to_string(),
+                )
+            })?;
+            self.common_field_element(&fe)?;
+            Ok(fe)
+        }
+    }
+
+    impl<F: ScalarField, W: io::Write> FieldTranscriptWrite<F>
+        for PoseidonNativeTranscript<F, W>
+    {
+        fn write_field_element(&mut self, fe: &F) -> Result<(), crate::Error> {
+            self.common_field_element(fe)?;
+            let repr = fe.to_repr();
+            self.stream
+                .write_all(repr.as_ref())
+                .map_err(|err| crate::Error::Transcript(err.kind(), err.to_string()))
+        }
+    }
+
+    impl<C: CurveAffine, S> Transcript<C, C::Scalar> for PoseidonNativeTranscript<C::Scalar, S>
+    where
+        C::Base: ScalarField,
+        C::Scalar: ScalarField,
+    {
+        fn common_commitment(&mut self, ec_point: &C) -> Result<(), crate::Error> {
+            let element = into_coordinates(ec_point).into_iter().map(|fe| fe_to_limbs(fe, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE)).flatten().collect_vec();
+            self.state.update(&element);
+            Ok(())
+        }
+    }
+
+    impl<C: CurveAffine, R: io::Read> TranscriptRead<C, C::Scalar> for PoseidonNativeTranscript<C::Scalar, R>
+    where
+        C::Base: ScalarField,
+        C::Scalar: ScalarField,
+    {
+        fn read_commitment(&mut self) -> Result<C, crate::Error> {
+            let mut reprs = [<C::Base as PrimeField>::Repr::default(); 2];
+            for repr in &mut reprs {
+                self.stream
+                    .read_exact(repr.as_mut())
+                    .map_err(|err| crate::Error::Transcript(err.kind(), err.to_string()))?;
+            }
+            let [x, y] = reprs.map(<C::Base as PrimeField>::from_repr_vartime);
+            let ec_point = x
+                .zip(y)
+                .and_then(|(x, y)| CurveAffine::from_xy(x, y).into())
+                .ok_or_else(|| {
+                    crate::Error::Transcript(
+                        io::ErrorKind::Other,
+                        "Invalid elliptic curve point encoding in proof".to_string(),
+                    )
+                })?;
+            self.common_commitment(&ec_point)?;
+            Ok(ec_point)
+        }
+    }
+
+    impl<C: CurveAffine, W: io::Write> TranscriptWrite<C, C::Scalar> for PoseidonNativeTranscript<C::Scalar, W>
+    where
+        C::Base: ScalarField,
+        C::Scalar: ScalarField,
+    {
+        fn write_commitment(&mut self, ec_point: &C) -> Result<(), crate::Error> {
+            self.common_commitment(ec_point)?;
+            let coordinates = ec_point.coordinates().unwrap();
+            for coordinate in [coordinates.x(), coordinates.y()] {
+                let repr = coordinate.to_repr();
+                self.stream
+                    .write_all(repr.as_ref())
+                    .map_err(|err| crate::Error::Transcript(err.kind(), err.to_string()))?;
+            }
+            Ok(())
+        }
+    }
+
 
     pub struct PoseidonTranscript<F: ScalarField, S> {
         state: PoseidonHash<F, T, RATE>,
@@ -551,7 +668,7 @@ pub mod strawman {
         }
 
         fn common_field_element(&mut self, fe: &F) -> Result<(), crate::Error> {
-            self.state.update(&fe_to_limbs(*fe, NUM_LIMB_BITS));
+            self.state.update(&fe_to_limbs(*fe, NUM_LIMB_BITS, NUM_LIMBS));
             Ok(())
         }
     }
@@ -1112,29 +1229,30 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
         ) -> Result<(), Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE);
             let ecc_chip = EccChip::new(&non_native_chip);
             ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
             Ok(())
         }
 
+        // todo check this unchecked
         pub fn assign_constant_primary_non_native(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.assign_constant_point(builder.main(), constant))
         }
 
-        // todo check this
+        // todo check this unchecked
         pub fn assign_witness_primary_non_native(
             &self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.assign_point_unchecked(builder.main(), witness))
         }
@@ -1146,7 +1264,7 @@ pub mod strawman {
             when_true: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
             when_false: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
@@ -1305,6 +1423,37 @@ pub mod strawman {
             fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
         }
 
+        pub fn hash_state<Comm: AsRef<C>>(
+            spec: &OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+            vp_digest: C::Scalar,
+            step_idx: usize,
+            initial_input: &[C::Scalar],
+            output: &[C::Scalar],
+            acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
+        ) -> C::Scalar {
+            let mut poseidon = PoseidonHash::from_spec(spec.clone());
+            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE);
+            let inputs = iter::empty()
+                .chain([vp_digest, C::Scalar::from(step_idx as u64)])
+                .chain(initial_input.iter().copied())
+                .chain(output.iter().copied())
+                .chain([acc.instances[0][0]])
+                .chain([acc.instances[0][1]])
+                .chain(
+                    acc.witness_comms
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .flat_map(into_coordinates).into_iter().map(fe_to_limbs).flatten(),
+                )
+                .chain(acc.challenges.iter().copied())
+                .chain([acc.u])
+                .chain(into_coordinates(acc.e_comm.as_ref()).into_iter().map(fe_to_limbs).flatten())
+                .chain(acc.compressed_e_sum.into_iter())
+                .collect_vec();
+            poseidon.update(&inputs);
+            fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
+        }
+
         // pub fn hash_state_acc_prime<Comm: AsRef<C>>(
         //     spec: &OptimizedPoseidonSpec<C::Scalar, T, RATE>,
         //     vp_digest: C::Scalar,
@@ -1332,35 +1481,71 @@ pub mod strawman {
         //     fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
         // }
 
-        // pub fn hash_assigned_state(
+        pub fn hash_assigned_state(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            vp_digest: &AssignedValue<C::Scalar>,
+            step_idx: &AssignedValue<C::Scalar>,
+            initial_input: &[AssignedValue<C::Scalar>],
+            output: &[AssignedValue<C::Scalar>],
+            acc: &AssignedProtostarAccumulatorInstance<
+                AssignedValue<C::Scalar>,
+                EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+            >,
+        ) -> Result<AssignedValue<C::Scalar>, Error> {
+            let inputs = iter::empty()
+                .chain([vp_digest, step_idx])
+                .chain(initial_input)
+                .chain(output)
+                .chain([&acc.instances[0][0]])
+                .chain([&acc.instances[0][1]])
+                .chain(
+                    acc.witness_comms
+                        .iter()
+                        .flat_map(|point| vec![point.x(), point.y()].into_iter().map(ProperCrtUint::limbs).flatten()),
+                )
+                .chain(acc.challenges.iter())
+                .chain([&acc.u])
+                .chain(vec![acc.e_comm.x(), acc.e_comm.y()].into_iter().map(ProperCrtUint::limbs).flatten())
+                .chain(
+                    acc.compressed_e_sum
+                        .as_ref()
+                        .into_iter())
+                .copied()
+                .collect_vec();
+            let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
+            poseidon_chip.update(&inputs);
+            let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
+            // change to strict
+            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
+            Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
+        }
+
+        // pub fn hash_assigned_acc_prime(
         //     &self,
         //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
         //     vp_digest: &AssignedValue<C::Scalar>,
-        //     step_idx: &AssignedValue<C::Scalar>,
-        //     initial_input: &[AssignedValue<C::Scalar>],
-        //     output: &[AssignedValue<C::Scalar>],
-        //     acc: &AssignedProtostarAccumulatorInstance<
-        //         AssignedValue<C::Scalar>,
-        //         EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+        //     acc_prime: &AssignedProtostarAccumulatorInstance<
+        //         ProperCrtUint<C::Scalar>,
+        //         EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
         //     >,
         // ) -> Result<AssignedValue<C::Scalar>, Error> {
         //     let inputs = iter::empty()
-        //         .chain([vp_digest, step_idx])
-        //         .chain(initial_input)
-        //         .chain(output)
-        //         .chain(acc.instances[0][0])
-        //         .chain(acc.instances[0][1])
+        //         .chain([vp_digest])
+        //         .chain(acc_prime.instances[0][0].limbs().iter())
+        //         .chain(acc_prime.instances[0][1].limbs().iter())
         //         .chain(
-        //             acc.witness_comms
+        //             acc_prime.witness_comms
         //                 .iter()
         //                 .flat_map(|point| vec![point.x(), point.y()].into_iter()),
         //         )
-        //         .chain(acc.challenges.iter())
-        //         .chain(acc.u)
-        //         .chain(vec![acc.e_comm.x(), acc.e_comm.y()].into_iter())
+        //         .chain(acc_prime.challenges.iter().flat_map(ProperCrtUint::limbs))
+        //         .chain(acc_prime.u.limbs())
+        //         .chain(vec![acc_prime.e_comm.x(), acc_prime.e_comm.y()].into_iter())
         //         .chain(
-        //             acc.compressed_e_sum
+        //             acc_prime.compressed_e_sum
         //                 .as_ref()
+        //                 .map(ProperCrtUint::limbs)
         //                 .into_iter()
         //                 .flatten(),
         //         )
@@ -1373,44 +1558,6 @@ pub mod strawman {
         //     let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
         //     Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
         // }
-
-        pub fn hash_assigned_acc_prime(
-            &self,
-            builder: &mut SinglePhaseCoreManager<C::Scalar>,
-            vp_digest: &AssignedValue<C::Scalar>,
-            acc_prime: &AssignedProtostarAccumulatorInstance<
-                ProperCrtUint<C::Scalar>,
-                EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
-            >,
-        ) -> Result<AssignedValue<C::Scalar>, Error> {
-            let inputs = iter::empty()
-                .chain([vp_digest])
-                .chain(acc_prime.instances[0][0].limbs().iter())
-                .chain(acc_prime.instances[0][1].limbs().iter())
-                .chain(
-                    acc_prime.witness_comms
-                        .iter()
-                        .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-                )
-                .chain(acc_prime.challenges.iter().flat_map(ProperCrtUint::limbs))
-                .chain(acc_prime.u.limbs())
-                .chain(vec![acc_prime.e_comm.x(), acc_prime.e_comm.y()].into_iter())
-                .chain(
-                    acc_prime.compressed_e_sum
-                        .as_ref()
-                        .map(ProperCrtUint::limbs)
-                        .into_iter()
-                        .flatten(),
-                )
-                .copied()
-                .collect_vec();
-            let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
-            poseidon_chip.update(&inputs);
-            let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
-            // change to strict
-            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
-            Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
-        }
 
     }
 
@@ -1488,6 +1635,15 @@ pub mod strawman {
             .for_each(|&limb| self.poseidon_chip.update(&[limb])));
             Ok(())
         }
+
+        // pub fn common_commitment(
+        //     &mut self,
+        //     value: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+        // ) -> Result<(), Error> {
+        //     [value.x(), value.y()].iter().filter_map(|&opt| Some(opt))
+        //     .for_each(|v| self.poseidon_chip.update(&[*v.native()]));
+        //     Ok(())
+        // }
 
         pub fn read_field_element(
             &mut self,
@@ -1603,13 +1759,62 @@ pub mod strawman {
             self.poseidon_chip.update(&[hash]);
             // todo change this to num_to_bits_strict and use as r_le_bits in the verifier
             let challenge_le_bits = range_chip.gate.num_to_bits(builder.main(),hash, RANGE_BITS).into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
-            let challenge = range_chip.gate.bits_to_num(builder.main(), &challenge_le_bits);                                   
+            let challenge = range_chip.gate.bits_to_num(builder.main(), &challenge_le_bits);                            
 
             Ok(NativeChallenge {
                 challenge_le_bits,
                 challenge,
             })
         }
+    }
+
+    fn native_transcript_test<AT1>()
+    where
+        AT1: TranscriptRead<<Gemini<UnivariateKzg<Bn256>> as PolynomialCommitmentScheme<bn256::Fr>>::CommitmentChunk, bn256::Fr>
+        + TranscriptWrite<<Gemini<UnivariateKzg<Bn256>> as PolynomialCommitmentScheme<bn256::Fr>>::CommitmentChunk, bn256::Fr>
+        + InMemoryTranscript<Param = OptimizedPoseidonSpec<bn256::Fr, T, RATE>>,
+     {
+        let circuit_builder = RefCell::new(BaseCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Mock).use_k(10).use_lookup_bits(9));
+        let range_chip = circuit_builder.borrow().range_chip();
+        let tcc_chip = Chip::<bn256::G1Affine>::create(range_chip);
+        let mut binding = circuit_builder.borrow_mut();
+        let builder = binding.pool(0);
+
+        let spec = OptimizedPoseidonSpec::<bn256::Fr, T, RATE>::new::<R_F, R_P, SECURE_MDS>();
+        let atp = strawman::accumulation_transcript_param();
+        let mut native_transcript = AT1::new(atp);
+        native_transcript.write_field_element(&bn256::Fr::zero()).unwrap();
+        let native_challenge = native_transcript.squeeze_challenge();
+        let proof = native_transcript.into_proof();
+        // let instances = [&bn256::Fr::zero(), &bn256::Fr::zero()].map(Value::as_ref);  
+        let circuit_transcript =
+            &mut PoseidonNativeTranscriptChip::new(builder.main(), spec.clone(), tcc_chip.clone(), Value::known(proof));
+        let fe = circuit_transcript.read_field_element(builder).unwrap();
+        assert_eq!(*fe.value(), bn256::Fr::zero());
+
+        let circuit_challenge = circuit_transcript.squeeze_challenge(builder).unwrap();
+        assert_eq!(*circuit_challenge.as_ref().value(), native_challenge);
+
+        // let fe = hash_chip.read_field_element(&mut builder).unwrap();
+        // let comm = chip.read_commitment(&mut builder).unwrap();
+        // let challenges = chip.squeeze_challenges(&mut builder, 2).unwrap();
+        // let challenges = challenges.iter().map(|c| chip.challenge_to_le_bits(c).unwrap()).collect_vec();
+        // let fes = chip.read_field_elements(&mut builder, 2).unwrap();
+        // let comms = chip.read_commitments(&mut builder, 2).unwrap();
+        // let acc = AssignedProtostarAccumulatorInstance {
+        //     instances: [[fe, fe], [fe, fe]],
+        //     witness_comms: [comm, comm],
+        //     challenges: [fe, fe],
+        //     u: fe,
+        //     e_comm: comm,
+        //     compressed_e_sum: Some(fe),
+        // };
+        // chip.absorb_accumulator(&acc).unwrap();
+    }
+
+    #[test]
+    fn run_native_transcript_test() {
+        native_transcript_test::<PoseidonNativeTranscript<_, _>>();
     }
 
     //#[derive(Clone, Debug)]

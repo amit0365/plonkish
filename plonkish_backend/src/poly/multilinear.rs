@@ -716,7 +716,7 @@ mod test {
             0xb85045b68181585d,
             0x30644e72e131a029,
         ]);
-        let limbs = fe_to_limbs::<Fq, Fr>(f1, NUM_LIMB_BITS);
+        let limbs = fe_to_limbs::<Fq, Fr>(f1, NUM_LIMB_BITS, NUM_LIMBS);
         let fe = fe_from_limbs::<Fr, Fq>(&limbs, NUM_LIMB_BITS);
         // println!("f1: {:?}", f1);
         // println!("limbs: {:?}", limbs);

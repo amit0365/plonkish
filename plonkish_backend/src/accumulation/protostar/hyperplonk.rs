@@ -156,7 +156,6 @@ where
 
         // Round n
 
-
         let theta_primes = powers(transcript.squeeze_challenge())
             .skip(1)
             .take(*num_theta_primes)
@@ -294,7 +293,7 @@ where
 
                 let r = transcript.squeeze_challenge();
                 let r_le_bits = fe_to_bits_le(r.clone());
-                //assert_eq!(r_le_bits.len(), NUM_CHALLENGE_BITS);
+                // assert_eq!(r_le_bits.len(), NUM_CHALLENGE_BITS);
                 assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
 
                 let timer = start_timer(|| "fold_uncompressed");
@@ -311,7 +310,7 @@ where
                     incoming,
                 );
                 end_timer(timer);
-
+                
                 let timer = start_timer(|| {
                     let len = cross_term_expressions.len();
                     format!("evaluate_compressed_cross_term_sums-{len}")

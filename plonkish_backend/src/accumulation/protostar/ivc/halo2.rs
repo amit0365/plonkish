@@ -1043,7 +1043,7 @@ where
     transcript_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
     primary_avp: ProtostarAccumulationVerifierParam<C::Scalar>,
     cyclefold_avp: ProtostarAccumulationVerifierParam<C::Scalar>,
-    // todo might not need h_prime or the value api
+    h_prime: Value<C::Scalar>,
     cyclefold_inputs_hash: Value<C::Base>,
     acc: Value<ProtostarAccumulatorInstance<C::Scalar, C>>,
     acc_prime: Value<ProtostarAccumulatorInstance<C::Scalar, C>>,
@@ -1094,6 +1094,7 @@ where
                 transcript_config,
                 primary_avp: primary_avp.clone().unwrap_or_default(),
                 cyclefold_avp: cyclefold_avp.clone().unwrap_or_default(),
+                h_prime: Value::known(C::Scalar::ZERO),
                 cyclefold_inputs_hash: Value::known(C::Base::ZERO),
                 acc: Value::known(primary_avp.clone().unwrap_or_default().init_accumulator()),
                 acc_prime: Value::known(primary_avp.clone().unwrap_or_default().init_accumulator()),
@@ -1163,7 +1164,6 @@ where
             {
                 self.step_circuit.next();
             }
-            // todo might not need both h_prime and h_prime_ec
             self.cyclefold_inputs_hash = Value::known(Chip::<C>::hash_cyclefold_inputs(
                 self.hash_config_base.borrow(),
                 self.primary_avp.vp_digest,
@@ -1173,26 +1173,38 @@ where
                 &acc,
                 &acc_prime,
             ));
-            // self.h_prime_ec = Value::known(Chip::<C>::hash_state_acc_prime(
-            //     self.hash_config.borrow(),
-            //     self.avp.vp_digest,
-            //     &acc_prime_ec,
-            // ));
+            self.h_prime = Value::known(Chip::<C>::hash_state(
+                self.hash_config.borrow(),
+                self.primary_avp.vp_digest,
+                self.step_circuit.step_idx() + 1,
+                self.step_circuit.initial_input(),
+                self.step_circuit.output(),
+                &acc_prime,
+            ));
             self.acc = Value::known(acc.unwrap_comm());
             self.acc_ec = Value::known(acc_ec.unwrap_comm());
+            self.acc_prime = Value::known(acc_prime.unwrap_comm());
+            self.acc_prime_ec = Value::known(acc_prime_ec.unwrap_comm());
             self.primary_instances = primary_instances.map(Value::known);
             self.primary_proof = Value::known(primary_proof);
             self.cyclefold_proof = Value::known(cyclefold_proof);
     }
 
-    // todo change this
     fn init(&mut self, vp_digest: C::Scalar) {
         assert_eq!(&self.primary_avp.num_instances, &[2]);
         self.primary_avp.vp_digest = vp_digest;
-        // self.update::<Cow<C::Secondary>>(
-        //     self.avp.init_accumulator(),
-        //     self.avp.init_accumulator(),
+        // self.update_both_running_instances::<
+        // Cow<C>, 
+        // Cow<C::Secondary>>(
+        //     vec![C::Scalar::ZERO; 2],
+        //     vec![Cow::Borrowed(&C::Scalar::ZERO); 2],
+        //     vec![Cow::Borrowed(&C::Scalar::ZERO); 2],
+        //     ProtostarAccumulatorInstance::init_accumulator(),
+        //     ProtostarAccumulatorInstance::init_accumulator(),
         //     [Self::DUMMY_SCALAR; 2].map(fe_to_fe),
+        //     PoseidonTranscriptChip::<C>::dummy_proof(&self.avp),
+        //     vec![Cow::Borrowed(&C::Scalar::ZERO); 2],
+        //     ProtostarAccumulatorInstance::init_accumulator(),
         //     PoseidonTranscriptChip::<C>::dummy_proof(&self.avp),
         // );
     }
@@ -1222,47 +1234,47 @@ where
         Ok(())
     }
 
-    // #[allow(clippy::too_many_arguments)]
-    // #[allow(clippy::type_complexity)]
-    // fn check_state_hash(
-    //     &self,
-    //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
-    //     is_base_case: Option<&AssignedValue<C::Scalar>>,
-    //     h: &AssignedValue<C::Scalar>,
-    //     vp_digest: &AssignedValue<C::Scalar>,
-    //     step_idx: &AssignedValue<C::Scalar>,
-    //     initial_input: &[AssignedValue<C::Scalar>],
-    //     output: &[AssignedValue<C::Scalar>],
-    //     acc: &AssignedProtostarAccumulatorInstance<
-    //         AssignedValue<C::Scalar>,
-    //         EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
-    //     >,
-    // ) -> Result<(), Error> {
-    //     let tcc_chip = &self.tcc_chip;
-    //     let hash_chip = &self.hash_chip;
-    //     let lhs = h;
-    //     let rhs = hash_chip.hash_assigned_state(
-    //         builder,
-    //         vp_digest,
-    //         step_idx,
-    //         initial_input,
-    //         output,
-    //         acc,
-    //     )?;
-    //     let rhs = if let Some(is_base_case) = is_base_case {
-    //         let zero = builder.main().load_zero();
-    //         tcc_chip.select_gatechip(builder, is_base_case, &zero, &rhs)?
-    //     } else {
-    //         rhs
-    //     };
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    fn check_state_hash(
+        &self,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        is_base_case: Option<&AssignedValue<C::Scalar>>,
+        h: &AssignedValue<C::Scalar>,
+        vp_digest: &AssignedValue<C::Scalar>,
+        step_idx: &AssignedValue<C::Scalar>,
+        initial_input: &[AssignedValue<C::Scalar>],
+        output: &[AssignedValue<C::Scalar>],
+        acc: &AssignedProtostarAccumulatorInstance<
+            AssignedValue<C::Scalar>,
+            EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
+        >,
+    ) -> Result<(), Error> {
+        let tcc_chip = &self.tcc_chip;
+        let hash_chip = &self.hash_chip;
+        let lhs = h;
+        let rhs = hash_chip.hash_assigned_state(
+            builder,
+            vp_digest,
+            step_idx,
+            initial_input,
+            output,
+            acc,
+        )?;
+        let rhs = if let Some(is_base_case) = is_base_case {
+            let zero = builder.main().load_zero();
+            tcc_chip.select_gatechip(builder, is_base_case, &zero, &rhs)?
+        } else {
+            rhs
+        };
+        // lhs = h == 0 initalised 
+        let zero = builder.main().load_zero();
+        let lhs_is_zero = tcc_chip.is_equal(builder, lhs, &zero)?;
+        let rhs = tcc_chip.select_gatechip(builder, &lhs_is_zero, &zero, &rhs)?;
+        tcc_chip.constrain_equal(builder, lhs, &rhs)?;
 
-    //     // todo check this fails because before prove_steps lhs = h == 0 initalised 
-    //     // since axiom api doesn't handle option
-    //     if *lhs.value() != C::Scalar::ZERO {
-    //         tcc_chip.constrain_equal(builder, lhs, &rhs)?;
-    //     }
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     // fn check_folding_ec_hash(
     //     &self,
@@ -1324,6 +1336,7 @@ where
             builder,
             C::Scalar::from(self.step_circuit.step_idx() as u64),)?;
         let step_idx_plus_one = tcc_chip.add(builder, &step_idx, &one)?;
+        let h_prime = tcc_chip.assign_witness(builder, self.h_prime.assign().unwrap())?;
         let initial_input = self
             .step_circuit
             .initial_input()
@@ -1362,34 +1375,33 @@ where
 
         // check if folding was done correctly
 
-        // let h_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][0])?;
-        // let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][1])?;
+        // let h_from_incoming = tcc_chip.assign_witness(builder, &nark.instances[0][0])?;
+        // let h_ohs_from_incoming = tcc_chip.assign_witness(builder, &nark.instances[0][1])?;
 
         // todo check if this state_hash is needed -- maybe to keep the nark_instance constant size
         // checks hash of incoming == (U_i)^2.x_0 == nark.instances[0][0] == h_from_incoming
-        // self.check_state_hash(
-        //     builder,
-        //     Some(&is_base_case),
-        //     &h_from_incoming,
-        //     &vp_digest,
-        //     &step_idx,
-        //     &initial_input,
-        //     &input,
-        //     &acc,
-        // )?;
-
+        self.check_state_hash(
+            builder,
+            Some(&is_base_case),
+            &nark.instances[0][0],
+            &vp_digest,
+            &step_idx,
+            &initial_input,
+            &input,
+            &acc,
+        )?;
         // this also checks if folding was done correctly
         // checks hash of updated state (with acc_prime) == (U_i1)^1.x_1 == nark.instances[0][1]
-        // self.check_state_hash(
-        //     builder,
-        //     None,
-        //     &h_prime,
-        //     &vp_digest,
-        //     &step_idx_plus_one,
-        //     &initial_input,
-        //     output,
-        //     &acc_prime,
-        // )?;
+        self.check_state_hash(
+            builder,
+            None,
+            &h_prime,
+            &vp_digest,
+            &step_idx_plus_one,
+            &initial_input,
+            output,
+            &acc_prime,
+        )?;
 
         let acc_verifier_ec = ProtostarAccumulationVerifier::new(cyclefold_avp.clone(), tcc_chip.clone());
         let acc_ec = acc_verifier_ec.assign_accumulator_ec(builder, self.acc_ec.as_ref())?;
@@ -1407,13 +1419,16 @@ where
         };
 
         // assigned instances for the main circuit
-        // let assigned_instances = &mut binding.assigned_instances;
-        // assert_eq!(
-        //     assigned_instances.len(),
-        //     1,
-        //     "Circuit must have exactly 1 instance column"
-        // );
-        // assert!(assigned_instances[0].is_empty());
+        let assigned_instances = &mut binding.assigned_instances;
+        assert_eq!(
+            assigned_instances.len(),
+            1,
+            "Circuit must have exactly 1 instance column"
+        );
+        assert!(assigned_instances[0].is_empty());
+
+        assigned_instances[0].push(nark.instances[0][1]);
+        assigned_instances[0].push(h_prime);
 
         // // todo finish understanding this, check which one is required
         // // copy constraint (U_i1)^1.x_0 == (U_i)^2.x_1
@@ -1477,6 +1492,7 @@ where
             transcript_config: self.transcript_config.clone(),
             primary_avp: self.primary_avp.clone(),
             cyclefold_avp: self.cyclefold_avp.clone(),
+            h_prime: Value::unknown(),
             cyclefold_inputs_hash: Value::unknown(),
             acc: Value::unknown(),
             acc_prime: Value::unknown(),
@@ -1525,10 +1541,8 @@ where
 {
     fn instances(&self) -> Vec<Vec<C::Scalar>> {
         let mut instances = vec![vec![C::Scalar::ZERO; 2]];
-        // skip this
-        // self.incoming_instances[1].map(|h_ohs| instances[0][0] = fe_to_fe(h_ohs));
-        // check if this is correct
-        // self.h_prime.map(|h_prime| instances[0][0] = h_prime);
+        self.primary_instances[1].map(|h_ohs| instances[0][0] = h_ohs);
+        self.h_prime.map(|h_prime| instances[0][1] = h_prime);
         instances
     }
 
@@ -1871,6 +1885,7 @@ where
 pub fn prove_decider<C, P1, P2, AT1, AT2>(
     ivc_pp: &ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
     primary_acc: &ProtostarAccumulator<C::Scalar, P1>,
+    cyclefold_acc: &ProtostarAccumulator<C::Base, P2>,
     primary_transcript: &mut impl TranscriptWrite<P1::CommitmentChunk, C::Scalar>,
     mut rng: impl RngCore,
 ) -> Result<(), crate::Error>
@@ -1901,6 +1916,20 @@ where
         &mut rng,
     )?;
     end_timer(timer);
+    // let timer = start_timer(|| {
+    //     format!(
+    //         "prove_decider_with_last_nark-cyclefold-{}",
+    //         ivc_pp.cyclefold_pp.pp.num_vars
+    //     )
+    // });
+    // Protostar::<HyperPlonk<P2>>::prove_decider_with_last_nark(
+    //     &ivc_pp.cyclefold_pp,
+    //     cyclefold_acc,
+    //     cyclefold_circuit,
+    //     cyclefold_transcript,
+    //     &mut rng,
+    // )?;
+    // end_timer(timer);
     Ok(())
 }
 
@@ -1908,6 +1937,7 @@ where
 pub fn verify_decider<C, P1, P2>(
     ivc_vp: &ProtostarIvcVerifierParam<C, P1, P2>,
     primary_acc: &ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
+    // cyclefold_acc_before_last: &ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
     primary_transcript: &mut impl TranscriptRead<P1::CommitmentChunk, C::Scalar>,
     mut rng: impl RngCore,
 ) -> Result<(), crate::Error>
@@ -1934,6 +1964,13 @@ where
         primary_transcript,
         &mut rng,
     )?;
+    // Protostar::<HyperPlonk<P2>>::verify_decider_with_last_nark(
+    //     &ivc_vp.cyclefold_vp,
+    //     cyclefold_acc_before_last,
+    //     cyclefold_last_instances,
+    //     cyclefold_transcript,
+    //     &mut rng,
+    // )?;
     Ok(())
 }
 

@@ -82,7 +82,7 @@ where
         let range_chip = circuit_builder.borrow().range_chip();
         let tcc_chip = Chip::<C>::create(range_chip);
 
-        let bytes: &[u8] = &[44, 74, 155, 202, 230, 209, 105, 242, 77, 222, 213, 71, 58, 97, 34, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let bytes: &[u8] = &[73, 77, 181, 24, 180, 102, 0, 39, 147, 99, 207, 155, 168, 26, 70, 166, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let inputs = 
             CycleFoldInputs::<C::Scalar, C::Secondary>{
                 r_le_bits: fe_to_bits_le(C::Scalar::from_bytes_le(bytes)).into_iter().take(NUM_CHALLENGE_BITS).collect_vec(), // Self::R_LE_BITS.to_vec(),
@@ -229,7 +229,7 @@ where
         &self,
         unassigned_inputs: &CycleFoldInputs<C::Scalar, C::Secondary>
     ) -> Result<Vec<C::Scalar>, Error> {
-        let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
+        let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS, NUM_LIMBS);
         let r = fe_from_bits_le(unassigned_inputs.r_le_bits.clone());
         let r_base = fe_to_fe::<C::Scalar, C::Base>(r);
         let inputs = iter::empty()
@@ -445,7 +445,6 @@ where
         let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
         println!("cyclefold_circuit_copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
         println!("cyclefold_circuit_copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        println!("cyclefold_circuit_copy_manager.assigned_constants {:?}", copy_manager.assigned_constants.len());
         println!("cyclefold_circuit_copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
 

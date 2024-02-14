@@ -365,7 +365,7 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_STEPS: usize = 3;
+    const NUM_STEPS: usize = 6;
 
     let primary_circuit_params = BaseCircuitParams {
             k: 19,
@@ -1438,7 +1438,6 @@ pub mod strawman {
                 .chain(initial_input.iter().copied())
                 .chain(output.iter().copied())
                 .chain([acc.instances[0][0]])
-                .chain([acc.instances[0][1]])
                 .chain(
                     acc.witness_comms
                         .iter()
@@ -1498,7 +1497,6 @@ pub mod strawman {
                 .chain(initial_input)
                 .chain(output)
                 .chain([&acc.instances[0][0]])
-                .chain([&acc.instances[0][1]])
                 .chain(
                     acc.witness_comms
                         .iter()

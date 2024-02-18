@@ -1,10 +1,8 @@
 use crate::{
     accumulation::protostar::{
-        ivc::{halo2::{
-            preprocess, prove_steps, prove_decider, verify_decider, 
-            ProtostarIvcVerifierParam,
-            StepCircuit, CircuitExt
-        }, cyclefold::CycleFoldCircuit},
+        ivc::{cyclefold::CycleFoldCircuit, halo2::{
+            preprocess, prove_decider, prove_steps, test::strawman::PoseidonNativeTranscript, verify_decider, CircuitExt, ProtostarIvcVerifierParam, StepCircuit
+        }},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -20,13 +18,8 @@ use crate::{
     poly::multilinear::MultilinearPolynomial,
     util::{
         arithmetic::{
-            fe_to_fe, CurveAffine, Field, FromUniformBytes, PrimeFieldBits,
-            TwoChainCurve, MultiMillerLoop, fe_from_bits_le,
-        },
-        chain,
-        test::seeded_std_rng,
-        transcript::InMemoryTranscript,
-        DeserializeOwned, Itertools, Serialize, end_timer, start_timer,
+            fe_from_bits_le, fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits, TwoChainCurve
+        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
     },
 };
 use halo2_base::{halo2_proofs::{
@@ -39,12 +32,12 @@ use halo2_base::{Context,
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
     poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
 };
-use halo2_ecc::{fields::{fp::FpChip, native_fp::NativeFieldChip}, ecc::EccChip};
+use halo2_ecc::{fields::{fp::FpChip, native_fp::NativeFieldChip}, ecc::EccChip, secp256k1::{ecdsa, random_ecdsa_input}};
 use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value, SimpleFloorPlanner},
     plonk::{Circuit, Selector, ConstraintSystem, Error},
 };
-use rand::RngCore;
+use rand::{rngs::StdRng, RngCore, SeedableRng};
 
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant};
 use std::{mem, rc::Rc};
@@ -112,13 +105,28 @@ where
         &[]
     }
 
+    fn setup(&mut self) -> C::Scalar {
+        C::Scalar::from(0u64)
+    }
+
     fn input(&self) -> &[C::Scalar] {
         &[]
+    }
+
+    fn set_input(&mut self, input: &[C::Scalar]) {
     }
 
     fn output(&self) -> &[C::Scalar] {
         &[]
     }
+
+    fn set_output(&mut self, output: &[C::Scalar]) {
+    }
+
+    fn next_output(&self) -> Vec<C::Scalar> {
+        Vec::new()
+    }
+
 
     fn step_idx(&self) -> usize {
         self.step_idx
@@ -128,11 +136,16 @@ where
         self.step_idx += 1;
     }
 
-    //todo fix this with other synthesizes
+    fn num_constraints(&self) -> usize {
+        0
+    }
+
+    // todo fix this with other synthesizes
     fn synthesize(
-        &self,
+        &mut self,
         _: Self::Config,
         _: impl Layouter<C::Scalar>,
+        _: &mut BaseCircuitBuilder<C::Scalar>,
     ) -> Result<
         (
             Vec<AssignedValue<C::Scalar>>,
@@ -143,6 +156,192 @@ where
         Ok((Vec::new(), Vec::new()))
     }
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct NonTrivialCircuit<C> 
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    step_idx: usize,
+    setup_done: C::Scalar,
+    num_constraints: usize,
+    initial_input: Vec<C::Scalar>,
+    input: Vec<C::Scalar>,
+    output: Vec<C::Scalar>,
+}
+
+impl<C> NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    pub fn new(num_constraints: usize, initial_input: Vec<C::Scalar>) -> Self {
+        Self { 
+            step_idx: 0,
+            setup_done: C::Scalar::from(0u64),
+            num_constraints: num_constraints, 
+            initial_input: initial_input.clone(), 
+            input: initial_input.clone(), 
+            output: initial_input.clone(),
+        }
+    }
+}
+
+impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    type Config = BaseConfig<C::Scalar>;  
+    type FloorPlanner = SimpleFloorPlanner;
+    type Params = BaseCircuitParams;
+
+    fn without_witnesses(&self) -> Self {
+        self.clone()
+    }
+
+    fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
+            BaseCircuitBuilder::configure_with_params(meta, params)
+    }
+
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        unreachable!()
+    }
+
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<C::Scalar>,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+impl<C> CircuitExt<C::Scalar> for NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    fn instances(&self) -> Vec<Vec<C::Scalar>> {
+        Vec::new()
+    }
+
+    fn rand(k: usize, _: impl RngCore) -> Self {
+        unimplemented!()
+    }
+}
+
+
+impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
+    where
+        C::Base: BigPrimeField + PrimeFieldBits,
+        C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
+{
+
+    fn arity() -> usize {
+        1
+    }
+
+    fn setup(&mut self) -> C::Scalar {
+        self.setup_done = C::Scalar::from(1u64);
+        self.setup_done
+    }
+
+    fn initial_input(&self) -> &[C::Scalar] {
+        &self.initial_input
+    }
+
+    fn input(&self) -> &[C::Scalar] {
+        &self.input
+    }
+
+    fn set_input(&mut self, input: &[C::Scalar]) {
+        self.input = input.to_vec();
+    }
+
+    fn output(&self) -> &[C::Scalar] {
+        &self.output
+    }
+
+    // define the calculation logic. This is done out of the zk_circuit
+    // Used in recursive_circuit.update to cal hash of the next iteration 
+    // And checked with the hash synthesize_accumulation_verifier.check_hash_state
+    fn next_output(&self) -> Vec<C::Scalar> {
+        let x = self.input().get(0).copied().unwrap();
+        let y = x + x;
+        vec![y]
+    }
+
+    fn set_output(&mut self, output: &[C::Scalar]) {
+        self.output = output.to_vec();
+    }
+
+    fn step_idx(&self) -> usize {
+        self.step_idx
+    }
+
+    fn num_constraints(&self) -> usize {
+        self.num_constraints
+    }
+
+    fn next(&mut self) {
+        self.step_idx += 1;
+    }
+
+    fn synthesize(
+        &mut self,
+        config: Self::Config,
+        mut layouter: impl Layouter<C::Scalar>,
+        builder: &mut BaseCircuitBuilder<C::Scalar>,
+    ) -> Result<
+        (
+            Vec<AssignedValue<C::Scalar>>,
+            Vec<AssignedValue<C::Scalar>>,
+        ),
+        Error,
+    > {
+        let range_chip = builder.range_chip();
+        let gate_chip = range_chip.gate();
+        let ctx = builder.main(0);
+
+        // check for the non-trivial circuit with some input, the other cycle runs trivial circuit with no computation
+        let first_input = self.input().get(0).copied(); 
+        let (inputs, outputs) = 
+        match first_input {
+            Some(first_input) => {
+                // define the calculation logic for the circuit, also done in the next_ouput function
+                // `x + x = y`, where `x` and `y` are respectively the input and output.
+                let x = ctx.load_witness(first_input);
+                let one = ctx.load_constant(C::Scalar::ONE);
+                
+                let mut rng = StdRng::seed_from_u64(0);
+                let ecdsa_input = random_ecdsa_input(&mut rng);
+                let result = ecdsa(ctx, &range_chip, ecdsa_input, NUM_LIMB_BITS, NUM_LIMBS);
+                assert_eq!(result, C::Scalar::ONE);
+                
+                // checks if synthesize has been called for the first time (preprocessing), initiates the input and output same as the intial_input
+                // when synthesize is called for second time by prove_steps, updates the input to the output value for the next step
+                let setup_done = ctx.load_witness(self.setup_done);
+                let setup_sel = gate_chip.is_equal(ctx, one, setup_done);
+                let non_base_case = gate_chip.add(ctx, x, x);
+                let y = gate_chip.select(ctx, non_base_case, x, setup_sel);
+                // stores the output for the current step
+                self.set_output(&[*y.value()]);
+                // updates the input to the output value for the next step
+                self.set_input(&[*y.value()]);
+
+                (vec![x], vec![y])
+            },
+                None => (Vec::new(), Vec::new()),
+        };
+
+        self.setup();
+
+        Ok((inputs, outputs))
+    }
+} 
+
 
 #[allow(clippy::type_complexity)]
 pub fn run_protostar_hyperplonk_ivc<C, P1, P2>(
@@ -179,7 +378,8 @@ where
     let primary_atp = strawman::accumulation_transcript_param();
     let cyclefold_num_vars = cyclefold_circuit_params.k;
     let cyclefold_atp = strawman::accumulation_transcript_param();
-    
+    let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
+
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut cyclefold_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
@@ -191,7 +391,7 @@ where
     >(  
         primary_num_vars,
         primary_atp,
-        TrivialCircuit::default(),
+        nontrivial_circuit_primary,
         cyclefold_num_vars,
         cyclefold_atp,
         primary_circuit_params.clone(), 
@@ -220,7 +420,7 @@ where
         primary_acc,
         primary_proof,
     ) = {
-        let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
+        let mut primary_transcript = PoseidonNativeTranscript::new(primary_dtp.clone());
         prove_decider(
             &ivc_pp,
             &primary_acc,
@@ -242,7 +442,7 @@ where
     let verify_decider_time = Instant::now();
     let result = {
         let mut primary_transcript =
-            strawman::PoseidonTranscript::from_proof(primary_dtp, primary_proof.as_slice());
+            PoseidonNativeTranscript::from_proof(primary_dtp, primary_proof.as_slice());
         verify_decider::<_, _, _>(
             &ivc_vp,
             &primary_acc,
@@ -365,11 +565,11 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_STEPS: usize = 3;
+    const NUM_STEPS: usize = 7;
 
     let primary_circuit_params = BaseCircuitParams {
-            k: 19,
-            num_advice_per_phase: vec![1],
+            k: 18,
+            num_advice_per_phase: vec![5],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
             lookup_bits: Some(13),
@@ -377,8 +577,8 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
         };
 
     let cyclefold_circuit_params = BaseCircuitParams {
-            k: 17,
-            num_advice_per_phase: vec![1],
+            k: 16,
+            num_advice_per_phase: vec![4],
             num_lookup_advice_per_phase: vec![0],
             num_fixed: 1,
             lookup_bits: Some(1),
@@ -423,7 +623,7 @@ pub mod strawman {
     use halo2_ecc::{
         fields::{fp::FpChip, FieldChip, native_fp::NativeFieldChip, Selectable},
         bigint::{self, CRTInteger, FixedCRTInteger, ProperCrtUint, ProperUint},
-        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip, self},
+        ecc::{fixed_base, scalar_multiply, EcPoint, EccChip, BaseFieldEccChip,  self},
     };
 
     use std::{
@@ -1178,6 +1378,7 @@ pub mod strawman {
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }
 
+        // can save some constraints here -- todo check
         // assume x_1 != x_2 and lhs and rhs are not on infinity
         pub fn add_primary(
             &self,
@@ -1438,7 +1639,6 @@ pub mod strawman {
                 .chain(initial_input.iter().copied())
                 .chain(output.iter().copied())
                 .chain([acc.instances[0][0]])
-                .chain([acc.instances[0][1]])
                 .chain(
                     acc.witness_comms
                         .iter()
@@ -1498,7 +1698,6 @@ pub mod strawman {
                 .chain(initial_input)
                 .chain(output)
                 .chain([&acc.instances[0][0]])
-                .chain([&acc.instances[0][1]])
                 .chain(
                     acc.witness_comms
                         .iter()

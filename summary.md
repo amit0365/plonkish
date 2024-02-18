@@ -1,5 +1,34 @@
 ### IVC
 
+#### 70 ECDSA signatures
+
+takes 1.5s
+cyclefold_circuit_advice_lookup [0, 0, 0]
+cyclefold_circuit_copy_manager.advice_equalities 129785
+cyclefold_circuit_copy_manager.constant_equalities 59592
+cyclefold_circuit_copy_manager.assigned_advices 253699
+Time for synthesize_ec: 242.216541ms
+
+takes 5.4s
+copy_manager.advice_equalities 356739
+copy_manager.constant_equalities 330091
+copy_manager.assigned_advices 1077380
+Time for synthesize_accumulation_verifier: 1.259557375s
+
+Time for prove_steps: 474.103030833s
+
+primary_proof: 10976
+Time for prove_decider: 6.535299166s
+Start:   variable_base_msm-31
+End:     variable_base_msm-31 ......................................................939.750µs
+Start:   variable_base_msm-19
+End:     variable_base_msm-19 ......................................................879.458µs
+Time for verify_decider: 12.124417ms
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 495.17s
+
+
 #### Axiom api
 2^k rows, but don’t need to be to power of two
 k = 17, advice colns = 7

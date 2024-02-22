@@ -536,7 +536,7 @@ where
             num_cross_terms,
             ..
         } = &self.avp;
-        // assert!(instances.len() == CF_IO_LEN);
+        assert!(instances.len() == CF_IO_LEN);
         let instances = instances
             .into_iter()
             .map(|instance| tcc_chip.assign_witness_base(builder, instance.copied().assign().unwrap()))
@@ -545,17 +545,17 @@ where
             transcript.common_field_element(instance)?;
         }
 
-        let mut witness_comms = Vec::with_capacity(self.avp.num_folding_witness_polys());
-        let mut challenges = Vec::with_capacity(self.avp.num_folding_challenges());
-        for (num_witness_polys, num_powers_of_challenge) in
-            num_witness_polys.iter().zip_eq(num_challenges.iter())
-        {
-            witness_comms.extend(transcript.read_commitments(builder, *num_witness_polys)?);
-            for num_powers in num_powers_of_challenge.iter() {
+        let witness_comm_len = self.avp.num_folding_witness_polys();
+        let challenges_len = self.avp.num_folding_challenges();
+        let mut witness_comms = Vec::with_capacity(witness_comm_len);
+        let mut challenges: Vec<ProperCrtUint<C::Scalar>> = Vec::with_capacity(challenges_len);
+
+        for i in 0..witness_comm_len {
+            witness_comms.extend(transcript.read_commitments(builder, 1)?);
+
+            if i != challenges_len {
                 let challenge = transcript.squeeze_challenge(builder)?;
-                let powers_of_challenges =
-                    tcc_chip.powers_base(builder, challenge.as_ref(), *num_powers + 1)?;
-                challenges.extend(powers_of_challenges.into_iter().skip(1));
+                challenges.push(challenge.as_ref().clone());
             }
         }
 
@@ -1013,13 +1013,24 @@ where
             }
     }
 
-    pub fn update_from_cyclefold(
+    pub fn update_from_cyclefold<
+        Comm_ec: AsRef<C::Secondary>
+    >(
         &mut self,
         cyclefold_proof: Vec<u8>,
         cyclefold_instances: [C::Base; CF_IO_LEN],
+        acc_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
+        acc_prime_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
     ) {
+        // self.h_prime_ec = Value::known(Chip::<C>::hash_state_ec(
+        //     self.hash_config.borrow(),
+        //     self.primary_avp.vp_digest,
+        //     &acc_prime_ec,
+        // ));
         self.cyclefold_proof = Value::known(cyclefold_proof);
         self.cyclefold_instances = cyclefold_instances.map(Value::known);
+        self.acc_ec = Value::known(acc_ec.unwrap_comm());
+        self.acc_prime_ec = Value::known(acc_prime_ec.unwrap_comm());
     }
 
     pub fn update_both_running_instances<
@@ -1036,7 +1047,6 @@ where
         primary_proof: Vec<u8>,
         acc_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
         acc_prime_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
-        cyclefold_proof: Vec<u8>,
     ) {
         if (self.is_primary && acc_prime.u != C::Scalar::ZERO)
             || (!self.is_primary && acc.u != C::Scalar::ZERO)
@@ -1050,7 +1060,6 @@ where
                 primary_nark_witness_comm,
                 cross_term_comms,
                 &acc,
-                &acc_prime,
             ));
             self.h_prime = Value::known(Chip::<C>::hash_state(
                 self.hash_config.borrow(),
@@ -1066,7 +1075,6 @@ where
             self.acc_prime_ec = Value::known(acc_prime_ec.unwrap_comm());
             self.primary_instances = primary_instances.map(Value::known);
             self.primary_proof = Value::known(primary_proof);
-            self.cyclefold_proof = Value::known(cyclefold_proof);
     }
 
     fn init(&mut self, vp_digest: C::Scalar) {
@@ -1141,39 +1149,39 @@ where
         Ok(())
     }
 
-    // fn check_folding_ec_hash(
-    //     &self,
-    //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
-    //     is_base_case: Option<&AssignedValue<C::Scalar>>,
-    //     vp_digest: &AssignedValue<C::Scalar>,
-    //     h_prime: &AssignedValue<C::Scalar>,
-    //     acc_prime: &AssignedProtostarAccumulatorInstance<
-    //         ProperCrtUint<C::Scalar>,
-    //         EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
-    //     >,
-    // ) -> Result<(), Error> {
-    //     let tcc_chip = &self.tcc_chip;
-    //     let hash_chip = &self.hash_chip;
-    //     let lhs = h_prime;
-    //     let rhs = hash_chip.hash_assigned_acc_prime(
-    //         builder,
-    //         vp_digest,
-    //         acc_prime,
-    //     )?;
-    //     let rhs = if let Some(is_base_case) = is_base_case {
-    //         let zero = builder.main().load_zero();
-    //         tcc_chip.select_gatechip(builder, is_base_case, &zero, &rhs)?
-    //     } else {
-    //         rhs
-    //     };
 
-    //     // todo check this fails because before prove_steps lhs = h == 0 initalised 
-    //     // since axiom api doesn't handle option
-    //     if *lhs.value() != C::Scalar::ZERO {
-    //         tcc_chip.constrain_equal(builder, lhs, &rhs)?;
-    //     }
-    //     Ok(())
-    // }
+    fn check_folding_ec(
+        &self,
+        builder: &mut SinglePhaseCoreManager<C::Scalar>,
+        acc_prime: &AssignedProtostarAccumulatorInstance<
+            ProperCrtUint<C::Scalar>,
+            EcPoint<C::Scalar, AssignedValue<C::Scalar>>
+        >,
+        acc_prime_result: &AssignedProtostarAccumulatorInstance<
+            ProperCrtUint<C::Scalar>,
+            EcPoint<C::Scalar, AssignedValue<C::Scalar>>
+        >
+    ) -> Result<(), Error> {
+        let tcc_chip = &self.tcc_chip;
+        let default_compressed_e_sum = tcc_chip.assign_constant_base(builder, C::Base::ZERO)?;
+        izip_eq!(&acc_prime.instances[0], &acc_prime_result.instances[0])
+            .map(|(lhs, rhs)| {
+                tcc_chip.constrain_equal_base(builder, lhs, rhs);
+            }).collect_vec();
+        izip_eq!(&acc_prime.witness_comms, &acc_prime_result.witness_comms)
+            .map(|(lhs, rhs)| {
+                tcc_chip.constrain_equal_primary(builder, lhs, rhs);
+            }).collect_vec();
+        izip_eq!(&acc_prime.challenges, &acc_prime_result.challenges)
+            .map(|(lhs, rhs)| {
+                tcc_chip.constrain_equal_base(builder, lhs, rhs);
+            }).collect_vec();
+        tcc_chip.constrain_equal_base(builder, &acc_prime.u, &acc_prime_result.u)?;
+        tcc_chip.constrain_equal_primary(builder, &acc_prime.e_comm, &acc_prime_result.e_comm)?;
+        tcc_chip.constrain_equal_base(builder, &acc_prime.compressed_e_sum.as_ref().unwrap_or(&default_compressed_e_sum), &acc_prime_result.compressed_e_sum.as_ref().unwrap_or(&default_compressed_e_sum))?;
+
+        Ok(())
+    }
 
     fn synthesize_accumulation_verifier(
         &self,
@@ -1230,7 +1238,7 @@ where
             let proof = self.primary_proof.clone();
             let transcript =
                 &mut PoseidonNativeTranscriptChip::new(builder.main(), transcript_config.clone(), tcc_chip.clone(), proof);
-            acc_verifier.verify_accumulation_from_nark(builder, &acc, instances, transcript, assigned_acc_prime_comms_checked)? //cyclefold_instances.clone().try_into().unwrap())?
+            acc_verifier.verify_accumulation_from_nark(builder, &acc, instances, transcript, assigned_acc_prime_comms_checked)?
         };
 
         let acc_prime = {
@@ -1238,13 +1246,7 @@ where
             acc_verifier.select_accumulator(builder, &is_base_case, &acc_default, &acc_prime)?
         };
 
-        // check if folding was done correctly
-
-        // let h_from_incoming = tcc_chip.assign_witness(builder, &nark.instances[0][0])?;
-        // let h_ohs_from_incoming = tcc_chip.assign_witness(builder, &nark.instances[0][1])?;
-
-        // todo check if this state_hash is needed -- maybe to keep the nark_instance constant size
-        // checks hash of incoming == (U_i)^2.x_0 == nark.instances[0][0] == h_from_incoming
+        // check if nark.instances[0][0] = Hash(inputs, acc)
         self.check_state_hash(
             builder,
             Some(&is_base_case),
@@ -1256,8 +1258,8 @@ where
             &acc,
         )?;
 
-        // this also checks if folding was done correctly
-        // checks hash of updated state (with acc_prime) == (U_i1)^1.x_1 == nark.instances[0][1]
+        // checks if folding was done correctly
+        // h_prime = Hash(inputs, acc_prime)
         self.check_state_hash(
             builder,
             None,
@@ -1271,7 +1273,7 @@ where
 
         let acc_verifier_ec = ProtostarAccumulationVerifier::new(cyclefold_avp.clone(), tcc_chip.clone());
         let acc_ec = acc_verifier_ec.assign_accumulator_ec(builder, self.acc_ec.as_ref())?;
-
+        let acc_ec_prime_result = acc_verifier_ec.assign_accumulator_ec(builder, self.acc_prime_ec.as_ref())?;
         let (nark_ec, acc_ec_prime) = {     
             let proof = self.cyclefold_proof.clone();
             let transcript =
@@ -1279,12 +1281,19 @@ where
             acc_verifier_ec.verify_accumulation_from_nark_ec(builder, &acc_ec, cyclefold_instances.try_into().unwrap(), transcript)?
         };
 
-        let acc_ec_prime = {
+        let (acc_ec_prime, acc_ec_prime_result) = {
             let acc_ec_default = acc_verifier_ec.assign_default_accumulator_ec(builder)?;
-            acc_verifier_ec.select_accumulator_ec(builder, &is_base_case, &acc_ec_default, &acc_ec_prime)?
+            let acc_ec_prime = acc_verifier_ec.select_accumulator_ec(builder, &is_base_case, &acc_ec_default, &acc_ec_prime)?;
+            let acc_ec_prime_result = acc_verifier_ec.select_accumulator_ec(builder, &is_base_case, &acc_ec_default, &acc_ec_prime_result)?;
+            (acc_ec_prime, acc_ec_prime_result)
         };
 
-        // assigned instances for the main circuit
+        self.check_folding_ec(
+            builder,
+            &acc_ec_prime,
+            &acc_ec_prime_result,
+        )?; 
+
         let assigned_instances = &mut binding.assigned_instances;
         assert_eq!(
             assigned_instances.len(),
@@ -1294,13 +1303,6 @@ where
         assert!(assigned_instances[0].is_empty());
         assigned_instances[0].push(h_prime);
 
-        // check if folding was done correctly
-        // self.check_folding_ec_hash(
-        //     builder,
-        //     Some(&is_base_case),
-        //     &h_prime_ec,
-        //     &acc_ec_prime,
-        // )?; 
 
         // let instances = self.instances();
         // MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
@@ -1378,7 +1380,6 @@ where
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
         println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
-        //MockProver::run(19, self, vec![]).unwrap().assert_satisfied();
 
         Ok(())
     }
@@ -1467,7 +1468,6 @@ pub fn preprocess<C, P1, P2, S1, AT1, AT2>(
     primary_step_circuit: S1,
     cyclefold_num_vars: usize,
     cyclefold_atp: AT2::Param,
-    // cyclefold_circuit: S1,
     primary_circuit_params: BaseCircuitParams,
     cyclefold_circuit_params: BaseCircuitParams,
     mut rng: impl RngCore,
@@ -1518,7 +1518,7 @@ where
             Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
         };
 
-    let cyclefold_circuit = CycleFoldCircuit::new(
+        let cyclefold_circuit = CycleFoldCircuit::new(
         Some(ProtostarAccumulationVerifierParam::from(&primary_vp_without_preprocess)),
         cyclefold_circuit_params.clone());
     let mut cyclefold_circuit =
@@ -1533,13 +1533,6 @@ where
             circuit.primary_avp = ProtostarAccumulationVerifierParam::from(&primary_vp_without_preprocess);
             circuit.cyclefold_avp = ProtostarAccumulationVerifierParam::from(&cyclefold_vp);
             circuit.update_acc();
-    });
-
-    primary_circuit.update_witness(|circuit| {
-        circuit.update_from_cyclefold(
-            Vec::new(),
-            cyclefold_circuit.instances()[0].clone().try_into().unwrap()
-        );
     });
 
     let primary_circuit_info = primary_circuit.circuit_info().unwrap();
@@ -1568,7 +1561,6 @@ where
             primary_arity: S1::arity(),
             cyclefold_vp,
             cyclefold_hp: cyclefold_circuit.circuit().hash_config.borrow().clone(),
-            // TODO CHECK THIS
             cyclefold_arity: CF_IO_LEN,
             _marker: PhantomData,
         }
@@ -1578,7 +1570,7 @@ where
 }
 
 #[allow(clippy::type_complexity)]
-pub fn prove_steps<'a, C, P1, P2, S1, AT1, AT2>(
+pub fn prove_steps<C, P1, P2, S1, AT1, AT2>(
     ivc_pp: &ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
     primary_circuit: &mut Halo2Circuit<C::Scalar, RecursiveCircuit<C, S1>>,
     cyclefold_circuit: &mut Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
@@ -1616,57 +1608,11 @@ where
         + InMemoryTranscript,
 
 {
-    // flow for cyclefold - 
-    // prover work: fold steps primary, get cyclefold circuit inputs on primary curve 
-    // generate constraints and extract witness from cyclefold circuit on secondary curve
-    // assign witness and fold cyclefold instances back on primary curve
-    // verifier work: update the primary circuit witness and verify folding on primary curve
-    // the verifier now takes ci3 as non-deterministic advice for verifying primary folding
-    // secondary folding is verified by checking scalar_muls(ci3) in-circuit on primary curve
-    // primary_circuit stores u_ec which is used by prove_nark and prove_nark_ec
-    // notes -- recursive circuit now has two accumulators one U_i and U_iEC
-
     let mut primary_acc = Protostar::<HyperPlonk<P1>>::init_accumulator(&ivc_pp.primary_pp)?;
-    // secondary accumulator is U_iEC in the primary circuit
     let mut primary_acc_ec = Protostar::<HyperPlonk<P2>>::init_accumulator(&ivc_pp.cyclefold_pp)?;
-    
+
     for step_idx in 0..num_steps {
-        // add dummy_proof
-        // initiate empty cyclefold curcuit on secondary curve
-        // synthesize on C::Base
-        // get witness and update primary_circuit witness
-        // after folding on primary curve, update secondary circuit witness
-
-        let primary_acc_ec_x = primary_acc_ec.instance.clone();
-
-        let timer = start_timer(|| {
-                format!(
-                    "prove_accumulation_from_nark_ec-primary-{}",
-                    ivc_pp.cyclefold_pp.pp.num_vars
-                )
-        });
-
-        // todo can parallelize this with prove_accumulation_from_nark-primary-{} 
-        let cyclefold_proof = {
-            let mut cyclefold_transcript = AT2::new(ivc_pp.cyclefold_atp.clone());
-                Protostar::<HyperPlonk<P2>>::prove_accumulation_from_nark_ec(
-                    &ivc_pp.cyclefold_pp,
-                    &mut primary_acc_ec,
-                    cyclefold_circuit as &_,
-                    &mut cyclefold_transcript,
-                    &mut rng,
-                )?;
-                cyclefold_transcript.into_proof()
-            };
-        end_timer(timer);
-
-        primary_circuit.update_witness(|circuit| {
-            circuit.update_from_cyclefold(
-                cyclefold_proof.clone(),
-                cyclefold_circuit.instances()[0].clone().try_into().unwrap()
-            );
-        });
-
+        let primary_acc_ec_x = primary_acc_ec.instance.clone();        
         let primary_acc_x = primary_acc.instance.clone();
 
         let timer = start_timer(|| {
@@ -1675,6 +1621,7 @@ where
                 ivc_pp.primary_pp.pp.num_vars
             )
         });
+
         let (r_le_bits, primary_nark_x, cross_term_comms, primary_proof) = {
             let mut primary_transcript = AT1::new(ivc_pp.primary_atp.clone());
             let (r_le_bits, primary_nark_as_acc, cross_term_comms) = Protostar::<HyperPlonk<P1>>::prove_accumulation_from_nark(
@@ -1699,9 +1646,8 @@ where
                     primary_acc.instance.clone(),
                     primary_instances,
                     primary_proof.clone(),
-                    primary_acc_ec_x,
+                    primary_acc_ec_x.clone(),
                     primary_acc_ec.instance.clone(),
-                    cyclefold_proof,
                 );
             });
 
@@ -1712,10 +1658,41 @@ where
                     primary_nark_x,
                     primary_acc_x,
                     primary_acc.instance.clone(),
-                    );
+                );
             });
 
-        if step_idx == num_steps - 1 {
+        if step_idx != num_steps - 1 {
+            let timer = start_timer(|| {
+                    format!(
+                        "prove_accumulation_from_nark_ec-primary-{}",
+                        ivc_pp.cyclefold_pp.pp.num_vars
+                    )
+            });
+    
+            let cyclefold_proof = {
+                let mut cyclefold_transcript = AT2::new(ivc_pp.cyclefold_atp.clone());
+                    Protostar::<HyperPlonk<P2>>::prove_accumulation_from_nark_ec(
+                        &ivc_pp.cyclefold_pp,
+                        &mut primary_acc_ec,
+                        cyclefold_circuit as &_,
+                        &mut cyclefold_transcript,
+                        &mut rng,
+                    )?;
+                    cyclefold_transcript.into_proof()
+                };
+
+            end_timer(timer);
+
+            primary_circuit.update_witness(|circuit| {
+                circuit.update_from_cyclefold(
+                    cyclefold_proof,
+                    cyclefold_circuit.instances()[0].clone().try_into().unwrap(),
+                    primary_acc_ec_x,
+                    primary_acc_ec.instance.clone(),
+                );
+            });
+
+        } else {
             return Ok((
                 primary_acc,
                 primary_acc_ec,
@@ -1730,6 +1707,7 @@ pub fn prove_decider<C, P1, P2, AT1, AT2>(
     primary_acc: &ProtostarAccumulator<C::Scalar, P1>,
     cyclefold_acc: &ProtostarAccumulator<C::Base, P2>,
     primary_transcript: &mut impl TranscriptWrite<P1::CommitmentChunk, C::Scalar>,
+    cyclefold_transcript: &mut impl TranscriptWrite<P2::CommitmentChunk, C::Base>,
     mut rng: impl RngCore,
 ) -> Result<(), crate::Error>
 where
@@ -1759,20 +1737,19 @@ where
         &mut rng,
     )?;
     end_timer(timer);
-    // let timer = start_timer(|| {
-    //     format!(
-    //         "prove_decider_with_last_nark-cyclefold-{}",
-    //         ivc_pp.cyclefold_pp.pp.num_vars
-    //     )
-    // });
-    // Protostar::<HyperPlonk<P2>>::prove_decider_with_last_nark(
-    //     &ivc_pp.cyclefold_pp,
-    //     cyclefold_acc,
-    //     cyclefold_circuit,
-    //     cyclefold_transcript,
-    //     &mut rng,
-    // )?;
-    // end_timer(timer);
+    let timer = start_timer(|| {
+        format!(
+            "prove_decider-cyclefold-{}",
+            ivc_pp.cyclefold_pp.pp.num_vars
+        )
+    });
+    Protostar::<HyperPlonk<P2>>::prove_decider(
+        &ivc_pp.cyclefold_pp,
+        cyclefold_acc,
+        cyclefold_transcript,
+        &mut rng,
+    )?;
+    end_timer(timer);
     Ok(())
 }
 
@@ -1780,8 +1757,9 @@ where
 pub fn verify_decider<C, P1, P2>(
     ivc_vp: &ProtostarIvcVerifierParam<C, P1, P2>,
     primary_acc: &ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
-    // cyclefold_acc_before_last: &ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
+    cyclefold_acc: &ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
     primary_transcript: &mut impl TranscriptRead<P1::CommitmentChunk, C::Scalar>,
+    cyclefold_transcript: &mut impl TranscriptRead<P2::CommitmentChunk, C::Base>,
     mut rng: impl RngCore,
 ) -> Result<(), crate::Error>
 where
@@ -1802,163 +1780,18 @@ where
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
 
-    // if Chip::<C>::hash_state(
-    //     &ivc_vp.primary_hp,
-    //     ivc_vp.vp_digest,
-    //     num_steps,
-    //     primary_initial_input,
-    //     primary_output,
-    //     secondary_acc_before_last.borrow(),
-    // ) != fe_to_fe(secondary_last_instances[0][0])
-    // {
-    //     return Err(crate::Error::InvalidSnark(
-    //         "Invalid primary state hash".to_string(),
-    //     ));
-    // }
+    Protostar::<HyperPlonk<P1>>::verify_decider(
+        &ivc_vp.primary_vp,
+        primary_acc,
+        primary_transcript,
+        &mut rng,
+    )?;
 
-    // Protostar::<HyperPlonk<P1>>::verify_decider(
-    //     &ivc_vp.primary_vp,
-    //     primary_acc,
-    //     primary_transcript,
-    //     &mut rng,
-    // )?;
-    
-    // Protostar::<HyperPlonk<P2>>::verify_decider_with_last_nark(
-    //     &ivc_vp.cyclefold_vp,
-    //     cyclefold_acc_before_last,
-    //     cyclefold_last_instances,
-    //     cyclefold_transcript,
-    //     &mut rng,
-    // )?;
+    Protostar::<HyperPlonk<P2>>::verify_decider(
+        &ivc_vp.cyclefold_vp,
+        cyclefold_acc,
+        cyclefold_transcript,
+        &mut rng,
+    )?;
     Ok(())
 }
-
-// todo change prove_decider_with_last_nark to prove_decider_ec
-// pub fn prove_decider<C, P1, P2, AT1, AT2>(
-//     ivc_pp: &ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
-//     primary_acc: &ProtostarAccumulator<C::Scalar, P1>,
-//     primary_transcript: &mut impl TranscriptWrite<P1::CommitmentChunk, C::Scalar>,
-//     secondary_acc: &mut ProtostarAccumulator<C::Base, P2>,
-//     secondary_circuit: &impl PlonkishCircuit<C::Base>,
-//     secondary_transcript: &mut impl TranscriptWrite<P2::CommitmentChunk, C::Base>,
-//     mut rng: impl RngCore,
-// ) -> Result<(), crate::Error>
-// where
-//     C: TwoChainCurve,
-//     C::Scalar: Hash + Serialize + DeserializeOwned + BigPrimeField + PrimeFieldBits,
-//     C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField + PrimeFieldBits,
-//     P1: PolynomialCommitmentScheme<
-//         C::ScalarExt,
-//         Polynomial = MultilinearPolynomial<C::Scalar>,
-//         CommitmentChunk = C,
-//     >,
-//     P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
-//     P2: PolynomialCommitmentScheme<
-//         C::Base,
-//         Polynomial = MultilinearPolynomial<C::Base>,
-//         CommitmentChunk = C::Secondary,
-//     >,
-//     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
-//     AT1: InMemoryTranscript,
-//     AT2: InMemoryTranscript,
-
-// {
-//     let timer = start_timer(|| format!("prove_decider-primary-{}", ivc_pp.primary_pp.pp.num_vars));
-//     Protostar::<HyperPlonk<P1>>::prove_decider(
-//         &ivc_pp.primary_pp,
-//         primary_acc,
-//         primary_transcript,
-//         &mut rng,
-//     )?;
-//     end_timer(timer);
-//     let timer = start_timer(|| {
-//         format!(
-//             "prove_decider_with_last_nark-secondary-{}",
-//             ivc_pp.secondary_pp.pp.num_vars
-//         )
-//     });
-//     Protostar::<HyperPlonk<P2>>::prove_decider_with_last_nark(
-//         &ivc_pp.secondary_pp,
-//         secondary_acc,
-//         secondary_circuit,
-//         secondary_transcript,
-//         &mut rng,
-//     )?;
-//     end_timer(timer);
-//     Ok(())
-// }
-
-// #[allow(clippy::too_many_arguments)]
-// pub fn verify_decider<C, P1, P2>(
-//     ivc_vp: &ProtostarIvcVerifierParam<C, P1, P2>,
-//     num_steps: usize,
-//     primary_initial_input: &[C::Scalar],
-//     primary_output: &[C::Scalar],
-//     primary_acc: &ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
-//     primary_transcript: &mut impl TranscriptRead<P1::CommitmentChunk, C::Scalar>,
-//     secondary_initial_input: &[C::Base],
-//     secondary_output: &[C::Base],
-//     secondary_acc_before_last: impl BorrowMut<ProtostarAccumulatorInstance<C::Base, P2::Commitment>>,
-//     secondary_last_instances: &[Vec<C::Base>],
-//     secondary_transcript: &mut impl TranscriptRead<P2::CommitmentChunk, C::Base>,
-//     mut rng: impl RngCore,
-// ) -> Result<(), crate::Error>
-// where
-//     C: TwoChainCurve,
-//     C::Scalar: Hash + Serialize + DeserializeOwned + BigPrimeField + PrimeFieldBits,
-//     C::Base: Hash + Serialize + DeserializeOwned + BigPrimeField + PrimeFieldBits,
-//     P1: PolynomialCommitmentScheme<
-//         C::ScalarExt,
-//         Polynomial = MultilinearPolynomial<C::Scalar>,
-//         CommitmentChunk = C,
-//     >,
-//     P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
-//     P2: PolynomialCommitmentScheme<
-//         C::Base,
-//         Polynomial = MultilinearPolynomial<C::Base>,
-//         CommitmentChunk = C::Secondary,
-//     >,
-//     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
-// {
-//     if Chip::<C>::hash_state(
-//         &ivc_vp.primary_hp,
-//         ivc_vp.vp_digest,
-//         num_steps,
-//         primary_initial_input,
-//         primary_output,
-//         secondary_acc_before_last.borrow(),
-//     ) != fe_to_fe(secondary_last_instances[0][0])
-//     {
-//         return Err(crate::Error::InvalidSnark(
-//             "Invalid primary state hash".to_string(),
-//         ));
-//     }
-//     if Chip::<C::Secondary>::hash_state(
-//         &ivc_vp.secondary_hp,
-//         fe_to_fe(ivc_vp.vp_digest),
-//         num_steps,
-//         secondary_initial_input,
-//         secondary_output,
-//         primary_acc,
-//     ) != secondary_last_instances[0][1]
-//     {
-//         return Err(crate::Error::InvalidSnark(
-//             "Invalid secondary state hash".to_string(),
-//         ));
-//     }
-
-//     Protostar::<HyperPlonk<P1>>::verify_decider(
-//         &ivc_vp.primary_vp,
-//         primary_acc,
-//         primary_transcript,
-//         &mut rng,
-//     )?;
-//     Protostar::<HyperPlonk<P2>>::verify_decider_with_last_nark(
-//         &ivc_vp.secondary_vp,
-//         secondary_acc_before_last,
-//         secondary_last_instances,
-//         secondary_transcript,
-//         &mut rng,
-//     )?;
-//     Ok(())
-// }

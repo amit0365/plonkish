@@ -33,11 +33,6 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         circuit_info: &PlonkishCircuitInfo<F>,
     ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
 
-    // fn preprocess_ec(
-    //     param: &<Self::Pcs as PolynomialCommitmentScheme<F>>::Param,
-    //     circuit_info: &PlonkishCircuitInfo<F>,
-    // ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
-
     fn init_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error>;
 
     fn init_accumulator_from_nark(

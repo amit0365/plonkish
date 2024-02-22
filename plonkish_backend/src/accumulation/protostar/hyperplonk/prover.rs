@@ -193,7 +193,6 @@ where
             (pow, zeta, witness.instance.u)
         });
     assert_eq!(incoming_u, F::ONE);
-
     let size = 1 << num_vars;
     let mut cross_term = vec![F::ZERO; size];
 

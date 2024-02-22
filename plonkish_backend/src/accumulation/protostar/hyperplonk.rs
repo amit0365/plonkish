@@ -8,7 +8,7 @@ use crate::{
                     evaluate_zeta_cross_term_poly, lookup_h_polys, powers_of_zeta_poly,
                 },
             },
-            ivc::{ProtostarAccumulationVerifierParam, halo2::test::strawman::NUM_CHALLENGE_BITS},
+            ivc::{halo2::test::strawman::{fe_to_limbs, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS}, ProtostarAccumulationVerifierParam},
             Protostar, ProtostarAccumulator, ProtostarAccumulatorInstance, ProtostarProverParam,
             ProtostarStrategy::{Compressing, NoCompressing},
             ProtostarVerifierParam,
@@ -26,10 +26,10 @@ use crate::{
         },
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
     },
-    pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme, Commitment},
-    poly::{Polynomial, multilinear::MultilinearPolynomial},
+    pcs::{AdditiveCommitment, Commitment, CommitmentChunk, PolynomialCommitmentScheme},
+    poly::{multilinear::MultilinearPolynomial, Polynomial},
     util::{
-        arithmetic::{powers, PrimeField, fe_to_bits_le, fe_from_bits_le},
+        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, PrimeField},
         end_timer, start_timer,
         transcript::{TranscriptRead, TranscriptWrite},
         DeserializeOwned, Itertools, Serialize,
@@ -38,7 +38,7 @@ use crate::{
 };
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use rand::RngCore;
-use std::{borrow::{BorrowMut, Borrow}, hash::Hash, iter::{self, once}};
+use std::{borrow::{Borrow, BorrowMut}, hash::Hash, iter::{self, empty, once}};
 
 mod preprocessor;
 mod prover;
@@ -76,15 +76,6 @@ where
 
         preprocess(param, circuit_info, STRATEGY.into())
     }
-
-    // fn preprocess_ec(
-    //     param: &Pcs::Param,
-    //     circuit_info: &PlonkishCircuitInfo<F>,
-    // ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
-    //     assert!(circuit_info.is_well_formed());
-
-    //     preprocess_ec(param, circuit_info, STRATEGY.into())
-    // }
 
     fn init_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error> {
         Ok(ProtostarAccumulator::init(
@@ -292,8 +283,7 @@ where
                 // Round 0
 
                 let r = transcript.squeeze_challenge();
-                let r_le_bits = fe_to_bits_le(r.clone());
-                // assert_eq!(r_le_bits.len(), NUM_CHALLENGE_BITS);
+                let r_le_bits = fe_to_bits_le(r.clone()).iter().copied().take(NUM_CHALLENGE_BITS).collect_vec();
                 assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
 
                 let timer = start_timer(|| "fold_uncompressed");
@@ -421,17 +411,15 @@ where
         };
 
         // Round n+3
-        let alpha_primes = powers(transcript.squeeze_challenge())
-            .skip(1)
-            .take(*num_alpha_primes)
-            .collect_vec();
+        // let alpha_primes = powers(transcript.squeeze_challenge())
+        //     .skip(1)
+        //     .take(*num_alpha_primes)
+        //     .collect_vec();
 
         let nark = PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
-                .chain(challenges)
                 .chain(zeta)
-                .chain(alpha_primes)
                 .collect(),
             iter::empty()
                 .chain(witness_comms)
@@ -514,7 +502,6 @@ where
                     incoming,
                 );
                 end_timer(timer);
-
                 let zeta_cross_term_comm =
                     Pcs::commit_and_write(&pp.pcs, &zeta_cross_term_poly, transcript)?;
                 transcript.write_field_elements(&compressed_cross_term_sums)?;
@@ -679,7 +666,6 @@ where
         let instance_polys = instance_polys(pp.num_vars, &accumulator.instance.instances);
         let u = accumulator.instance.u.clone();
         let preprocess_polys = pp.preprocess_polys.iter().map(|poly| poly.clone().into_evals()).collect_vec();
-
         let fixed_permutation_idx_offset = &pp.fixed_permutation_idx_for_preprocess_poly; 
         let fixed_preprocess_polys = preprocess_polys.clone().iter().enumerate()
             .map(|(idx, poly)| {
@@ -699,7 +685,6 @@ where
             .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
             .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
             .collect_vec();
-
         let polys_for_permutation = iter::empty()
             .chain(&instance_polys)
             .chain(&fixed_preprocess_polys)
@@ -783,7 +768,7 @@ where
 
         let permutation_z_comms =
             Pcs::read_commitments(&vp.pcs, vp.num_permutation_z_polys, transcript)?;
-
+        
         // Round 1
 
         let alpha = transcript.squeeze_challenge();
@@ -836,7 +821,14 @@ where
     fn from(vp: &ProtostarVerifierParam<F, HyperPlonk<Pcs>>) -> Self {
         let num_witness_polys = iter::empty()
             .chain(vp.vp.num_witness_polys.iter().cloned())
-            .chain([vp.vp.num_lookups, 2 * vp.vp.num_lookups])
+            .chain(match vp.vp.num_lookups {
+                0 => None,
+                _ => Some(vp.vp.num_lookups),
+            })
+            .chain(match vp.vp.num_lookups {
+                0 => None,
+                _ => Some(2*vp.vp.num_lookups),
+            })
             .chain(match vp.strategy {
                 NoCompressing => None,
                 Compressing => Some(1),
@@ -848,20 +840,29 @@ where
                 .map(|num_challenge| vec![1; num_challenge])
                 .collect_vec();
             num_challenges.last_mut().unwrap().push(vp.num_theta_primes);
+            // todo find better way to do this
+            if num_challenges[0][0] == 0 {
+                num_challenges = Vec::new();
+            }
             iter::empty()
                 .chain(num_challenges)
                 .chain([vec![1]])
-                .chain(
-                    if vp.vp.num_lookups == 0 {
-                        Some(vec![0])
-                    }
-                    else { 
-                        match vp.strategy {
-                            NoCompressing => None,
-                            Compressing => Some(vec![1]),
-                        }
+                .chain( if vp.vp.num_lookups != 0 {
+                            match vp.strategy {
+                                NoCompressing => None,
+                                Compressing => Some(vec![1]),
+                            }
+                        } else {
+                            None 
                     })
-                .chain([vec![vp.num_alpha_primes]])
+                .chain(match vp.num_alpha_primes {
+                        0 => None,
+                        _ => Some(vec![vp.num_alpha_primes]),
+                    })
+                .chain(match vp.vp.num_lookups {
+                        0 => Some(vec![0]),
+                        _ => None,
+                    })                
                 .collect()
         };
         Self {

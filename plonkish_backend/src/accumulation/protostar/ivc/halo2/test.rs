@@ -1,7 +1,7 @@
 use crate::{
     accumulation::protostar::{
         ivc::{cyclefold::CycleFoldCircuit, halo2::{
-            preprocess, prove_decider, prove_steps, test::strawman::PoseidonNativeTranscript, verify_decider, CircuitExt, ProtostarIvcVerifierParam, StepCircuit
+            preprocess, prove_decider, prove_steps, test::strawman::{accumulation_transcript_param, decider_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}, verify_decider, CircuitExt, ProtostarIvcVerifierParam, StepCircuit
         }},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
@@ -121,7 +121,6 @@ where
         self.step_idx += 1;
     }
 
-    //todo fix this with other synthesizes
     fn synthesize(
         &self,
         _: Self::Config,
@@ -149,7 +148,7 @@ pub fn run_protostar_hyperplonk_ivc<C, P1, P2>(
         P2
     >,
     ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
-    Vec<u8>,
+    ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
 )
 where
     C: TwoChainCurve,
@@ -169,9 +168,9 @@ where
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
     let primary_num_vars = primary_circuit_params.k;
-    let primary_atp = strawman::accumulation_transcript_param();
+    let primary_atp = accumulation_transcript_param();
     let cyclefold_num_vars = cyclefold_circuit_params.k;
-    let cyclefold_atp = strawman::accumulation_transcript_param();
+    let cyclefold_atp = accumulation_transcript_param();
     
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut cyclefold_circuit, ivc_pp, ivc_vp) = preprocess::<
@@ -179,8 +178,8 @@ where
         P1,
         P2,
         _,
-        strawman::PoseidonNativeTranscript<_, _>,
-        strawman::PoseidonTranscript<_, _>,
+        PoseidonNativeTranscript<_, _>,
+        PoseidonTranscript<_, _>,
     >(  
         primary_num_vars,
         primary_atp,
@@ -207,153 +206,12 @@ where
     let duration_prove_steps = prove_steps_time.elapsed();
     println!("Time for prove_steps: {:?}", duration_prove_steps);
 
-    let primary_dtp = strawman::decider_transcript_param();
-    let prove_decider_time = Instant::now();
-    let (
-        primary_acc,
-        primary_proof,
-    ) = {
-        let mut primary_transcript = PoseidonNativeTranscript::new(primary_dtp.clone());
-        prove_decider(
-            &ivc_pp,
-            &primary_acc,
-            &cyclefold_acc,
-            &mut primary_transcript,
-            seeded_std_rng(),
-        )
-        .unwrap();
-
-        (
-            primary_acc.instance,
-            primary_transcript.into_proof(),
-        )
-    };
-    println!("primary_proof: {:?}", primary_proof.len());
-    let duration_prove_decider = prove_decider_time.elapsed();
-    println!("Time for prove_decider: {:?}", duration_prove_decider);
-
-    let verify_decider_time = Instant::now();
-    let result = {
-        let mut primary_transcript =
-            PoseidonNativeTranscript::from_proof(primary_dtp, primary_proof.as_slice());
-        verify_decider::<_, _, _>(
-            &ivc_vp,
-            &primary_acc,
-            &mut primary_transcript,
-            seeded_std_rng(),
-        )
-    };
-    let duration_verify_decider = verify_decider_time.elapsed();
-    println!("Time for verify_decider: {:?}", duration_verify_decider);
-    assert_eq!(result, Ok(()));
-
     (
         ivc_vp,
-        primary_acc,
-        primary_proof,
+        primary_acc.instance,
+        cyclefold_acc.instance,
     )
-
 }
-
-
-    // let primary_dtp = strawman::decider_transcript_param();
-    // let secondary_dtp = strawman::decider_transcript_param();
-
-    // let prove_decider_time = Instant::now();
-    // let (
-    //     primary_acc,
-    //     primary_initial_input,
-    //     primary_output,
-    //     primary_proof,
-    //     secondary_acc_before_last,
-    //     secondary_initial_input,
-    //     secondary_output,
-    //     secondary_proof,
-    // ) = {
-    //     let secondary_acc_before_last = secondary_acc.instance.clone();
-    //     let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
-    //     let mut secondary_transcript = strawman::PoseidonTranscript::new(secondary_dtp.clone());
-    //     prove_decider(
-    //         &ivc_pp,
-    //         &primary_acc,
-    //         &mut primary_transcript,
-    //         &mut secondary_acc,
-    //         &secondary_circuit,
-    //         &mut secondary_transcript,
-    //         seeded_std_rng(),
-    //     )
-    //     .unwrap();
-
-    //     (
-    //         primary_acc.instance,
-    //         StepCircuit::<C>::initial_input(&primary_circuit.circuit().step_circuit),
-    //         StepCircuit::<C>::output(&primary_circuit.circuit().step_circuit),
-    //         primary_transcript.into_proof(),
-    //         secondary_acc_before_last,
-    //         StepCircuit::<C::Secondary>::initial_input(&secondary_circuit.circuit().step_circuit),
-    //         StepCircuit::<C::Secondary>::output(&secondary_circuit.circuit().step_circuit),
-    //         secondary_transcript.into_proof(),
-    //     )
-    // };
-    // let duration_prove_decider = prove_decider_time.elapsed();
-    // println!("Time for prove_decider: {:?}", duration_prove_decider);
-
-    // let verify_decider_time = Instant::now();
-    // let result = {
-    //     let mut primary_transcript =
-    //         strawman::PoseidonTranscript::from_proof(primary_dtp, primary_proof.as_slice());
-    //     let mut secondary_transcript =
-    //         strawman::PoseidonTranscript::from_proof(secondary_dtp, secondary_proof.as_slice());
-    //     verify_decider::<_, _, _>(
-    //         &ivc_vp,
-    //         num_steps,
-    //         primary_initial_input,
-    //         primary_output,
-    //         &primary_acc,
-    //         &mut primary_transcript,
-    //         secondary_initial_input,
-    //         secondary_output,
-    //         secondary_acc_before_last.clone(),
-    //         &[secondary_last_instances.clone()],
-    //         &mut secondary_transcript,
-    //         seeded_std_rng(),
-    //     )
-    // };
-    // let duration_verify_decider = verify_decider_time.elapsed();
-    // println!("Time for verify_decider: {:?}", duration_verify_decider);
-    // assert_eq!(result, Ok(()));
-
-    // (
-    //     ivc_vp,
-    //     num_steps,
-    //     primary_initial_input.to_vec(),
-    //     primary_output.to_vec(),
-    //     primary_acc,
-    //     primary_proof,
-    //     secondary_initial_input.to_vec(),
-    //     secondary_output.to_vec(),
-    //     secondary_acc_before_last,
-    //     secondary_last_instances,
-    //     secondary_proof,
-    // )
-
-// #[test]
-// fn gemini_kzg_ipa_protostar_hyperplonk_cyclefold_mock() {
-//     let cyclefold_circuit_params = BaseCircuitParams {
-//         k: 16,
-//         num_advice_per_phase: vec![1],
-//         num_lookup_advice_per_phase: vec![1],
-//         num_fixed: 1,
-//         lookup_bits: Some(13),
-//         num_instance_columns: 1,
-//     };
-
-//     let cyclefold_circuit = CycleFoldCircuit::<bn256::G1Affine>::new(None, cyclefold_circuit_params.clone());
-//     // let instances = cyclefold_circuit.instances();
-//     // println!("instances: {:?}", instances.len());
-//     MockProver::run(16, &cyclefold_circuit, vec![]).unwrap().assert_satisfied();
-// }
-
 
 
 #[test]
@@ -386,11 +244,65 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
 }
 
 
+    // let primary_dtp = decider_transcript_param();
+    // let cyclefold_dtp = decider_transcript_param();
+
+    // let prove_decider_time = Instant::now();
+    // let (
+    //         primary_acc,
+    //         cyclefold_acc,
+    //         primary_proof,
+    //         cyclefold_proof,
+    // ) = {
+    //         let mut primary_transcript = PoseidonNativeTranscript::new(primary_dtp.clone());
+    //         let mut cyclefold_transcript = PoseidonTranscript::new(cyclefold_dtp.clone());
+    //         prove_decider(
+    //             &ivc_pp,
+    //             &primary_acc,
+    //             &cyclefold_acc,
+    //             &mut primary_transcript,
+    //             &mut cyclefold_transcript,
+    //             seeded_std_rng(),
+    //         )
+    //         .unwrap();
+
+    //     (
+    //         primary_acc.instance,
+    //         cyclefold_acc.instance,
+    //         primary_transcript.into_proof(),
+    //         cyclefold_transcript.into_proof(),
+    //     )
+    // };
+    // println!("primary_proof: {:?}", primary_proof.len());
+    // println!("cyclefold_proof: {:?}", cyclefold_proof.len());
+    // let duration_prove_decider = prove_decider_time.elapsed();
+    // println!("Time for prove_decider: {:?}", duration_prove_decider);
+
+    // let verify_decider_time = Instant::now();
+    // let result = {
+    //     let mut primary_transcript =
+    //         PoseidonNativeTranscript::from_proof(primary_dtp, primary_proof.as_slice());
+    //     let mut cyclefold_transcript = PoseidonTranscript::from_proof(cyclefold_dtp, cyclefold_proof.as_slice());
+        
+    //     verify_decider::<_, _, _>(
+    //         &ivc_vp,
+    //         &primary_acc,
+    //         &cyclefold_acc,
+    //         &mut primary_transcript,
+    //         &mut cyclefold_transcript,
+    //         seeded_std_rng(),
+    //     )
+    // };
+    // let duration_verify_decider = verify_decider_time.elapsed();
+    // println!("Time for verify_decider: {:?}", duration_verify_decider);
+    // assert_eq!(result, Ok(()));
+
+
 pub mod strawman {
     use crate::{
         accumulation::protostar::{
             ivc::{halo2::{test::strawman, AssignedProtostarAccumulatorInstance}, ProtostarAccumulationVerifierParam}, ProtostarAccumulatorInstance, ProtostarStrategy::{Compressing, NoCompressing}
-        }, pcs::{multilinear::{Gemini, MultilinearHyrax}, univariate::UnivariateKzg, PolynomialCommitmentScheme}, util::{
+        }, pcs::{multilinear::{Gemini, MultilinearHyrax, MultilinearIpa}, univariate::UnivariateKzg, PolynomialCommitmentScheme}, util::{
             arithmetic::{
                 fe_from_bits_le, fe_from_bool, fe_from_le_bytes, fe_to_fe, fe_truncated, BitField, CurveAffine, Field, FromUniformBytes, Group, OverridenCurveAffine, PrimeCurveAffine, PrimeField, PrimeFieldBits, TwoChainCurve
             }, end_timer, hash::{poseidon::Spec, Poseidon}, izip_eq, start_timer, transcript::{
@@ -1378,12 +1290,10 @@ pub mod strawman {
             primary_nark_witness_comm: Vec<Comm>,
             cross_term_comms: Vec<Comm>,
             acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
-            acc_prime: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
         ) -> C::Base {
-            // let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
             let mut poseidon = PoseidonHash::from_spec(spec.clone());
             let inputs = iter::empty()
-                //.chain([vp_digest]) // flat_map(fe_to_limbs)
+                .chain([fe_to_fe(vp_digest)])
                 .chain([fe_to_fe(fe_from_bits_le(r_le_bits))])
                 .chain(
                     primary_nark_witness_comm
@@ -1404,13 +1314,6 @@ pub mod strawman {
                         .flat_map(into_coordinates),
                 )
                 .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
-                // .chain(
-                //     acc_prime.witness_comms
-                //         .iter()
-                //         .map(AsRef::as_ref)
-                //         .flat_map(into_coordinates),
-                // )
-                // .chain(into_coordinates(acc_prime.e_comm.as_ref()).into_iter())
                 .collect_vec();
             poseidon.update(inputs.as_slice());
             fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
@@ -1446,32 +1349,32 @@ pub mod strawman {
             fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
         }
 
-        // pub fn hash_state_acc_prime<Comm: AsRef<C>>(
-        //     spec: &OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-        //     vp_digest: C::Scalar,
-        //     acc_prime: &ProtostarAccumulatorInstance<C::Base, Comm>,
-        // ) -> C::Scalar {
-        //     let mut poseidon = PoseidonHash::from_spec(spec.clone());
-        //     let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS);
-        //     let inputs = iter::empty()
-        //     // todo maybe dont need vpdigest
-        //         .chain(iter::once(vp_digest))
-        //         .chain(fe_to_limbs(acc_prime.instances[0][0]))
-        //         .chain(fe_to_limbs(acc_prime.instances[0][1]))
-        //         .chain(
-        //             acc_prime.witness_comms
-        //                 .iter()
-        //                 .map(AsRef::as_ref)
-        //                 .flat_map(into_coordinates),
-        //         )
-        //         .chain(acc_prime.challenges.iter().copied().flat_map(fe_to_limbs))
-        //         .chain(fe_to_limbs(acc_prime.u))
-        //         .chain(into_coordinates(acc_prime.e_comm.as_ref()))
-        //         .chain(acc_prime.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
-        //         .collect_vec();
-        //     poseidon.update(inputs.as_slice());
-        //     fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
-        // }
+        pub fn hash_state_ec<Comm: AsRef<C::Secondary>>(
+            spec: &OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+            vp_digest: C::Scalar,
+            acc_prime: &ProtostarAccumulatorInstance<C::Base, Comm>,
+        ) -> C::Scalar {
+            let mut poseidon = PoseidonHash::from_spec(spec.clone());
+            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS, NUM_LIMBS);
+            let inputs = iter::empty()
+            // todo maybe dont need vpdigest
+                //.chain(iter::once(vp_digest))
+                .chain(fe_to_limbs(acc_prime.instances[0][0]))
+                //.chain(fe_to_limbs(acc_prime.instances[0][1]))
+                .chain(
+                    acc_prime.witness_comms
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .flat_map(into_coordinates),
+                )
+                .chain(acc_prime.challenges.iter().copied().flat_map(fe_to_limbs))
+                .chain(fe_to_limbs(acc_prime.u))
+                .chain(into_coordinates(acc_prime.e_comm.as_ref()))
+                .chain(acc_prime.compressed_e_sum.map(fe_to_limbs).into_iter().flatten())
+                .collect_vec();
+            poseidon.update(inputs.as_slice());
+            fe_truncated(poseidon.squeeze(), NUM_HASH_BITS)
+        }
 
         pub fn hash_assigned_state(
             &self,
@@ -1512,44 +1415,43 @@ pub mod strawman {
             Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
         }
 
-        // pub fn hash_assigned_acc_prime(
-        //     &self,
-        //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
-        //     vp_digest: &AssignedValue<C::Scalar>,
-        //     acc_prime: &AssignedProtostarAccumulatorInstance<
-        //         ProperCrtUint<C::Scalar>,
-        //         EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
-        //     >,
-        // ) -> Result<AssignedValue<C::Scalar>, Error> {
-        //     let inputs = iter::empty()
-        //         .chain([vp_digest])
-        //         .chain(acc_prime.instances[0][0].limbs().iter())
-        //         .chain(acc_prime.instances[0][1].limbs().iter())
-        //         .chain(
-        //             acc_prime.witness_comms
-        //                 .iter()
-        //                 .flat_map(|point| vec![point.x(), point.y()].into_iter()),
-        //         )
-        //         .chain(acc_prime.challenges.iter().flat_map(ProperCrtUint::limbs))
-        //         .chain(acc_prime.u.limbs())
-        //         .chain(vec![acc_prime.e_comm.x(), acc_prime.e_comm.y()].into_iter())
-        //         .chain(
-        //             acc_prime.compressed_e_sum
-        //                 .as_ref()
-        //                 .map(ProperCrtUint::limbs)
-        //                 .into_iter()
-        //                 .flatten(),
-        //         )
-        //         .copied()
-        //         .collect_vec();
-        //     let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
-        //     poseidon_chip.update(&inputs);
-        //     let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
-        //     // change to strict
-        //     let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
-        //     Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
-        // }
-
+        pub fn hash_assigned_state_ec(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            vp_digest: &AssignedValue<C::Scalar>,
+            acc_prime_ec: &AssignedProtostarAccumulatorInstance<
+                ProperCrtUint<C::Scalar>,
+                EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+            >,
+        ) -> Result<AssignedValue<C::Scalar>, Error> {
+            let inputs = iter::empty()
+                //.chain([vp_digest])
+                .chain(acc_prime_ec.instances[0][0].limbs().iter())
+                //.chain(acc_prime_ec.instances[0][1].limbs().iter())
+                .chain(
+                    acc_prime_ec.witness_comms
+                        .iter()
+                        .flat_map(|point| vec![point.x(), point.y()].into_iter()),
+                )
+                .chain(acc_prime_ec.challenges.iter().flat_map(ProperCrtUint::limbs))
+                .chain(acc_prime_ec.u.limbs())
+                .chain(vec![acc_prime_ec.e_comm.x(), acc_prime_ec.e_comm.y()].into_iter())
+                .chain(
+                    acc_prime_ec.compressed_e_sum
+                        .as_ref()
+                        .map(ProperCrtUint::limbs)
+                        .into_iter()
+                        .flatten(),
+                )
+                .copied()
+                .collect_vec();
+            let mut poseidon_chip = PoseidonSponge::<C::Scalar, T, RATE>::new::<R_F, R_P, SECURE_MDS>(builder.main());
+            poseidon_chip.update(&inputs);
+            let hash = poseidon_chip.squeeze(builder.main(), &self.gate_chip);
+            // change to strict
+            let hash_le_bits = self.gate_chip.num_to_bits(builder.main(), hash, RANGE_BITS);
+            Ok(self.gate_chip.bits_to_num(builder.main(), &hash_le_bits[..NUM_HASH_BITS]))
+        }
     }
 
     pub struct PoseidonNativeTranscriptChip<C: TwoChainCurve> 
@@ -1777,7 +1679,6 @@ pub mod strawman {
         native_transcript.write_field_element(&bn256::Fr::zero()).unwrap();
         let native_challenge = native_transcript.squeeze_challenge();
         let proof = native_transcript.into_proof();
-        // let instances = [&bn256::Fr::zero(), &bn256::Fr::zero()].map(Value::as_ref);  
         let circuit_transcript =
             &mut PoseidonNativeTranscriptChip::new(builder.main(), spec.clone(), tcc_chip.clone(), Value::known(proof));
         let fe = circuit_transcript.read_field_element(builder).unwrap();
@@ -1785,27 +1686,47 @@ pub mod strawman {
 
         let circuit_challenge = circuit_transcript.squeeze_challenge(builder).unwrap();
         assert_eq!(*circuit_challenge.as_ref().value(), native_challenge);
-
-        // let fe = hash_chip.read_field_element(&mut builder).unwrap();
-        // let comm = chip.read_commitment(&mut builder).unwrap();
-        // let challenges = chip.squeeze_challenges(&mut builder, 2).unwrap();
-        // let challenges = challenges.iter().map(|c| chip.challenge_to_le_bits(c).unwrap()).collect_vec();
-        // let fes = chip.read_field_elements(&mut builder, 2).unwrap();
-        // let comms = chip.read_commitments(&mut builder, 2).unwrap();
-        // let acc = AssignedProtostarAccumulatorInstance {
-        //     instances: [[fe, fe], [fe, fe]],
-        //     witness_comms: [comm, comm],
-        //     challenges: [fe, fe],
-        //     u: fe,
-        //     e_comm: comm,
-        //     compressed_e_sum: Some(fe),
-        // };
-        // chip.absorb_accumulator(&acc).unwrap();
     }
 
     #[test]
     fn run_native_transcript_test() {
         native_transcript_test::<PoseidonNativeTranscript<_, _>>();
+    }
+
+    fn non_native_transcript_test<AT1>()
+    where
+        AT1: TranscriptRead<<MultilinearIpa<grumpkin::G1Affine> as PolynomialCommitmentScheme<grumpkin::Fr>>::CommitmentChunk, grumpkin::Fr>
+        + TranscriptWrite<<MultilinearIpa<grumpkin::G1Affine> as PolynomialCommitmentScheme<grumpkin::Fr>>::CommitmentChunk, grumpkin::Fr>
+        + InMemoryTranscript<Param = OptimizedPoseidonSpec<grumpkin::Fq, T, RATE>>,
+     {
+        let circuit_builder = RefCell::new(BaseCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Mock).use_k(10).use_lookup_bits(9));
+        let range_chip = circuit_builder.borrow().range_chip();
+        let tcc_chip = Chip::<bn256::G1Affine>::create(range_chip);
+        let mut binding = circuit_builder.borrow_mut();
+        let builder = binding.pool(0);
+
+        let spec = OptimizedPoseidonSpec::<bn256::Fr, T, RATE>::new::<R_F, R_P, SECURE_MDS>();
+        let atp = strawman::accumulation_transcript_param();
+        let mut non_native_transcript = AT1::new(atp);
+            non_native_transcript.write_field_element(&grumpkin::Fr::from(5)).unwrap();
+        let non_native_challenge = non_native_transcript.squeeze_challenge();
+        let proof = non_native_transcript.into_proof();
+        let circuit_transcript =
+            &mut PoseidonTranscriptChip::new(builder.main(), spec.clone(), tcc_chip.clone(), Value::known(proof));
+        let fe = circuit_transcript.read_field_element(builder).unwrap();
+        //assert_eq!(fe.limbs(), fe_to_limbs(grumpkin::Fr::from(5)));
+        izip_eq!(fe.limbs(), fe_to_limbs::<Fq, Fr>(grumpkin::Fr::from(5), NUM_LIMB_BITS, NUM_LIMBS))
+            .map(|(lhs, rhs)| {
+                assert_eq!(*lhs.value(), rhs);
+            });
+
+        // let circuit_challenge = circuit_transcript.squeeze_challenge(builder).unwrap();
+        // assert_eq!(*circuit_challenge.as_ref().value(), non_native_challenge);
+    }
+
+    #[test]
+    fn run_non_native_transcript_test() {
+        non_native_transcript_test::<PoseidonTranscript<_, _>>();
     }
 
     //#[derive(Clone, Debug)]

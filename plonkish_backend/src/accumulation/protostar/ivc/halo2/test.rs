@@ -1,10 +1,8 @@
 use crate::{
     accumulation::protostar::{
-        ivc::{halo2::{
-            preprocess, prove_steps, prove_decider, verify_decider, 
-            ProtostarIvcVerifierParam,
-            StepCircuit, CircuitExt
-        }, cyclefold::CycleFoldCircuit},
+        ivc::{cyclefold::CycleFoldCircuit, halo2::{
+            preprocess, prove_decider, prove_steps, test::strawman::PoseidonNativeTranscript, verify_decider, CircuitExt, ProtostarIvcVerifierParam, StepCircuit
+        }},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -20,13 +18,8 @@ use crate::{
     poly::multilinear::MultilinearPolynomial,
     util::{
         arithmetic::{
-            fe_to_fe, CurveAffine, Field, FromUniformBytes, PrimeFieldBits,
-            TwoChainCurve, MultiMillerLoop, fe_from_bits_le,
-        },
-        chain,
-        test::seeded_std_rng,
-        transcript::InMemoryTranscript,
-        DeserializeOwned, Itertools, Serialize, end_timer, start_timer,
+            fe_from_bits_le, fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits, TwoChainCurve
+        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
     },
 };
 use halo2_base::{halo2_proofs::{
@@ -220,7 +213,7 @@ where
         primary_acc,
         primary_proof,
     ) = {
-        let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
+        let mut primary_transcript = PoseidonNativeTranscript::new(primary_dtp.clone());
         prove_decider(
             &ivc_pp,
             &primary_acc,
@@ -242,7 +235,7 @@ where
     let verify_decider_time = Instant::now();
     let result = {
         let mut primary_transcript =
-            strawman::PoseidonTranscript::from_proof(primary_dtp, primary_proof.as_slice());
+            PoseidonNativeTranscript::from_proof(primary_dtp, primary_proof.as_slice());
         verify_decider::<_, _, _>(
             &ivc_vp,
             &primary_acc,

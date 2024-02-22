@@ -474,9 +474,6 @@ where
         let r = transcript.squeeze_challenge(builder)?;
         let r_le_bits = transcript.challenge_to_le_bits(&r)?;
     
-        // let assigned_cyclefold_instances = self.assign_cyclefold_instances_acc_prime(builder, cyclefold_instances)?;
-        // let assigned_cyclefold_instances = self.assign_cyclefold_instances(builder, cyclefold_instances)?;
-        // self.check_assigned_cyclefold_instances(builder, r.as_ref(), &nark, &cross_term_comms, &acc, &assigned_cyclefold_instances);
 
         let acc_prime = self.fold_accumulator_from_nark(
             builder,
@@ -513,98 +510,6 @@ where
 
         Ok(assigned_comms)
     }
-
-    // pub fn assign_cyclefold_instances(
-    //     &self,
-    //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
-    //     cyclefold_instances: [Value<&C::Base>; CF_IO_LEN]
-    // ) -> Result<AssignedCycleFoldInputsInPrimary<
-    //     AssignedValue<C::Scalar>, 
-    //     EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>>,
-    //     Error> 
-    // {
-    //     let tcc_chip = &self.tcc_chip;
-    //     let avp = &self.avp;
-    //     let num_witness_comms = avp.num_folding_witness_polys();
-    //     let num_cross_comms = match avp.strategy {
-    //         NoCompressing => avp.num_cross_terms,
-    //         Compressing => 1
-    //     };
-
-    //     // add fit base in scalar - 
-    //     let r_limbs = cyclefold_instances[..NUM_LIMBS].iter()
-    //         .map(|input| input.copied().assign().unwrap().clone())
-    //         .collect_vec();
-
-    //     let r_fe = fe_from_limbs(&r_limbs, NUM_LIMB_BITS);
-    //     let r = tcc_chip.assign_witness(builder, r_fe)?;
-
-    //     let coordinates = cyclefold_instances[NUM_LIMBS..]
-    //         .iter()
-    //         .map(|input| input.copied().assign().unwrap())
-    //         .collect_vec();
-
-    //     let assigned_comms = coordinates.chunks(2).map(|chunk| {
-    //         tcc_chip.assign_witness_primary_non_native(builder, C::from_xy(chunk[0], chunk[1]).unwrap()).unwrap()
-    //     }).collect_vec();
-
-    //     let mut idx = 0;
-    //     let nark_witness_comms = assigned_comms[idx..idx + num_witness_comms].to_vec();
-    //         idx += num_witness_comms;
-    //     let cross_term_comms = assigned_comms[idx..idx + num_cross_comms].to_vec();
-    //         idx += num_cross_comms;
-    //     let acc_witness_comms = assigned_comms[idx..idx + num_witness_comms].to_vec();
-    //         idx += num_witness_comms;
-    //     let acc_e_comm = &assigned_comms[idx];
-    //         idx += 1;
-    //     let acc_prime_witness_comms = assigned_comms[idx..idx + num_witness_comms].to_vec();
-    //         idx += num_witness_comms;
-    //     let acc_prime_e_comm = &assigned_comms[idx];
-
-    //     Ok(AssignedCycleFoldInputsInPrimary {
-    //         r,
-    //         nark_witness_comms,
-    //         cross_term_comms,
-    //         acc_witness_comms,
-    //         acc_e_comm: acc_e_comm.clone(),
-    //         acc_prime_witness_comms,
-    //         acc_prime_e_comm: acc_prime_e_comm.clone(),
-    //     })
-    // }
-
-    // pub fn check_assigned_cyclefold_instances(
-    //     &self,
-    //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
-    //     r: &AssignedValue<C::Scalar>,
-    //     nark: &AssignedPlonkishNarkInstance<
-    //         AssignedValue<C::Scalar>, 
-    //         EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>>,
-    //     cross_term_comms: &[EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>],
-    //     acc: &AssignedProtostarAccumulatorInstance<
-    //         AssignedValue<C::Scalar>,
-    //         EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>>,
-    //     assigned_cyclefold_instances: &AssignedCycleFoldInputsInPrimary<
-    //         AssignedValue<C::Scalar>, 
-    //         EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>>,
-    // ) {
-    //     let tcc_chip = &self.tcc_chip;
-    //     tcc_chip.constrain_equal(builder, &assigned_cyclefold_instances.r, r);
-    //     println!("r_constrained");
-    //     izip_eq!(&assigned_cyclefold_instances.nark_witness_comms, &nark.witness_comms)
-    //     .map(|(lhs, rhs)|
-    //     tcc_chip.constrain_equal_primary_non_native(builder, &lhs, &rhs));
-    //     println!("nark_witness_comms_constrained");
-    //     izip_eq!(&assigned_cyclefold_instances.cross_term_comms, cross_term_comms)
-    //     .map(|(lhs, rhs)|
-    //     tcc_chip.constrain_equal_primary_non_native(builder, &lhs, &rhs));
-    //     println!("cross_term_comms_constrained");
-    //     tcc_chip.constrain_equal_primary_non_native(builder, &assigned_cyclefold_instances.acc_e_comm, &acc.e_comm);
-    //     println!("acc_e_comm_constrained");
-    //     izip_eq!(&assigned_cyclefold_instances.acc_witness_comms, &acc.witness_comms)
-    //     .map(|(lhs, rhs)|
-    //     tcc_chip.constrain_equal_primary_non_native(builder, &lhs, &rhs));
-    //     println!("acc_witness_comms_constrained");
-    // }
 
     #[allow(clippy::type_complexity)]
     pub fn verify_accumulation_from_nark_ec(
@@ -1155,7 +1060,6 @@ where
                 self.step_circuit.output(),
                 &acc_prime,
             ));
-            println!("h_prime {:?}", self.h_prime);
             self.acc = Value::known(acc.unwrap_comm());
             self.acc_ec = Value::known(acc_ec.unwrap_comm());
             self.acc_prime = Value::known(acc_prime.unwrap_comm());
@@ -1296,7 +1200,6 @@ where
         let step_idx = tcc_chip.assign_witness(
             builder,
             C::Scalar::from(self.step_circuit.step_idx() as u64))?;
-        println!("verifier_step_idx {:?}", step_idx);
         let step_idx_plus_one = tcc_chip.add(builder, &step_idx, &one)?;
         let h_prime = tcc_chip.assign_witness(builder, self.h_prime.assign().unwrap())?;
         let initial_input = self
@@ -1307,7 +1210,6 @@ where
             .try_collect::<_, Vec<_>, _>()?;
 
         let is_base_case = tcc_chip.is_equal(builder, &step_idx, &zero)?;
-        println!("is_base_case {:?}", is_base_case);
         self.check_initial_condition(builder, &is_base_case, &initial_input, input)?;
 
         let cyclefold_instances = self.cyclefold_instances
@@ -1325,7 +1227,6 @@ where
         let (nark, acc_prime) = {
             let instances =
                 [&self.primary_instances[0]].map(Value::as_ref);  
-                // [&self.primary_instances[0], &self.primary_instances[1]].map(Value::as_ref);  
             let proof = self.primary_proof.clone();
             let transcript =
                 &mut PoseidonNativeTranscriptChip::new(builder.main(), transcript_config.clone(), tcc_chip.clone(), proof);
@@ -1393,14 +1294,6 @@ where
         assert!(assigned_instances[0].is_empty());
         assigned_instances[0].push(h_prime);
 
-        // // todo finish understanding this, check which one is required
-        // // copy constraint (U_i1)^1.x_0 == (U_i)^2.x_1
-        // // row 0:     (U_i)^1.x_0 == (U_i)^2.x_1 == h_ohs_from_incoming
-        // // skip this
-        // // assigned_instances[0].push(h_ohs_from_incoming);
-        // // row 1:    (U_i1)^2.x_0 == (U_i1)^1.x_1
-        // assigned_instances[0].push(h_prime);
-
         // check if folding was done correctly
         // self.check_folding_ec_hash(
         //     builder,
@@ -1408,10 +1301,6 @@ where
         //     &h_prime_ec,
         //     &acc_ec_prime,
         // )?; 
-
-        // todo fix this
-        // assigned_instances[0].push(h_from_incoming);
-
 
         // let instances = self.instances();
         // MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
@@ -1742,7 +1631,6 @@ where
     let mut primary_acc_ec = Protostar::<HyperPlonk<P2>>::init_accumulator(&ivc_pp.cyclefold_pp)?;
     
     for step_idx in 0..num_steps {
-        println!("step_idx {:?}", step_idx);
         // add dummy_proof
         // initiate empty cyclefold curcuit on secondary curve
         // synthesize on C::Base
@@ -1913,12 +1801,28 @@ where
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
-    Protostar::<HyperPlonk<P1>>::verify_decider(
-        &ivc_vp.primary_vp,
-        primary_acc,
-        primary_transcript,
-        &mut rng,
-    )?;
+
+    // if Chip::<C>::hash_state(
+    //     &ivc_vp.primary_hp,
+    //     ivc_vp.vp_digest,
+    //     num_steps,
+    //     primary_initial_input,
+    //     primary_output,
+    //     secondary_acc_before_last.borrow(),
+    // ) != fe_to_fe(secondary_last_instances[0][0])
+    // {
+    //     return Err(crate::Error::InvalidSnark(
+    //         "Invalid primary state hash".to_string(),
+    //     ));
+    // }
+
+    // Protostar::<HyperPlonk<P1>>::verify_decider(
+    //     &ivc_vp.primary_vp,
+    //     primary_acc,
+    //     primary_transcript,
+    //     &mut rng,
+    // )?;
+    
     // Protostar::<HyperPlonk<P2>>::verify_decider_with_last_nark(
     //     &ivc_vp.cyclefold_vp,
     //     cyclefold_acc_before_last,

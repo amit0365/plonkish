@@ -1,3 +1,5 @@
+use halo2_base::gates::circuit;
+
 use crate::{
     backend::PlonkishCircuitInfo,
     poly::multilinear::MultilinearPolynomial,
@@ -40,21 +42,32 @@ pub(super) fn compose<F: PrimeField>(
         2 * circuit_info.lookups.len(),
         None,
     );
-
+    let circuit_info_constraints = circuit_info.constraints.clone();
+    println!("compose_constraints_clone");
     let expression = {
         let constraints = iter::empty()
-            .chain(circuit_info.constraints.iter())
-            .chain(lookup_constraints.iter())
-            .chain(permutation_constraints.iter())
+            .chain(circuit_info_constraints)
+            .chain(lookup_constraints)
+            .chain(permutation_constraints)
             .collect_vec();
+        println!("compose_constraints_done");
         let eq = Expression::eq_xy(0);
         let zero_check_on_every_row = Expression::distribute_powers(constraints, alpha) * eq;
+        let expression_vec = iter::empty()
+            .chain(lookup_zero_checks)
+            .chain(Some(zero_check_on_every_row))
+            .collect_vec();
+        println!("compose_expressions_vec_done");
         Expression::distribute_powers(
-            iter::empty()
-                .chain(lookup_zero_checks.iter())
-                .chain(Some(&zero_check_on_every_row)),
+            expression_vec,
             alpha,
         )
+        // Expression::distribute_powers(
+        //     iter::empty()
+        //         .chain(lookup_zero_checks.iter())
+        //         .chain(Some(&zero_check_on_every_row)),
+        //     alpha,
+        //)
     };
 
     (num_permutation_z_polys, expression)
@@ -95,8 +108,9 @@ pub(super) fn lookup_constraints<F: PrimeField>(
                 .map(Expression::<F>::Polynomial);
             let (inputs, tables) = lookup
                 .iter()
-                .map(|(input, table)| (input, table))
+                .map(|(input, table)| (input.clone(), table.clone()))
                 .unzip::<_, _, Vec<_>, Vec<_>>();
+            println!("lookup_constraints_inputs_tables_clone");
             let input = &Expression::distribute_powers(inputs, beta);
             let table = &Expression::distribute_powers(tables, beta);
             [h * (input + gamma) * (table + gamma) - (table + gamma) + m * (input + gamma)]

@@ -1,3 +1,7 @@
+use rayon::prelude::*;
+use crossbeam::{scope, thread};
+use std::{borrow::Cow, hash::Hash, iter, sync::{Arc, Mutex}};
+
 use crate::{
     accumulation::protostar::ProtostarAccumulator,
     backend::hyperplonk::prover::instance_polys,
@@ -11,7 +15,6 @@ use crate::{
         Itertools,
     },
 };
-use std::{borrow::Cow, hash::Hash, iter};
 
 pub(crate) fn lookup_h_polys<F: PrimeField + Hash>(
     compressed_polys: &[[MultilinearPolynomial<F>; 2]],
@@ -140,7 +143,7 @@ where
     if cross_term_expressions.is_empty() {
         return Vec::new();
     }
-
+    println!("init_hadamard_evaluator");
     let ev = init_hadamard_evaluator(
         cross_term_expressions,
         num_vars,
@@ -148,12 +151,14 @@ where
         accumulator,
         incoming,
     );
-
+    println!("ev_init");
     let size = 1 << ev.num_vars;
     let num_threads = num_threads();
+    // println!("num_threads: {}", num_threads);
     let chunk_size = div_ceil(size, num_threads);
+    // println!("chunk_size: {}", chunk_size);
     let num_cross_terms = ev.reg.indexed_outputs().len();
-
+    println!("ev_done");
     let mut partial_sums = vec![vec![F::ZERO; num_cross_terms]; num_threads];
     parallelize_iter(
         partial_sums.iter_mut().zip((0..).step_by(chunk_size)),
@@ -163,7 +168,7 @@ where
                 .for_each(|b| ev.evaluate_and_sum(partial_sums, &mut data, b))
         },
     );
-
+    println!("partial_sums_done");
     partial_sums
         .into_iter()
         .reduce(|mut sums, partial_sums| {
@@ -232,6 +237,7 @@ where
     Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
 {
     assert!(!expressions.is_empty());
+    println!("expressions: {:?}", expressions.len());
 
     let acc_instance_polys = instance_polys(num_vars, &accumulator.instance.instances);
     let incoming_instance_polys = instance_polys(num_vars, &incoming.instance.instances);
@@ -248,6 +254,48 @@ where
         .chain(incoming.instance.challenges.iter().cloned())
         .chain(Some(incoming.instance.u))
         .collect_vec();
+    println!("expressions_start");
+    // println!("expressions: {:?}", expressions[0]);
+    println!("expressions_degree: {:?}", expressions[0].degree());
+    // let builder = thread::Builder::new().stack_size(4 * 1024 * 1024); // 4 MB
+    // let handler = builder.spawn(move || {
+    //     let expressions = expressions_arc.as_slice()
+    //         .par_iter() // Use par_iter() instead of iter() for parallel iteration
+    //         .map(|expression| {
+    //             expression
+    //                 .simplified(Some(&challenges.clone()))
+    //                 .unwrap_or_else(Expression::zero)
+    //         })
+    //         .collect::<Vec<_>>();
+    // }).unwrap();
+    // handler.join().unwrap();
+    // let builder = thread::ScopedThreadBuilder::new().stack_size(4 * 1024 * 1024); // Set stack size to 4 MB
+
+    //let handle = builder.spawn(|| {
+
+        // scope(|s| {
+        //     s.builder().stack_size(4 * 1024 * 1024).spawn(|_| {
+        //         let expressions = expressions
+        //             .par_iter() // Use par_iter() instead of iter() for parallel iteration
+        //             .map(|expression| {
+        //                 expression
+        //                     .simplified(Some(&challenges.clone()))
+        //                     .unwrap_or_else(Expression::zero)
+        //             })
+        //             .collect::<Vec<_>>();
+        //     });
+        // }).unwrap();
+
+    //}).unwrap();
+
+    // let expressions = expressions
+    // .par_iter() // Use par_iter() instead of iter() for parallel iteration
+    // .map(|expression| {
+    //     expression
+    //         .simplified(Some(&challenges))
+    //         .unwrap_or_else(Expression::zero)
+    // })
+    // .collect::<Vec<_>>();
 
     let expressions = expressions
         .iter()
@@ -257,7 +305,7 @@ where
                 .unwrap_or_else(Expression::zero)
         })
         .collect_vec();
-
+    println!("expressions_done");
     HadamardEvaluator::new(num_vars, &expressions, polys)
 }
 

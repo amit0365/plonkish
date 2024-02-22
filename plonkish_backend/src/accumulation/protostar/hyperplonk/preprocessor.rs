@@ -14,14 +14,14 @@ use crate::{
         arithmetic::{div_ceil, PrimeField},
         chain,
         expression::{
-            relaxed::{cross_term_expressions, products, relaxed_expression, PolynomialSet},
+            relaxed::{cross_term_expressions, cross_term_expressions_par, products, relaxed_expression, PolynomialSet},
             Expression, Query, Rotation,
         },
         DeserializeOwned, Itertools, Serialize,
     },
     Error,
 };
-use std::{array, borrow::Cow, collections::BTreeSet, hash::Hash, iter};
+use std::{array, borrow::Cow, collections::BTreeSet, hash::Hash, iter, rc::Rc};
 
 pub(crate) fn batch_size<F: PrimeField>(
     circuit_info: &PlonkishCircuitInfo<F>,
@@ -74,9 +74,7 @@ where
 
     let (lookup_constraints, lookup_zero_checks) =
         lookup_constraints(circuit_info, &theta_primes, beta_prime);
-
     let max_degree = max_degree(circuit_info, Some(&lookup_constraints));
-
     let num_constraints = circuit_info.constraints.len() + lookup_constraints.len();
     let num_alpha_primes = num_constraints.checked_sub(1).unwrap_or_default();
 
@@ -182,9 +180,7 @@ where
                     .chain((builtin_witness_poly_offset..).take(num_builtin_witness_polys))
                     .collect(),
             };
-
             let powers_of_zeta = builtin_witness_poly_offset + circuit_info.lookups.len() * 3;
-            // same as products in uncompressed
             let compressed_products = {
                 let mut constraints = iter::empty()
                     .chain(circuit_info.constraints.iter())
@@ -218,15 +214,12 @@ where
             };
             let powers_of_zeta_constraint = powers_of_zeta_constraint(zeta, powers_of_zeta);
             let zeta_products = products(&poly_set.preprocess, &powers_of_zeta_constraint);
-
             let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
             let cross_term_expressions =
-                cross_term_expressions(&poly_set, &compressed_products, num_folding_challenges);
-
+                cross_term_expressions_par(&poly_set, &compressed_products, num_folding_challenges);
             let u = num_folding_challenges;
             let relaxed_compressed_constraint = relaxed_expression(&compressed_products, u);
             let relaxed_zeta_constraint = {
-                // +1 to include the extra challenge zeta. else same as uncompressed
                 let e = powers_of_zeta + num_permutation_z_polys + 1;
                 relaxed_expression(&zeta_products, u)
                     - Expression::Polynomial(Query::new(e, Rotation::cur()))
@@ -245,6 +238,7 @@ where
     let num_folding_witness_polys = num_witness_polys + num_builtin_witness_polys;
     let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
     let u = num_folding_challenges;
+    println!("u: {}", u);
 
     let [beta, gamma, alpha] =
         &array::from_fn(|idx| Expression::<F>::Challenge(num_folding_challenges + 1 + idx));
@@ -256,38 +250,61 @@ where
         num_builtin_witness_polys,
         Some(u),
     );
-
+    println!("alpha: {:?}", alpha);
+    println!("permutation_constraints_done");
+    let zero_check_on_every_row_expr_vec = iter::empty()
+        .chain(Some(zero_check_on_every_row))
+        .chain(permutation_constraints)
+        .collect_vec();
+    println!("preprocess_zero_check_on_every_row_expr_vec_done");
     let expression = {
         let zero_check_on_every_row = Expression::distribute_powers(
-            iter::empty()
-                .chain(Some(&zero_check_on_every_row))
-                .chain(&permutation_constraints),
+            zero_check_on_every_row_expr_vec,
             alpha,
         ) * Expression::eq_xy(0);
+        println!("preprocess_zero_check_on_every_row_done");
+        // let zero_check_on_every_row = Expression::distribute_powers(
+        //     iter::empty()
+        //         .chain(Some(&zero_check_on_every_row))
+        //         .chain(&permutation_constraints),
+        //     alpha,
+        // ) * Expression::eq_xy(0);
+        let expression_vec = iter::empty()
+            .chain(sum_check)
+            .chain(lookup_zero_checks)
+            .chain(Some(zero_check_on_every_row))
+            .collect_vec();
+        println!("preprocess_expression_vec_done");
         Expression::distribute_powers(
-            iter::empty()
-                .chain(&sum_check)
-                .chain(lookup_zero_checks.iter())
-                .chain(Some(&zero_check_on_every_row)),
+            expression_vec,
             alpha,
         )
-    };
 
+        // Expression::distribute_powers(
+        //     iter::empty()
+        //         .chain(&sum_check)
+        //         .chain(lookup_zero_checks.iter())
+        //         .chain(Some(&zero_check_on_every_row)),
+        //     alpha,
+        // )
+    };
+    println!("expression_done");
     let (pp, vp) = {
         let (mut pp, mut vp) = HyperPlonk::preprocess(param, circuit_info)?;
         let batch_size = batch_size(circuit_info, strategy);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << circuit_info.k, batch_size)?;
+        println!("preprocessor_preprocess_pcs_trim done");
         pp.pcs = pcs_pp;
         vp.pcs = pcs_vp;
         pp.num_permutation_z_polys = num_permutation_z_polys;
         vp.num_permutation_z_polys = num_permutation_z_polys;
-        pp.expression = expression.clone();
-        vp.expression = expression;
+        pp.expression = expression;
+        // vp.expression = expression;
         (pp, vp)
     };
-
+    println!("pp, vp done");
     let num_cross_terms = cross_term_expressions.len();
-
+    println!("num_cross_terms: {}", num_cross_terms);
     Ok((
         ProtostarProverParam {
             pp,

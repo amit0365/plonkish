@@ -6,6 +6,7 @@ use crate::{
         Itertools,
     },
 };
+use bincode::config;
 use halo2_base::{halo2_proofs::{
     circuit::Value,
     plonk::{
@@ -13,6 +14,7 @@ use halo2_base::{halo2_proofs::{
         Error, Fixed, FloorPlanner, Instance, Selector,
     },
 }, gates::circuit::BaseCircuitParams};
+use halo2_gadgets::ecc::chip::constants;
 use rand::RngCore;
 use std::{
     collections::{HashMap, HashSet},
@@ -263,12 +265,14 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             challenges,
             row_mapping: &self.row_mapping,
         };
+        let constants = self.constants.clone();
+        println!("constants: {:?}", constants.len());
 
         C::FloorPlanner::synthesize(
             &mut witness_collector,
             &self.circuit,
             self.config.clone(),
-            self.constants.clone(),
+            constants,
         )
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
@@ -620,6 +624,7 @@ fn advice_idx<F: Field>(cs: &ConstraintSystem<F>) -> Vec<usize> {
 }
 
 fn column_idx<F: Field>(cs: &ConstraintSystem<F>) -> HashMap<(Any, usize), usize> {
+    println!("column_idx");
     let advice_idx = advice_idx(cs);
     iter::empty()
         .chain((0..cs.num_instance_columns()).map(|idx| (Any::Instance, idx)))
@@ -685,6 +690,7 @@ fn convert_expression<F: Field>(
     challenge_idx: &[usize],
     expression: &plonk::Expression<F>,
 ) -> Expression<F> {
+    println!("convert_expression");
     expression.evaluate(
         &|constant| Expression::Constant(constant),
         &|selector| {

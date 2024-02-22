@@ -4,7 +4,7 @@ use crate::{
             preprocess, prove_steps, prove_decider, verify_decider, 
             ProtostarIvcVerifierParam,
             StepCircuit, CircuitExt
-        }, cyclefold::CycleFoldCircuit},
+        }, cyclefold::{self, CycleFoldCircuit}},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -146,7 +146,7 @@ where
 pub fn run_protostar_hyperplonk_ivc<C, P1, P2>(
     num_steps: usize,
     primary_circuit_params: BaseCircuitParams,
-    cyclefold_circuit_params: BaseCircuitParams,
+    cyclefold_num_vars: usize,
 ) -> (
     ProtostarIvcVerifierParam<
         C,
@@ -175,7 +175,6 @@ where
 {
     let primary_num_vars = primary_circuit_params.k;
     let primary_atp = strawman::accumulation_transcript_param();
-    let cyclefold_num_vars = cyclefold_circuit_params.k;
     let cyclefold_atp = strawman::accumulation_transcript_param();
     
     let preprocess_time = Instant::now();
@@ -193,7 +192,6 @@ where
         cyclefold_num_vars,
         cyclefold_atp,
         primary_circuit_params.clone(), 
-        cyclefold_circuit_params.clone(),
         seeded_std_rng(),
     )
     .unwrap();
@@ -362,28 +360,21 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_STEPS: usize = 3;
 
     let primary_circuit_params = BaseCircuitParams {
-            k: 18,
+            k: 9,
             num_advice_per_phase: vec![1],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
-            lookup_bits: Some(13),
+            lookup_bits: Some(1), //Some(13),
             num_instance_columns: 1,
         };
 
-    let cyclefold_circuit_params = BaseCircuitParams {
-            k: 18,
-            num_advice_per_phase: vec![1],
-            num_lookup_advice_per_phase: vec![0],
-            num_fixed: 1,
-            lookup_bits: Some(1),
-            num_instance_columns: 1,
-        };
+    let cyclefold_num_vars = 13;
 
     run_protostar_hyperplonk_ivc::<
         bn256::G1Affine,
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
-    >(NUM_STEPS, primary_circuit_params, cyclefold_circuit_params);
+    >(NUM_STEPS, primary_circuit_params, cyclefold_num_vars);
 }
 
 
@@ -1107,7 +1098,7 @@ pub mod strawman {
             lhs: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
             rhs: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
         ) -> Result<(), Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 88, 3);
             let ecc_chip = EccChip::new(&non_native_chip);
             ecc_chip.assert_equal(builder.main(), lhs.clone(), rhs.clone());
             Ok(())
@@ -1118,7 +1109,7 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             constant: C,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 88, 3);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.assign_constant_point(builder.main(), constant))
         }
@@ -1129,7 +1120,7 @@ pub mod strawman {
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
             witness: C,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 88, 3);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.assign_point_unchecked(builder.main(), witness))
         }
@@ -1141,7 +1132,7 @@ pub mod strawman {
             when_true: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
             when_false: &EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>,
         ) -> Result<EcPoint<C::Scalar, ProperCrtUint<C::Scalar>>, Error> {
-            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 128, 2);
+            let non_native_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, 88, 3);
             let ecc_chip = EccChip::new(&non_native_chip);
             Ok(ecc_chip.select(builder.main(), when_true.clone(), when_false.clone(), *condition))
         }

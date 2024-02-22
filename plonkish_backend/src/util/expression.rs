@@ -91,18 +91,20 @@ impl<F: Clone> Expression<F> {
     }
 
     pub fn distribute_powers<'a>(
-        exprs: impl IntoIterator<Item = &'a Self> + 'a,
+        exprs: Vec<Expression<F>>, //impl IntoIterator<Item = &'a Self> + 'a,
         base: &Self,
     ) -> Self
     where
         F: 'a,
     {
-        let mut exprs = exprs.into_iter().cloned().collect_vec();
-        match exprs.len() {
-            0 => unreachable!(),
-            1 => exprs.pop().unwrap(),
-            _ => Expression::DistributePowers(exprs, base.clone().into()),
-        }
+        //let mut exprs = exprs.into_iter().cloned().collect_vec();
+        // match exprs.len() {
+        //     0 => unreachable!(),
+        //     1 => exprs.pop().unwrap(),
+        //     _ => Expression::DistributePowers(exprs, base.clone().into()),
+        // }
+        
+        Expression::DistributePowers(exprs, base.clone().into())
     }
 
     #[allow(clippy::too_many_arguments)]

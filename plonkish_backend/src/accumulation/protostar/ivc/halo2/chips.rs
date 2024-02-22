@@ -22,7 +22,7 @@ use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonS
 
 pub const T: usize = 5;
 pub const R: usize = 4;
-pub const L: usize = 25;
+pub const L: usize = 1; // 25;
 
 #[derive(Clone)]
 pub struct CycleFoldChipConfig<C> 

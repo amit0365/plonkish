@@ -73,7 +73,7 @@ where
         circuit_info: &PlonkishCircuitInfo<F>,
     ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
         assert!(circuit_info.is_well_formed());
-
+        println!("assert_passed");
         preprocess(param, circuit_info, STRATEGY.into())
     }
 
@@ -258,7 +258,7 @@ where
         incoming: &Self::Accumulator,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
         _: impl RngCore,
-    ) -> Result<((Vec<F>, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
+    ) -> Result<((Vec<F>, F, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
         let ProtostarProverParam {
             pp,
             strategy,
@@ -273,7 +273,7 @@ where
             incoming.instance.absorb_into(transcript)?;
         }
 
-        let (r_le_bits, cross_term_comms) = match strategy {
+        let (r_le_bits, r, cross_term_comms) = match strategy {
             NoCompressing => {
                 let timer = start_timer(|| {
                     format!("evaluate_cross_term_polys-{}", cross_term_expressions.len())
@@ -300,7 +300,7 @@ where
                 let timer = start_timer(|| "fold_uncompressed");
                 accumulator.fold_uncompressed(incoming, &cross_term_polys, &cross_term_comms, &r);
                 end_timer(timer);
-                (r_le_bits, cross_term_comms)
+                (r_le_bits, r, cross_term_comms)
             }
             Compressing => {
                 let timer = start_timer(|| "evaluate_zeta_cross_term_poly");
@@ -344,11 +344,11 @@ where
                     &r,
                 );
                 end_timer(timer);
-                (r_le_bits, vec![zeta_cross_term_comm])
+                (r_le_bits, r, vec![zeta_cross_term_comm])
             }
         };
 
-        Ok((r_le_bits, cross_term_comms))
+        Ok((r_le_bits, r, cross_term_comms))
     }
 
     fn prove_nark_ec(
@@ -372,11 +372,16 @@ where
                 transcript.common_field_element(instance)?;
             }
         }
+        println!("instances: {:?}", instances);
+        println!("num_instances: {:?}", pp.num_instances);
 
         // Round 0..n
 
         let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
         let mut witness_comms = Vec::with_capacity(witness_polys.len());
+        println!("pp.lookups_prove_nark_ec: {:?}", pp.lookups);
+        println!("num_witness_polys: {:?}", pp.num_witness_polys);
+        println!("num_challenges: {:?}", pp.num_challenges);
         let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
         for (round, (num_witness_polys, num_challenges)) in pp
             .num_witness_polys
@@ -385,6 +390,8 @@ where
             .enumerate()
         {
             let timer = start_timer(|| format!("witness_collector-{round}"));
+            println!("round: {:?}", round);
+            println!("challenges: {:?}", challenges);
             let polys = circuit
                 .synthesize(round, &challenges)?
                 .into_iter()

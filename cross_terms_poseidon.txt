@@ -1,0 +1,170 @@
+
+running 1 test
+primary_preprocess_no_preprocess started
+assert_passed
+Time for scalars_fold_time: 42ns
+Time for scalars_reduce_time: 428.5µs
+Time for scalars_sum_time: 14.041µs
+u: 4
+alpha: Challenge(7)
+permutation_constraints_done
+preprocess_zero_check_on_every_row_expr_vec_done
+preprocess_zero_check_on_every_row_done
+preprocess_expression_vec_done
+expression_done
+lookup_constraints_inputs_tables_clone
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................52.324ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................50.279ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................48.197ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................49.849ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................147.677ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................139.774ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................152.254ms
+lookup_constraints_inputs_tables_clone
+compose_constraints_clone
+compose_constraints_done
+compose_expressions_vec_done
+compose_done
+preprocessor_preprocess_pcs_trim done
+pp, vp done
+num_cross_terms: 3
+primary_preprocess_no_preprocess done
+hash_truncated: 0x02577642d175cf8eebd3d185d3b4b45fc9b40d0ff3b10e47eee8abcd1a0cf253
+hash: 0x0e577642d175cf8eebd3d185d3b4b45fc9b40d0ff3b10e47eee8abcd1a0cf253
+cyclefold_preprocess started
+prepare to synthesize
+preprocess_polys
+circuit_info_done
+assert_passed
+Time for scalars_fold_time: 83ns
+Time for scalars_reduce_time: 7.683140459s
+Time for scalars_sum_time: 56.663708ms
+u: 17
+alpha: Challenge(20)
+permutation_constraints_done
+preprocess_zero_check_on_every_row_expr_vec_done
+preprocess_zero_check_on_every_row_done
+preprocess_expression_vec_done
+expression_done
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.499ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.764ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.520ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.940ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.533ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.293ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.174ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.594ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.752ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.284ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.521ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.704ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................3.261ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................5.801ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................6.836ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................6.521ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................5.614ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................6.500ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................5.716ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................5.703ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................5.854ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................6.321ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................6.206ms
+Start:   variable_base_msm-8192
+End:     variable_base_msm-8192 ....................................................5.982ms
+compose_constraints_clone
+compose_constraints_done
+compose_expressions_vec_done
+compose_done
+preprocessor_preprocess_pcs_trim done
+pp, vp done
+num_cross_terms: 6
+cyclefold_preprocess done
+primary_preprocess started
+cyclefold.avp ProtostarAccumulationVerifierParam { vp_digest: 0x0000000000000000000000000000000000000000000000000000000000000000, strategy: Compressing, num_instances: [1], num_witness_polys: [7, 0, 0, 1], num_challenges: [[0], [1], [1], [15]], num_cross_terms: 6 }
+num_challenges: [[0], [1], [1], [15]]
+num_witness_polys: [7, 0, 0, 1]
+Start:   fold_accumulator_from_nark witness_comms-8
+End:     fold_accumulator_from_nark witness_comms-8 ................................29.803ms
+Start:   fold_accumulator_from_nark e_comm-cross_term_comms.len()-1
+End:     fold_accumulator_from_nark e_comm-cross_term_comms.len()-1 ................3.724ms
+main_circuit_advice_lookup [6348, 0, 0]
+copy_manager.advice_equalities 191473
+copy_manager.constant_equalities 118485
+copy_manager.assigned_constants 0
+copy_manager.assigned_advices 430579
+Time for synthesize_accumulation_verifier: 480.153041ms
+assert_passed
+Time for scalars_fold_time: 42ns
+Time for scalars_reduce_time: 11.17575ms
+Time for scalars_sum_time: 62.334µs
+u: 4
+alpha: Challenge(7)
+permutation_constraints_done
+preprocess_zero_check_on_every_row_expr_vec_done
+preprocess_zero_check_on_every_row_done
+preprocess_expression_vec_done
+expression_done
+lookup_constraints_inputs_tables_clone
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................54.973ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................49.289ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................63.066ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................51.481ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................159.182ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................160.671ms
+lookup_constraints_inputs_tables_clone
+compose_constraints_clone
+compose_constraints_done
+compose_expressions_vec_done
+compose_done
+preprocessor_preprocess_pcs_trim done
+pp, vp done
+num_cross_terms: 3
+primary_preprocess done
+hash_truncated: 0x02577642d175cf8eebd3d185d3b4b45fc9b40d0ff3b10e47eee8abcd1a0cf253
+hash: 0x0e577642d175cf8eebd3d185d3b4b45fc9b40d0ff3b10e47eee8abcd1a0cf253
+Time for preprocess: 21.871802666s
+Start:   prove_accumulation_from_nark_ec-primary-13
+pp.lookups_prove_nark_ec: []
+num_witness_polys: [7]
+num_challenges: [0]
+··Start:   witness_collector-0
+round: 0
+challenges: []
+··End:     witness_collector-0 .....................................................94.125µs
+End:     prove_accumulation_from_nark_ec-primary-13 ................................149.125µs

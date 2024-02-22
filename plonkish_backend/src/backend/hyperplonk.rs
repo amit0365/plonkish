@@ -23,7 +23,7 @@ use crate::{
     Error,
 };
 use rand::RngCore;
-use std::{fmt::Debug, hash::Hash, iter, marker::PhantomData};
+use std::{fmt::Debug, hash::Hash, iter, marker::PhantomData, rc::Rc};
 
 pub(crate) mod preprocessor;
 pub(crate) mod prover;
@@ -126,6 +126,7 @@ where
 
         // Compose `VirtualPolynomialInfo`
         let (num_permutation_z_polys, expression) = compose(circuit_info);
+        println!("compose_done");
         let vp = HyperPlonkVerifierParam {
             pcs: pcs_vp,
             num_instances: circuit_info.num_instances.clone(),

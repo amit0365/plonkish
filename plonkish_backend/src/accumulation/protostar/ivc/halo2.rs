@@ -1028,7 +1028,7 @@ where
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
-    println!("primary_preprocess_no_circuit_info_done");
+
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,

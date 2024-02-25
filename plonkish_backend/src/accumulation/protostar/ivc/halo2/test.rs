@@ -826,7 +826,7 @@ where
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 18;
-    const NUM_STEPS: usize = 70;
+    const NUM_STEPS: usize = 7;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,

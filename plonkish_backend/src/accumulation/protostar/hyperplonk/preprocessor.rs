@@ -91,6 +91,11 @@ where
         zero_check_on_every_row,
     ) = match strategy {
         NoCompressing => {
+            // let alpha_prime_offset = if circuit_info.lookups.is_empty() {
+            //     challenge_offset + num_theta_primes
+            // } else {
+            //     challenge_offset + num_theta_primes + 1
+            // };
             let alpha_prime_offset = challenge_offset + num_theta_primes + 1;
             let num_builtin_witness_polys = 3 * circuit_info.lookups.len();
             let builtin_witness_poly_offset =

@@ -11,14 +11,14 @@ use halo2_gadgets::poseidon::primitives::{ConstantLength, Spec, Hash as inlineHa
 use itertools::Itertools;
 use core::{borrow::Borrow, marker::PhantomData};
 use std::{iter, time::Instant, cell::RefCell};
-use super::halo2::{chips::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs}, T, R, L}, test::strawman::{self, RANGE_BITS, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS, R_F, R_P, SECURE_MDS, NUM_HASH_BITS}};
+use super::halo2::{chips::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip_strawman::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs}, T, R, L}, test::strawman::{self, RANGE_BITS, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS, R_F, R_P, SECURE_MDS, NUM_HASH_BITS}};
 use super::halo2::test::strawman::{Chip, PoseidonTranscriptChip, fe_to_limbs, into_coordinates};
 use ivc::ProtostarAccumulationVerifierParam;
 use crate::{util::{
     end_timer, 
     transcript::{TranscriptRead, TranscriptWrite},
     arithmetic::{PrimeFieldBits, CurveAffine, TwoChainCurve, fe_to_fe, fe_from_bits_le, fe_to_bits_le, fe_truncated}, izip_eq, start_timer}, 
-    accumulation::{PlonkishNarkInstance, protostar::{ProtostarAccumulatorInstance, ivc::{self, halo2::chips::scalar_mul::ec_chip::ScalarMulConfigInputs}, ProtostarStrategy::{Compressing, NoCompressing}}}, frontend::halo2::CircuitExt, backend::PlonkishCircuit, poly::multilinear::MultilinearPolynomial};
+    accumulation::{PlonkishNarkInstance, protostar::{ProtostarAccumulatorInstance, ivc::{self, halo2::chips::scalar_mul::ec_chip_strawman::ScalarMulConfigInputs}, ProtostarStrategy::{Compressing, NoCompressing}}}, frontend::halo2::CircuitExt, backend::PlonkishCircuit, poly::multilinear::MultilinearPolynomial};
 use rand::RngCore;
 
 pub const NUM_ADVICE: usize = 5;

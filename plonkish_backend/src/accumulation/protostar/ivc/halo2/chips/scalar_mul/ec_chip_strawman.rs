@@ -22,7 +22,7 @@ use std::{
 
 use crate::{accumulation::protostar::ivc::cyclefold::CycleFoldInputs, util::arithmetic::{TwoChainCurve, PrimeFieldBits, Field}};
 
-pub const NUM_ADVICE: usize = 5;
+pub const NUM_ADVICE_SM: usize = 5;
 pub const NUM_FIXED: usize = 1;
 
 #[derive(Clone, Debug)]
@@ -32,8 +32,8 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    witness: [Column<Advice>; NUM_ADVICE],
-    selector: [Selector; NUM_ADVICE],
+    witness: [Column<Advice>; NUM_ADVICE_SM],
+    selector: [Selector; NUM_ADVICE_SM],
     _marker: PhantomData<C>,
 }
 
@@ -43,7 +43,7 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    pub fn configure(meta: &mut ConstraintSystem<C::Scalar>, advices: [Column<Advice>; NUM_ADVICE]) -> Self {
+    pub fn configure(meta: &mut ConstraintSystem<C::Scalar>, advices: [Column<Advice>; NUM_ADVICE_SM]) -> Self {
 
         // | row | r_bits_le | witness.x | witness.y | witness.x  |  witness.y |
         // | 0   |   1       |     x     |   y       |    x       |    y       |
@@ -161,10 +161,14 @@ where
             //     // x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
             //     // y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
 
-            //     vec![q_ec_acc_add_unequal.clone() * ((r0.clone() * r1.clone() + r0.clone() * (one.clone() - r1.clone()) + (one.clone() - r0.clone()) * r1.clone()) *
+            //     let constraint = vec![q_ec_acc_add_unequal.clone() * ((r0.clone() * r1.clone() + r0.clone() * (one.clone() - r1.clone()) + (one.clone() - r0.clone()) * r1.clone()) *
             //         (acc_next_x.clone() * dx_sq.clone() - dy_sq.clone() + acc_prev_x.clone() * dx_sq.clone() + sel_x.clone() * dx_sq.clone()) + (one.clone() - r0.clone())*(one.clone() - r1.clone())*(acc_next_x.clone() - acc_prev_x.clone())),
             //          q_ec_acc_add_unequal * ((r0.clone() * r1.clone() + r0.clone() * (one.clone() - r1.clone()) + (one.clone() - r0.clone()) * r1.clone()) * 
-            //         (acc_next_y.clone() * dx.clone() - dy.clone() * (acc_prev_x.clone() - acc_next_x.clone()) + acc_prev_y.clone() * dx.clone()) + (one.clone() - r0.clone())*(one.clone() - r1.clone())*(acc_next_y.clone() - acc_prev_y.clone()))]
+            //         (acc_next_y.clone() * dx.clone() - dy.clone() * (acc_prev_x.clone() - acc_next_x.clone()) + acc_prev_y.clone() * dx.clone()) + (one.clone() - r0.clone())*(one.clone() - r1.clone())*(acc_next_y.clone() - acc_prev_y.clone()))];
+                
+            //     // let degree_vec = constraint.iter().map(|c| c.degree()).collect_vec();  
+            //     // println!("degree_vec: {:?}", degree_vec);
+            //     constraint
 
             // });
 
@@ -235,8 +239,7 @@ where
         &self,
         mut layouter: impl Layouter<C::Scalar>,
         inputs: ScalarMulConfigInputs<C>,
-        iteration: usize,
-    ) -> Result<[AssignedCell<C::Scalar, C::Scalar>; 5], Error> {
+    ) -> Result<[AssignedCell<C::Scalar, C::Scalar>; NUM_ADVICE_SM], Error> {
 
         layouter.assign_region(
             || "ScalarMulChipConfig assign",
@@ -255,37 +258,33 @@ where
             assert_eq!(inputs.rnark_y_vec.len(), inputs.rnark_x_vec.len());
 
                 for row in 0..nark_vec_len {
-                    let row_offset = row + (iteration - 1) * nark_vec_len;
-                    region.assign_advice(|| "r_vec",self.witness[0], row_offset, || inputs.rbits_vec[row])?;
-                    region.assign_advice(|| "nark_x_vec",self.witness[1], row_offset, || inputs.nark_x_vec[row])?;
-                    region.assign_advice(|| "nark_y_vec",self.witness[2], row_offset, || inputs.nark_y_vec[row])?;
-                    region.assign_advice(|| "rnark_x_vec",self.witness[3], row_offset, || inputs.rnark_x_vec[row])?;
-                    region.assign_advice(|| "rnark_y_vec",self.witness[4], row_offset, || inputs.rnark_y_vec[row])?;
+                    region.assign_advice(|| "r_vec",self.witness[0], row, || inputs.rbits_vec[row])?;
+                    region.assign_advice(|| "nark_x_vec",self.witness[1], row, || inputs.nark_x_vec[row])?;
+                    region.assign_advice(|| "nark_y_vec",self.witness[2], row, || inputs.nark_y_vec[row])?;
+                    region.assign_advice(|| "rnark_x_vec",self.witness[3], row, || inputs.rnark_x_vec[row])?;
+                    region.assign_advice(|| "rnark_y_vec",self.witness[4], row, || inputs.rnark_y_vec[row])?;
 
-                    let row_mod = row_offset % nark_vec_len;
-
-                    if row_mod != 0 {
-                        if row_mod != nark_vec_len - 1 {
+                    if row != 0 {
+                        if row != nark_vec_len - 1 {
                             self.selector[0].enable(&mut region, row - 1)?;
                         }
 
-                        if row_mod % 2 != 0 && row_mod < nark_vec_len - 3 {
-                            self.selector[1].enable(&mut region, row_offset)?;
-                            // self.selector[2].enable(&mut region, row_offset)?;
+                        if row % 2 != 0 && row < nark_vec_len - 3 {
+                            self.selector[1].enable(&mut region, row)?;
+                            self.selector[2].enable(&mut region, row)?;
                         }
 
-                        if row_mod == nark_vec_len - 2 {
-                            self.selector[3].enable(&mut region, row_offset)?;
+                        if row == nark_vec_len - 2 {
+                            self.selector[3].enable(&mut region, row)?;
                         }
 
-                        if row_mod == nark_vec_len - 1 {
-                            self.selector[4].enable(&mut region, row_offset)?;
+                        if row == nark_vec_len - 1 {
+                            self.selector[4].enable(&mut region, row)?;
                         }
                     }
                 }
 
-                let row_offset = (iteration - 1) * nark_vec_len;
-                let third_last_row = nark_vec_len + row_offset;
+                let third_last_row = nark_vec_len + row;
                 let second_last_row = third_last_row + 1;
                 self.selector[3].enable(&mut region, third_last_row)?;
 
@@ -311,10 +310,6 @@ where
 
 #[derive(Debug)]
 pub struct ScalarMulChipInputs<F, C> 
-// where
-//     C: TwoChainCurve,
-//     C::Scalar: BigPrimeField + PrimeFieldBits,
-//     C::Base: BigPrimeField + PrimeFieldBits,
 {   
     pub r_le_bits: Vec<F>,
     pub r: F,
@@ -369,7 +364,7 @@ where
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        let advices = [0; NUM_ADVICE].map(|_| meta.advice_column());
+        let advices = [0; NUM_ADVICE_SM].map(|_| meta.advice_column());
         ScalarMulChipConfig::configure(meta, advices)
     }
 
@@ -380,7 +375,7 @@ where
     ) -> Result<(), Error> {
 
         for inputs in self.inputs.iter() {
-            config.assign(layouter.namespace(|| "ScalarMulChip"), inputs.clone(), 1)?;
+            config.assign(layouter.namespace(|| "ScalarMulChip"), inputs.clone())?;
         }
 
         Ok(())
@@ -392,13 +387,10 @@ mod test {
     use halo2_base::halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fr, Fq, G1Affine, G1}, grumpkin}};
     use halo2_proofs::{halo2curves::{Coordinates, group::{Group, Curve, cofactor::CofactorCurveAffine}, CurveAffine}, arithmetic::Field};
     use itertools::Itertools;
-    use crate::{accumulation::protostar::ivc::halo2::chips::scalar_mul::ec_chip::ScalarMulConfigInputs, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
+    use crate::{accumulation::protostar::ivc::halo2::chips::scalar_mul::ec_chip_strawman::ScalarMulConfigInputs, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
     use super::ScalarMulChip;
     use rand::{rngs::OsRng, Rng};
 
-    // fn form_circuit(){
-        
-    // }
         
     #[test]
     fn ec_vec() {

@@ -12,17 +12,20 @@ use halo2_base::{
 use halo2_base::halo2_proofs::arithmetic::Field;
 use rand::rngs::OsRng;
 use std::marker::PhantomData;
-use scalar_mul::ec_chip::ScalarMulChip;
+use scalar_mul::ec_chip_strawman::ScalarMulChip;
 use crate::{   
     accumulation::protostar::ivc::cyclefold::CycleFoldInputs, 
     util::arithmetic::{PrimeFieldBits, CurveAffine, TwoChainCurve, fe_to_fe, fe_from_bits_le, fe_to_bits_le, fe_truncated}, 
 };
 use rand::RngCore;
-use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE}};
+use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip_strawman::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE_SM}};
 
 pub const T: usize = 5;
 pub const R: usize = 4;
-pub const L: usize = 1; // 25;
+pub const L: usize = 25;
+
+pub const NUM_ADVICE: usize = T+1;
+pub const NUM_CONSTANTS: usize = 2*T;
 
 #[derive(Clone)]
 pub struct CycleFoldChipConfig<C> 
@@ -62,9 +65,9 @@ where
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
         
-        let advices = [0; 6].map(|_| meta.advice_column());
-        let constants = [0; 10].map(|_| meta.fixed_column());
-        meta.enable_constant(constants[5]);
+        let advices = [0; NUM_ADVICE].map(|_| meta.advice_column());
+        let constants = [0; NUM_CONSTANTS].map(|_| meta.fixed_column());
+        meta.enable_constant(constants[T]);
 
         for col in &advices {
             meta.enable_equality(*col);
@@ -80,13 +83,13 @@ where
         let poseidon = 
             PoseidonChip::<C, PoseidonSpec, T, R, L>::configure(
                 meta,
-                advices[..5].try_into().unwrap(),
-                advices[5],
-                constants[..5].try_into().unwrap(), 
-                constants[5..].try_into().unwrap(), 
+                advices[..T].try_into().unwrap(),
+                advices[T],
+                constants[..T].try_into().unwrap(), 
+                constants[T..].try_into().unwrap(), 
             );
 
-        let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices[..NUM_ADVICE].try_into().unwrap());
+        let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices[..NUM_ADVICE_SM].try_into().unwrap());
 
         Self::Config {
             poseidon,
@@ -102,15 +105,15 @@ where
     ) -> Result<(), Error> {
 
         let mut hash_inputs = Vec::new();
-        let hash_chip = PoseidonChip::<C, PoseidonSpec, 5, 4, L>::construct(
+        let hash_chip = PoseidonChip::<C, PoseidonSpec, T, R, L>::construct(
             config.poseidon,
         );
 
         for i in 0..self.inputs.len() {
             if i == 0 {
-                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), self.inputs[i].clone(), 1)?);
+                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), self.inputs[i].clone())?);
             } else {
-                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), self.inputs[i].clone(), 1)?[1..]);
+                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), self.inputs[i].clone())?[1..]);
             }
         }
 
@@ -136,7 +139,7 @@ mod test {
     use halo2_base::halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fr, Fq, G1Affine, G1}, grumpkin}};
     use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
     use halo2_proofs::{halo2curves::{Coordinates, group::{Group, Curve, cofactor::CofactorCurveAffine}, CurveAffine}, arithmetic::Field};
-    use crate::{accumulation::protostar::ivc::halo2::{chips::{poseidon::spec::{PoseidonSpec, PoseidonSpecFp}, scalar_mul::ec_chip::ScalarMulConfigInputs}, test::strawman::into_coordinates}, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
+    use crate::{accumulation::protostar::ivc::halo2::{chips::{poseidon::spec::{PoseidonSpec, PoseidonSpecFp}, scalar_mul::ec_chip_strawman::ScalarMulConfigInputs}, test::strawman::into_coordinates}, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
     use super::{CyclefoldChip, L};
     use rand::{rngs::OsRng, Rng};
     use itertools::Itertools;

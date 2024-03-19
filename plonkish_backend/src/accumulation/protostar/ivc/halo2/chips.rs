@@ -20,8 +20,8 @@ use crate::{
 use rand::RngCore;
 use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip_strawman::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE_SM}};
 
-pub const T: usize = 5;
-pub const R: usize = 4;
+pub const T: usize = 4;
+pub const R: usize = 3;
 pub const L: usize = 25;
 
 pub const NUM_ADVICE: usize = T+1;
@@ -67,7 +67,6 @@ where
         
         let advices = [0; NUM_ADVICE].map(|_| meta.advice_column());
         let constants = [0; NUM_CONSTANTS].map(|_| meta.fixed_column());
-        meta.enable_constant(constants[T]);
 
         for col in &advices {
             meta.enable_equality(*col);
@@ -75,6 +74,7 @@ where
 
         for col in &constants {
             meta.enable_equality(*col);
+            meta.enable_constant(*col);
         }
 
         let instance = meta.instance_column();
@@ -140,14 +140,11 @@ mod test {
     use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
     use halo2_proofs::{halo2curves::{Coordinates, group::{Group, Curve, cofactor::CofactorCurveAffine}, CurveAffine}, arithmetic::Field};
     use crate::{accumulation::protostar::ivc::halo2::{chips::{poseidon::spec::{PoseidonSpec, PoseidonSpecFp}, scalar_mul::ec_chip_strawman::ScalarMulConfigInputs}, test::strawman::into_coordinates}, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
-    use super::{CyclefoldChip, L};
+    use super::{CyclefoldChip, L, T, R};
     use rand::{rngs::OsRng, Rng};
     use itertools::Itertools;
     use std::iter;
 
-    // fn form_circuit(){
-        
-    // }
         
     #[test]
     fn cyclefold_chip() {
@@ -307,7 +304,7 @@ mod test {
         assert_eq!(L, message.len());
 
         let hash =
-            inlineHash::<Fq, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
+            inlineHash::<Fq, PoseidonSpec, ConstantLength<L>, T, R>::init().hash(message);
 
         let circuit = CyclefoldChip::<grumpkin::G1Affine> { inputs: vec![inputs; input_len] };
         MockProver::run(k, &circuit, vec![vec![hash]]).unwrap().assert_satisfied();

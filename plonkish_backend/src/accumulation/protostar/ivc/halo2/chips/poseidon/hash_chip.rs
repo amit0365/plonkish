@@ -1,5 +1,3 @@
-//! An easy-to-use implementation of the Poseidon Hash in the form of a Halo2 Chip. While the Poseidon Hash function
-//! is already implemented in halo2_gadgets, there is no wrapper chip that makes it easy to use in other circuits.
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
 use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Chip, Value},
@@ -13,7 +11,13 @@ use rand::rngs::OsRng;
 use super::spec::{PoseidonSpecFp, PoseidonSpec};
 use std::marker::PhantomData;
 
-const L: usize = 25;
+pub const T: usize = 4;
+pub const R: usize = 3;
+pub const L: usize = 25;
+
+pub const NUM_ADVICE: usize = T+1;
+pub const NUM_CONSTANTS: usize = 2*T;
+
 
 #[derive(Debug, Clone)]
 pub struct PoseidonConfig<C, const WIDTH: usize, const RATE: usize, const L: usize> 
@@ -49,7 +53,6 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    /// Constructs a new Poseidon Chip given a PoseidonConfig
     pub fn construct(config: PoseidonConfig<C, WIDTH, RATE, L>) -> Self {
         Self {
             config,
@@ -57,7 +60,6 @@ where
         }
     }
 
-    /// Configures the Poseidon Chip
     pub fn configure(
         meta: &mut ConstraintSystem<C::Scalar>,
         state: [Column<Advice>; WIDTH],
@@ -70,7 +72,6 @@ where
         PoseidonConfig { pow5_config }
     }
 
-    /// Performs poseidon hash on the given input cells. Returns the output cell.
     pub fn hash(
         &self,
         mut layouter: impl Layouter<C::Scalar>,
@@ -93,8 +94,6 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 {
     message: [C::Scalar; L],
-    // output: Fp,
-    //_marker: PhantomData<S>,
 }
 
 impl<C> Circuit<C::Scalar> for PoseidonHashCircuit<C>
@@ -103,7 +102,7 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    type Config = (PoseidonConfig<C, 5, 4, L>, [Column<Advice>; 6]);
+    type Config = (PoseidonConfig<C, T, R, L>, [Column<Advice>; NUM_ADVICE]);
     type FloorPlanner = SimpleFloorPlanner;
     type Params = ();
 
@@ -112,17 +111,17 @@ where
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        let advices = [0; 6].map(|_| meta.advice_column());
-        let constants = [0; 10].map(|_| meta.fixed_column());
-        meta.enable_constant(constants[5]);
+        let advices = [0; NUM_ADVICE].map(|_| meta.advice_column());
+        let constants = [0; NUM_CONSTANTS].map(|_| meta.fixed_column());
+        meta.enable_constant(constants[T]);
 
 
-        let poseidon_config = PoseidonChip::<C, PoseidonSpec, 5, 4, L>::configure(
+        let poseidon_config = PoseidonChip::<C, PoseidonSpec, T, R, L>::configure(
             meta,
-            advices[..5].try_into().unwrap(),
-            advices[5],
-            constants[..5].try_into().unwrap(), 
-            constants[5..].try_into().unwrap(), 
+            advices[..T].try_into().unwrap(),
+            advices[T],
+            constants[..T].try_into().unwrap(), 
+            constants[T..].try_into().unwrap(), 
         );
 
         (poseidon_config, advices)
@@ -134,7 +133,7 @@ where
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
 
-        let chip = PoseidonChip::<C, PoseidonSpec, 5, 4, L>::construct(
+        let chip = PoseidonChip::<C, PoseidonSpec, T, R, L>::construct(
             config.0,
         ); 
 
@@ -164,7 +163,7 @@ where
             message,
         )?;
 
-        print!("hash: {:?}", hash.value_field());
+        print!("circuit_hash: {:?}", hash.value_field());
 
         Ok(())
 
@@ -172,7 +171,7 @@ where
 }
 
 #[test]
-fn poseidon_hash_longer_input_custom() {
+fn hash() {
 
     use plotters::prelude::*;
     let root = BitMapBackend::new("HashChip.png", (1024, 3096)).into_drawing_area();
@@ -183,8 +182,8 @@ fn poseidon_hash_longer_input_custom() {
 
     let message = [0; L].map(|_| Fp::random(rng));
     let output =
-        inlineHash::<_, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
-    println!("output: {:?}", output);
+        inlineHash::<_, PoseidonSpec, ConstantLength<L>, T, R>::init().hash(message);
+    println!("output_inlineHash: {:?}", output);
 
     let k = 9;
     let circuit = PoseidonHashCircuit::<grumpkin::G1Affine> {

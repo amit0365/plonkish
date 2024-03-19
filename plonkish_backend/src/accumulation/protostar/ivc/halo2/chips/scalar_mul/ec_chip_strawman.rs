@@ -121,56 +121,56 @@ where
         // | 4   |   1       |    16x    |  16y      |    29x     |   29y      |
 
 
-            // meta.create_gate("ec_acc_add_unequal", |meta| {
+            meta.create_gate("ec_acc_add_unequal", |meta| {
 
-            //     let q_ec_acc_add_unequal = meta.query_selector(q_ec_acc_add_unequal);
-            //     let x = meta.query_advice(col_px, Rotation(0));
-            //     let y = meta.query_advice(col_py, Rotation(0));
-            //     let x2 = meta.query_advice(col_px, Rotation(1));
-            //     let y2 = meta.query_advice(col_py, Rotation(1));
-            //     let x3 = meta.query_advice(col_acc_x, Rotation(0));
-            //     let y3 = meta.query_advice(col_acc_y, Rotation(0));
-            //     let acc_prev_x = meta.query_advice(col_acc_x, Rotation(-1));
-            //     let acc_prev_y = meta.query_advice(col_acc_y, Rotation(-1));
-            //     let acc_next_x = meta.query_advice(col_acc_x, Rotation(1));
-            //     let acc_next_y = meta.query_advice(col_acc_y, Rotation(1));
+                let q_ec_acc_add_unequal = meta.query_selector(q_ec_acc_add_unequal);
+                let x = meta.query_advice(col_px, Rotation(0));
+                let y = meta.query_advice(col_py, Rotation(0));
+                let x2 = meta.query_advice(col_px, Rotation(1));
+                let y2 = meta.query_advice(col_py, Rotation(1));
+                let x3 = meta.query_advice(col_acc_x, Rotation(0));
+                let y3 = meta.query_advice(col_acc_y, Rotation(0));
+                let acc_prev_x = meta.query_advice(col_acc_x, Rotation(-1));
+                let acc_prev_y = meta.query_advice(col_acc_y, Rotation(-1));
+                let acc_next_x = meta.query_advice(col_acc_x, Rotation(1));
+                let acc_next_y = meta.query_advice(col_acc_y, Rotation(1));
 
-            //     let r0 = meta.query_advice(col_rbits, Rotation(0));
-            //     let r1 = meta.query_advice(col_rbits, Rotation(1));
-            //     let one = Expression::Constant(C::Scalar::ONE);
-            //     let zero = Expression::Constant(C::Scalar::ZERO);
+                let r0 = meta.query_advice(col_rbits, Rotation(0));
+                let r1 = meta.query_advice(col_rbits, Rotation(1));
+                let one = Expression::Constant(C::Scalar::ONE);
+                let zero = Expression::Constant(C::Scalar::ZERO);
 
-            //     // (1-q0)(1-q1)*zero + q0(1-q1)*x + (1-q0)q1*2x + q0q1*3x 
-            //     let sel_x = r0.clone() * r1.clone() * x3.clone() + 
-            //                 r0.clone() * (one.clone() - r1.clone()) * x.clone() + 
-            //                 (one.clone() - r0.clone()) * r1.clone() * x2.clone() +
-            //                 zero.clone(); //(one.clone() - r0.clone())*(one.clone() - r1.clone()); 
+                // (1-q0)(1-q1)*zero + q0(1-q1)*x + (1-q0)q1*2x + q0q1*3x 
+                let sel_x = r0.clone() * r1.clone() * x3.clone() + 
+                            r0.clone() * (one.clone() - r1.clone()) * x.clone() + 
+                            (one.clone() - r0.clone()) * r1.clone() * x2.clone() +
+                            zero.clone(); //(one.clone() - r0.clone())*(one.clone() - r1.clone()); 
 
-            //     let sel_y = r0.clone() * r1.clone() * y3.clone() + 
-            //                 r0.clone() * (one.clone() - r1.clone()) * y.clone() + 
-            //                 (one.clone() - r0.clone()) * r1.clone() * y2.clone() +
-            //                 zero.clone(); 
+                let sel_y = r0.clone() * r1.clone() * y3.clone() + 
+                            r0.clone() * (one.clone() - r1.clone()) * y.clone() + 
+                            (one.clone() - r0.clone()) * r1.clone() * y2.clone() +
+                            zero.clone(); 
 
-            //     let dx = sel_x.clone() - acc_prev_x.clone();
-            //     let dy = sel_y.clone() - acc_prev_y.clone();
-            //     let dx_sq = dx.clone() * dx.clone();
-            //     let dy_sq = dy.clone() * dy.clone();
+                let dx = sel_x.clone() - acc_prev_x.clone();
+                let dy = sel_y.clone() - acc_prev_y.clone();
+                let dx_sq = dx.clone() * dx.clone();
+                let dy_sq = dy.clone() * dy.clone();
 
 
-            //     // if r0 != 0 && r1 != 0 otherwise acc_prev = acc_next
-            //     // x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
-            //     // y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
+                // if r0 != 0 && r1 != 0 otherwise acc_prev = acc_next
+                // x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
+                // y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
 
-            //     let constraint = vec![q_ec_acc_add_unequal.clone() * ((r0.clone() * r1.clone() + r0.clone() * (one.clone() - r1.clone()) + (one.clone() - r0.clone()) * r1.clone()) *
-            //         (acc_next_x.clone() * dx_sq.clone() - dy_sq.clone() + acc_prev_x.clone() * dx_sq.clone() + sel_x.clone() * dx_sq.clone()) + (one.clone() - r0.clone())*(one.clone() - r1.clone())*(acc_next_x.clone() - acc_prev_x.clone())),
-            //          q_ec_acc_add_unequal * ((r0.clone() * r1.clone() + r0.clone() * (one.clone() - r1.clone()) + (one.clone() - r0.clone()) * r1.clone()) * 
-            //         (acc_next_y.clone() * dx.clone() - dy.clone() * (acc_prev_x.clone() - acc_next_x.clone()) + acc_prev_y.clone() * dx.clone()) + (one.clone() - r0.clone())*(one.clone() - r1.clone())*(acc_next_y.clone() - acc_prev_y.clone()))];
+                let constraint = vec![q_ec_acc_add_unequal.clone() * ((r0.clone() * r1.clone() + r0.clone() * (one.clone() - r1.clone()) + (one.clone() - r0.clone()) * r1.clone()) *
+                    (acc_next_x.clone() * dx_sq.clone() - dy_sq.clone() + acc_prev_x.clone() * dx_sq.clone() + sel_x.clone() * dx_sq.clone()) + (one.clone() - r0.clone())*(one.clone() - r1.clone())*(acc_next_x.clone() - acc_prev_x.clone())),
+                     q_ec_acc_add_unequal * ((r0.clone() * r1.clone() + r0.clone() * (one.clone() - r1.clone()) + (one.clone() - r0.clone()) * r1.clone()) * 
+                    (acc_next_y.clone() * dx.clone() - dy.clone() * (acc_prev_x.clone() - acc_next_x.clone()) + acc_prev_y.clone() * dx.clone()) + (one.clone() - r0.clone())*(one.clone() - r1.clone())*(acc_next_y.clone() - acc_prev_y.clone()))];
                 
-            //     // let degree_vec = constraint.iter().map(|c| c.degree()).collect_vec();  
-            //     // println!("degree_vec: {:?}", degree_vec);
-            //     constraint
+                // let degree_vec = constraint.iter().map(|c| c.degree()).collect_vec();  
+                // println!("degree_vec: {:?}", degree_vec);
+                constraint
 
-            // });
+            });
 
 
             meta.create_gate("ec_add_unequal_r0_last", |meta| {
@@ -284,7 +284,7 @@ where
                     }
                 }
 
-                let third_last_row = nark_vec_len - 3;
+                let third_last_row = nark_vec_len;
                 let second_last_row = third_last_row + 1;
                 self.selector[3].enable(&mut region, third_last_row)?;
 

@@ -284,7 +284,7 @@ where
                     }
                 }
 
-                let third_last_row = nark_vec_len + row;
+                let third_last_row = nark_vec_len - 3;
                 let second_last_row = third_last_row + 1;
                 self.selector[3].enable(&mut region, third_last_row)?;
 

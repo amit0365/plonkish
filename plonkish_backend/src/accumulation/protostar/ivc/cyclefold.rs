@@ -406,7 +406,7 @@ where
 
         for i in 0..sm_config_inputs.len() {
             if i == 0 {
-                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), sm_config_inputs[i].clone(), 1)?);
+                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), sm_config_inputs[i].clone())?);
             } else {
                 // hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), sm_config_inputs[i].clone(), 1)?[1..]);
             }

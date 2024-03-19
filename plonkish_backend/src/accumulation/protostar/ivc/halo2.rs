@@ -1653,24 +1653,20 @@ where
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, primary_circuit_params.clone());
 
-    println!("primary_preprocess_no_preprocess started");
     let (_, primary_vp_without_preprocess) = {
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
             Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
         };
-    println!("primary_preprocess_no_preprocess done");
     
     let cyclefold_circuit = CycleFoldCircuit::new(
         Some(ProtostarAccumulationVerifierParam::from(&primary_vp_without_preprocess)));
     let mut cyclefold_circuit =
             Halo2Circuit::new::<HyperPlonk<P2>>(cyclefold_num_vars, cyclefold_circuit, ());
         
-    println!("cyclefold_preprocess started");
     let (cyclefold_pp, cyclefold_vp) = {
             let cyclefold_circuit_info = cyclefold_circuit.circuit_info().unwrap();
             Protostar::<HyperPlonk<P2>>::preprocess(&cyclefold_param, &cyclefold_circuit_info).unwrap()
     };
-    println!("cyclefold_preprocess done");
 
     primary_circuit.update_witness(|circuit| {
             circuit.primary_avp = ProtostarAccumulationVerifierParam::from(&primary_vp_without_preprocess);
@@ -1685,11 +1681,9 @@ where
         );
     });
 
-    println!("primary_preprocess started");
     let primary_circuit_info = primary_circuit.circuit_info().unwrap();
     let (primary_pp, primary_vp) =
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
-    println!("primary_preprocess done");
 
     let vp_digest = fe_truncated_from_le_bytes(
         Keccak256::digest(bincode::serialize(&(&primary_vp, &cyclefold_vp)).unwrap()),

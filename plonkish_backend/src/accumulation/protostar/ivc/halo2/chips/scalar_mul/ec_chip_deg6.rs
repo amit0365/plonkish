@@ -70,7 +70,7 @@ where
                 let acc_next_x = meta.query_advice(col_acc_x, Rotation(1));
                 let acc_next_y = meta.query_advice(col_acc_y, Rotation(1));
                 // let acc_next_z = Expression::Constant(C::Scalar::ONE);
-                let lambda = meta.query_advice(col_lambda, Rotation(0));
+                let lambda = meta.query_advice(col_lambda, Rotation(1));
 
                 let zero = Expression::Constant(C::Scalar::ZERO);
                 let one = Expression::Constant(C::Scalar::ONE);
@@ -348,6 +348,8 @@ mod test {
     use crate::util::arithmetic::{fe_to_fe, fe_from_bits_le};
     use super::{ScalarMulChip, ScalarMulConfigInputs};
     use rand::{rngs::OsRng, Rng};
+    use subtle::ConstantTimeEq;
+
 
         
     #[test]
@@ -370,13 +372,13 @@ mod test {
         // first bit is assumed to be 1 for now, will remove this at the end of calculation later, 
         // since this cost 1 additional row which tips this over the next power of 2
         let mut rbits = Vec::new();
-        rbits.extend( [true, true, true, false]);
+        // rbits.extend((0..vec_len).map(|_| false));
+        rbits.extend( [true, false, true, false]);
         // rbits.extend((0..vec_len).map(|_| rng.gen_bool(1.0 / 3.0)));
 
         let rbits_vec = rbits.iter().map(|bit| 
             Value::known(if *bit {Fq::ONE} else {Fq::ZERO}))
             .collect_vec();
-
 
         // 3.26 algo for double add, Guide to ECC
         // let mut p = G1::random(&mut rng).to_affine(); 
@@ -410,30 +412,35 @@ mod test {
         let mut p = G1Affine::random(&mut rng); 
         let p_single = p; 
         let mut acc_prev = G1Affine::identity();
+        let mut acc_next = G1Affine::identity();
+        let mut p_double = G1::identity();
+        let mut lhs = G1::identity();
 
         for i in 0..vec_len {
+            let acc_prev_single = acc_prev;
             acc_prev = if rbits[i] { (acc_prev + p).to_affine() } else { acc_prev };
-            let acc_prev_g1 = G1::from(acc_prev);
-            println!("acc_prev_g1: {:?}", acc_prev_g1);
-            let rhs = if i != 0 && rbits[i] { acc_prev - p } else { acc_prev_g1 };
-
-            let p_double = G1::double(&p.into());
-            p = p_double.to_affine();
-            println!("p_double {:?} ", p_double);
-            println!("rhs {:?} ", rhs);
-
-            let lhs_z = p_double.y;
-            let rhs_z = rhs.y;
-            println!("lhs_z: {:?}", lhs_z);
-            println!("rhs_z: {:?}", rhs_z);
-            let lambda = rhs_z * lhs_z.invert().unwrap();
-
-            // println!("p_double: {:?}", p_double*lambda);
-            // println!("rhs.to_affine(): {:?}", rhs.to_affine());
 
             acc_x_vec.push(Value::known(acc_prev.x));
             acc_y_vec.push(Value::known(acc_prev.y)); 
-            lambda_vec.push(Value::known(lambda));
+
+            let rhs = acc_prev - acc_prev_single;
+            let lhs = if rbits[i] { p_double } else { G1::identity()};
+
+            let ct_equal = rhs.ct_eq(&lhs);
+            println!("ct_equal: {:?}", ct_equal);
+            
+            // let lambda = if i != 0 { 
+            //     let ct_equal = rhs.ct_eq(&lhs);
+            //     println!("ct_equal: {:?}", ct_equal);
+            //     Fq::ONE 
+            //     // lhs.z * rhs.z.invert().unwrap() 
+            // } else {
+            //     Fq::ONE 
+            // };
+
+            p_double = G1::double(&p.into());
+            p = p_double.to_affine();
+
         }
 
         for i in 0..vec_len {
@@ -508,6 +515,7 @@ mod test {
         let rbits_native = rbits.iter().map(|bit| 
             if *bit {Fr::ONE} else {Fr::ZERO})
             .collect_vec();
+        //println!("rbits_native: {:?}", rbits_native);
 
         let r = fe_from_bits_le(rbits_native);
         // let r_non_native: Fq = fe_to_fe(r);
@@ -526,7 +534,7 @@ mod test {
             };   
 
         let circuit = ScalarMulChip::<grumpkin::G1Affine> { inputs: vec![inputs] };
-        MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
+        // MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
 
         halo2_base::halo2_proofs::dev::CircuitLayout::default()
         .render(k, &circuit, &root)

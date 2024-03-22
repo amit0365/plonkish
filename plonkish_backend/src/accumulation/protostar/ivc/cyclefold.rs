@@ -6,14 +6,14 @@ use itertools::Itertools;
 use core::{borrow::Borrow, marker::PhantomData};
 use std::{iter, time::Instant, cell::RefCell};
 //use super::halo2::{chips::{poseidon::{spec::PoseidonSpec}, scalar_mul::ec_chip::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs}, T, R, L}, test::strawman::{self, RANGE_BITS, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS, R_F, R_P, SECURE_MDS, NUM_HASH_BITS}};
-use super::halo2::{chips::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip_strawman::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs, NUM_ADVICE_SM}, L, NUM_CONSTANTS, R, T}, test::strawman::{self, NUM_CHALLENGE_BITS, NUM_HASH_BITS, NUM_LIMBS, NUM_LIMB_BITS, RANGE_BITS, R_F, R_P, SECURE_MDS}};
+use super::halo2::{chips::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ec_chip_pro::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs, NUM_ADVICE_SM}, L, NUM_CONSTANTS, R, T}, test::strawman::{self, NUM_CHALLENGE_BITS, NUM_HASH_BITS, NUM_LIMBS, NUM_LIMB_BITS, RANGE_BITS, R_F, R_P, SECURE_MDS}};
 use super::halo2::test::strawman::{Chip, PoseidonTranscriptChip, fe_to_limbs, into_coordinates};
 use ivc::ProtostarAccumulationVerifierParam;
 use crate::{util::{
     end_timer, 
     transcript::{TranscriptRead, TranscriptWrite},
     arithmetic::{PrimeFieldBits, CurveAffine, TwoChainCurve, fe_to_fe, fe_from_bits_le, fe_to_bits_le, fe_truncated}, izip_eq, start_timer}, 
-    accumulation::{PlonkishNarkInstance, protostar::{ProtostarAccumulatorInstance, ivc::{self, halo2::chips::scalar_mul::ec_chip_strawman::ScalarMulConfigInputs}, ProtostarStrategy::{Compressing, NoCompressing}}}, frontend::halo2::CircuitExt, backend::PlonkishCircuit, poly::multilinear::MultilinearPolynomial};
+    accumulation::{PlonkishNarkInstance, protostar::{ProtostarAccumulatorInstance, ivc::{self, halo2::chips::scalar_mul::ec_chip_proj_deg11::ScalarMulConfigInputs}, ProtostarStrategy::{Compressing, NoCompressing}}}, frontend::halo2::CircuitExt, backend::PlonkishCircuit, poly::multilinear::MultilinearPolynomial};
 use rand::{rngs::OsRng, RngCore};
 
 pub const NUM_ADVICE: usize = 5;
@@ -45,7 +45,7 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    poseidon: PoseidonConfig<C, T, R, L>,
+    // poseidon: PoseidonConfig<C, T, R, L>,
     scalar_mul: ScalarMulChipConfig<C>,
     instance: Column<Instance>,
 }
@@ -178,7 +178,7 @@ where
         Ok(sm_inputs)
     }
 
-    // pub fn sm_config_inputs_doubling(
+    // pub fn sm_config_inputs(
     //     &self,
     //     sm_inputs: &Vec<ScalarMulChipInputs<C::Scalar, C::Secondary>>
     // ) -> Result<Vec<ScalarMulConfigInputs<C>>, Error> {
@@ -300,128 +300,6 @@ where
     //     Ok(sm_config_inputs)
     // }
 
-    pub fn sm_config_inputs(
-        &self,
-        sm_inputs: &Vec<ScalarMulChipInputs<C::Scalar, C::Secondary>>
-    ) -> Result<Vec<ScalarMulConfigInputs<C>>, Error> {
-
-        let vec_len: usize = 129;
-        let mut sm_config_inputs = Vec::new();
-        for inputs in sm_inputs{
-            let mut nark_x_vec = Vec::new();
-            let mut nark_y_vec = Vec::new();
-            let mut rnark_x_vec = Vec::new();
-            let mut rnark_y_vec = Vec::new();
-
-            let one = C::Scalar::ONE;
-            let zero = C::Scalar::ZERO;
-            let r_le_bits = &inputs.r_le_bits;
-            let r_le_bits_value = r_le_bits.iter().map(|fe| Value::known(*fe)).collect_vec();
-            let r_window_bits = r_le_bits[1..].chunks(2).collect_vec();
-
-            // push last element as the first rbit
-            let mut rbits_vec = Vec::new();
-            rbits_vec = r_le_bits_value.clone();
-            rbits_vec.push(r_le_bits_value[0]);
-
-            let p_zero = C::Secondary::identity();
-            let mut p = inputs.nark_comm; 
-            let acc = inputs.acc_comm;
-            let r = inputs.r;
-            let p_single = p;
-            
-            // initial assumption: rbits[0] = 1
-            let p_single_x = into_coordinates(&p_single)[0];
-            let p_single_y = into_coordinates(&p_single)[1];
-            nark_x_vec.push(Value::known(p_single_x));
-            nark_y_vec.push(Value::known(p_single_y));
-            rnark_x_vec.push(Value::known(p_single_x));
-            rnark_y_vec.push(Value::known(p_single_y)); 
-
-            for idx in (1..vec_len-2).step_by(2) {
-                p = <C::Secondary as CurveAffine>::CurveExt::double(&p.into()).into(); 
-                nark_x_vec.push(Value::known(into_coordinates(&p)[0]));
-                nark_y_vec.push(Value::known(into_coordinates(&p)[1]));
-                let p_single = p;
-
-                p = <C::Secondary as CurveAffine>::CurveExt::double(&p.into()).into();
-                nark_x_vec.push(Value::known(into_coordinates(&p)[0]));
-                nark_y_vec.push(Value::known(into_coordinates(&p)[1])); 
-
-                let p_triple = (p + p_single).to_affine();
-                rnark_x_vec.push(Value::known(into_coordinates(&p_triple)[0]));
-                rnark_y_vec.push(Value::known(into_coordinates(&p_triple)[0])); 
-
-                let acc_sel = match r_window_bits[idx/2] {
-                    [z, o] if *z == zero && *o == zero => p_zero,    // 00
-                    [z, o] if *z == one && *o == zero => p_single,   // 10
-                    [z, o] if *z == zero && *o == one => p,          // 01
-                    [z, o] if *z == one && *o == one => p_triple,    // 11
-                    _ => panic!("Invalid window"),
-                };
-
-                let acc_prev = C::Secondary::from_xy(rnark_x_vec[idx-1].assign().unwrap(), rnark_y_vec[idx-1].assign().unwrap()).unwrap();
-                let acc_next = (acc_prev + acc_sel).to_affine();
-
-                rnark_x_vec.push(Value::known(into_coordinates(&acc_next)[0]));
-                rnark_y_vec.push(Value::known(into_coordinates(&acc_next)[1]));
-
-            }
-
-            // push last rbit 
-            p = <C::Secondary as CurveAffine>::CurveExt::double(&p.into()).into(); 
-            nark_x_vec.push(Value::known(into_coordinates(&p)[0]));
-            nark_y_vec.push(Value::known(into_coordinates(&p)[1]));
-
-            if r_le_bits[vec_len-2] == one {
-                let acc_prev = C::Secondary::from_xy(rnark_x_vec[vec_len-3].assign().unwrap(), rnark_y_vec[vec_len-3].assign().unwrap()).unwrap();
-                let acc_next = (acc_prev + p).to_affine();
-                rnark_x_vec.push(Value::known(into_coordinates(&acc_next)[0]));
-                rnark_y_vec.push(Value::known(into_coordinates(&acc_next)[1]));
-            } else {
-                rnark_x_vec.push(Value::known(rnark_x_vec[vec_len-3].assign().unwrap()));
-                rnark_y_vec.push(Value::known(rnark_y_vec[vec_len-3].assign().unwrap()));
-            }
-
-            // push last element as the first rbit
-            nark_x_vec.push(Value::known(into_coordinates(&p_single)[0]));
-            nark_y_vec.push(Value::known(into_coordinates(&p_single)[1]));
-
-            // correct initial assumption
-            if r_le_bits[0] == one {
-                rnark_x_vec.push(Value::known(rnark_x_vec[vec_len-2].assign().unwrap()));
-                rnark_y_vec.push(Value::known(rnark_y_vec[vec_len-2].assign().unwrap()));
-            } else {
-                let acc_prev = C::Secondary::from_xy(rnark_x_vec[vec_len-2].assign().unwrap(), rnark_y_vec[vec_len-2].assign().unwrap()).unwrap();
-                let acc_next = (acc_prev - p_single).to_affine();
-                rnark_x_vec.push(Value::known(into_coordinates(&acc_next)[0]));
-                rnark_y_vec.push(Value::known(into_coordinates(&acc_next)[1]));
-            }
-            let r_non_native: C::Base = fe_to_fe(r);
-            let scalar_mul_given= (p_single * r_non_native).to_affine();
-            let scalar_mul_calc = C::Secondary::from_xy(rnark_x_vec[vec_len-1].assign().unwrap(), rnark_y_vec[vec_len-1].assign().unwrap()).unwrap();
-            let acc_prime_calc  = (scalar_mul_calc + acc).to_affine();
-            let acc_prime_given = inputs.acc_prime_comm; 
-            //assert_eq!(acc_prime_calc, acc_prime_given); 
-            assert_eq!(scalar_mul_given, scalar_mul_calc);
-
-            let inputs =
-                ScalarMulConfigInputs::<C> { 
-                    rbits_vec, r: Value::known(r), nark_x_vec, nark_y_vec, rnark_x_vec, rnark_y_vec, 
-                    acc_x: Value::known(into_coordinates(&acc)[0]), 
-                    acc_y: Value::known(into_coordinates(&acc)[1]), 
-                    acc_prime_calc_x: Value::known(into_coordinates(&acc_prime_calc)[0]), 
-                    acc_prime_calc_y: Value::known(into_coordinates(&acc_prime_calc)[1]), 
-                    acc_prime_given_x: Value::known(into_coordinates(&acc_prime_given)[0]), 
-                    acc_prime_given_y: Value::known(into_coordinates(&acc_prime_given)[1])
-                };
-
-            sm_config_inputs.push(inputs);
-        }
-
-        Ok(sm_config_inputs)
-    }
-
     pub fn hash_inputs(
         &self,
         vp_digest: C::Scalar,
@@ -531,27 +409,27 @@ where
             meta.enable_equality(*col);
         }
 
-        let instance = meta.instance_column();
-        meta.enable_equality(instance);
+        // let instance = meta.instance_column();
+        // meta.enable_equality(instance);
 
-        let constants = [0; NUM_CONSTANTS].map(|_| meta.fixed_column());
-        meta.enable_constant(constants[T]);
-        for col in &constants {
-            meta.enable_equality(*col);
-        }
+        // let constants = [0; NUM_CONSTANTS].map(|_| meta.fixed_column());
+        // meta.enable_constant(constants[T]);
+        // for col in &constants {
+        //     meta.enable_equality(*col);
+        // }
 
-        let poseidon = PoseidonChip::<C, PoseidonSpec, T, R, L>::configure(
-            meta,
-            advices[..T].try_into().unwrap(),
-            advices[T],
-            constants[..T].try_into().unwrap(), 
-            constants[T..].try_into().unwrap(), 
-        );
+        // let poseidon = PoseidonChip::<C, PoseidonSpec, T, R, L>::configure(
+        //     meta,
+        //     advices[..T].try_into().unwrap(),
+        //     advices[T],
+        //     constants[..T].try_into().unwrap(), 
+        //     constants[T..].try_into().unwrap(), 
+        // );
 
         let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices[..NUM_ADVICE].try_into().unwrap());
 
         Self::Config {
-            poseidon,
+            // poseidon,
             scalar_mul,
             instance,
         }
@@ -625,32 +503,32 @@ where
         // )?;
 
         let mut hash_inputs: Vec<AssignedCell<C::Scalar, C::Scalar>> = Vec::new();
-        let hash_chip = PoseidonChip::<C, PoseidonSpec, T, R, L>::construct(
-            config.poseidon.clone(),
-        );
+        // let hash_chip = PoseidonChip::<C, PoseidonSpec, T, R, L>::construct(
+        //     config.poseidon.clone(),
+        // );
 
         let sm_chip_inputs = self.sm_chip_inputs(&self.inputs)?;
-        let sm_config_inputs = self.sm_config_inputs(&sm_chip_inputs)?;
+        let sm_config_inputs = self.sm_config_inputs_proj_deg11(&sm_chip_inputs)?;
         for i in 0..sm_config_inputs.len() {
             if i == 0 {
                 hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), sm_config_inputs[i].clone())?);
             } else {
-                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), sm_config_inputs[i].clone())?[1..]);
+                // hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), sm_config_inputs[i].clone())?[1..]);
             }
         }
 
-        let message: [AssignedCell<C::Scalar, C::Scalar>; L] =
-        match hash_inputs.try_into() {
-            Ok(arr) => arr,
-            Err(_) => panic!("Failed to convert Vec to Array"),
-        };
+        // let message: [AssignedCell<C::Scalar, C::Scalar>; L] =
+        // match hash_inputs.try_into() {
+        //     Ok(arr) => arr,
+        //     Err(_) => panic!("Failed to convert Vec to Array"),
+        // };
 
-        let hash = hash_chip.hash(
-            layouter.namespace(|| "perform poseidon hash"),
-            message,
-        )?;
+        // let hash = hash_chip.hash(
+        //     layouter.namespace(|| "perform poseidon hash"),
+        //     message,
+        // )?;
 
-        layouter.constrain_instance(hash.cell(), config.instance, 0)?;
+        // layouter.constrain_instance(hash.cell(), config.instance, 0)?;
 
         Ok(())
     }

@@ -243,7 +243,6 @@ where
     let num_folding_witness_polys = num_witness_polys + num_builtin_witness_polys;
     let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
     let u = num_folding_challenges;
-    println!("u: {}", u);
 
     let [beta, gamma, alpha] =
         &array::from_fn(|idx| Expression::<F>::Challenge(num_folding_challenges + 1 + idx));
@@ -255,19 +254,18 @@ where
         num_builtin_witness_polys,
         Some(u),
     );
-    println!("alpha: {:?}", alpha);
-    println!("permutation_constraints_done");
+
     let zero_check_on_every_row_expr_vec = iter::empty()
         .chain(Some(zero_check_on_every_row))
         .chain(permutation_constraints)
         .collect_vec();
-    println!("preprocess_zero_check_on_every_row_expr_vec_done");
-    let expression = {
+
+        let expression = {
         let zero_check_on_every_row = Expression::distribute_powers(
             zero_check_on_every_row_expr_vec,
             alpha,
         ) * Expression::eq_xy(0);
-        println!("preprocess_zero_check_on_every_row_done");
+
         // let zero_check_on_every_row = Expression::distribute_powers(
         //     iter::empty()
         //         .chain(Some(&zero_check_on_every_row))
@@ -279,7 +277,7 @@ where
             .chain(lookup_zero_checks)
             .chain(Some(zero_check_on_every_row))
             .collect_vec();
-        println!("preprocess_expression_vec_done");
+
         Expression::distribute_powers(
             expression_vec,
             alpha,
@@ -293,12 +291,12 @@ where
         //     alpha,
         // )
     };
-    println!("expression_done");
+
     let (pp, vp) = {
         let (mut pp, mut vp) = HyperPlonk::preprocess(param, circuit_info)?;
         let batch_size = batch_size(circuit_info, strategy);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << circuit_info.k, batch_size)?;
-        println!("preprocessor_preprocess_pcs_trim done");
+
         pp.pcs = pcs_pp;
         vp.pcs = pcs_vp;
         pp.num_permutation_z_polys = num_permutation_z_polys;
@@ -307,9 +305,9 @@ where
         // vp.expression = expression;
         (pp, vp)
     };
-    println!("pp, vp done");
+
     let num_cross_terms = cross_term_expressions.len();
-    println!("num_cross_terms: {}", num_cross_terms);
+
     Ok((
         ProtostarProverParam {
             pp,

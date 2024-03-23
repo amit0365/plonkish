@@ -108,6 +108,7 @@ where
         num_challenges: usize,
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
+        let zero_poly_lookup_h = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (k + 1)]);
         Self {
             instance: ProtostarAccumulatorInstance::init(
                 strategy,
@@ -115,8 +116,11 @@ where
                 num_witness_polys,
                 num_challenges,
             ),
+            // todo this was changed
             witness_polys: iter::repeat_with(|| zero_poly.clone())
-                .take(num_witness_polys)
+                .take(num_witness_polys - 2)
+                .chain([zero_poly_lookup_h.clone()])
+                .chain([zero_poly.clone()])
                 .collect(),
             e_poly: zero_poly,
             _marker: PhantomData,
@@ -168,6 +172,7 @@ where
         );
         izip_eq!(&mut self.witness_polys, &rhs.witness_polys)
             .for_each(|(lhs, rhs)| *lhs += (r, rhs));
+        println!("witness_polys_compressed_done");
         izip!(powers(*r).skip(1), [zeta_cross_term_poly, &rhs.e_poly])
             .for_each(|(power_of_r, poly)| self.e_poly += (&power_of_r, poly));
     }

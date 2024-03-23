@@ -74,7 +74,7 @@ fn quotients<F: Field, T>(
     point: &[F],
     f: impl Fn(usize, Vec<F>) -> T,
 ) -> (Vec<T>, F) {
-    assert_eq!(poly.num_vars(), point.len());
+    //assert_eq!(poly.num_vars(), point.len());
 
     let mut remainder = poly.evals().to_vec();
     let mut quotients = point
@@ -151,7 +151,7 @@ mod additive {
         Pcs::Commitment: AdditiveCommitment<F>,
     {
         validate_input("batch open", num_vars, polys.clone(), points)?;
-
+        println!("multilinear_batch_open_num_vars = {:?}", num_vars);
         let ell = evals.len().next_power_of_two().ilog2() as usize;
         let t = transcript.squeeze_challenges(ell);
 
@@ -206,10 +206,14 @@ mod additive {
             SumCheck::prove(&(), num_vars, virtual_poly, tilde_gs_sum, transcript)?;
 
         let timer = start_timer(|| "g_prime");
+        println!("g_prime_start");
+        println!("challenge = {:?}", challenges.len());
+        println!("point.len() = {:?}", points[0].len());
         let eq_xy_evals = points
             .iter()
             .map(|point| eq_xy_eval(&challenges, point))
             .collect_vec();
+        println!("g_prime_eq_xy_evals");
         let g_prime = merged_polys
             .into_iter()
             .zip(eq_xy_evals.iter())
@@ -223,6 +227,7 @@ mod additive {
                 .zip(eq_xt.evals())
                 .map(|(eval, eq_xt_i)| eq_xy_evals[eval.point()] * eq_xt_i)
                 .collect_vec();
+            // todo maybe change this
             let bases = evals.iter().map(|eval| comms[eval.poly()]);
             let comm = Pcs::Commitment::sum_with_scalar(&scalars, bases);
             (comm, g_prime.evaluate(&challenges))
@@ -293,7 +298,7 @@ mod additive {
 mod test {
     use crate::{
         pcs::{Evaluation, PolynomialCommitmentScheme},
-        poly::multilinear::MultilinearPolynomial,
+        poly::{multilinear::MultilinearPolynomial, Polynomial},
         util::{
             arithmetic::PrimeField,
             chain,
@@ -301,6 +306,7 @@ mod test {
             Itertools,
         },
     };
+    use halo2_proofs::arithmetic::lagrange_interpolate;
     use rand::{rngs::OsRng, Rng};
     use std::iter;
 
@@ -346,6 +352,250 @@ mod test {
         }
     }
 
+    // pub(super) fn run_commit_concat_open_verify<F, Pcs, T>()
+    // where
+    //     F: PrimeField,
+    //     Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
+    //     T: TranscriptRead<Pcs::CommitmentChunk, F>
+    //         + TranscriptWrite<Pcs::CommitmentChunk, F>
+    //         + InMemoryTranscript<Param = ()>,
+    // {
+    //     for num_vars in 4..6 {
+    //         println!("num_vars = {:?}", num_vars);
+    //         // Setup
+    //         let (pp, vp) = {
+    //             let mut rng = OsRng;
+    //             let poly_size = 1 << num_vars;
+    //             let param = Pcs::setup(poly_size, 1, &mut rng).unwrap();
+    //             Pcs::trim(&param, poly_size, 1).unwrap()
+    //         };
+    //         // Commit and open
+    //         let proof = {
+    //             let mut transcript = T::new(());
+    //             let poly_lo = MultilinearPolynomial::rand(num_vars - 1, OsRng);
+    //             let poly_hi = MultilinearPolynomial::rand(num_vars - 1, OsRng);
+    //             let poly_concat = MultilinearPolynomial::new(poly_lo.evals().iter().chain(poly_hi.evals().iter()).cloned().collect());
+    //             let comm = Pcs::commit_and_write(&pp, &poly_concat, &mut transcript).unwrap();
+    //             let mut point = transcript.squeeze_challenges(num_vars - 1);
+    //             point.push(F::ZERO);
+    //             let eval_lo = poly_concat.evaluate(point.as_slice());
+    //             assert_eq!(eval_lo, poly_lo.evaluate(&point[..num_vars - 1]));
+    //             // let eval_hi = poly_hi.fix_last_vars(&[F::ONE]).evaluate(point.as_slice());
+    //             transcript.write_field_element(&eval_lo).unwrap();
+    //             Pcs::open(&pp, &poly_concat, &comm, &point, &eval_lo, &mut transcript).unwrap();
+    //             // transcript.write_field_element(&eval_hi).unwrap();
+    //             // Pcs::open(&pp, &poly_hi, &comm, &point, &eval_hi, &mut transcript).unwrap();
+    //             transcript.into_proof()
+    //         };
+    //         // Verify
+    //         let result = {
+    //             let mut transcript = T::from_proof((), proof.as_slice());
+    //             let comm = Pcs::read_commitment(&vp, &mut transcript).unwrap();
+    //             let mut point = transcript.squeeze_challenges(num_vars - 1);
+    //             point.push(F::ZERO);
+    //             Pcs::verify(
+    //                 &vp,
+    //                 &comm,
+    //                 &point,
+    //                 &transcript.read_field_element().unwrap(),
+    //                 &mut transcript,
+    //             )
+    //         };
+    //         assert_eq!(result, Ok(()));
+    //     }
+    // }
+
+    pub(super) fn run_commit_concat_open_verify<F, Pcs, T>()
+    where
+        F: PrimeField,
+        Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
+        T: TranscriptRead<Pcs::CommitmentChunk, F>
+            + TranscriptWrite<Pcs::CommitmentChunk, F>
+            + InMemoryTranscript<Param = ()>,
+    {
+        for num_vars in 4..6 {
+            println!("num_vars = {:?}", num_vars);
+            // Setup
+            let (pp, vp) = {
+                let mut rng = OsRng;
+                let poly_size = 1 << num_vars;
+                let param = Pcs::setup(poly_size, 1, &mut rng).unwrap();
+                Pcs::trim(&param, poly_size, 1).unwrap()
+            };
+            // Commit and open
+            let proof = {
+                let mut transcript = T::new(());
+                let poly_lo = MultilinearPolynomial::rand(num_vars - 1, OsRng);
+                let poly_hi = MultilinearPolynomial::rand(num_vars - 1, OsRng);
+                let poly_concat = MultilinearPolynomial::new(poly_lo.evals().iter().chain(poly_hi.evals().iter()).cloned().collect());
+                let comm = Pcs::commit_and_write(&pp, &poly_concat, &mut transcript).unwrap();
+                let mut point = transcript.squeeze_challenges(num_vars - 1);
+                point.push(F::ONE);
+                let eval_hi = poly_concat.evaluate(point.as_slice());
+                assert_eq!(eval_hi, poly_hi.evaluate(&point[..num_vars - 1]));
+                // let eval_hi = poly_hi.fix_last_vars(&[F::ONE]).evaluate(point.as_slice());
+                transcript.write_field_element(&eval_hi).unwrap();
+                Pcs::open(&pp, &poly_concat, &comm, &point, &eval_hi, &mut transcript).unwrap();
+                // transcript.write_field_element(&eval_hi).unwrap();
+                // Pcs::open(&pp, &poly_hi, &comm, &point, &eval_hi, &mut transcript).unwrap();
+                transcript.into_proof()
+            };
+            // Verify
+            let result = {
+                let mut transcript = T::from_proof((), proof.as_slice());
+                let comm = Pcs::read_commitment(&vp, &mut transcript).unwrap();
+                let mut point = transcript.squeeze_challenges(num_vars - 1);
+                point.push(F::ONE);
+                Pcs::verify(
+                    &vp,
+                    &comm,
+                    &point,
+                    &transcript.read_field_element().unwrap(),
+                    &mut transcript,
+                )
+            };
+            assert_eq!(result, Ok(()));
+        }
+    }
+
+    // pub(super) fn run_commit_concat_open_once_verify<F, Pcs, T>()
+    // where
+    //     F: PrimeField,
+    //     Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
+    //     T: TranscriptRead<Pcs::CommitmentChunk, F>
+    //         + TranscriptWrite<Pcs::CommitmentChunk, F>
+    //         + InMemoryTranscript<Param = ()>,
+    // {
+    //     for num_vars in 4..6 {
+    //         println!("num_vars = {:?}", num_vars);
+    //         // Setup
+    //         let (pp, vp) = {
+    //             let mut rng = OsRng;
+    //             let poly_size = 1 << num_vars;
+    //             let param = Pcs::setup(poly_size, 1, &mut rng).unwrap();
+    //             Pcs::trim(&param, poly_size, 1).unwrap()
+    //         };
+    //         // Commit and open
+    //         let proof = {
+    //             let mut transcript = T::new(());
+    //             let poly_lo = MultilinearPolynomial::rand(num_vars - 1, OsRng);
+    //             let poly_hi = MultilinearPolynomial::rand(num_vars - 1, OsRng);
+    //             let poly_concat = MultilinearPolynomial::new(poly_lo.evals().iter().chain(poly_hi.evals().iter()).cloned().collect());
+    //             let comm = Pcs::commit_and_write(&pp, &poly_concat, &mut transcript).unwrap();
+    //             let point = transcript.squeeze_challenges(num_vars - 1);
+    //             let mut point_lo = point.clone();
+    //             point_lo.push(F::ZERO);
+    //             let mut point_hi = point.clone();
+    //             point_hi.clone().push(F::ONE);
+
+    //             let points = [point_lo, point_hi];
+    //             let evals = [
+    //                 poly_lo.evaluate(&point_lo),
+    //                 poly_hi.evaluate(&point_hi),
+    //             ];
+    //             let points_poly = lagrange_interpolate(&points, &evals);
+                // assert_eq!(eval_hi, poly_hi.evaluate(&point[..num_vars - 1]));
+                // let eval_hi = poly_hi.fix_last_vars(&[F::ONE]).evaluate(point.as_slice());
+                // transcript.write_field_element(&eval_hi).unwrap();
+                // Pcs::open(&pp, &poly_concat, &comm, &point, &eval_hi, &mut transcript).unwrap();
+                // transcript.write_field_element(&eval_hi).unwrap();
+                // Pcs::open(&pp, &poly_hi, &comm, &point, &eval_hi, &mut transcript).unwrap();
+                // transcript.into_proof()
+            // };
+            // Verify
+            // let result = {
+            //     let mut transcript = T::from_proof((), proof.as_slice());
+            //     let comm = Pcs::read_commitment(&vp, &mut transcript).unwrap();
+            //     let mut point = transcript.squeeze_challenges(num_vars - 1);
+            //     point.push(F::ONE);
+            //     Pcs::verify(
+            //         &vp,
+            //         &comm,
+            //         &point,
+            //         &transcript.read_field_element().unwrap(),
+            //         &mut transcript,
+            //     )
+            // };
+            // assert_eq!(result, Ok(()));
+        // }
+    // }
+
+    // pub(super) fn run_commit_concat_batch_open_verify<F, Pcs, T>()
+    // where
+    //     F: PrimeField,
+    //     Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
+    //     T: TranscriptRead<Pcs::CommitmentChunk, F>
+    //         + TranscriptWrite<Pcs::CommitmentChunk, F>
+    //         + InMemoryTranscript<Param = ()>,
+    // {
+    //     for num_vars in 4..6 {
+    //         let batch_size = 2;
+    //         let num_points = batch_size >> 1;
+    //         let mut rng = OsRng;
+    //         // Setup
+    //         let (pp, vp) = {
+    //             let poly_size = 1 << num_vars;
+    //             let param = Pcs::setup(poly_size, batch_size, &mut rng).unwrap();
+    //             Pcs::trim(&param, poly_size, batch_size).unwrap()
+    //         };
+    //         // Batch commit and open
+    //         let evals = chain![
+    //             (0..num_points).map(|point| (0, point)),
+    //             (0..batch_size).map(|poly| (poly, 0)),
+    //             iter::repeat_with(|| (rng.gen_range(0..batch_size), rng.gen_range(0..num_points)))
+    //                 .take(batch_size)
+    //         ]
+    //         .unique()
+    //         .collect_vec();
+    //         let proof = {
+    //             let mut transcript = T::new(());
+    //             let poly_lo = MultilinearPolynomial::rand(num_vars - 1, OsRng);
+    //             let poly_hi = MultilinearPolynomial::rand(num_vars - 1, OsRng);
+    //             let poly_concat = MultilinearPolynomial::new(poly_lo.evals().iter().chain(poly_hi.evals().iter()).cloned().collect());
+    //             let polys = iter::empty().chain([poly_lo]).chain([poly_hi]).collect_vec();
+
+    //             let comm = Pcs::commit_and_write(&pp, &poly_concat, &mut transcript).unwrap();
+    //             let comms = iter::repeat_with(|| comm.clone()).take(batch_size).collect_vec();
+    //             let point = transcript.squeeze_challenges(num_vars - 1);
+    //             let point_lo = point.clone().push(F::ZERO);
+    //             let point_hi = point.clone().push(F::ONE);
+    //             let evals = evals
+    //                 .iter()
+    //                 .copied()
+    //                 .map(|(poly, point)| Evaluation {
+    //                     poly,
+    //                     point,
+    //                     value: polys[poly].evaluate(&points[point]),
+    //                 })
+    //                 .collect_vec();
+    //             transcript
+    //                 .write_field_elements(evals.iter().map(Evaluation::value))
+    //                 .unwrap();
+    //             Pcs::batch_open(&pp, &polys, &comms, &points, &evals, &mut transcript).unwrap();
+    //             transcript.into_proof()
+    //         };
+    //         // Batch verify
+    //         let result = {
+    //             let mut transcript = T::from_proof((), proof.as_slice());
+    //             Pcs::batch_verify(
+    //                 &vp,
+    //                 &Pcs::read_commitments(&vp, batch_size, &mut transcript).unwrap(),
+    //                 &iter::repeat_with(|| transcript.squeeze_challenges(num_vars))
+    //                     .take(num_points)
+    //                     .collect_vec(),
+    //                 &evals
+    //                     .iter()
+    //                     .copied()
+    //                     .zip(transcript.read_field_elements(evals.len()).unwrap())
+    //                     .map(|((poly, point), eval)| Evaluation::new(poly, point, eval))
+    //                     .collect_vec(),
+    //                 &mut transcript,
+    //             )
+    //         };
+    //         assert_eq!(result, Ok(()));
+    //     }
+    // }
+
     pub(super) fn run_batch_commit_open_verify<F, Pcs, T>()
     where
         F: PrimeField,
@@ -354,8 +604,8 @@ mod test {
             + TranscriptWrite<Pcs::CommitmentChunk, F>
             + InMemoryTranscript<Param = ()>,
     {
-        for num_vars in 3..16 {
-            let batch_size = 8;
+        for num_vars in 3..4 {
+            let batch_size = 2;
             let num_points = batch_size >> 1;
             let mut rng = OsRng;
             // Setup

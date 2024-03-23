@@ -36,6 +36,7 @@ use crate::{
     },
     Error,
 };
+use itertools::cloned;
 use rand::RngCore;
 use std::{borrow::BorrowMut, hash::Hash, iter};
 
@@ -122,8 +123,13 @@ where
         // Round 0..n
 
         let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
+        println!("num_witness_polys: {:?}", &pp.num_witness_polys);
+        println!("witness_polys len: {:?}", &witness_polys.len());
         let mut witness_comms = Vec::with_capacity(witness_polys.len());
+        println!("witness_comms len: {:?}", &witness_comms.len());
         let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
+        println!("challenges_len: {:?}", &challenges.len());
+        println!("num_challenges: {:?}", &pp.num_challenges);
         for (round, (num_witness_polys, num_challenges)) in pp
             .num_witness_polys
             .iter()
@@ -131,11 +137,15 @@ where
             .enumerate()
         {
             let timer = start_timer(|| format!("witness_collector-{round}"));
+            println!("round: {}", round);
+            println!("challenges: {:?}", &challenges);
             let polys = circuit
                 .synthesize(round, &challenges)?
                 .into_iter()
                 .map(MultilinearPolynomial::new)
                 .collect_vec();
+            println!("polys len: {}", polys.len());
+            println!("num_witness_polys: {:?}", &num_witness_polys);
             assert_eq!(polys.len(), *num_witness_polys);
             end_timer(timer);
 
@@ -325,7 +335,7 @@ where
                 // Round 0
 
                 let r = transcript.squeeze_challenge();
-
+                println!("compressed_cross_term_sums: {:?}", compressed_cross_term_sums.len());
                 let timer = start_timer(|| "fold_compressed");
                 accumulator.fold_compressed(
                     incoming,
@@ -499,6 +509,7 @@ where
             Pcs::batch_commit_and_write(&pp.pcs, &permutation_z_polys, transcript)?;
 
         // Round 1
+        println!("prove_decider_pp.num_vars: {}", pp.num_vars);
 
         let alpha = transcript.squeeze_challenge();
         let y = transcript.squeeze_challenges(pp.num_vars);
@@ -509,6 +520,20 @@ where
             .chain(permutation_z_polys.iter())
             .chain(Some(&accumulator.e_poly))
             .collect_vec();
+
+        let lookup_h = MultilinearPolynomial::new(accumulator.witness_polys[builtin_witness_poly_offset + 1].clone().into_evals().iter().take(1 << pp.num_vars).cloned().collect());
+        let lookup_g = MultilinearPolynomial::new(accumulator.witness_polys[builtin_witness_poly_offset + 1].clone().into_evals().iter().rev().take(1 << pp.num_vars).cloned().collect());
+
+        // let polys = iter::empty()
+        //     .chain(polys)
+        //     .chain([&accumulator.witness_polys[builtin_witness_poly_offset]])
+        //     .chain([&lookup_h])
+        //     .chain([&lookup_g])
+        //     .chain(&accumulator.witness_polys[builtin_witness_poly_offset + 2 ..])
+        //     .chain(permutation_z_polys.iter())
+        //     .chain(Some(&accumulator.e_poly))
+        //     .collect_vec();
+        
         let challenges = iter::empty()
             .chain(accumulator.instance.challenges.iter().copied())
             .chain([accumulator.instance.u])
@@ -615,12 +640,13 @@ where
     fn from(vp: &ProtostarVerifierParam<F, HyperPlonk<Pcs>>) -> Self {
         let num_witness_polys = iter::empty()
             .chain(vp.vp.num_witness_polys.iter().cloned())
-            .chain([vp.vp.num_lookups, 2 * vp.vp.num_lookups])
+            .chain([vp.vp.num_lookups, vp.vp.num_lookups])
             .chain(match vp.strategy {
                 NoCompressing => None,
                 Compressing => Some(1),
             })
             .collect();
+        println!("from_vp_num_witness_polys: {:?}", num_witness_polys);
         let num_challenges = {
             let mut num_challenges = iter::empty()
                 .chain(vp.vp.num_challenges.iter().cloned())

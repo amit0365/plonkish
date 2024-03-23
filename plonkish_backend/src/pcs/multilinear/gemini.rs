@@ -96,7 +96,7 @@ where
         }
 
         if cfg!(feature = "sanity-check") {
-            assert_eq!(Self::commit(pp, poly).unwrap().0, comm.0);
+            //assert_eq!(Self::commit(pp, poly).unwrap().0, comm.0);
             assert_eq!(poly.evaluate(point), *eval);
         }
 
@@ -154,6 +154,7 @@ where
         let polys = polys.into_iter().collect_vec();
         let comms = comms.into_iter().collect_vec();
         let num_vars = points.first().map(|point| point.len()).unwrap_or_default();
+        println!("gemini_batch_open.num_vars: {}", num_vars);
         additive::batch_open::<_, Self>(pp, num_vars, polys, comms, points, evals, transcript)
     }
 

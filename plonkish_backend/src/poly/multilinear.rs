@@ -637,7 +637,7 @@ mod test {
             Polynomial,
         },
         util::{
-            arithmetic::{BooleanHypercube, Field},
+            arithmetic::{powers, BooleanHypercube, Field},
             expression::Rotation,
             test::rand_vec,
             Itertools,
@@ -672,6 +672,56 @@ mod test {
                 assert_eq!(x.iter().fold(poly, |poly, x_i| poly.fix_var(x_i))[0], eval);
             }
         }
+    }
+
+    #[test]
+    fn concat() {
+        let rand_x_i_lo = || match OsRng.next_u32() % 3 {
+            0 => Fr::zero(),
+            1 => Fr::one(),
+            2 => Fr::random(OsRng),
+            _ => unreachable!(),
+        };
+
+        let rand_x_i_hi = || match OsRng.next_u32() % 3 {
+            0 => Fr::zero(),
+            1 => Fr::one(),
+            2 => Fr::random(OsRng),
+            _ => unreachable!(),
+        };
+
+            let num_vars = 14;
+            let zeta = Fr::random(OsRng);
+            let alpha = Fr::random(OsRng);
+            let l_half = (1 << num_vars)/2;
+            let rand_i: usize = (OsRng.next_u32() % (num_vars - 1) as u32).try_into().unwrap();
+
+            let powers_of_zeta = powers(zeta).take(1 << num_vars).collect_vec();
+            let powers_of_alpha = powers(alpha).take(1 << num_vars).collect_vec();
+            let powers_of_zeta_lo = MultilinearPolynomial::new(powers_of_zeta[..l_half].to_vec());
+            let powers_of_zeta_hi = MultilinearPolynomial::new(powers_of_alpha[l_half..].to_vec());
+            let powers_of_zeta_concat = MultilinearPolynomial::new(powers_of_zeta_lo.evals().iter().chain(powers_of_zeta_hi.evals().iter()).cloned().collect());
+
+            let x_lo = iter::repeat_with(rand_x_i_lo).take(num_vars - 1).collect_vec();
+            let x_hi = iter::repeat_with(rand_x_i_hi).take(num_vars - 1).collect_vec();
+
+            let mut x_lo_extend = x_lo.clone();
+            x_lo_extend.push(Fr::zero());
+            let mut x_hi_extend = x_hi.clone();
+            x_hi_extend.push(Fr::one());
+
+            let eval_lo = powers_of_zeta_lo.evaluate(&x_lo);   
+            let eval_hi = powers_of_zeta_hi.evaluate(&x_hi); 
+            let eval_concat0 = powers_of_zeta_concat.fix_last_vars(&[Fr::zero()]).evaluate(&x_lo);
+            let eval_concat1 = powers_of_zeta_concat.fix_last_vars(&[Fr::one()]).evaluate(&x_hi);
+            let eval_concat0_extend = powers_of_zeta_concat.evaluate(&x_lo_extend);
+            let eval_concat1_extend = powers_of_zeta_concat.evaluate(&x_hi_extend);
+
+            assert_eq!(eval_lo, eval_concat0);
+            assert_eq!(eval_hi, eval_concat1);
+            assert_eq!(eval_lo, eval_concat0_extend);
+            assert_eq!(eval_hi, eval_concat1_extend);
+            assert_ne!(x_lo[rand_i], x_hi[rand_i]);
     }
 
     #[test]

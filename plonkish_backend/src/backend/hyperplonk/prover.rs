@@ -385,9 +385,11 @@ pub(crate) fn prove_sum_check<F: PrimeField>(
         transcript,
     )?;
 
+    // map of expressions' queries (poly)
     let pcs_query = pcs_query(expression, num_instance_poly);
+    // map of queries and their rotations
     let point_offset = point_offset(&pcs_query);
-
+    // evals len should be 46 since we unpack the polys and constraints, maybe change expressions back to og
     let timer = start_timer(|| format!("evals-{}", pcs_query.len()));
     let evals = pcs_query
         .iter()
@@ -402,7 +404,7 @@ pub(crate) fn prove_sum_check<F: PrimeField>(
         })
         .collect_vec();
     end_timer(timer);
-
+    println!("prove_sum_check_evals {:?}", evals.len());
     transcript.write_field_elements(evals.iter().map(Evaluation::value))?;
 
     Ok((points(&pcs_query, &x), evals))

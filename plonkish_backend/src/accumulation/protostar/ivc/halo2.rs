@@ -626,7 +626,6 @@ where
             NoCompressing => None,
             Compressing => Some(tcc_chip.assign_constant_base(layouter, C::Base::ZERO)?),
         };
-
         Ok(ProtostarAccumulatorInstance {
             instances,
             witness_comms,
@@ -663,7 +662,7 @@ where
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
-        let witness_comms = acc
+            let witness_comms = acc
             .map(|acc| &acc.witness_comms)
             .transpose_vec(avp.num_folding_witness_polys())
             .into_iter()
@@ -684,7 +683,6 @@ where
                     .assign_witness_base(layouter, acc.map(|acc| acc.compressed_e_sum.unwrap()))?,
             ),
         };
-
         Ok(ProtostarAccumulatorInstance {
             instances,
             witness_comms,
@@ -778,7 +776,6 @@ where
 
         let nark = PlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript.absorb_accumulator(acc)?;
-
         let (cross_term_comms, compressed_cross_term_sums) = match strategy {
             NoCompressing => {
                 let cross_term_comms = transcript.read_commitments(layouter, *num_cross_terms)?;
@@ -1390,7 +1387,6 @@ where
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
     };
-
     let secondary_circuit = RecursiveCircuit::new(
         false,
         secondary_step_circuit,
@@ -1402,7 +1398,6 @@ where
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
         Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
     };
-
     primary_circuit.update_witness(|circuit| {
         circuit.avp = ProtostarAccumulationVerifierParam::from(&secondary_vp)
     });

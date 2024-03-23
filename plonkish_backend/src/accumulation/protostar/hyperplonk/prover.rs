@@ -152,13 +152,9 @@ where
     );
 
     let size = 1 << ev.num_vars;
-    println!("num_vars: {}", ev.num_vars);
     let num_threads = num_threads();
-    println!("num_threads: {}", num_threads);
     let chunk_size = div_ceil(size, num_threads);
-    println!("chunk_size: {}", chunk_size);
     let num_cross_terms = ev.reg.indexed_outputs().len();
-    println!("num_cross_terms: {}", num_cross_terms);
     let mut partial_sums = vec![vec![F::ZERO; num_cross_terms]; num_threads];
     parallelize_iter(
         partial_sums.iter_mut().zip((0..).step_by(chunk_size)),
@@ -168,7 +164,6 @@ where
                 .for_each(|b| ev.evaluate_and_sum(partial_sums, &mut data, b))
         },
     );
-    println!("partial_sums: {:?}", partial_sums);
     partial_sums
         .into_iter()
         .reduce(|mut sums, partial_sums| {
@@ -312,7 +307,6 @@ impl<'a, F: PrimeField> HadamardEvaluator<'a, F> {
 
     pub(crate) fn evaluate_and_sum(&self, sums: &mut [F], cache: &mut [F], b: usize) {
         self.evaluate_calculations(cache, b);
-        println!("eval_done");
         izip_eq!(sums, self.reg.indexed_outputs()).for_each(|(sum, idx)| *sum += cache[*idx])
     }
 
@@ -329,10 +323,6 @@ impl<'a, F: PrimeField> HadamardEvaluator<'a, F> {
             .iter_mut()
             .zip(self.reg.polys())
             .for_each(|(value, (query, _))| {
-                println!("query: {:?}", query);
-                println!("b: {}", b);
-                println!("bh.rotate(b, query.rotation()): {}", bh.rotate(b, query.rotation()));
-                println!("polys.len(): {}", self.polys.len());
                 *value = self.polys[query.poly()][bh.rotate(b, query.rotation())]
             });
         self.reg

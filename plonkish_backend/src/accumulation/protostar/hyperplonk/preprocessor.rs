@@ -165,7 +165,7 @@ where
         Compressing => {
             let zeta = challenge_offset + num_theta_primes + 1;
             let alpha_prime_offset = zeta + 1;
-            let num_builtin_witness_polys = 3 * circuit_info.lookups.len() + 1;
+            let num_builtin_witness_polys = 2 * circuit_info.lookups.len() + 1;
             let builtin_witness_poly_offset =
                 witness_poly_offset + num_witness_polys + circuit_info.permutation_polys().len();
 
@@ -183,7 +183,7 @@ where
                     .collect(),
             };
 
-            let powers_of_zeta = builtin_witness_poly_offset + circuit_info.lookups.len() * 3;
+            let powers_of_zeta = builtin_witness_poly_offset + circuit_info.lookups.len() * 2;
             let compressed_products = {
                 let mut constraints = iter::empty()
                     .chain(circuit_info.constraints.iter())
@@ -202,6 +202,7 @@ where
                 }
                 let powers_of_zeta =
                     Expression::<F>::Polynomial(Query::new(powers_of_zeta, Rotation::cur()));
+                // todo check if this is required
                 let compressed_constraint = iter::empty()
                     .chain(constraints.first().cloned().cloned())
                     .chain(
@@ -223,6 +224,7 @@ where
                 cross_term_expressions(&poly_set, &compressed_products, num_folding_challenges);
 
             let u = num_folding_challenges;
+            // todo why this in compressing
             let relexed_compressed_constraint = relaxed_expression(&compressed_products, u);
             let relexed_zeta_constraint = {
                 let e = powers_of_zeta + num_permutation_z_polys + 1;
@@ -281,7 +283,6 @@ where
         vp.expression = expression;
         (pp, vp)
     };
-
     let num_cross_terms = cross_term_expressions.len();
 
     Ok((
@@ -347,7 +348,6 @@ pub(crate) fn lookup_constraints<F: PrimeField>(
     theta_primes: &[Expression<F>],
     beta_prime: &Expression<F>,
 ) -> (Vec<Expression<F>>, Vec<Expression<F>>) {
-    println!("lookup_constraints_hp_preprcoessor");
     let one = &Expression::one();
     let m_offset = circuit_info.num_poly() + circuit_info.permutation_polys().len();
     let h_offset = m_offset + circuit_info.lookups.len();
@@ -357,7 +357,8 @@ pub(crate) fn lookup_constraints<F: PrimeField>(
         .zip(m_offset..)
         .zip((h_offset..).step_by(2))
         .flat_map(|((lookup, m), h)| {
-            let [m, h_input, h_table] = &[m, h, h]
+            // todo changed this back to original
+            let [m, h_input, h_table] = &[m, h, h + 1]
                 .map(|poly| Query::new(poly, Rotation::cur()))
                 .map(Expression::<F>::Polynomial);
             let (inputs, tables) = lookup
@@ -386,7 +387,7 @@ pub(crate) fn lookup_constraints<F: PrimeField>(
         .step_by(2)
         .take(circuit_info.lookups.len())
         .map(|h| {
-            let [h_input, h_table] = &[h, h]
+            let [h_input, h_table] = &[h, h + 1]
                 .map(|poly| Query::new(poly, Rotation::cur()))
                 .map(Expression::<F>::Polynomial);
             h_input - h_table

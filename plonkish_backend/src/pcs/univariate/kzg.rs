@@ -560,7 +560,6 @@ fn comm_scalars<F: Field>(
 #[cfg(test)]
 mod test {
     use crate::{
-        // poly::Polynomial as GeneralPoly,
         pcs::{univariate::kzg::UnivariateKzg, Evaluation, PolynomialCommitmentScheme},
         util::{
             chain,

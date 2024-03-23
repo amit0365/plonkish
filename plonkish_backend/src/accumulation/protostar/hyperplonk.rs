@@ -509,8 +509,6 @@ where
             Pcs::batch_commit_and_write(&pp.pcs, &permutation_z_polys, transcript)?;
 
         // Round 1
-        println!("prove_decider_pp.num_vars: {}", pp.num_vars);
-
         let alpha = transcript.squeeze_challenge();
         let y = transcript.squeeze_challenges(pp.num_vars);
 
@@ -521,19 +519,6 @@ where
             .chain(Some(&accumulator.e_poly))
             .collect_vec();
 
-        let lookup_h = MultilinearPolynomial::new(accumulator.witness_polys[builtin_witness_poly_offset + 1].clone().into_evals().iter().take(1 << pp.num_vars).cloned().collect());
-        let lookup_g = MultilinearPolynomial::new(accumulator.witness_polys[builtin_witness_poly_offset + 1].clone().into_evals().iter().rev().take(1 << pp.num_vars).cloned().collect());
-
-        // let polys = iter::empty()
-        //     .chain(polys)
-        //     .chain([&accumulator.witness_polys[builtin_witness_poly_offset]])
-        //     .chain([&lookup_h])
-        //     .chain([&lookup_g])
-        //     .chain(&accumulator.witness_polys[builtin_witness_poly_offset + 2 ..])
-        //     .chain(permutation_z_polys.iter())
-        //     .chain(Some(&accumulator.e_poly))
-        //     .collect_vec();
-        
         let challenges = iter::empty()
             .chain(accumulator.instance.challenges.iter().copied())
             .chain([accumulator.instance.u])

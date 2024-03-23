@@ -50,12 +50,10 @@ where
         poly_size: usize,
         batch_size: usize,
     ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
-        println!("trim_gemini");
         UnivariateKzg::<M>::trim(param, poly_size, batch_size)
     }
 
     fn commit(pp: &Self::ProverParam, poly: &Self::Polynomial) -> Result<Self::Commitment, Error> {
-        println!("commit_gemini");
         if pp.degree() + 1 < poly.evals().len() {
             return Err(Error::InvalidPcsParam(format!(
                 "Too large degree of poly to commit (param supports degree up to {} but got {})",
@@ -220,7 +218,7 @@ mod test {
         pcs::{
             multilinear::{
                 gemini::Gemini,
-                test::{run_batch_commit_open_verify, run_commit_open_verify},
+                test::{run_batch_commit_open_verify, run_commit_concat_batch_open_verify, run_commit_concat_open_verify, run_commit_open_verify},
             },
             univariate::UnivariateKzg,
         },
@@ -233,6 +231,16 @@ mod test {
     #[test]
     fn commit_open_verify() {
         run_commit_open_verify::<_, Pcs, Keccak256Transcript<_>>();
+    }
+
+    #[test]
+    fn commit_concat_open_verify() {
+        run_commit_concat_open_verify::<_, Pcs, Keccak256Transcript<_>>();
+    }
+
+    #[test]
+    fn commit_concat_batch_open_verify() {
+        run_commit_concat_batch_open_verify::<_, Pcs, Keccak256Transcript<_>>();
     }
 
     #[test]

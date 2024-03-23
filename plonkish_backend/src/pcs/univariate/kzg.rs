@@ -222,9 +222,6 @@ where
         poly_size: usize,
         _: usize,
     ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
-        println!("trim_kzg");
-        println!("poly_size: {}", poly_size);
-        println!("param.powers_of_s_g1.len(): {}", param.powers_of_s_g1.len());
         if param.powers_of_s_g1.len() < poly_size {
             return Err(Error::InvalidPcsParam(format!(
                 "Too large poly_size to trim to (param supports poly_size up to {} but got {poly_size})",
@@ -618,44 +615,6 @@ mod test {
             assert_eq!(result, Ok(()));
         }
     }
-
-    // #[test]
-    // fn commit_concat_open_verify() {
-    //     for k in 3..6 {
-    //         // Setup
-    //         let (pp, vp) = {
-    //             let mut rng = OsRng;
-    //             let poly_size = 1 << k;
-    //             let param = Pcs::setup(poly_size, 1, &mut rng).unwrap();
-    //             Pcs::trim(&param, poly_size, 1).unwrap()
-    //         };
-    //         // Commit and open
-    //         let proof = {
-    //             let mut transcript = Keccak256Transcript::default();
-    //             let poly_lo = Polynomial::rand(pp.degree() - 1, OsRng);
-    //             let poly_hi = Polynomial::rand(pp.degree() - 1, OsRng);
-    //             let poly_concat = Polynomial::new(poly_lo.coeffs().iter().chain(poly_hi.coeffs().iter()).cloned().collect());
-    //             let comm = Pcs::commit_and_write(&pp, &poly_concat, &mut transcript).unwrap();
-    //             let point = transcript.squeeze_challenge();
-    //             let eval = poly_concat.evaluate(&point);
-    //             transcript.write_field_element(&eval).unwrap();
-    //             Pcs::open(&pp, &poly_concat, &comm, &point, &eval, &mut transcript).unwrap();
-    //             transcript.into_proof()
-    //         };
-    //         // Verify
-    //         let result = {
-    //             let mut transcript = Keccak256Transcript::from_proof((), proof.as_slice());
-    //             Pcs::verify(
-    //                 &vp,
-    //                 &Pcs::read_commitment(&vp, &mut transcript).unwrap(),
-    //                 &transcript.squeeze_challenge(),
-    //                 &transcript.read_field_element().unwrap(),
-    //                 &mut transcript,
-    //             )
-    //         };
-    //         assert_eq!(result, Ok(()));
-    //     }
-    // }
 
     #[test]
     fn batch_commit_open_verify() {

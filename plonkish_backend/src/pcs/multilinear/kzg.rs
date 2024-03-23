@@ -377,7 +377,7 @@ mod test {
     use crate::{
         pcs::multilinear::{
             kzg::MultilinearKzg,
-            test::{run_batch_commit_open_verify, run_commit_open_verify, run_commit_concat_open_verify}, //run_commit_concat_open_once_verify},
+            test::{run_batch_commit_open_verify, run_commit_concat_batch_open_verify, run_commit_open_verify, run_commit_concat_open_verify}, //run_commit_concat_open_once_verify},
         },
         util::transcript::Keccak256Transcript,
     };
@@ -399,6 +399,11 @@ mod test {
     // fn commit_concat_open_once_verify() {
     //     run_commit_concat_open_once_verify::<_, Pcs, Keccak256Transcript<_>>();
     // }
+
+    #[test]
+    fn commit_concat_batch_open_verify() {
+        run_commit_concat_batch_open_verify::<_, Pcs, Keccak256Transcript<_>>();
+    }
 
     #[test]
     fn batch_commit_open_verify() {

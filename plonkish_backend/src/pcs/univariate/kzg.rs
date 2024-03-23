@@ -240,7 +240,6 @@ where
     }
 
     fn commit(pp: &Self::ProverParam, poly: &Self::Polynomial) -> Result<Self::Commitment, Error> {
-        println!("commit_kzg");
         if pp.degree() < poly.degree() {
             return Err(Error::InvalidPcsParam(format!(
                 "Too large degree of poly to commit (param supports degree up to {} but got {})",
@@ -256,7 +255,6 @@ where
         pp: &Self::ProverParam,
         polys: impl IntoIterator<Item = &'a Self::Polynomial>,
     ) -> Result<Vec<Self::Commitment>, Error> {
-        println!("batch_commit_kzg");
         polys
             .into_iter()
             .map(|poly| Self::commit(pp, poly))

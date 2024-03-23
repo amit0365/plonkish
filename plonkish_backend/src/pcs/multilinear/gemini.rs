@@ -152,7 +152,6 @@ where
         let polys = polys.into_iter().collect_vec();
         let comms = comms.into_iter().collect_vec();
         let num_vars = points.first().map(|point| point.len()).unwrap_or_default();
-        println!("gemini_batch_open.num_vars: {}", num_vars);
         additive::batch_open::<_, Self>(pp, num_vars, polys, comms, points, evals, transcript)
     }
 

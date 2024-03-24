@@ -66,12 +66,12 @@ where
     let challenge_offset = circuit_info.num_challenges.iter().sum::<usize>();
     let max_lookup_width = circuit_info.lookups.iter().map(Vec::len).max().unwrap_or(0);
     let num_theta_primes = max_lookup_width.checked_sub(1).unwrap_or_default();
-    let theta_primes = (challenge_offset..)
+
+    let beta_prime = &Expression::<F>::Challenge(challenge_offset);
+    let theta_primes = (challenge_offset + 1..)
         .take(num_theta_primes)
         .map(Expression::<F>::Challenge)
         .collect_vec();
-    let beta_prime = &Expression::<F>::Challenge(challenge_offset + num_theta_primes);
-
     let (lookup_constraints, lookup_zero_checks) =
         lookup_constraints(circuit_info, &theta_primes, beta_prime);
 
@@ -285,7 +285,7 @@ where
         (pp, vp)
     };
     let num_cross_terms = cross_term_expressions.len();
-
+    // let num_folding_challenges = num_folding_challenges - 1; // reuse beta for theta prime
     Ok((
         ProtostarProverParam {
             pp,

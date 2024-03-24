@@ -177,12 +177,10 @@ where
         validate_input("open", pp.num_vars(), [poly], [point])?;
 
         if cfg!(feature = "sanity-check") {
-            //todo uncomment this
-            //assert_eq!(Self::commit(pp, poly).unwrap().0, comm.0);
+            assert_eq!(Self::commit(pp, poly).unwrap().0, comm.0);
             assert_eq!(poly.evaluate(point), *eval);
         }
 
-        // todo change this as exercise not needed for cyclefold
         let xi_0 = transcript.squeeze_challenge();
         let h_prime = (pp.h * xi_0).to_affine();
 

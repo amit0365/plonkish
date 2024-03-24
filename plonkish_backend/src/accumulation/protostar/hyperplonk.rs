@@ -18,8 +18,7 @@ use crate::{
     backend::{
         hyperplonk::{
             prover::{
-                instance_polys, lookup_compressed_polys, lookup_m_polys, permutation_z_polys,
-                prove_sum_check,
+                instance_polys, lookup_compressed_polys, lookup_m_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys, permutation_z_polys, prove_sum_check
             },
             verifier::verify_sum_check,
             HyperPlonk, HyperPlonkVerifierParam,
@@ -125,7 +124,6 @@ where
         // Round 0..n
 
         let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
-        let mut witness_comms = Vec::with_capacity(witness_polys.len());
         let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
 
         for (round, (num_witness_polys, num_challenges)) in pp
@@ -143,20 +141,41 @@ where
             assert_eq!(polys.len(), *num_witness_polys);
             end_timer(timer);
 
-            // witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
             witness_polys.extend(polys);
             challenges.extend(transcript.squeeze_challenges(*num_challenges));
         }
 
+        let timer = start_timer(|| format!("lookup_uncompressed_polys-{}", pp.lookups.len()));
+        let lookup_uncompressed_polys = {
+            let instance_polys = instance_polys(pp.num_vars, instances);
+            let polys = iter::empty()
+                .chain(instance_polys.iter())
+                .chain(pp.preprocess_polys.iter())
+                .chain(witness_polys.iter())
+                .collect_vec();
+            lookup_uncompressed_polys(&pp.lookups, &polys, &challenges)
+        };
+        end_timer(timer);
+
+        let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
+        let lookup_m_polys = lookup_m_polys_uncompressed(&lookup_uncompressed_polys)?;
+        end_timer(timer);
+
+        let mut phase1_poly = witness_polys.clone(); // Assuming this does not incur an undesirable cost
+        phase1_poly.extend(lookup_m_polys.iter().cloned());
+
+
+        let phase1_poly_concat = concat_polys(phase1_poly);
+        let phase1_comm = Pcs::commit_and_write(&pp.pcs, &phase1_poly_concat, transcript)?;
         println!("witness_polys_len {:?}", witness_polys.len());
-        let witness_poly_concat =  concat_polys(witness_polys.clone());
-        witness_comms.push(Pcs::commit_and_write(&pp.pcs, &witness_poly_concat, transcript)?);
-        println!("witness_poly_concat_num_vars {:?}", witness_poly_concat.num_vars());
+        println!("lookup_m_polys_len {:?}", lookup_m_polys.len());
+        println!("phase1_poly_concat_num_vars {:?}", phase1_poly_concat.num_vars());
 
         // Round n
-
-        let theta_primes = powers(transcript.squeeze_challenge())
-            .skip(1)
+        // reuse the challenge to compress vector lookups
+        let beta_prime = transcript.squeeze_challenge();
+        let theta_primes = powers(beta_prime)
+            .skip(2)
             .take(*num_theta_primes)
             .collect_vec();
 
@@ -176,35 +195,17 @@ where
         };
         end_timer(timer);
 
-        let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
-        let lookup_m_polys = lookup_m_polys(&lookup_compressed_polys)?;
-        end_timer(timer);
-
-        // let lookup_m_comms = Pcs::batch_commit_and_write(&pp.pcs, &lookup_m_polys, transcript)?;
-        println!("lookup_m_polys_len {:?}", lookup_m_polys.len());
-        let lookup_m_poly_concat =  concat_polys(lookup_m_polys.clone());
-        let lookup_m_comm = Pcs::commit_and_write(&pp.pcs, &lookup_m_poly_concat, transcript)?;
-        println!("lookup_m_poly_concat_num_vars {:?}", lookup_m_poly_concat.num_vars());
-
-        // Round n+1
-
-        let beta_prime = transcript.squeeze_challenge();
-
         let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
         let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &beta_prime);
         end_timer(timer);
 
-        // let lookup_h_comms = {
-        //     let polys = lookup_h_polys.iter().flatten();
-        //     Pcs::batch_commit_and_write(&pp.pcs, polys, transcript)?
-        // };
-
-        println!("lookup_h_polys_len {:?}", lookup_h_polys.len());
-        let lookup_h_poly_concat =  concat_polys(lookup_h_polys.clone().into_iter().flatten().collect_vec());
+        let lookup_h_poly_vec = lookup_h_polys.clone().into_iter().flatten().collect_vec();
+        let lookup_h_poly_concat =  concat_polys(lookup_h_poly_vec.clone());
         let lookup_h_comm = Pcs::commit_and_write(&pp.pcs, &lookup_h_poly_concat, transcript)?;
+        println!("lookup_h_poly_len {:?}", lookup_h_poly_vec.len());
         println!("lookup_h_poly_concat_num_vars {:?}", lookup_h_poly_concat.num_vars());
 
-        // Round n+2
+        // Round n+1
 
         let (zeta, powers_of_zeta_poly, powers_of_zeta_comm) = match strategy {
             NoCompressing => (None, None, None),
@@ -226,25 +227,24 @@ where
             }
         };
 
-        // Round n+3
+        // Round n+2
 
         let alpha_primes = powers(transcript.squeeze_challenge())
             .skip(1)
             .take(*num_alpha_primes)
             .collect_vec();
 
-        Ok(PlonkishNark::new(
+            Ok(PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
                 .chain(challenges)
-                .chain(theta_primes)
                 .chain(Some(beta_prime))
+                .chain(theta_primes)
                 .chain(zeta)
                 .chain(alpha_primes)
                 .collect(),
             iter::empty()
-                .chain(witness_comms)
-                .chain([lookup_m_comm])
+                .chain([phase1_comm])
                 .chain([lookup_h_comm])
                 .chain(powers_of_zeta_comm)
                 .collect(),
@@ -534,7 +534,6 @@ where
         };
 
         // PCS open
-
         let dummy_comm = Pcs::Commitment::default();
         let comms = iter::empty()
             .chain(iter::repeat(&dummy_comm).take(pp.num_instances.len()))
@@ -545,6 +544,17 @@ where
             .chain(&permutation_z_comms)
             .chain(Some(&accumulator.instance.e_comm))
             .collect_vec();
+        // todo fix this here all witness polys concat into 1
+        // let comms = iter::empty()
+        //     .chain(iter::repeat(&dummy_comm).take(pp.num_instances.len()))
+        //     .chain(&pp.preprocess_comms)
+        //     .chain(iter::repeat(&accumulator.instance.witness_comms[0]).take(builtin_witness_poly_offset))
+        //     .chain(&pp.permutation_comms)
+        //     .chain([&accumulator.instance.witness_comms[1]])
+        //     .chain(iter::repeat(&accumulator.instance.witness_comms[2]).take(2))
+        //     .chain(&permutation_z_comms)
+        //     .chain(Some(&accumulator.instance.e_comm))
+        //     .collect_vec();
         let timer = start_timer(|| format!("pcs_batch_open-{}", evals.len()));
         Pcs::batch_open(&pp.pcs, polys, comms, &points, &evals, transcript)?;
         end_timer(timer);
@@ -620,9 +630,18 @@ where
     HyperPlonk<Pcs>: PlonkishBackend<F, VerifierParam = HyperPlonkVerifierParam<F, Pcs>>,
 {
     fn from(vp: &ProtostarVerifierParam<F, HyperPlonk<Pcs>>) -> Self {
+        // let num_witness_polys = iter::empty()
+        //     .chain(vp.vp.num_witness_polys.iter().cloned())
+        //     .chain([vp.vp.num_lookups, 2*vp.vp.num_lookups])
+        //     .chain(match vp.strategy {
+        //         NoCompressing => None,
+        //         Compressing => Some(1),
+        //     })
+        //     .collect();
+        // todo changed here all witness polys + lookup_m_poly concat into 1, lookups_h and g into 1
         let num_witness_polys = iter::empty()
-            .chain(vp.vp.num_witness_polys.iter().cloned())
-            .chain([vp.vp.num_lookups, vp.vp.num_lookups])
+            .chain([1])
+            .chain([1])
             .chain(match vp.strategy {
                 NoCompressing => None,
                 Compressing => Some(1),
@@ -633,10 +652,11 @@ where
                 .chain(vp.vp.num_challenges.iter().cloned())
                 .map(|num_challenge| vec![1; num_challenge])
                 .collect_vec();
-            num_challenges.last_mut().unwrap().push(vp.num_theta_primes);
+            // todo change here
+            num_challenges.last_mut().unwrap().push(vp.num_theta_primes + 1);
             iter::empty()
                 .chain(num_challenges)
-                .chain([vec![1]])
+                //.chain([vec![2]])
                 .chain(match vp.strategy {
                     NoCompressing => None,
                     Compressing => Some(vec![1]),

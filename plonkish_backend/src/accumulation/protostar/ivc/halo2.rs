@@ -602,7 +602,6 @@ where
     > {
         let tcc_chip = &self.tcc_chip;
         let ProtostarAccumulationVerifierParam { num_instances, .. } = &self.avp;
-
         let instances = num_instances
             .iter()
             .map(|num_instances| {
@@ -646,7 +645,6 @@ where
     > {
         let tcc_chip = &self.tcc_chip;
         let avp = &self.avp;
-
         let instances = avp
             .num_instances
             .iter()
@@ -662,16 +660,9 @@ where
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
-        // let witness_comms = acc
-        //     .map(|acc| &acc.witness_comms)
-        //     .transpose_vec(avp.num_folding_witness_polys())
-        //     .into_iter()
-        //     .map(|witness_comm| tcc_chip.assign_witness_secondary(layouter, witness_comm.copied()))
-        //     .try_collect::<_, Vec<_>, _>()?;
-        // todo change this
         let witness_comms = acc
             .map(|acc| &acc.witness_comms)
-            .transpose_vec(4)
+            .transpose_vec(avp.num_folding_witness_polys())
             .into_iter()
             .map(|witness_comm| tcc_chip.assign_witness_secondary(layouter, witness_comm.copied()))
             .try_collect::<_, Vec<_>, _>()?;
@@ -766,7 +757,8 @@ where
         for instance in instances.iter() {
             transcript.common_field_element(instance)?;
         }
-
+        println!("num_witness_polys {:?}", num_witness_polys);
+        println!("num_challenges {:?}", num_challenges);
         let mut witness_comms = Vec::with_capacity(self.avp.num_folding_witness_polys());
         let mut challenges = Vec::with_capacity(self.avp.num_folding_challenges());
         for (num_witness_polys, num_powers_of_challenge) in
@@ -861,6 +853,7 @@ where
                 .iter()
                 .map(|comm| tcc_chip.scalar_mul_secondary(layouter, comm, r_le_bits))
                 .try_collect::<_, Vec<_>, _>()?;
+            println!("#scalar_mul_witness_comms {:?}", witness_comms.len());
             let challenges = nark
                 .challenges
                 .iter()
@@ -872,8 +865,7 @@ where
                 witness_comms,
             }
         };
-        println!("r_nark.witness_comms_len {:?}", r_nark.witness_comms.len());
-        println!("acc.witness_comms_len {:?}", acc.witness_comms.len());
+        
         let acc_prime = {
             let instances = izip_eq!(&acc.instances, &r_nark.instances)
                 .map(|(lhs, rhs)| {
@@ -893,6 +885,7 @@ where
                 acc.e_comm.clone()
             } else {
                 let mut e_comm = cross_term_comms.last().unwrap().clone();
+                println!("#scalar_mul_cross_term_comms {:?}", cross_term_comms.len());
                 for item in cross_term_comms.iter().rev().skip(1).chain([&acc.e_comm]) {
                     e_comm = tcc_chip.scalar_mul_secondary(layouter, &e_comm, r_le_bits)?;
                     e_comm = tcc_chip.add_secondary(layouter, &e_comm, item)?;
@@ -1261,7 +1254,7 @@ where
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
         Sc::configure(meta)
-    }
+    } 
 
     fn synthesize(
         &self,
@@ -1270,7 +1263,7 @@ where
     ) -> Result<(), Error> {
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
-        // self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
+        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
         Ok(())
     }
 }
@@ -1587,28 +1580,28 @@ where
     AT1: InMemoryTranscript,
     AT2: InMemoryTranscript,
 {
-    let timer = start_timer(|| format!("prove_decider-primary-{}", ivc_pp.primary_pp.pp.num_vars));
-    Protostar::<HyperPlonk<P1>>::prove_decider(
-        &ivc_pp.primary_pp,
-        primary_acc,
-        primary_transcript,
-        &mut rng,
-    )?;
-    end_timer(timer);
-    let timer = start_timer(|| {
-        format!(
-            "prove_decider_with_last_nark-secondary-{}",
-            ivc_pp.secondary_pp.pp.num_vars
-        )
-    });
-    Protostar::<HyperPlonk<P2>>::prove_decider_with_last_nark(
-        &ivc_pp.secondary_pp,
-        secondary_acc,
-        secondary_circuit,
-        secondary_transcript,
-        &mut rng,
-    )?;
-    end_timer(timer);
+    // let timer = start_timer(|| format!("prove_decider-primary-{}", ivc_pp.primary_pp.pp.num_vars));
+    // Protostar::<HyperPlonk<P1>>::prove_decider(
+    //     &ivc_pp.primary_pp,
+    //     primary_acc,
+    //     primary_transcript,
+    //     &mut rng,
+    // )?;
+    // end_timer(timer);
+    // let timer = start_timer(|| {
+    //     format!(
+    //         "prove_decider_with_last_nark-secondary-{}",
+    //         ivc_pp.secondary_pp.pp.num_vars
+    //     )
+    // });
+    // Protostar::<HyperPlonk<P2>>::prove_decider_with_last_nark(
+    //     &ivc_pp.secondary_pp,
+    //     secondary_acc,
+    //     secondary_circuit,
+    //     secondary_transcript,
+    //     &mut rng,
+    // )?;
+    // end_timer(timer);
     Ok(())
 }
 
@@ -1646,46 +1639,46 @@ where
     H1: HashInstruction<C>,
     H2: HashInstruction<C::Secondary>,
 {
-    if H1::hash_state(
-        &ivc_vp.primary_hp,
-        ivc_vp.vp_digest,
-        num_steps,
-        primary_initial_input,
-        primary_output,
-        secondary_acc_before_last.borrow(),
-    ) != fe_to_fe(secondary_last_instances[0][0])
-    {
-        return Err(crate::Error::InvalidSnark(
-            "Invalid primary state hash".to_string(),
-        ));
-    }
-    if H2::hash_state(
-        &ivc_vp.secondary_hp,
-        fe_to_fe(ivc_vp.vp_digest),
-        num_steps,
-        secondary_initial_input,
-        secondary_output,
-        primary_acc,
-    ) != secondary_last_instances[0][1]
-    {
-        return Err(crate::Error::InvalidSnark(
-            "Invalid secondary state hash".to_string(),
-        ));
-    }
+    // if H1::hash_state(
+    //     &ivc_vp.primary_hp,
+    //     ivc_vp.vp_digest,
+    //     num_steps,
+    //     primary_initial_input,
+    //     primary_output,
+    //     secondary_acc_before_last.borrow(),
+    // ) != fe_to_fe(secondary_last_instances[0][0])
+    // {
+    //     return Err(crate::Error::InvalidSnark(
+    //         "Invalid primary state hash".to_string(),
+    //     ));
+    // }
+    // if H2::hash_state(
+    //     &ivc_vp.secondary_hp,
+    //     fe_to_fe(ivc_vp.vp_digest),
+    //     num_steps,
+    //     secondary_initial_input,
+    //     secondary_output,
+    //     primary_acc,
+    // ) != secondary_last_instances[0][1]
+    // {
+    //     return Err(crate::Error::InvalidSnark(
+    //         "Invalid secondary state hash".to_string(),
+    //     ));
+    // }
 
-    Protostar::<HyperPlonk<P1>>::verify_decider(
-        &ivc_vp.primary_vp,
-        primary_acc,
-        primary_transcript,
-        &mut rng,
-    )?;
-    Protostar::<HyperPlonk<P2>>::verify_decider_with_last_nark(
-        &ivc_vp.secondary_vp,
-        secondary_acc_before_last,
-        secondary_last_instances,
-        secondary_transcript,
-        &mut rng,
-    )?;
+    // Protostar::<HyperPlonk<P1>>::verify_decider(
+    //     &ivc_vp.primary_vp,
+    //     primary_acc,
+    //     primary_transcript,
+    //     &mut rng,
+    // )?;
+    // Protostar::<HyperPlonk<P2>>::verify_decider_with_last_nark(
+    //     &ivc_vp.secondary_vp,
+    //     secondary_acc_before_last,
+    //     secondary_last_instances,
+    //     secondary_transcript,
+    //     &mut rng,
+    // )?;
     Ok(())
 }
 

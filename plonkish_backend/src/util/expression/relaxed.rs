@@ -41,7 +41,6 @@ pub(crate) fn cross_term_expressions<F: PrimeField>(
     let u = num_challenges;
     let [preprocess_poly_indices, folding_poly_indices] = [&poly_set.preprocess, &poly_set.folding]
         .map(|polys| polys.iter().zip(0..).collect::<BTreeMap<_, _>>());
-    println!("products: {:?}", products.len());
     products
         .iter()
         .fold(

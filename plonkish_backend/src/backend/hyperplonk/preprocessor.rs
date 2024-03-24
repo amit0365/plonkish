@@ -83,7 +83,6 @@ pub(super) fn lookup_constraints<F: PrimeField>(
 ) -> (Vec<Expression<F>>, Vec<Expression<F>>) {
     let m_offset = circuit_info.num_poly() + circuit_info.permutation_polys().len();
     let h_offset = m_offset + circuit_info.lookups.len();
-    println!("m_offset: {}, h_offset: {}", m_offset, h_offset);
     let constraints = circuit_info
         .lookups
         .iter()

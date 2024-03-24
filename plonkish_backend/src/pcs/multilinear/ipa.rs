@@ -145,9 +145,7 @@ where
     }
 
     fn commit(pp: &Self::ProverParam, poly: &Self::Polynomial) -> Result<Self::Commitment, Error> {
-        // validate_input("commit", pp.num_vars(), [poly], None)?;
-        println!("poly.evals().len() = {:?}", poly.evals().len());
-        println!("poly.evals().len() = {:?}", pp.g()[..poly.evals().len()].len());
+        validate_input("commit", pp.num_vars(), [poly], None)?;
         Ok(variable_base_msm(poly.evals(), &pp.g()[..poly.evals().len()]).into()).map(MultilinearIpaCommitment)
     }
 
@@ -155,7 +153,6 @@ where
         pp: &Self::ProverParam,
         polys: impl IntoIterator<Item = &'a Self::Polynomial>,
     ) -> Result<Vec<Self::Commitment>, Error> {
-        println!("batch_commit_ipa");
         let polys = polys.into_iter().collect_vec();
         if polys.is_empty() {
             return Ok(Vec::new());

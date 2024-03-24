@@ -662,9 +662,16 @@ where
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
-            let witness_comms = acc
+        // let witness_comms = acc
+        //     .map(|acc| &acc.witness_comms)
+        //     .transpose_vec(avp.num_folding_witness_polys())
+        //     .into_iter()
+        //     .map(|witness_comm| tcc_chip.assign_witness_secondary(layouter, witness_comm.copied()))
+        //     .try_collect::<_, Vec<_>, _>()?;
+        // todo change this
+        let witness_comms = acc
             .map(|acc| &acc.witness_comms)
-            .transpose_vec(avp.num_folding_witness_polys())
+            .transpose_vec(4)
             .into_iter()
             .map(|witness_comm| tcc_chip.assign_witness_secondary(layouter, witness_comm.copied()))
             .try_collect::<_, Vec<_>, _>()?;
@@ -865,7 +872,8 @@ where
                 witness_comms,
             }
         };
-
+        println!("r_nark.witness_comms_len {:?}", r_nark.witness_comms.len());
+        println!("acc.witness_comms_len {:?}", acc.witness_comms.len());
         let acc_prime = {
             let instances = izip_eq!(&acc.instances, &r_nark.instances)
                 .map(|(lhs, rhs)| {
@@ -1262,7 +1270,7 @@ where
     ) -> Result<(), Error> {
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config, layouter.namespace(|| ""))?;
-        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
+        // self.synthesize_accumulation_verifier(layouter.namespace(|| ""), &input, &output)?;
         Ok(())
     }
 }
@@ -1376,8 +1384,8 @@ where
 {
     assert_eq!(S1::HashChip::NUM_HASH_BITS, S2::HashChip::NUM_HASH_BITS);
 
-    let primary_param = P1::setup(1 << (primary_num_vars + 1), 0, &mut rng).unwrap();
-    let secondary_param = P2::setup(1 << (secondary_num_vars + 1), 0, &mut rng).unwrap();
+    let primary_param = P1::setup(1 << (primary_num_vars + 3), 0, &mut rng).unwrap();
+    let secondary_param = P2::setup(1 << (secondary_num_vars + 3), 0, &mut rng).unwrap();
 
     let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, None);
     let mut primary_circuit =

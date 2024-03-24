@@ -165,7 +165,7 @@ where
         Compressing => {
             let zeta = challenge_offset + num_theta_primes + 1;
             let alpha_prime_offset = zeta + 1;
-            let num_builtin_witness_polys = 2 * circuit_info.lookups.len() + 1;
+            let num_builtin_witness_polys = 3 * circuit_info.lookups.len() + 1;
             let builtin_witness_poly_offset =
                 witness_poly_offset + num_witness_polys + circuit_info.permutation_polys().len();
 
@@ -274,7 +274,8 @@ where
     let (pp, vp) = {
         let (mut pp, mut vp) = HyperPlonk::preprocess(param, circuit_info)?;
         let batch_size = batch_size(circuit_info, strategy);
-        let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << (circuit_info.k + 1), batch_size)?;
+        // todo change here
+        let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << (circuit_info.k + 3), batch_size)?;
         pp.pcs = pcs_pp;
         vp.pcs = pcs_vp;
         pp.num_permutation_z_polys = num_permutation_z_polys;

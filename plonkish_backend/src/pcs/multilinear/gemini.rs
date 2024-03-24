@@ -69,7 +69,6 @@ where
         pp: &Self::ProverParam,
         polys: impl IntoIterator<Item = &'a Self::Polynomial>,
     ) -> Result<Vec<Self::Commitment>, Error> {
-        println!("batch_commit_gemini");
         polys
             .into_iter()
             .map(|poly| Self::commit(pp, poly))

@@ -27,7 +27,7 @@ use crate::{
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
     },
     pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme},
-    poly::{Polynomial, multilinear::MultilinearPolynomial},
+    poly::{multilinear::{concat_polys, MultilinearPolynomial}, Polynomial},
     util::{
         arithmetic::{powers, PrimeField},
         end_timer, start_timer,
@@ -120,16 +120,14 @@ where
             }
         }
 
+        let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
+        // num_challenges = 0 since all witness_polys are in one phase.
         // Round 0..n
 
         let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
-        println!("num_witness_polys: {:?}", &pp.num_witness_polys);
-        println!("witness_polys len: {:?}", &witness_polys.len());
         let mut witness_comms = Vec::with_capacity(witness_polys.len());
-        println!("witness_comms len: {:?}", &witness_comms.len());
         let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
-        println!("challenges_len: {:?}", &challenges.len());
-        println!("num_challenges: {:?}", &pp.num_challenges);
+
         for (round, (num_witness_polys, num_challenges)) in pp
             .num_witness_polys
             .iter()
@@ -137,25 +135,23 @@ where
             .enumerate()
         {
             let timer = start_timer(|| format!("witness_collector-{round}"));
-            println!("round: {}", round);
-            println!("challenges: {:?}", &challenges);
             let polys = circuit
                 .synthesize(round, &challenges)?
                 .into_iter()
                 .map(MultilinearPolynomial::new)
                 .collect_vec();
-            println!("polys len: {}", polys.len());
-            println!("num_witness_polys: {:?}", &num_witness_polys);
             assert_eq!(polys.len(), *num_witness_polys);
             end_timer(timer);
 
-            witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
+            // witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
             witness_polys.extend(polys);
             challenges.extend(transcript.squeeze_challenges(*num_challenges));
         }
 
-        println!("challenge len: {}", challenges.len());
-        println!("witness_comms len: {}", witness_comms.len());
+        println!("witness_polys_len {:?}", witness_polys.len());
+        let witness_poly_concat =  concat_polys(witness_polys.clone());
+        witness_comms.push(Pcs::commit_and_write(&pp.pcs, &witness_poly_concat, transcript)?);
+        println!("witness_poly_concat_num_vars {:?}", witness_poly_concat.num_vars());
 
         // Round n
 
@@ -163,8 +159,6 @@ where
             .skip(1)
             .take(*num_theta_primes)
             .collect_vec();
-
-        println!("theta_primes len: {}", theta_primes.len());
 
         let timer = start_timer(|| format!("lookup_compressed_polys-{}", pp.lookups.len()));
         let lookup_compressed_polys = {
@@ -186,7 +180,11 @@ where
         let lookup_m_polys = lookup_m_polys(&lookup_compressed_polys)?;
         end_timer(timer);
 
-        let lookup_m_comms = Pcs::batch_commit_and_write(&pp.pcs, &lookup_m_polys, transcript)?;
+        // let lookup_m_comms = Pcs::batch_commit_and_write(&pp.pcs, &lookup_m_polys, transcript)?;
+        println!("lookup_m_polys_len {:?}", lookup_m_polys.len());
+        let lookup_m_poly_concat =  concat_polys(lookup_m_polys.clone());
+        let lookup_m_comm = Pcs::commit_and_write(&pp.pcs, &lookup_m_poly_concat, transcript)?;
+        println!("lookup_m_poly_concat_num_vars {:?}", lookup_m_poly_concat.num_vars());
 
         // Round n+1
 
@@ -194,7 +192,6 @@ where
 
         let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
         let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &beta_prime);
-        let lookup_h_poly_concat =  MultilinearPolynomial::new(lookup_h_polys[0][0].evals().iter().chain(lookup_h_polys[0][1].evals().iter()).cloned().collect());
         end_timer(timer);
 
         // let lookup_h_comms = {
@@ -202,7 +199,10 @@ where
         //     Pcs::batch_commit_and_write(&pp.pcs, polys, transcript)?
         // };
 
-        let lookup_h_comms = Pcs::commit_and_write(&pp.pcs, &lookup_h_poly_concat, transcript)?;
+        println!("lookup_h_polys_len {:?}", lookup_h_polys.len());
+        let lookup_h_poly_concat =  concat_polys(lookup_h_polys.clone().into_iter().flatten().collect_vec());
+        let lookup_h_comm = Pcs::commit_and_write(&pp.pcs, &lookup_h_poly_concat, transcript)?;
+        println!("lookup_h_poly_concat_num_vars {:?}", lookup_h_poly_concat.num_vars());
 
         // Round n+2
 
@@ -232,7 +232,6 @@ where
             .skip(1)
             .take(*num_alpha_primes)
             .collect_vec();
-        println!("alpha_primes len: {}", alpha_primes.len());
 
         Ok(PlonkishNark::new(
             instances.to_vec(),
@@ -245,15 +244,14 @@ where
                 .collect(),
             iter::empty()
                 .chain(witness_comms)
-                .chain(lookup_m_comms)
-                .chain([lookup_h_comms])
+                .chain([lookup_m_comm])
+                .chain([lookup_h_comm])
                 .chain(powers_of_zeta_comm)
                 .collect(),
             iter::empty()
                 .chain(witness_polys)
                 .chain(lookup_m_polys)
-                .chain([lookup_h_poly_concat])
-                //.chain(lookup_h_polys.into_iter().flatten())
+                .chain(lookup_h_polys.into_iter().flatten())
                 .chain(powers_of_zeta_poly)
                 .collect(),
         ))
@@ -335,7 +333,6 @@ where
                 // Round 0
 
                 let r = transcript.squeeze_challenge();
-                println!("compressed_cross_term_sums: {:?}", compressed_cross_term_sums.len());
                 let timer = start_timer(|| "fold_compressed");
                 accumulator.fold_compressed(
                     incoming,
@@ -631,7 +628,6 @@ where
                 Compressing => Some(1),
             })
             .collect();
-        println!("from_vp_num_witness_polys: {:?}", num_witness_polys);
         let num_challenges = {
             let mut num_challenges = iter::empty()
                 .chain(vp.vp.num_challenges.iter().cloned())

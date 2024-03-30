@@ -332,9 +332,6 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
                 None => (Vec::new(), Vec::new()),
         };
 
-        println!("inputs: {:?}", inputs);
-        println!("outputs: {:?}", outputs);
-
         self.setup();
 
         Ok((inputs, outputs))

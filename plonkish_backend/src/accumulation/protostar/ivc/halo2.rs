@@ -1391,6 +1391,9 @@ where
             StepCircuit::<C>::synthesize(&mut *step_circuit, config.clone(), layouter.namespace(|| ""), &mut builder)?;
         drop(step_circuit);
         
+        println!("inputs: {:?}", input.clone());
+        println!("outputs: {:?}", output.clone());
+
         let synthesize_accumulation_verifier_time = Instant::now();
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output, &mut builder)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();

@@ -105,13 +105,28 @@ where
         &[]
     }
 
+    fn setup(&mut self) -> C::Scalar {
+        C::Scalar::from(0u64)
+    }
+
     fn input(&self) -> &[C::Scalar] {
         &[]
+    }
+
+    fn set_input(&mut self, input: &[C::Scalar]) {
     }
 
     fn output(&self) -> &[C::Scalar] {
         &[]
     }
+
+    fn set_output(&mut self, output: &[C::Scalar]) {
+    }
+
+    fn next_output(&self) -> Vec<C::Scalar> {
+        Vec::new()
+    }
+
 
     fn step_idx(&self) -> usize {
         self.step_idx
@@ -121,10 +136,16 @@ where
         self.step_idx += 1;
     }
 
+    fn num_constraints(&self) -> usize {
+        0
+    }
+
+    // todo fix this with other synthesizes
     fn synthesize(
-        &self,
+        &mut self,
         _: Self::Config,
         _: impl Layouter<C::Scalar>,
+        _: &mut BaseCircuitBuilder<C::Scalar>,
     ) -> Result<
         (
             Vec<AssignedValue<C::Scalar>>,
@@ -133,6 +154,190 @@ where
         Error,
     > {
         Ok((Vec::new(), Vec::new()))
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct NonTrivialCircuit<C> 
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    step_idx: usize,
+    setup_done: C::Scalar,
+    num_constraints: usize,
+    initial_input: Vec<C::Scalar>,
+    input: Vec<C::Scalar>,
+    output: Vec<C::Scalar>,
+}
+
+impl<C> NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    pub fn new(num_constraints: usize, initial_input: Vec<C::Scalar>) -> Self {
+        Self { 
+            step_idx: 0,
+            setup_done: C::Scalar::from(0u64),
+            num_constraints: num_constraints, 
+            initial_input: initial_input.clone(), 
+            input: initial_input.clone(), 
+            output: initial_input.clone(),
+        }
+    }
+}
+
+impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    type Config = BaseConfig<C::Scalar>;  
+    type FloorPlanner = SimpleFloorPlanner;
+    type Params = BaseCircuitParams;
+
+    fn without_witnesses(&self) -> Self {
+        self.clone()
+    }
+
+    fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
+            BaseCircuitBuilder::configure_with_params(meta, params)
+    }
+
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        unreachable!()
+    }
+
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<C::Scalar>,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+impl<C> CircuitExt<C::Scalar> for NonTrivialCircuit<C>
+    where
+        C: CurveAffine,
+        C::Scalar: BigPrimeField + FromUniformBytes<64>,
+{
+    fn instances(&self) -> Vec<Vec<C::Scalar>> {
+        Vec::new()
+    }
+
+    fn rand(k: usize, _: impl RngCore) -> Self {
+        unimplemented!()
+    }
+}
+
+
+impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
+    where
+        C::Base: BigPrimeField + PrimeFieldBits,
+        C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
+{
+
+    fn arity() -> usize {
+        1
+    }
+
+    fn setup(&mut self) -> C::Scalar {
+        self.setup_done = C::Scalar::from(1u64);
+        self.setup_done
+    }
+
+    fn initial_input(&self) -> &[C::Scalar] {
+        &self.initial_input
+    }
+
+    fn input(&self) -> &[C::Scalar] {
+        &self.input
+    }
+
+    fn set_input(&mut self, input: &[C::Scalar]) {
+        self.input = input.to_vec();
+    }
+
+    fn output(&self) -> &[C::Scalar] {
+        &self.output
+    }
+
+    // define the calculation logic. This is done out of the zk_circuit
+    // Used in recursive_circuit.update to cal hash of the next iteration 
+    // And checked with the hash synthesize_accumulation_verifier.check_hash_state
+    fn next_output(&self) -> Vec<C::Scalar> {
+        let x = self.input().get(0).copied().unwrap();
+        let y = x + x;
+        vec![y]
+    }
+
+    fn set_output(&mut self, output: &[C::Scalar]) {
+        self.output = output.to_vec();
+    }
+
+    fn step_idx(&self) -> usize {
+        self.step_idx
+    }
+
+    fn num_constraints(&self) -> usize {
+        self.num_constraints
+    }
+
+    fn next(&mut self) {
+        self.step_idx += 1;
+    }
+
+    fn synthesize(
+        &mut self,
+        config: Self::Config,
+        mut layouter: impl Layouter<C::Scalar>,
+        builder: &mut BaseCircuitBuilder<C::Scalar>,
+    ) -> Result<
+        (
+            Vec<AssignedValue<C::Scalar>>,
+            Vec<AssignedValue<C::Scalar>>,
+        ),
+        Error,
+    > {
+        let range_chip = builder.range_chip();
+        let gate_chip = range_chip.gate();
+        let ctx = builder.main(0);
+
+        // check for the non-trivial circuit with some input, the other cycle runs trivial circuit with no computation
+        let first_input = self.input().get(0).copied(); 
+        let (inputs, outputs) = 
+        match first_input {
+            Some(first_input) => {
+                // define the calculation logic for the circuit, also done in the next_ouput function
+                // `x + x = y`, where `x` and `y` are respectively the input and output.
+                let x = ctx.load_witness(first_input);
+                let one = ctx.load_constant(C::Scalar::ONE);
+
+                
+                // checks if synthesize has been called for the first time (preprocessing), initiates the input and output same as the intial_input
+                // when synthesize is called for second time by prove_steps, updates the input to the output value for the next step
+                let setup_done = ctx.load_witness(self.setup_done);
+                let setup_sel = gate_chip.is_equal(ctx, one, setup_done);
+                let non_base_case = gate_chip.add(ctx, x, x);
+                let y = gate_chip.select(ctx, non_base_case, x, setup_sel);
+                // stores the output for the current step
+                self.set_output(&[*y.value()]);
+                // updates the input to the output value for the next step
+                self.set_input(&[*y.value()]);
+
+                (vec![x], vec![y])
+            },
+                None => (Vec::new(), Vec::new()),
+        };
+
+        println!("inputs: {:?}", inputs);
+        println!("outputs: {:?}", outputs);
+
+        self.setup();
+
+        Ok((inputs, outputs))
     }
 }
 
@@ -171,7 +376,8 @@ where
     let primary_atp = accumulation_transcript_param();
     let cyclefold_num_vars = cyclefold_circuit_params.k;
     let cyclefold_atp = accumulation_transcript_param();
-    
+    let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
+
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut cyclefold_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
@@ -183,7 +389,7 @@ where
     >(  
         primary_num_vars,
         primary_atp,
-        TrivialCircuit::default(),
+        nontrivial_circuit_primary,
         cyclefold_num_vars,
         cyclefold_atp,
         primary_circuit_params.clone(), 
@@ -1324,7 +1530,7 @@ pub mod strawman {
             vp_digest: C::Scalar,
             step_idx: usize,
             initial_input: &[C::Scalar],
-            output: &[C::Scalar],
+            output: Vec<C::Scalar>,
             acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
         ) -> C::Scalar {
             let mut poseidon = PoseidonHash::from_spec(spec.clone());

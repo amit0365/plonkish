@@ -123,22 +123,33 @@ where
 {   
 
     fn arity() -> usize;
-
+    
     fn initial_input(&self) -> &[C::Scalar];
+
+    fn setup(&mut self) -> C::Scalar;
 
     fn input(&self) -> &[C::Scalar];
 
+    fn set_input(&mut self, input: &[C::Scalar]);
+
     fn output(&self) -> &[C::Scalar];
+
+    fn set_output(&mut self, output: &[C::Scalar]);
+
+    fn next_output(&self) -> Vec<C::Scalar>;
 
     fn step_idx(&self) -> usize;
 
     fn next(&mut self);
 
+    fn num_constraints(&self) -> usize;
+
     #[allow(clippy::type_complexity)]
     fn synthesize(
-        &self,
+        &mut self,
         config: BaseConfig<C::Scalar>,
         layouter: impl Layouter<C::Scalar>,
+        builder: &mut BaseCircuitBuilder<C::Scalar>,
     ) -> Result<
         (
             Vec<AssignedValue<C::Scalar>>,
@@ -940,7 +951,7 @@ where
 
 {
     is_primary: bool,
-    step_circuit: Sc,
+    step_circuit: RefCell<Sc>,
     tcc_chip: Chip<C>,
     hash_chip: Chip<C>,
     hash_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
@@ -983,7 +994,8 @@ where
         let poseidon_spec_base = OptimizedPoseidonSpec::<C::Base, T, RATE>::new::<R_F, R_P, SECURE_MDS>();
         let hash_config_base = poseidon_spec_base.clone();
         let transcript_config = poseidon_spec.clone();
-
+        
+        let step_circuit = RefCell::new(step_circuit);
         let inner = RefCell::new(BaseCircuitBuilder::<C::Scalar>::from_stage(CircuitBuilderStage::Mock).use_params(circuit_params.clone()));
         let range_chip = inner.borrow().range_chip();
         let chip = Chip::<C>::create(range_chip);
@@ -1051,7 +1063,7 @@ where
         if (self.is_primary && acc_prime.u != C::Scalar::ZERO)
             || (!self.is_primary && acc.u != C::Scalar::ZERO)
             {
-                self.step_circuit.next();
+                self.step_circuit.borrow_mut().next();
             }
             self.cyclefold_inputs_hash = Value::known(Chip::<C>::hash_cyclefold_inputs(
                 self.hash_config_base.borrow(),
@@ -1064,9 +1076,9 @@ where
             self.h_prime = Value::known(Chip::<C>::hash_state(
                 self.hash_config.borrow(),
                 self.primary_avp.vp_digest,
-                self.step_circuit.step_idx() + 1,
-                self.step_circuit.initial_input(),
-                self.step_circuit.output(),
+                self.step_circuit.borrow().step_idx() + 1,
+                self.step_circuit.borrow().initial_input(),
+                self.step_circuit.borrow().next_output(),
                 &acc_prime,
             ));
             self.acc = Value::known(acc.unwrap_comm());
@@ -1189,6 +1201,7 @@ where
         config: <RecursiveCircuit<C, Sc> as Circuit<C::Scalar>>::Config,
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
+        circuit_builder: &mut BaseCircuitBuilder<C::Scalar>,
     ) -> Result<(), Error> {
         let Self {
             tcc_chip,
@@ -1198,8 +1211,7 @@ where
             ..
         } = &self;
 
-        let mut binding = self.inner.borrow_mut();
-        let builder = binding.pool(0);  
+        let builder = circuit_builder.pool(0);  
         let acc_verifier = ProtostarAccumulationVerifier::new(primary_avp.clone(), tcc_chip.clone());
 
         let zero = builder.main().load_zero();
@@ -1207,11 +1219,12 @@ where
         let vp_digest = tcc_chip.assign_witness(builder, primary_avp.vp_digest)?;
         let step_idx = tcc_chip.assign_witness(
             builder,
-            C::Scalar::from(self.step_circuit.step_idx() as u64))?;
+            C::Scalar::from(self.step_circuit.borrow().step_idx() as u64))?;
         let step_idx_plus_one = tcc_chip.add(builder, &step_idx, &one)?;
         let h_prime = tcc_chip.assign_witness(builder, self.h_prime.assign().unwrap())?;
         let initial_input = self
             .step_circuit
+            .borrow()
             .initial_input()
             .iter()
             .map(|value| tcc_chip.assign_witness(builder, *value))
@@ -1294,7 +1307,7 @@ where
             &acc_ec_prime_result,
         )?; 
 
-        let assigned_instances = &mut binding.assigned_instances;
+        let assigned_instances = &mut circuit_builder.assigned_instances;
         assert_eq!(
             assigned_instances.len(),
             1,
@@ -1307,17 +1320,16 @@ where
         // let instances = self.instances();
         // MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
 
-        binding.synthesize(config.clone(), layouter.namespace(|| ""));
-        let total_lookup = binding.statistics().total_lookup_advice_per_phase;
-        println!("main_circuit_advice_lookup {:?}", total_lookup);
-        let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
+        circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""));
+
+        let copy_manager = circuit_builder.pool(0).copy_manager.lock().unwrap();
         println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
         println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
         println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
 
-        binding.clear();
-        drop(binding);
+        circuit_builder.clear();
+        drop(circuit_builder);
 
         Ok(())
     }
@@ -1338,7 +1350,7 @@ where
     fn without_witnesses(&self) -> Self {
         Self {
             is_primary: self.is_primary,
-            step_circuit: self.step_circuit.without_witnesses(),
+            step_circuit: self.step_circuit.borrow().without_witnesses().into(),
             tcc_chip: self.tcc_chip.clone(),
             hash_chip: self.hash_chip.clone(),
             hash_config: self.hash_config.clone(),
@@ -1373,11 +1385,14 @@ where
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
+        let mut step_circuit = self.step_circuit.borrow_mut();
+        let mut builder = self.inner.borrow_mut();
         let (input, output) =
-            StepCircuit::synthesize(&self.step_circuit, config.clone(), layouter.namespace(|| ""))?;
+            StepCircuit::<C>::synthesize(&mut *step_circuit, config.clone(), layouter.namespace(|| ""), &mut builder)?;
+        drop(step_circuit);
         
         let synthesize_accumulation_verifier_time = Instant::now();
-        self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
+        self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output, &mut builder)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
         println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
 

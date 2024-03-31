@@ -294,7 +294,7 @@ where
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        let advices = [0; NUM_ADVICE].map(|_| meta.advice_column());
+        let advices = [0; NUM_ADVICE_SM].map(|_| meta.advice_column());
         ScalarMulChipConfig::configure(meta, advices)
     }
 

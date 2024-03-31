@@ -51,88 +51,6 @@ where
             advices;
     
         let [q_ec_double_add_odd, q_ec_double_add_even] = [(); NUM_SELECTOR].map(|_| meta.selector());;
-        
-            meta.create_gate("q_ec_double_add_odd", |meta| {
-
-                let q_ec_double_add_odd = meta.query_selector(q_ec_double_add_odd);
-                let r = meta.query_advice(col_rbits, Rotation(1));
-                let x = meta.query_advice(col_pt, Rotation(1));
-                let y = meta.query_advice(col_pt, Rotation(0));
-                let acc_x = meta.query_advice(col_acc_x, Rotation(0));
-                let acc_y = meta.query_advice(col_acc_y, Rotation(0));
-                // let acc_z = Expression::Constant(C::Scalar::ONE);
-
-                let acc_next_x = meta.query_advice(col_acc_x, Rotation(1));
-                let acc_next_y = meta.query_advice(col_acc_y, Rotation(1));
-                // let acc_next_z = Expression::Constant(C::Scalar::ONE);
-                let lambda = meta.query_advice(col_lambda, Rotation(1));
-
-                let zero = Expression::Constant(C::Scalar::ZERO);
-                let one = Expression::Constant(C::Scalar::ONE);
-                let two = Expression::Constant(C::Scalar::from(2));
-                let three = Expression::Constant(C::Scalar::from(3));
-
-                let b = three.clone(); // todo change for other curve
-                let nine = Expression::Constant(C::Scalar::from(9));
-                let eight = Expression::Constant(C::Scalar::from(8));
-                let twenty_four = Expression::Constant(C::Scalar::from(24));
-                let twenty_seven = Expression::Constant(C::Scalar::from(27)); // nine * b
-                let seventy_two = Expression::Constant(C::Scalar::from(72)); // twenty_four * b
-                let acc_x_sq = acc_x.clone() * acc_x.clone();
-                let acc_y_sq = acc_y.clone() * acc_y.clone();
-                //let acc_z_sq = one.clone();
-
-                
-                // pt double, b = 3 for bn254
-                //  x' = 2xy(y^2 - 9bz^2) --> x'*l^2 = 2xy(y^2*l^2 - 9b)
-                //  y' = (y^2 - 9bz^2)(y^2 + 3bz^2) + 24*b*y^2*z^2 --> y'*l^3 = (y^2*l^2 - 9b)(y^2*l^2 + 3b) + 24*b*y^2*z^2
-                //  z' = 8y^3*z
-
-                // let acc_double_x = two * acc_x.clone() * acc_y.clone() * (acc_y_sq.clone() - nine.clone() * b.clone() * acc_z_sq.clone());
-                // let acc_double_y = (acc_y_sq.clone() - nine.clone() * b.clone() * acc_z_sq.clone()) * (acc_y_sq.clone() 
-                //                     + three.clone() * b.clone() * acc_z_sq.clone()) + twenty_four.clone() * b.clone() * acc_y_sq.clone() * acc_z_sq.clone();
-                // let acc_double_z = eight.clone() * acc_y_sq.clone() * acc_y.clone() * acc_z.clone();
-
-                // simplified for b = 3, 
-                let acc_double_x = two * acc_x.clone() * acc_y.clone() * (acc_y_sq.clone() - twenty_seven.clone());
-                let acc_double_y = (acc_y_sq.clone() - twenty_seven.clone()) * (acc_y_sq.clone() 
-                                    + nine.clone()) + seventy_two.clone() * acc_y_sq.clone();
-                let acc_double_z = eight.clone() * acc_y_sq.clone() * acc_y.clone();
-
-                // choice poly in projective coordinates, identity is (0,1,0)
-                let sel_x = r.clone() * x.clone(); 
-                let sel_y = (one.clone() - r.clone()) + r.clone() * y.clone(); 
-                let sel_z = r.clone(); 
- 
-
-                // X_3 &= (X_1(-Y_2) + X_2Y_1)(Y_1(-Y_2)) - 3bZ_1Z_2 \\
-                //  - (Y_1Z_2 - Y_2Z_1)(3b(X_1Z_2 + X_2Z_1)), \\
-                // Y_3 &= (3X_1X_2)(3b(X_1Z_2 + X_2Z_1)) \\
-                //  + (Y_1(-Y_2) + 3bZ_1Z_2)(Y_1(-Y_2) - 3bZ_1Z_2), \\
-                // Z_3 &= (Y_1Z_2 - Y_2Z_1)(Y_1(-Y_2) + 3bZ_1Z_2) \\
-                //  + (X_1(-Y_2) + X_2Y_1)(3X_1X_2).
-
-            // simplified for b = 3, 
-            let acc_sub_x = ( acc_next_x.clone() * ( - sel_y.clone()) + sel_x.clone() * acc_next_y.clone())
-                * ( - sel_y.clone() * acc_next_y.clone() - nine.clone() * sel_z.clone())
-                - ( sel_y.clone()  - acc_next_y.clone() * sel_z.clone())
-                * (nine.clone() * (sel_x.clone()  + acc_next_x.clone() * sel_z.clone()));
-            
-            let acc_sub_y = (three.clone() * acc_next_x.clone() * sel_x.clone()) 
-                * (nine.clone() * ( acc_next_x.clone() * sel_z.clone() + sel_x.clone()))
-                + ( acc_next_y.clone() * (- sel_y.clone()) + nine.clone() * sel_z.clone()) 
-                * ( - sel_y.clone() * acc_next_y.clone() - nine.clone() * sel_z.clone());
-
-            let acc_sub_z = (acc_next_y.clone() * sel_z.clone() - sel_y.clone())
-                * (acc_next_y.clone() * (- sel_y.clone()) + nine.clone() * sel_z.clone())
-                + ( - acc_next_x.clone() * sel_y.clone() + sel_x.clone() * acc_next_y.clone())
-                * (three.clone() * acc_next_x.clone() * sel_x.clone());
-
-                vec![q_ec_double_add_odd.clone() * (acc_sub_x - acc_double_x.clone() * lambda.clone()),
-                     q_ec_double_add_odd.clone() * (acc_sub_y - acc_double_y.clone() * lambda.clone()),
-                     q_ec_double_add_odd * (acc_sub_z - acc_double_z.clone() * lambda.clone())]
-            
-            });
 
         //     meta.create_gate("q_ec_double_add_even", |meta| {
 
@@ -220,6 +138,7 @@ where
             
         //     });
 
+        // with y affine chart
         meta.create_gate("q_ec_double_add_even", |meta| {
 
             let q_ec_double_add_even = meta.query_selector(q_ec_double_add_even);

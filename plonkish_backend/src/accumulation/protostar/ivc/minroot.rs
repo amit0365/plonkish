@@ -1,7 +1,7 @@
 use halo2_base::{
     gates::{circuit::{builder::BaseCircuitBuilder, BaseCircuitParams, BaseConfig}, GateInstructions, RangeInstructions}, 
     halo2_proofs::{circuit::{Layouter, SimpleFloorPlanner}, plonk::{Circuit, ConstraintSystem, Error}}, 
-    utils::{BigPrimeField, CurveAffineExt, FromUniformBytes, PrimeField, ScalarField}, AssignedValue
+    utils::{BigPrimeField, CurveAffineExt, FromUniformBytes, PrimeField, ScalarField}, AssignedValue, QuantumCell::{Constant, Existing, Witness}
 };
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use num_bigint::{BigInt, BigUint};
@@ -79,6 +79,7 @@ pub struct MinRootCircuit<C>
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
     step_idx: usize,
+    num_iters_per_step: usize,
     setup_done: C::Scalar,
     initial_input: Vec<C::Scalar>,
     input: Vec<C::Scalar>,
@@ -91,21 +92,18 @@ impl<C> MinRootCircuit<C>
         C: CurveAffine,
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
-    pub fn new(num_constraints: usize, initial_input: Vec<C::Scalar>, num_iter_per_step: usize) -> Self {
-        let seq = vec![
-                    MinRootIteration {
-                      x_i: C::Scalar::ZERO,
-                      y_i: C::Scalar::ZERO,
-                      x_i_plus_1: C::Scalar::ZERO,
-                      y_i_plus_1: C::Scalar::ZERO }; num_iter_per_step];
+    pub fn new(initial_input: Vec<C::Scalar>, num_iters_per_step: usize) -> Self {
+        let (output, seq) = 
+            MinRootIteration::new(num_iters_per_step, &initial_input[0], &initial_input[1]);
 
         Self { 
             step_idx: 0,
-            setup_done: C::Scalar::from(0u64),
+            num_iters_per_step,
+            setup_done: C::Scalar::ZERO,
             initial_input: initial_input.clone(), 
             input: initial_input.clone(),
             seq, 
-            output: initial_input.clone(),
+            output,
         }
     }
 }
@@ -166,7 +164,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
     }
 
     fn setup(&mut self) -> C::Scalar {
-        self.setup_done = C::Scalar::from(1u64);
+        self.setup_done = C::Scalar::ONE;
         self.setup_done
     }
 
@@ -189,7 +187,14 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
     // define the calculation logic. This is done out of the zk_circuit
     // Used in recursive_circuit.update to cal hash of the next iteration 
     // And checked with the hash synthesize_accumulation_verifier.check_hash_state
-    fn next_output(&self) -> Vec<C::Scalar> {
+    fn next_output(&mut self) -> Vec<C::Scalar> {
+
+        // produces a sample non-deterministic advice, executing one invocation of MinRoot per step
+        let (output, seq) = 
+            MinRootIteration::new(self.num_iters_per_step, &self.input[0], &self.input[1]);
+
+        self.seq = seq;
+
         // use the provided inputs
         let x_0 = self.input()[0].clone();
         let y_0 = self.input()[1].clone();
@@ -218,7 +223,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
             x_i = x_i_plus_1;
         }
 
-      z_out
+        z_out
     
     }
 
@@ -259,21 +264,21 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
         let (inputs, outputs) = 
         match first_input {
             Some(first_input) => {
-
                 // checks if synthesize has been called for the first time (preprocessing), initiates the input and output same as the intial_input
                 // when synthesize is called for second time by prove_steps, updates the input to the output value for the next step
                 let one = ctx.load_constant(C::Scalar::ONE);
+                let zero = ctx.load_constant(C::Scalar::ZERO);
                 let setup_done = ctx.load_witness(self.setup_done);
                 let setup_sel = gate_chip.is_equal(ctx, one, setup_done);
 
                 // define the calculation logic for the circuit, also done in the next_output function
                 // use the provided inputs
                 let x_0 = self.input()[0].clone();
-                let y_0 = self.input()[0].clone();
+                let y_0 = self.input()[1].clone();
                 let mut z_out = Vec::new();
                 let x_0_assigned = ctx.load_witness(x_0);
                 let y_0_assigned = ctx.load_witness(y_0);
-                let z_base = vec![ctx.load_zero(), ctx.load_zero()];
+                let z_base = self.input().to_vec();
 
                 // variables to hold running x_i and y_i
                 let mut x_i = x_0;
@@ -294,7 +299,9 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
                     let x_i_plus_1_quad = gate_chip.mul(ctx, x_i_plus_1_sq, x_i_plus_1_sq);
                     let lhs = gate_chip.mul(ctx, x_i_plus_1_quad, x_i_plus_1);
                     let rhs = gate_chip.add(ctx, x_i_assigned, y_i_assigned);
-                    ctx.constrain_equal(&lhs, &rhs);
+                    let lhs_sel = gate_chip.select(ctx, lhs, zero, setup_sel);
+                    let rhs_sel = gate_chip.select(ctx, rhs, zero, setup_sel);
+                    ctx.constrain_equal(&lhs_sel, &rhs_sel);
 
                     if i == self.seq.len() - 1 {
                         z_out = vec![x_i_plus_1.clone(), x_i_assigned.clone()]; // todo check this
@@ -305,8 +312,8 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
                     x_i = *x_i_plus_1.value();
                 }
 
-                let z0 = gate_chip.select(ctx, z_out[0], z_base[0], setup_sel);
-                let z1 = gate_chip.select(ctx, z_out[1], z_base[1], setup_sel);
+                let z0 = gate_chip.select(ctx, z_out[0], Constant(z_base[0]), setup_sel);
+                let z1 = gate_chip.select(ctx, z_out[1], Constant(z_base[1]), setup_sel);
                 // stores the output for the current step
                 self.set_output(&[*z0.value(), *z1.value()]);
                 // updates the input to the output value for the next step // todo check this
@@ -323,160 +330,3 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
         Ok((inputs, outputs))
     }
 } 
-
-
-
-// fn main() {
-//   println!("Nova-based VDF with MinRoot delay function");
-//   println!("=========================================================");
-
-//   let num_steps = 10;
-//   for num_iters_per_step in [1024, 2048, 4096, 8192, 16384, 32768, 65535] {
-//     // number of iterations of MinRoot per Nova's recursive step
-//     let circuit_primary = MinRootCircuit {
-//       seq: vec![
-//         MinRootIteration {
-//           x_i: <G1 as Group>::Scalar::zero(),
-//           y_i: <G1 as Group>::Scalar::zero(),
-//           x_i_plus_1: <G1 as Group>::Scalar::zero(),
-//           y_i_plus_1: <G1 as Group>::Scalar::zero(),
-//         };
-//         num_iters_per_step
-//       ],
-//     };
-
-//     let circuit_secondary = TrivialTestCircuit::default();
-
-//     println!("Proving {num_iters_per_step} iterations of MinRoot per step");
-
-//     // produce public parameters
-//     let start = Instant::now();
-//     println!("Producing public parameters...");
-//     let pp = PublicParams::<
-//       G1,
-//       G2,
-//       MinRootCircuit<<G1 as Group>::Scalar>,
-//       TrivialTestCircuit<<G2 as Group>::Scalar>,
-//     >::setup(&circuit_primary, &circuit_secondary);
-//     println!("PublicParams::setup, took {:?} ", start.elapsed());
-
-//     println!(
-//       "Number of constraints per step (primary circuit): {}",
-//       pp.num_constraints().0
-//     );
-//     println!(
-//       "Number of constraints per step (secondary circuit): {}",
-//       pp.num_constraints().1
-//     );
-
-//     println!(
-//       "Number of variables per step (primary circuit): {}",
-//       pp.num_variables().0
-//     );
-//     println!(
-//       "Number of variables per step (secondary circuit): {}",
-//       pp.num_variables().1
-//     );
-
-//     // produce non-deterministic advice
-//     let (z0_primary, minroot_iterations) = MinRootIteration::new(
-//       num_iters_per_step * num_steps,
-//       &<G1 as Group>::Scalar::zero(),
-//       &<G1 as Group>::Scalar::one(),
-//     );
-//     let minroot_circuits = (0..num_steps)
-//       .map(|i| MinRootCircuit {
-//         seq: (0..num_iters_per_step)
-//           .map(|j| MinRootIteration {
-//             x_i: minroot_iterations[i * num_iters_per_step + j].x_i,
-//             y_i: minroot_iterations[i * num_iters_per_step + j].y_i,
-//             x_i_plus_1: minroot_iterations[i * num_iters_per_step + j].x_i_plus_1,
-//             y_i_plus_1: minroot_iterations[i * num_iters_per_step + j].y_i_plus_1,
-//           })
-//           .collect::<Vec<_>>(),
-//       })
-//       .collect::<Vec<_>>();
-
-//     let z0_secondary = vec![<G2 as Group>::Scalar::zero()];
-
-//     type C1 = MinRootCircuit<<G1 as Group>::Scalar>;
-//     type C2 = TrivialTestCircuit<<G2 as Group>::Scalar>;
-//     // produce a recursive SNARK
-//     println!("Generating a RecursiveSNARK...");
-//     let mut recursive_snark: RecursiveSNARK<G1, G2, C1, C2> = RecursiveSNARK::<G1, G2, C1, C2>::new(
-//       &pp,
-//       &minroot_circuits[0],
-//       &circuit_secondary,
-//       z0_primary.clone(),
-//       z0_secondary.clone(),
-//     );
-
-//     for (i, circuit_primary) in minroot_circuits.iter().take(num_steps).enumerate() {
-//       let start = Instant::now();
-//       let res = recursive_snark.prove_step(
-//         &pp,
-//         circuit_primary,
-//         &circuit_secondary,
-//         z0_primary.clone(),
-//         z0_secondary.clone(),
-//       );
-//       assert!(res.is_ok());
-//       println!(
-//         "RecursiveSNARK::prove_step {}: {:?}, took {:?} ",
-//         i,
-//         res.is_ok(),
-//         start.elapsed()
-//       );
-//     }
-
-//     // verify the recursive SNARK
-//     println!("Verifying a RecursiveSNARK...");
-//     let start = Instant::now();
-//     let res = recursive_snark.verify(&pp, num_steps, &z0_primary, &z0_secondary);
-//     println!(
-//       "RecursiveSNARK::verify: {:?}, took {:?}",
-//       res.is_ok(),
-//       start.elapsed()
-//     );
-//     assert!(res.is_ok());
-
-//     // produce a compressed SNARK
-//     println!("Generating a CompressedSNARK using Spartan with IPA-PC...");
-//     let (pk, vk) = CompressedSNARK::<_, _, _, _, S1, S2>::setup(&pp).unwrap();
-
-//     let start = Instant::now();
-//     type EE1 = nova_snark::provider::ipa_pc::EvaluationEngine<G1>;
-//     type EE2 = nova_snark::provider::ipa_pc::EvaluationEngine<G2>;
-//     type S1 = nova_snark::spartan::snark::RelaxedR1CSSNARK<G1, EE1>;
-//     type S2 = nova_snark::spartan::snark::RelaxedR1CSSNARK<G2, EE2>;
-
-//     let res = CompressedSNARK::<_, _, _, _, S1, S2>::prove(&pp, &pk, &recursive_snark);
-//     println!(
-//       "CompressedSNARK::prove: {:?}, took {:?}",
-//       res.is_ok(),
-//       start.elapsed()
-//     );
-//     assert!(res.is_ok());
-//     let compressed_snark = res.unwrap();
-
-//     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-//     bincode::serialize_into(&mut encoder, &compressed_snark).unwrap();
-//     let compressed_snark_encoded = encoder.finish().unwrap();
-//     println!(
-//       "CompressedSNARK::len {:?} bytes",
-//       compressed_snark_encoded.len()
-//     );
-
-//     // verify the compressed SNARK
-//     println!("Verifying a CompressedSNARK...");
-//     let start = Instant::now();
-//     let res = compressed_snark.verify(&vk, num_steps, z0_primary, z0_secondary);
-//     println!(
-//       "CompressedSNARK::verify: {:?}, took {:?}",
-//       res.is_ok(),
-//       start.elapsed()
-//     );
-//     assert!(res.is_ok());
-//     println!("=========================================================");
-//   }
-// }

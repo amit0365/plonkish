@@ -2,7 +2,7 @@ use crate::{
     accumulation::protostar::{
         ivc::{cyclefold::CycleFoldCircuit, halo2::{
             preprocess, prove_decider, prove_steps, test::strawman::{accumulation_transcript_param, decider_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}, verify_decider, CircuitExt, ProtostarIvcVerifierParam, StepCircuit
-        }},
+        }, minroot::MinRootCircuit},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -123,7 +123,7 @@ where
     fn set_output(&mut self, output: &[C::Scalar]) {
     }
 
-    fn next_output(&self) -> Vec<C::Scalar> {
+    fn next_output(&mut self) -> Vec<C::Scalar> {
         Vec::new()
     }
 
@@ -267,7 +267,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
     // define the calculation logic. This is done out of the zk_circuit
     // Used in recursive_circuit.update to cal hash of the next iteration 
     // And checked with the hash synthesize_accumulation_verifier.check_hash_state
-    fn next_output(&self) -> Vec<C::Scalar> {
+    fn next_output(&mut self) -> Vec<C::Scalar> {
         let x = self.input().get(0).copied().unwrap();
         let y = x + x;
         vec![y]
@@ -314,7 +314,6 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
                 // `x + x = y`, where `x` and `y` are respectively the input and output.
                 let x = ctx.load_witness(first_input);
                 let one = ctx.load_constant(C::Scalar::ONE);
-
                 
                 // checks if synthesize has been called for the first time (preprocessing), initiates the input and output same as the intial_input
                 // when synthesize is called for second time by prove_steps, updates the input to the output value for the next step
@@ -373,7 +372,8 @@ where
     let primary_atp = accumulation_transcript_param();
     let cyclefold_num_vars = cyclefold_circuit_params.k;
     let cyclefold_atp = accumulation_transcript_param();
-    let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
+    // let mut nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
+    let mut minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 10);
 
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut cyclefold_circuit, ivc_pp, ivc_vp) = preprocess::<
@@ -386,7 +386,7 @@ where
     >(  
         primary_num_vars,
         primary_atp,
-        nontrivial_circuit_primary,
+        minroot_circuit,
         cyclefold_num_vars,
         cyclefold_atp,
         primary_circuit_params.clone(), 

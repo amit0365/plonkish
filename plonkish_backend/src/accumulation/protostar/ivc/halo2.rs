@@ -136,7 +136,7 @@ where
 
     fn set_output(&mut self, output: &[C::Scalar]);
 
-    fn next_output(&self) -> Vec<C::Scalar>;
+    fn next_output(&mut self) -> Vec<C::Scalar>;
 
     fn step_idx(&self) -> usize;
 
@@ -1045,6 +1045,22 @@ where
         self.acc_prime_ec = Value::known(acc_prime_ec.unwrap_comm());
     }
 
+    // pub fn update_if_nark<
+    //     Comm: AsRef<C>, 
+    // >(
+    //     &mut self,
+    //     acc: ProtostarAccumulatorInstance<C::Scalar, Comm>,
+    //     acc_prime: ProtostarAccumulatorInstance<C::Scalar, Comm>,
+    // ) {
+    //     if (self.is_primary && acc_prime.u != C::Scalar::ZERO)
+    //         || (!self.is_primary && acc.u != C::Scalar::ZERO)
+    //         {
+    //             let mut step_circuit = self.step_circuit.borrow_mut();
+    //             step_circuit.next();
+    //             drop(step_circuit);
+    //         }
+    // }
+
     pub fn update_both_running_instances<
         Comm: AsRef<C>, 
         Comm_ec: AsRef<C::Secondary>
@@ -1060,10 +1076,13 @@ where
         acc_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
         acc_prime_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
     ) {
+        let mut next_output = Vec::new();
         if (self.is_primary && acc_prime.u != C::Scalar::ZERO)
             || (!self.is_primary && acc.u != C::Scalar::ZERO)
-            {
-                self.step_circuit.borrow_mut().next();
+            {   
+                let mut step_circuit = self.step_circuit.borrow_mut();
+                step_circuit.next();
+                next_output = step_circuit.next_output();
             }
             self.cyclefold_inputs_hash = Value::known(Chip::<C>::hash_cyclefold_inputs(
                 self.hash_config_base.borrow(),
@@ -1078,7 +1097,7 @@ where
                 self.primary_avp.vp_digest,
                 self.step_circuit.borrow().step_idx() + 1,
                 self.step_circuit.borrow().initial_input(),
-                self.step_circuit.borrow().next_output(),
+                next_output,
                 &acc_prime,
             ));
             self.acc = Value::known(acc.unwrap_comm());
@@ -1536,7 +1555,7 @@ where
             Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
         };
 
-        let cyclefold_circuit = CycleFoldCircuit::new(
+    let cyclefold_circuit = CycleFoldCircuit::new(
         Some(ProtostarAccumulationVerifierParam::from(&primary_vp_without_preprocess)),
         cyclefold_circuit_params.clone());
     let mut cyclefold_circuit =

@@ -278,8 +278,7 @@ where
         }
 
         if cfg!(feature = "sanity-check") {
-            //todo uncomment this
-            //assert_eq!(Self::commit(pp, poly).unwrap().0, comm.0);
+            assert_eq!(Self::commit(pp, poly).unwrap().0, comm.0);
             assert_eq!(poly.evaluate(point), *eval);
         }
 

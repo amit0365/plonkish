@@ -102,10 +102,10 @@ where
 
         let num_vars = circuit_info.k;
         let num_witness_polys = circuit_info.num_witness_polys.iter().sum::<usize>();
-        //todo changed here
+        // todo changed here
         let poly_size = num_witness_polys.next_power_of_two().ilog2() as usize + circuit_info.k;
         let batch_size = batch_size(circuit_info);
-        let (pcs_pp, pcs_vp) = Pcs::trim(param, poly_size, batch_size)?;
+        let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << poly_size, batch_size)?;
 
         // Compute preprocesses comms
         let preprocess_polys = circuit_info

@@ -101,8 +101,9 @@ where
         assert!(circuit_info.is_well_formed());
 
         let num_vars = circuit_info.k;
-        // todo changed here
-        let poly_size = 1 << (num_vars + 3);
+        let num_witness_polys = circuit_info.num_witness_polys.iter().sum::<usize>();
+        //todo changed here
+        let poly_size = num_witness_polys.next_power_of_two().ilog2() as usize + circuit_info.k;
         let batch_size = batch_size(circuit_info);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, poly_size, batch_size)?;
 

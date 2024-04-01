@@ -83,6 +83,7 @@ where
     let witness_poly_offset =
         circuit_info.num_instances.len() + circuit_info.preprocess_polys.len();
     let num_witness_polys = circuit_info.num_witness_polys.iter().sum::<usize>();
+    let poly_size = num_witness_polys.next_power_of_two().ilog2() as usize + circuit_info.k;
     let num_permutation_z_polys = div_ceil(circuit_info.permutation_polys().len(), max_degree - 1);
 
     let (
@@ -275,7 +276,7 @@ where
         let (mut pp, mut vp) = HyperPlonk::preprocess(param, circuit_info)?;
         let batch_size = batch_size(circuit_info, strategy);
         // todo change here
-        let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << (circuit_info.k + 3), batch_size)?;
+        let (pcs_pp, pcs_vp) = Pcs::trim(param, poly_size, batch_size)?;
         pp.pcs = pcs_pp;
         vp.pcs = pcs_vp;
         pp.num_permutation_z_polys = num_permutation_z_polys;
@@ -284,8 +285,9 @@ where
         vp.expression = expression;
         (pp, vp)
     };
+
     let num_cross_terms = cross_term_expressions.len();
-    // let num_folding_challenges = num_folding_challenges - 1; // reuse beta for theta prime
+
     Ok((
         ProtostarProverParam {
             pp,

@@ -232,10 +232,9 @@ where
             Ok(PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
-                //.chain(challenges)
+                .chain(challenges)
                 .chain(Some(beta_prime))
                 .chain(theta_primes)
-                //.chain(zeta)
                 .chain(alpha_primes)
                 .collect(),
             iter::empty()

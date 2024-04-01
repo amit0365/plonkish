@@ -77,6 +77,7 @@ where
     }
 
     fn init_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error> {
+
         Ok(ProtostarAccumulator::init(
             pp.strategy,
             pp.pp.num_vars,
@@ -121,7 +122,7 @@ where
 
         let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
         // num_challenges = 0 since all witness_polys are in one phase.
-        // Round 0..n
+        // Round 0
 
         let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
         let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
@@ -161,7 +162,7 @@ where
         let lookup_m_polys = lookup_m_polys_uncompressed(&lookup_uncompressed_polys)?;
         end_timer(timer);
 
-        let mut phase1_poly = witness_polys.clone(); // Assuming this does not incur an undesirable cost
+        let mut phase1_poly = witness_polys.clone(); 
         phase1_poly.extend(lookup_m_polys.iter().cloned());
 
 
@@ -171,7 +172,7 @@ where
         println!("lookup_m_polys_len {:?}", lookup_m_polys.len());
         println!("phase1_poly_concat_num_vars {:?}", phase1_poly_concat.num_vars());
 
-        // Round n
+        // Round 1
         // reuse the challenge to compress vector lookups
         let beta_prime = transcript.squeeze_challenge();
         let theta_primes = powers(beta_prime)
@@ -200,34 +201,29 @@ where
         end_timer(timer);
 
         let lookup_h_poly_vec = lookup_h_polys.clone().into_iter().flatten().collect_vec();
-        let lookup_h_poly_concat =  concat_polys(lookup_h_poly_vec.clone());
-        let lookup_h_comm = Pcs::commit_and_write(&pp.pcs, &lookup_h_poly_concat, transcript)?;
-        println!("lookup_h_poly_len {:?}", lookup_h_poly_vec.len());
-        println!("lookup_h_poly_concat_num_vars {:?}", lookup_h_poly_concat.num_vars());
 
-        // Round n+1
-
-        let (zeta, powers_of_zeta_poly, powers_of_zeta_comm) = match strategy {
-            NoCompressing => (None, None, None),
+        let powers_of_zeta_poly = match strategy {
+            NoCompressing => Vec::new(),
             Compressing => {
-                let zeta = transcript.squeeze_challenge();
-
                 let timer = start_timer(|| "powers_of_zeta_poly");
-                let powers_of_zeta_poly = powers_of_zeta_poly(pp.num_vars, zeta);
+                let powers_of_zeta_poly = powers_of_zeta_poly(pp.num_vars, beta_prime);
                 end_timer(timer);
 
-                let powers_of_zeta_comm =
-                    Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_poly, transcript)?;
-
-                (
-                    Some(zeta),
-                    Some(powers_of_zeta_poly),
-                    Some(powers_of_zeta_comm),
-                )
+                vec![powers_of_zeta_poly]
             }
         };
 
-        // Round n+2
+
+        let phase2_poly = [lookup_h_poly_vec.clone(), powers_of_zeta_poly.clone()].concat();
+        let phase2_poly_concat =  concat_polys(phase2_poly);
+        let phase2_comm = Pcs::commit_and_write(&pp.pcs, &phase2_poly_concat, transcript)?;
+        
+        println!("lookup_h_polys_len {:?}", lookup_h_poly_vec.len());
+        println!("powers_of_zeta_poly_len {:?}", powers_of_zeta_poly.len());
+        println!("phase2_poly_concat_num_vars {:?}", phase2_poly_concat.num_vars());
+
+
+        // Round 2
 
         let alpha_primes = powers(transcript.squeeze_challenge())
             .skip(1)
@@ -237,16 +233,15 @@ where
             Ok(PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
-                .chain(challenges)
+                //.chain(challenges)
                 .chain(Some(beta_prime))
                 .chain(theta_primes)
-                .chain(zeta)
+                //.chain(zeta)
                 .chain(alpha_primes)
                 .collect(),
             iter::empty()
                 .chain([phase1_comm])
-                .chain([lookup_h_comm])
-                .chain(powers_of_zeta_comm)
+                .chain([phase2_comm])
                 .collect(),
             iter::empty()
                 .chain(witness_polys)
@@ -642,10 +637,10 @@ where
         let num_witness_polys = iter::empty()
             .chain([1])
             .chain([1])
-            .chain(match vp.strategy {
-                NoCompressing => None,
-                Compressing => Some(1),
-            })
+            // .chain(match vp.strategy {
+            //     NoCompressing => None,
+            //     Compressing => Some(1),
+            // })
             .collect();
         let num_challenges = {
             let mut num_challenges = iter::empty()
@@ -656,11 +651,10 @@ where
             num_challenges.last_mut().unwrap().push(vp.num_theta_primes + 1);
             iter::empty()
                 .chain(num_challenges)
-                //.chain([vec![2]])
-                .chain(match vp.strategy {
-                    NoCompressing => None,
-                    Compressing => Some(vec![1]),
-                })
+                // .chain(match vp.strategy {
+                //     NoCompressing => None,
+                //     Compressing => Some(vec![1]),
+                // })
                 .chain([vec![vp.num_alpha_primes]])
                 .collect()
         };

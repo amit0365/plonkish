@@ -37,7 +37,7 @@ use halo2_proofs::{
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
     plonk::{Circuit, ConstraintSystem, Error},
 };
-use std::{fmt::Debug, hash::Hash, marker::PhantomData};
+use std::{fmt::Debug, hash::Hash, marker::PhantomData, time::Instant};
 
 #[derive(Clone, Debug, Default)]
 struct TrivialCircuit<C> {
@@ -390,7 +390,8 @@ where
     let primary_atp = strawman::accumulation_transcript_param();
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
-
+    
+    let preprocess_time = Instant::now();
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
         P1,
@@ -409,7 +410,9 @@ where
         seeded_std_rng(),
     )
     .unwrap();
+    println!("Preprocess time: {:?}", preprocess_time.elapsed());
 
+    let prove_time = Instant::now();
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
         &ivc_pp,
         &mut primary_circuit,
@@ -418,6 +421,7 @@ where
         seeded_std_rng(),
     )
     .unwrap();
+    println!("Prove time for {:?} steps : {:?} ", num_steps, prove_time.elapsed());
 
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();

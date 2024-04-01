@@ -167,6 +167,7 @@ where
             compressed_cross_term_sums,
             r,
         );
+
         izip_eq!(&mut self.witness_polys, &rhs.witness_polys)
             .for_each(|(lhs, rhs)| *lhs += (r, rhs));
 
@@ -211,7 +212,7 @@ where
             // witness_comms: iter::repeat_with(C::default)
             //     .take(num_witness_polys)
             //     .collect(),
-            witness_comms: vec![C::default(), C::default(), C::default()],
+            witness_comms: vec![C::default(), C::default()],
             challenges: vec![F::ZERO; num_challenges],
             u: F::ZERO,
             e_comm: C::default(),

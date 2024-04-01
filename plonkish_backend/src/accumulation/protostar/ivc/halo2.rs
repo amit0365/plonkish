@@ -666,7 +666,8 @@ where
             .into_iter()
             .map(|witness_comm| tcc_chip.assign_witness_secondary(layouter, witness_comm.copied()))
             .try_collect::<_, Vec<_>, _>()?;
-        let challenges = acc
+
+            let challenges = acc
             .map(|acc| &acc.challenges)
             .transpose_vec(avp.num_folding_challenges())
             .into_iter()

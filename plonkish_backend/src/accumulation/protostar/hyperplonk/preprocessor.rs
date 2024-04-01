@@ -163,8 +163,8 @@ where
             )
         }
         Compressing => {
-            let zeta = challenge_offset + num_theta_primes + 1;
-            let alpha_prime_offset = zeta + 1;
+            let zeta = challenge_offset; // same as beta_prime
+            let alpha_prime_offset = challenge_offset + num_theta_primes + 1;
             let num_builtin_witness_polys = 3 * circuit_info.lookups.len() + 1;
             let builtin_witness_poly_offset =
                 witness_poly_offset + num_witness_polys + circuit_info.permutation_polys().len();

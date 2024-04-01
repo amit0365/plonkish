@@ -28,6 +28,7 @@ impl<N: PrimeField> ProtostarAccumulationVerifierParam<N> {
     pub fn init_accumulator<F: PrimeField, Comm: Default>(
         &self,
     ) -> ProtostarAccumulatorInstance<F, Comm> {
+
         ProtostarAccumulatorInstance::init(
             self.strategy,
             &self.num_instances,

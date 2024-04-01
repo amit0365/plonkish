@@ -77,7 +77,6 @@ where
     }
 
     fn init_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error> {
-
         Ok(ProtostarAccumulator::init(
             pp.strategy,
             pp.pp.num_vars,

@@ -249,7 +249,8 @@ where
         }
         CompressingWithSqrtPowers => {
             let zeta = challenge_offset + num_theta_primes + 1;
-            let alpha_prime_offset = zeta + 1;
+            let zeta_pow_lsqrt = zeta + 1;
+            let alpha_prime_offset = zeta_pow_lsqrt + 1;
             let num_builtin_witness_polys = 3 * circuit_info.lookups.len() + 2;
             let builtin_witness_poly_offset =
                 witness_poly_offset + num_witness_polys + circuit_info.permutation_polys().len();
@@ -305,7 +306,7 @@ where
             };     
 
             let powers_of_zeta_lo_constraint = powers_of_zeta_constraint(zeta, powers_of_zeta_poly_lo);
-            let powers_of_zeta_hi_constraint = powers_of_zeta_constraint(zeta, powers_of_zeta_poly_hi);
+            let powers_of_zeta_hi_constraint = powers_of_zeta_constraint(zeta_pow_lsqrt, powers_of_zeta_poly_hi);
             let zeta_products_lo = products(&poly_set.preprocess, &powers_of_zeta_lo_constraint);
             let zeta_products_hi = products(&poly_set.preprocess, &powers_of_zeta_hi_constraint);
 

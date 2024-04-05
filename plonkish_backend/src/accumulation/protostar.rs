@@ -119,7 +119,7 @@ where
             instance: ProtostarAccumulatorInstance::init(
                 strategy,
                 num_instances,
-                num_witness_polys,
+                num_witness_polys - 1,
                 num_challenges,
             ),
             witness_polys: iter::repeat_with(|| witness_zero_poly.clone())

@@ -188,7 +188,7 @@ where
 
         // Round n+2
 
-        let (zeta, powers_of_zeta_poly_lo, powers_of_zeta_poly_hi, powers_of_zeta_comm_lo, powers_of_zeta_comm_hi) = match strategy {
+        let (zeta, zeta_pow_lsqrt,  powers_of_zeta_poly_lo, powers_of_zeta_poly_hi, powers_of_zeta_comm) = match strategy {
             NoCompressing => (None, None, None, None, None),
             Compressing => {
                 let zeta = transcript.squeeze_challenge();
@@ -202,10 +202,10 @@ where
 
                 (
                     Some(zeta),
+                    None,
                     Some(powers_of_zeta_poly),
                     None,
                     Some(powers_of_zeta_comm),
-                    None,
                 )
             },
             CompressingWithSqrtPowers => {
@@ -217,20 +217,25 @@ where
                 let timer = start_timer(|| "powers_of_zeta_sqrt_poly");
                 let (powers_of_zeta_lo, powers_of_zeta_sum_check_lo) = powers_of_zeta_sum_check_poly_lo(pp.num_vars/2, zeta);
                 let (powers_of_zeta_hi, powers_of_zeta_sum_check_hi) = powers_of_zeta_sum_check_poly_hi(pp.num_vars/2, zeta_pow_lsqrt);
+                let powers_of_zeta_concat = MultilinearPolynomial::new([powers_of_zeta_lo.into_evals(), powers_of_zeta_hi.into_evals()].concat());
                 end_timer(timer);
 
-                let powers_of_zeta_comm_lo =
-                Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_lo, transcript)?;
+                // let powers_of_zeta_comm_lo =
+                // Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_lo, transcript)?;
 
-                let powers_of_zeta_comm_hi = 
-                Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_hi, transcript)?;
+                // let powers_of_zeta_comm_hi = 
+                // Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_hi, transcript)?;
+
+
+                let powers_of_zeta_comm =
+                Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_concat, transcript)?;
 
                 (
                     Some(zeta),
+                    Some(zeta_pow_lsqrt),
                     Some(powers_of_zeta_sum_check_lo),
                     Some(powers_of_zeta_sum_check_hi),
-                    Some(powers_of_zeta_comm_lo),
-                    Some(powers_of_zeta_comm_hi),
+                    Some(powers_of_zeta_comm),
                 )
             }
         };
@@ -249,14 +254,15 @@ where
                 .chain(theta_primes)
                 .chain(Some(beta_prime))
                 .chain(zeta)
+                .chain(zeta_pow_lsqrt)
                 .chain(alpha_primes)
                 .collect(),
             iter::empty()
                 .chain(witness_comms)
                 .chain(lookup_m_comms)
                 .chain(lookup_h_comms)
-                .chain(powers_of_zeta_comm_lo)
-                .chain(powers_of_zeta_comm_hi)
+                .chain(powers_of_zeta_comm)
+                //.chain(powers_of_zeta_comm_hi)
                 .collect(),
             iter::empty()
                 .chain(witness_polys)
@@ -427,7 +433,7 @@ where
 
         // Round 0..n
 
-        let mut witness_comms = Vec::with_capacity(vp.num_witness_polys.iter().sum());
+        let mut witness_comms: Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment> = Vec::with_capacity(vp.num_witness_polys.iter().sum());
         let mut challenges = Vec::with_capacity(vp.num_challenges.iter().sum());
         for (num_polys, num_challenges) in
             vp.num_witness_polys.iter().zip_eq(vp.num_challenges.iter())
@@ -706,7 +712,7 @@ where
             .chain(match vp.strategy {
                 NoCompressing => None,
                 Compressing => Some(1),
-                CompressingWithSqrtPowers => Some(2),
+                CompressingWithSqrtPowers => Some(1),
             })
             .collect();
         let num_challenges = {
@@ -726,9 +732,12 @@ where
                 .chain([vec![vp.num_alpha_primes]])
                 .collect()
         };
+
+        
         Self {
             vp_digest: N::ZERO,
             strategy: vp.strategy,
+            num_vars: vp.vp.num_vars,
             num_instances: vp.vp.num_instances.clone(),
             num_witness_polys,
             num_challenges,

@@ -633,7 +633,7 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
     }
 }
 
-mod strawman {
+pub mod strawman {
     use crate::{
         accumulation::protostar::{
             ivc::halo2::{

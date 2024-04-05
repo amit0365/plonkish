@@ -215,16 +215,14 @@ where
                 let zeta_pow_lsqrt = zeta.pow(&[l_sqrt as u64]);
 
                 let timer = start_timer(|| "powers_of_zeta_sqrt_poly");
-                let powers_of_zeta_lo  = powers_of_zeta_poly(pp.num_vars/2, zeta);
-                let powers_of_zeta_hi  = powers_of_zeta_poly(pp.num_vars/2, zeta_pow_lsqrt);
-                let powers_of_zeta_sum_check_lo  = powers_of_zeta_sum_check_poly_lo(pp.num_vars, zeta);
-                let powers_of_zeta_sum_check_hi  = powers_of_zeta_sum_check_poly_hi(pp.num_vars, zeta_pow_lsqrt);
+                let (powers_of_zeta_lo, powers_of_zeta_sum_check_lo) = powers_of_zeta_sum_check_poly_lo(pp.num_vars/2, zeta);
+                let (powers_of_zeta_hi, powers_of_zeta_sum_check_hi) = powers_of_zeta_sum_check_poly_hi(pp.num_vars/2, zeta_pow_lsqrt);
                 end_timer(timer);
 
                 let powers_of_zeta_comm_lo =
                 Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_lo, transcript)?;
 
-                let powers_of_zeta_comm_hi =
+                let powers_of_zeta_comm_hi = 
                 Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_hi, transcript)?;
 
                 (
@@ -360,7 +358,7 @@ where
             CompressingWithSqrtPowers => {
                 let timer = start_timer(|| "evaluate_zeta_root_cross_term_poly");
                 let zeta_cross_term_poly = evaluate_zeta_root_cross_term_poly(
-                    pp.num_vars,
+                    pp.num_vars/2,
                     *num_alpha_primes,
                     accumulator,
                     incoming,
@@ -455,21 +453,24 @@ where
 
         // Round n+2
 
-        let (zeta, powers_of_zeta_comm) = match strategy {
-            NoCompressing => (None, None),
+        let (zeta, powers_of_zeta_comm_lo, powers_of_zeta_comm_hi) = match strategy {
+            NoCompressing => (None, None, None),
             Compressing => {
                 let zeta = transcript.squeeze_challenge();
 
                 let powers_of_zeta_comm = Pcs::read_commitment(&vp.pcs, transcript)?;
 
-                (Some(zeta), Some(powers_of_zeta_comm))
+                (Some(zeta), Some(powers_of_zeta_comm), None)
             },
             CompressingWithSqrtPowers => {
                 let zeta = transcript.squeeze_challenge();
 
-                let powers_of_zeta_comm = Pcs::read_commitment(&vp.pcs, transcript)?;
+                let powers_of_zeta_comm_lo = Pcs::read_commitment(&vp.pcs, transcript)?;
 
-                (Some(zeta), Some(powers_of_zeta_comm))
+                let powers_of_zeta_comm_hi = Pcs::read_commitment(&vp.pcs, transcript)?;
+
+
+                (Some(zeta), Some(powers_of_zeta_comm_lo), Some(powers_of_zeta_comm_hi))
             }
         };
 
@@ -493,7 +494,8 @@ where
                 .chain(witness_comms)
                 .chain(lookup_m_comms)
                 .chain(lookup_h_comms)
-                .chain(powers_of_zeta_comm)
+                .chain(powers_of_zeta_comm_lo)
+                .chain(powers_of_zeta_comm_hi)
                 .collect(),
         );
         let incoming = ProtostarAccumulatorInstance::from_nark(*strategy, nark);

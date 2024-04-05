@@ -96,7 +96,8 @@ where
         alpha_prime_offset,
         cross_term_expressions,
         sum_check,
-        zero_check_on_every_row,
+        zero_check_on_every_row_lo,
+        zero_check_on_every_row_hi,
     ) = match strategy {
         NoCompressing => {
             let alpha_prime_offset = challenge_offset + num_theta_primes + 1;
@@ -166,6 +167,7 @@ where
                 cross_term_expressions,
                 None,
                 relaxed_constraint,
+                None,
             )
         }
         Compressing => {
@@ -242,6 +244,7 @@ where
                 cross_term_expressions,
                 Some(relaxed_compressed_constraint),
                 relaxed_zeta_constraint,
+                None,
             )
         }
         CompressingWithSqrtPowers => {
@@ -301,18 +304,25 @@ where
                 products(&poly_set.preprocess, &compressed_constraint)
             };     
 
-            let powers_of_zeta_constraint = powers_of_zeta_root_constraint(zeta, powers_of_zeta_poly_lo, powers_of_zeta_poly_hi);
-            let zeta_products = products(&poly_set.preprocess, &powers_of_zeta_constraint);
+            let powers_of_zeta_lo_constraint = powers_of_zeta_constraint(zeta, powers_of_zeta_poly_lo);
+            let powers_of_zeta_hi_constraint = powers_of_zeta_constraint(zeta, powers_of_zeta_poly_hi);
+            let zeta_products_lo = products(&poly_set.preprocess, &powers_of_zeta_lo_constraint);
+            let zeta_products_hi = products(&poly_set.preprocess, &powers_of_zeta_hi_constraint);
 
             let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
-            let cross_term_expressions =
+            let cross_term_expressions = 
                 cross_term_expressions(&poly_set, &compressed_products, num_folding_challenges);
 
             let u = num_folding_challenges;
             let relaxed_compressed_constraint = relaxed_expression(&compressed_products, u);
             let e = powers_of_zeta_poly_hi + num_permutation_z_polys + 1;
-            let relaxed_zeta_constraint = {
-                relaxed_expression(&zeta_products, u)
+            let relaxed_zeta_lo_constraint = {
+                relaxed_expression(&zeta_products_lo, u)
+                    - Expression::Polynomial(Query::new(e, Rotation::cur()))
+            };
+
+            let relaxed_zeta_hi_constraint = {
+                relaxed_expression(&zeta_products_hi, u)
                     - Expression::Polynomial(Query::new(e, Rotation::cur()))
             };
 
@@ -321,7 +331,8 @@ where
                 alpha_prime_offset,
                 cross_term_expressions,
                 Some(relaxed_compressed_constraint),
-                relaxed_zeta_constraint,
+                relaxed_zeta_lo_constraint,
+                Some(relaxed_zeta_hi_constraint)
             )
         }
     };
@@ -342,7 +353,8 @@ where
     let expression = {
         let zero_check_on_every_row = Expression::distribute_powers(
             iter::empty()
-                .chain(Some(&zero_check_on_every_row))
+                .chain(Some(&zero_check_on_every_row_lo))
+                .chain(&zero_check_on_every_row_hi)
                 .chain(&permutation_constraints),
             alpha,
         ) * Expression::eq_xy(0);
@@ -487,25 +499,6 @@ fn powers_of_zeta_constraint<F: PrimeField>(zeta: usize, powers_of_zeta: usize) 
     let zeta = &Expression::Challenge(zeta);
     let [powers_of_zeta, powers_of_zeta_next] = &[Rotation::cur(), Rotation::next()]
         .map(|rotation| Expression::Polynomial(Query::new(powers_of_zeta, rotation)));
-
-    powers_of_zeta_next - (l_0 + l_last * zeta + (one - (l_0 + l_last)) * powers_of_zeta * zeta)
-}
-
-fn powers_of_zeta_root_constraint<F: PrimeField>(zeta: usize, powers_of_zeta_lo: usize, powers_of_zeta_hi: usize) -> Expression<F> {
-    let l_0 = &Expression::<F>::lagrange(0);
-    let l_last = &Expression::<F>::lagrange(-1);
-    let one = &Expression::one();
-    let zeta = &Expression::Challenge(zeta);
-    let rotations = [Rotation::cur(), Rotation::next()];
-    let powers_of_zeta_polys = rotations.iter()
-        .map(|&rotation| {
-            Expression::<F>::Polynomial(Query::new(powers_of_zeta_lo, rotation)) * 
-            Expression::<F>::Polynomial(Query::new(powers_of_zeta_hi, rotation))
-        })
-        .collect::<Vec<_>>();
-    
-    let powers_of_zeta = powers_of_zeta_polys[0].clone();
-    let powers_of_zeta_next = powers_of_zeta_polys[1].clone();    
 
     powers_of_zeta_next - (l_0 + l_last * zeta + (one - (l_0 + l_last)) * powers_of_zeta * zeta)
 }

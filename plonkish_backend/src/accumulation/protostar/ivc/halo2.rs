@@ -43,12 +43,7 @@ use halo2_proofs::{
 };
 use rand::RngCore;
 use std::{
-    borrow::{Borrow, BorrowMut, Cow},
-    collections::{btree_map::Entry, BTreeMap, BTreeSet},
-    fmt::Debug,
-    hash::Hash,
-    iter,
-    marker::PhantomData,
+    borrow::{Borrow, BorrowMut, Cow}, cmp::max, collections::{btree_map::Entry, BTreeMap, BTreeSet}, fmt::Debug, hash::Hash, iter, marker::PhantomData
 };
 
 #[cfg(test)]
@@ -1378,16 +1373,17 @@ where
 {
     assert_eq!(S1::HashChip::NUM_HASH_BITS, S2::HashChip::NUM_HASH_BITS);
 
-    let primary_param = P1::setup(1 << (primary_num_vars + 3), 0, &mut rng).unwrap();
-    let secondary_param = P2::setup(1 << (secondary_num_vars + 3), 0, &mut rng).unwrap();
-
     let primary_circuit = RecursiveCircuit::new(true, primary_step_circuit, None);
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit);
 
-    let (_, primary_vp) = {
+    let (primary_param, _, primary_vp) = {
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
-        Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
+        // 2 since lookup h, g and beta are concatenated -- so need k + 2 atleast
+        let primary_poly_size = max(2, primary_circuit_info.num_witness_polys.iter().sum::<usize>().next_power_of_two().ilog2()) as usize + primary_num_vars;
+        let primary_param = P1::setup(1 << primary_poly_size, 0, &mut rng).unwrap();
+        let (primary_pp, primary_vp) = Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
+        (primary_param, primary_pp, primary_vp)
     };
     let secondary_circuit = RecursiveCircuit::new(
         false,
@@ -1396,9 +1392,12 @@ where
     );
     let mut secondary_circuit =
         Halo2Circuit::new::<HyperPlonk<P2>>(secondary_num_vars, secondary_circuit);
-    let (secondary_pp, secondary_vp) = {
+    let (secondary_param, secondary_pp, secondary_vp) = {
         let secondary_circuit_info = secondary_circuit.circuit_info().unwrap();
-        Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap()
+        let secondary_poly_size = max(2, secondary_circuit_info.num_witness_polys.iter().sum::<usize>().next_power_of_two().ilog2()) as usize + secondary_num_vars;
+        let secondary_param = P2::setup(1 << secondary_poly_size, 0, &mut rng).unwrap();
+        let (secondary_pp, secondary_vp) = Protostar::<HyperPlonk<P2>>::preprocess(&secondary_param, &secondary_circuit_info).unwrap();
+        (secondary_param, secondary_pp, secondary_vp)
     };
     primary_circuit.update_witness(|circuit| {
         circuit.avp = ProtostarAccumulationVerifierParam::from(&secondary_vp)

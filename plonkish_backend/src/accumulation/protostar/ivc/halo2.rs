@@ -101,15 +101,16 @@ type AssignedPlonkishNarkInstance<AssignedBase, AssignedSecondary> =
 type AssignedProtostarAccumulatorInstance<AssignedBase, AssignedSecondary> =
     ProtostarAccumulatorInstance<AssignedBase, AssignedSecondary>;
 
+pub const NUM_INSTANCES: usize = 2;
 
-pub trait StepCircuit<C: TwoChainCurve>: CircuitExt<C::Scalar> 
+pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> 
 where
     C::Scalar: BigPrimeField,
     C::Base: BigPrimeField,
 {   
 
     fn arity() -> usize;
-
+    
     fn initial_input(&self) -> &[C::Scalar];
 
     fn setup(&mut self) -> C::Scalar;
@@ -122,13 +123,13 @@ where
 
     fn set_output(&mut self, output: &[C::Scalar]);
 
-    fn next_output(&self) -> Vec<C::Scalar>;
+    fn next_output(&mut self) -> Vec<C::Scalar>;
 
     fn step_idx(&self) -> usize;
 
     fn next(&mut self);
 
-    fn num_constraints(&self) -> usize; 
+    fn num_constraints(&self) -> usize;
 
     #[allow(clippy::type_complexity)]
     fn synthesize(
@@ -642,17 +643,24 @@ where
         incoming_instances: [C::Base; 2],
         incoming_proof: Vec<u8>,
     ) {
+        let mut next_output = Vec::new();
         if (self.is_primary && acc_prime.u != C::Base::ZERO)
             || (!self.is_primary && acc.u != C::Base::ZERO)
             {   
-                self.step_circuit.borrow_mut().next();
+                let mut step_circuit = self.step_circuit.borrow_mut();
+                step_circuit.next();
             }
+
+        {
+            let mut step_circuit = self.step_circuit.borrow_mut();
+            next_output = step_circuit.next_output();
+        }
             self.h_prime = Value::known(Chip::<C>::hash_state(
                 self.hash_config.borrow(),
                 self.avp.vp_digest,
                 self.step_circuit.borrow().step_idx() + 1,
                 self.step_circuit.borrow().initial_input(),
-                &self.step_circuit.borrow().next_output(),
+                &next_output,
                 &acc_prime,
             ));
             self.acc = Value::known(acc.unwrap_comm());
@@ -903,6 +911,10 @@ where
         self.incoming_instances[1].map(|h_ohs| instances[0][0] = fe_to_fe(h_ohs));
         self.h_prime.map(|h_prime| instances[0][1] = h_prime);
         instances
+    }
+
+    fn rand(k: usize, _: impl RngCore) -> Self {
+        unimplemented!()
     }
 }
 

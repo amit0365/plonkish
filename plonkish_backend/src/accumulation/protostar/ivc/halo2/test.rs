@@ -1,10 +1,8 @@
 use crate::{
     accumulation::protostar::{
-        ivc::halo2::{
-            preprocess, prove_decider, prove_steps, verify_decider,
-            ProtostarIvcAggregator, ProtostarIvcVerifierParam,
-            StepCircuit, CircuitExt
-        },
+        ivc::{halo2::{
+            preprocess, prove_decider, prove_steps, verify_decider, CircuitExt, ProtostarIvcAggregator, ProtostarIvcVerifierParam, StepCircuit
+        }, minroot::MinRootCircuit},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -20,13 +18,8 @@ use crate::{
     poly::multilinear::MultilinearPolynomial,
     util::{
         arithmetic::{
-            fe_to_fe, CurveAffine, Field, FromUniformBytes, PrimeFieldBits,
-            TwoChainCurve, MultiMillerLoop,
-        },
-        chain,
-        test::seeded_std_rng,
-        transcript::InMemoryTranscript,
-        DeserializeOwned, Itertools, Serialize, end_timer, start_timer,
+            fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits, TwoChainCurve
+        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
     },
 };
 use halo2_base::{halo2_proofs::{
@@ -44,6 +37,7 @@ use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value, SimpleFloorPlanner},
     plonk::{Circuit, Selector, ConstraintSystem, Error},
 };
+use rand::RngCore;
 
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant, cell::{RefCell, RefMut}, borrow::BorrowMut};
 use std::{mem, rc::Rc};
@@ -87,6 +81,11 @@ where
     fn instances(&self) -> Vec<Vec<C::Scalar>> {
         Vec::new()
     }
+
+    fn rand(k: usize, _: impl RngCore)-> TrivialCircuit<C> {
+        unimplemented!()
+    }
+    
 }
 
 impl<C: TwoChainCurve> StepCircuit<C> for TrivialCircuit<C>
@@ -121,7 +120,7 @@ where
     fn set_output(&mut self, output: &[C::Scalar]) {
     }
 
-    fn next_output(&self) -> Vec<C::Scalar> {
+    fn next_output(&mut self) -> Vec<C::Scalar> {
         Vec::new()
     }
 
@@ -154,106 +153,6 @@ where
         Ok((Vec::new(), Vec::new()))
     }
 }
-
-
-// #[derive(Debug, Clone)]
-// pub struct FunctionConfig {
-//     selector: Selector,
-//     a: Column<Advice>,
-//     b: Column<Advice>,
-//     c: Column<Advice>,
-//     // instance: Vec<Column<Instance>>,
-// }
-
-// pub struct FunctionChip<F: Field> {
-//     config: BaseConfig<F>, // FunctionConfig,
-//     _marker: PhantomData<F>,
-// }
-
-// impl<F: Field> FunctionChip<F> {
-//     pub fn construct(config: FunctionConfig) -> Self {
-//         Self { config, _marker: PhantomData }
-//     }
-
-//     pub fn configure(meta: &mut ConstraintSystem<F>) -> FunctionConfig {
-//         // advice colns are defined separately in config so use meta.advice_column like the syntax in selector
-//         let a = meta.advice_column(); 
-//         let b = meta.advice_column();
-//         let c = meta.advice_column();
-//         let selector = meta.selector(); 
-//         // let instance = meta.instance_column(); 
-//         // meta.enable_equality(instance);
-
-//         // defining custom gate with logic
-//         // meta.create_gate("b = a",|meta|{
-//         //     let s = meta.query_selector(selector);
-//         //     let a = meta.query_advice(a, Rotation::cur());
-//         //     let b = meta.query_advice(b, Rotation::cur());
-
-//         //     vec![s * (b - a)]
-
-//         // });
-
-//         // instantiate empty circuit
-//         FunctionConfig { 
-//             selector,
-//             a,
-//             b,
-//             c,
-//             // instance: vec![instance],
-//         }
-         
-//     }
-
-//     pub fn assign(
-//         &self, 
-//         layouter: 
-//         &mut impl Layouter<F>, 
-//         a: F, 
-//         b: F 
-//         ) -> Result<
-//         (
-//             Vec<AssignedCell<F, F>>,
-//             Vec<AssignedCell<F, F>>,
-//         ),
-//         Error,
-//     > {
-//         layouter.assign_region(
-//             || "b = a", 
-//             |mut region| {  
-
-//                 self.config.selector.enable(&mut region, 0)?;
-
-//                 let input_cell = region.assign_advice(|| "a", self.config.a, 0, || Value::known(a))?;
-
-//                 let b = a;
-
-//                 let output_cell = region.assign_advice(|| "b", self.config.b, 0, || Value::known(b))?;
-
-//                 Ok((vec![input_cell], vec![output_cell]))
-
-//             },
-//         )
-//     }
-
-//     // pub fn expose_public(
-//     //     &self,
-//     //     mut layouter: impl Layouter<F>,
-//     //     cell: AssignedCell<F, F>,
-//     //     row: usize,
-//     // ) -> Result<(), Error> {
-//     //     layouter.constrain_instance(cell.cell(), self.config.instance, row)
-//     // }
-
-// }
-
-// #[derive(Clone)]
-// pub struct SharedConfig<F> 
-//     where F: BigPrimeField + FromUniformBytes<64>,
-// {
-//     pub base_circuit_config: BaseConfig<F>,
-//     pub function_circuit_config: FunctionConfig,
-// }
 
 #[derive(Clone, Debug, Default)]
 pub struct NonTrivialCircuit<C> 
@@ -300,10 +199,7 @@ impl<C> Circuit<C::Scalar> for NonTrivialCircuit<C>
     }
 
     fn configure_with_params(meta: &mut ConstraintSystem<C::Scalar>, params: BaseCircuitParams) -> Self::Config {
-
-        let base_circuit_config =
-            BaseCircuitBuilder::configure_with_params(meta, params);
-            base_circuit_config
+            BaseCircuitBuilder::configure_with_params(meta, params)
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
@@ -326,6 +222,10 @@ impl<C> CircuitExt<C::Scalar> for NonTrivialCircuit<C>
 {
     fn instances(&self) -> Vec<Vec<C::Scalar>> {
         Vec::new()
+    }
+
+    fn rand(k: usize, _: impl RngCore) -> Self {
+        unimplemented!()
     }
 }
 
@@ -364,7 +264,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
     // define the calculation logic. This is done out of the zk_circuit
     // Used in recursive_circuit.update to cal hash of the next iteration 
     // And checked with the hash synthesize_accumulation_verifier.check_hash_state
-    fn next_output(&self) -> Vec<C::Scalar> {
+    fn next_output(&mut self) -> Vec<C::Scalar> {
         let x = self.input().get(0).copied().unwrap();
         let y = x + x;
         vec![y]
@@ -411,14 +311,13 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
                 // `x + x = y`, where `x` and `y` are respectively the input and output.
                 let x = ctx.load_witness(first_input);
                 let one = ctx.load_constant(C::Scalar::ONE);
-
+                
                 // checks if synthesize has been called for the first time (preprocessing), initiates the input and output same as the intial_input
                 // when synthesize is called for second time by prove_steps, updates the input to the output value for the next step
-                let setup_done = ctx.load_constant(self.setup_done);
+                let setup_done = ctx.load_witness(self.setup_done);
                 let setup_sel = gate_chip.is_equal(ctx, one, setup_done);
-                let base_case = x.clone();
-                let non_base_case = gate_chip.add(ctx, x.clone(), x.clone());
-                let y = gate_chip.select(ctx, non_base_case, base_case, setup_sel);
+                let non_base_case = gate_chip.add(ctx, x, x);
+                let y = gate_chip.select(ctx, non_base_case, x, setup_sel);
                 // stores the output for the current step
                 self.set_output(&[*y.value()]);
                 // updates the input to the output value for the next step
@@ -433,7 +332,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
 
         Ok((inputs, outputs))
     }
-} 
+}
 
 
 // #[derive(Clone)]
@@ -724,7 +623,8 @@ where
     let primary_atp = strawman::accumulation_transcript_param();
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
-    let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
+    // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
+    let mut minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 10);
 
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
@@ -738,7 +638,7 @@ where
     >(  
         primary_num_vars,
         primary_atp,
-        nontrivial_circuit_primary,
+        minroot_circuit,
         secondary_num_vars,
         secondary_atp,
         TrivialCircuit::default(),
@@ -822,12 +722,12 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_VARS: usize = 17;
+    const NUM_VARS: usize = 19;
     const NUM_STEPS: usize = 5;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,
-            num_advice_per_phase: vec![3],
+            num_advice_per_phase: vec![1],
             num_lookup_advice_per_phase: vec![1],
             num_fixed: 1,
             lookup_bits: Some(13),

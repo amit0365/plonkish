@@ -29,6 +29,8 @@ pub mod chip;
 mod test;
 
 pub trait CircuitExt<F: Field>: Circuit<F> {
+    fn rand(k: usize, _: impl RngCore) -> Self;
+
     fn num_instance(&self) -> Vec<usize> {
         self.instances().iter().map(Vec::len).collect()
     }

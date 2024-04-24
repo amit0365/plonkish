@@ -22,7 +22,7 @@ pub mod hyperplonk;
 pub mod ivc;
 
 #[derive(Clone, Debug)]
-pub struct Protostar<Pb, const STRATEGY: usize = { NoCompressing as usize }>(PhantomData<Pb>);
+pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub enum ProtostarStrategy {

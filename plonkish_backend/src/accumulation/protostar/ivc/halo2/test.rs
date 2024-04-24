@@ -624,7 +624,7 @@ where
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
     // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
-    let mut minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ZERO, C::Scalar::ONE], 10);
+    let mut minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ZERO, C::Scalar::ONE], 1024);
 
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
@@ -658,8 +658,7 @@ where
         seeded_std_rng(),
     )
     .unwrap();
-    let duration_prove_steps = prove_steps_time.elapsed();
-
+    println!("Prove steps time: {:?}", prove_steps_time.elapsed());
 
     let primary_dtp = strawman::decider_transcript_param();
     let secondary_dtp = strawman::decider_transcript_param();
@@ -723,7 +722,7 @@ where
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 19;
-    const NUM_STEPS: usize = 5;
+    const NUM_STEPS: usize = 10;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,

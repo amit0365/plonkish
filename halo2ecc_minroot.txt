@@ -1,0 +1,1568 @@
+
+running 1 test
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................55.970ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................50.445ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................44.697ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................47.884ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................129.968ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................124.648ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................126.977ms
+input []
+output []
+Start:   fold_accumulator_from_nark witness_comms-5
+End:     fold_accumulator_from_nark witness_comms-5 ................................21.336ms
+Start:   fold_accumulator_from_nark e_comm
+End:     fold_accumulator_from_nark e_comm .........................................3.529ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................52.668ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................53.346ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................67.390ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................57.513ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................157.297ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................175.846ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................136.534ms
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000001), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000001), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+Start:   fold_accumulator_from_nark witness_comms-5
+End:     fold_accumulator_from_nark witness_comms-5 ................................19.235ms
+Start:   fold_accumulator_from_nark e_comm
+End:     fold_accumulator_from_nark e_comm .........................................9.411ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................54.643ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................51.213ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................55.110ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................47.954ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................136.762ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................137.206ms
+Start:   variable_base_msm-524288
+End:     variable_base_msm-524288 ..................................................135.897ms
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000001), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000400), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x2a3ea74f8571ff1693f855552371f859d6b7cd1f8b2ddde5aab53b36301cf7d0), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x1b97851e1e0abfe62b1719a792a280d363ff89a208b59182e775d7535560a376), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.025ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.392ms
+··End:     witness_collector-0 .....................................................395.639ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................573.434ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.098ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.326ms
+··End:     lookup_compressed_polys-1 ...............................................15.048ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................18.830ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.305ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................36.363ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.080s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................44.442ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.121ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.062s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.738ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................217.662ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.055ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.291µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................400.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................411.959µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................416.333µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................427.250µs
+··End:     fold_compressed .........................................................23.830ms
+End:     prove_accumulation_from_nark-primary-19 ...................................3.596s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.743ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.570ms
+··End:     witness_collector-0 .....................................................348.655ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................459.539ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.993ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................4.566ms
+··End:     lookup_compressed_polys-1 ...............................................20.876ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.930ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.462ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................30.155ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.037s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................54.621ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.243ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.027s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................16.075ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................241.206ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.040ms
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................405.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.334µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................416.166µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................422.458µs
+··End:     fold_compressed .........................................................26.005ms
+End:     prove_accumulation_from_nark-secondary-19 .................................3.397s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000400), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x2a3ea74f8571ff1693f855552371f859d6b7cd1f8b2ddde5aab53b36301cf7d0), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x1b97851e1e0abfe62b1719a792a280d363ff89a208b59182e775d7535560a376), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000800), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x20258a0de831d8e06c89d70ab24c3ac5bbecb9b2b28d8352a91838adac28dd98), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x0e6b149b5dafdaeb53eed51a1f74b9ebb35aed00a6d85c3ce392ee88769a867e), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.002ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................5.744ms
+··End:     witness_collector-0 .....................................................377.509ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................529.975ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.137ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.303ms
+··End:     lookup_compressed_polys-1 ...............................................12.090ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.407ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................51.333ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................24.530ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................978.481ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................45.028ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.282ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.067s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.480ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................475.342ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.071s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................399.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................414.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................394.167µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................410.125µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................425.208µs
+··End:     fold_compressed .........................................................24.169ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.713s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.693ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.572ms
+··End:     witness_collector-0 .....................................................328.917ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................440.976ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.277ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.381ms
+··End:     lookup_compressed_polys-1 ...............................................12.610ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.432ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................44.409ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................30.000ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.022s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................44.569ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.966ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.003s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................15.811ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................459.587ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.016s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.333µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.209µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................412.291µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.333µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................421.958µs
+··End:     fold_compressed .........................................................27.186ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.494s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000800), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x20258a0de831d8e06c89d70ab24c3ac5bbecb9b2b28d8352a91838adac28dd98), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x0e6b149b5dafdaeb53eed51a1f74b9ebb35aed00a6d85c3ce392ee88769a867e), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000c00), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x10c2dfbdb528474e7bebbe963a1965c3afc1234f729b9558593c45140e9c73cd), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x06fc00d47e6aa97aeb6ab84deaa589054ad89bd817bc9e18d3d341f7f6f55260), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.314ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................6.325ms
+··End:     witness_collector-0 .....................................................387.027ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................547.408ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.252ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.362ms
+··End:     lookup_compressed_polys-1 ...............................................12.530ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.327ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.361ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................35.153ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.116s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................52.352ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................23.586ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.117s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.771ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................508.734ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.114s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................404.084µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.750µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.416µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.792µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.958µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................429.875µs
+··End:     fold_compressed .........................................................24.634ms
+End:     prove_accumulation_from_nark-primary-19 ...................................5.016s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.260ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.480ms
+··End:     witness_collector-0 .....................................................324.660ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................444.091ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.854ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.449ms
+··End:     lookup_compressed_polys-1 ...............................................13.013ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.850ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................41.647ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................28.265ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................990.746ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................47.260ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................24.960ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.082s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................15.146ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................502.690ms
+··Start:   variable_base_msm-524288
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc has been running for over 60 seconds
+··End:     variable_base_msm-524288 ................................................1.025s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................406.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................394.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.709µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................425.250µs
+··End:     fold_compressed .........................................................36.779ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.602s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000000c00), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x10c2dfbdb528474e7bebbe963a1965c3afc1234f729b9558593c45140e9c73cd), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x06fc00d47e6aa97aeb6ab84deaa589054ad89bd817bc9e18d3d341f7f6f55260), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000001000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x2b1bba106b7d3b0b7b37aef3212e5ff85bcfcc0b9fd1671f5e09b1c5161cba0b), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x0d517ec1ade036b1991b41dd02b0840721fbf2195365325d080e4cfbdbe4e2ab), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.729ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................5.599ms
+··End:     witness_collector-0 .....................................................393.466ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................551.750ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.228ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.550ms
+··End:     lookup_compressed_polys-1 ...............................................13.200ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................18.703ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................53.216ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................33.570ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.079s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................54.524ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................26.194ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.075s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................12.264ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................475.123ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.153s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................408.083µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.916µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................419.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................413.750µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................428.000µs
+··End:     fold_compressed .........................................................23.968ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.969s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.792ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.627ms
+··End:     witness_collector-0 .....................................................352.523ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................531.906ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................6.263ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................29.945ms
+··End:     lookup_compressed_polys-1 ...............................................41.780ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.896ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................47.032ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................39.420ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.058s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.732ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................28.143ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.010s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................14.687ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................504.309ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.020s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................405.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.250µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................423.708µs
+··End:     fold_compressed .........................................................31.565ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.752s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000001000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x2b1bba106b7d3b0b7b37aef3212e5ff85bcfcc0b9fd1671f5e09b1c5161cba0b), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x0d517ec1ade036b1991b41dd02b0840721fbf2195365325d080e4cfbdbe4e2ab), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000001400), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x04e4243fe2d2e8334b7bda4288e383632b48c107d2eda2c2f8ae2701172d1eef), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x16f32b8c0c659e0eb061a1085acf2fa3c2737cc1c1877f084b349ecda10a6497), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.497ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................5.549ms
+··End:     witness_collector-0 .....................................................380.905ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................637.068ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................24.570ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................11.938ms
+··End:     lookup_compressed_polys-1 ...............................................44.085ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................19.724ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................69.464ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................37.390ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.528s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................60.947ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................29.262ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.093s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................22.108ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................506.525ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.033s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................405.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................404.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................413.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.500µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................429.833µs
+··End:     fold_compressed .........................................................29.426ms
+End:     prove_accumulation_from_nark-primary-19 ...................................5.499s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................18.214ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.627ms
+··End:     witness_collector-0 .....................................................341.568ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................448.111ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................9.511ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................23.199ms
+··End:     lookup_compressed_polys-1 ...............................................37.665ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.525ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................44.058ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................42.551ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.023s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................51.684ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................25.605ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.071s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.622ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................513.821ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.116s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................395.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.209µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.916µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.750µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................423.625µs
+··End:     fold_compressed .........................................................33.557ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.784s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000001400), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x04e4243fe2d2e8334b7bda4288e383632b48c107d2eda2c2f8ae2701172d1eef), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x16f32b8c0c659e0eb061a1085acf2fa3c2737cc1c1877f084b349ecda10a6497), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000001800), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x200cc00e4ae54eb1e0ef8daaf4cb6b9fd67a236628f9dfe42a21c29d5add0f63), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x0da0c1306be7093befb0e7a4fb7e41a793fcfec066f0f1c2b62a11a101a97ded), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.223ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................6.032ms
+··End:     witness_collector-0 .....................................................385.978ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................556.737ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................13.863ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................20.757ms
+··End:     lookup_compressed_polys-1 ...............................................39.498ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.395ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................48.244ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................35.538ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.029s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................47.430ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................23.615ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.012s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.601ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................485.396ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.273s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................403.042µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................401.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.541µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................405.333µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................431.333µs
+··End:     fold_compressed .........................................................29.861ms
+End:     prove_accumulation_from_nark-primary-19 ...................................5.002s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................18.029ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.819ms
+··End:     witness_collector-0 .....................................................349.933ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................453.980ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.667ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................13.313ms
+··End:     lookup_compressed_polys-1 ...............................................23.733ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.463ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................44.236ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................26.556ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.048s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................50.778ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................25.048ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.037s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................12.018ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................470.924ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.025s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.209µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................412.708µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.375µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................427.959µs
+··End:     fold_compressed .........................................................29.409ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.620s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000001800), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x200cc00e4ae54eb1e0ef8daaf4cb6b9fd67a236628f9dfe42a21c29d5add0f63), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x0da0c1306be7093befb0e7a4fb7e41a793fcfec066f0f1c2b62a11a101a97ded), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000001c00), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x2756e323b5b235d16831e24bbe835f31cd5575d86721a42f8595a865f5fb8f68), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x1424638f2870ee3b500d00f65e787083deb75172fd019a1be00ae67d8b02f4d4), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.191ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................6.253ms
+··End:     witness_collector-0 .....................................................386.741ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................705.399ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................13.659ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................13.426ms
+··End:     lookup_compressed_polys-1 ...............................................35.463ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.831ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.105ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................35.482ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.041s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................51.917ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................27.288ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.022s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.355ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................469.746ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.022s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................403.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.542µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.833µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.583µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................431.875µs
+··End:     fold_compressed .........................................................28.336ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.907s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.646ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.518ms
+··End:     witness_collector-0 .....................................................334.297ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................480.039ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................12.034ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................8.929ms
+··End:     lookup_compressed_polys-1 ...............................................25.783ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.440ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................48.313ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................32.527ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.025s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................48.538ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................32.848ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.028s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................16.555ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................475.600ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.008s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................393.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................394.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.000µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.709µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................390.500µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................423.334µs
+··End:     fold_compressed .........................................................29.656ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.609s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000001c00), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x2756e323b5b235d16831e24bbe835f31cd5575d86721a42f8595a865f5fb8f68), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x1424638f2870ee3b500d00f65e787083deb75172fd019a1be00ae67d8b02f4d4), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000002000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x302fc931a1844140bded916deaf323ea0d728401ab85fdf5117f8d51ff156a8a), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x12eba89eba06c2e61af48fc7753f0b58eb63787c2f8222c2e71aac6f56cb1f6c), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.322ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................6.360ms
+··End:     witness_collector-0 .....................................................385.982ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................539.503ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.291ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.536ms
+··End:     lookup_compressed_polys-1 ...............................................12.517ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.179ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................48.103ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................30.389ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.100s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.269ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................28.844ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.056s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.120ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................448.971ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.053s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................402.125µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................400.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.792µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.833µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................429.167µs
+··End:     fold_compressed .........................................................23.948ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.807s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.222ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.460ms
+··End:     witness_collector-0 .....................................................325.435ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................442.971ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.515ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.330ms
+··End:     lookup_compressed_polys-1 ...............................................12.521ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.950ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................40.087ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................29.659ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................980.678ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................48.696ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................28.998ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.017s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................10.859ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................476.181ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.102s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.250µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.083µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................405.917µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................416.917µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................440.584µs
+··End:     fold_compressed .........................................................30.496ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.568s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000002000), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x302fc931a1844140bded916deaf323ea0d728401ab85fdf5117f8d51ff156a8a), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x12eba89eba06c2e61af48fc7753f0b58eb63787c2f8222c2e71aac6f56cb1f6c), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000002400), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x17513fd9cc0edda3b3573eec7720e522cd3aca7ed5c633f4f112839866ae0c21), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x30383d7120b08685fbd7b9860d3019f22c9f002d770866363b49a05ad4761e89), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.443ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................5.750ms
+··End:     witness_collector-0 .....................................................384.913ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................565.682ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.888ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................2.713ms
+··End:     lookup_compressed_polys-1 ...............................................15.639ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.346ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.385ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................32.357ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.003s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................45.962ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................23.820ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.158s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................18.451ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................487.761ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.053s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.666µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................396.292µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................411.334µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................405.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................404.083µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................429.250µs
+··End:     fold_compressed .........................................................29.234ms
+End:     prove_accumulation_from_nark-primary-19 ...................................4.889s
+Start:   prove_accumulation_from_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.713ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.539ms
+··End:     witness_collector-0 .....................................................333.909ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................463.520ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................14.463ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................8.452ms
+··End:     lookup_compressed_polys-1 ...............................................28.187ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................17.751ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................49.879ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................28.259ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.080s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................49.499ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................27.152ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.052s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................12.022ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................516.740ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.028s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.166µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................407.417µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................422.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.917µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................425.208µs
+··End:     fold_compressed .........................................................29.767ms
+End:     prove_accumulation_from_nark-secondary-19 .................................4.723s
+Start:   prove_accumulation_from_nark-primary-19
+··Start:   witness_collector-0
+input [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000002400), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 15 }) }, AssignedValue { value: Trivial(0x17513fd9cc0edda3b3573eec7720e522cd3aca7ed5c633f4f112839866ae0c21), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 16 }) }, AssignedValue { value: Trivial(0x30383d7120b08685fbd7b9860d3019f22c9f002d770866363b49a05ad4761e89), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 17 }) }]
+output [AssignedValue { value: Trivial(0x0000000000000000000000000000000000000000000000000000000000002800), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80921 }) }, AssignedValue { value: Trivial(0x233507ee814d93591002a285ff0c25edb63d08f50e5be537b8794446c2f13510), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80929 }) }, AssignedValue { value: Trivial(0x13511d7d58fda795f6736ef8c0bf483609d5f4895c57040748b4b1d54c4ca644), cell: Some(ContextCell { type_id: TypeId { t: 327119202687479319662339736925941139418 }, context_id: 0, offset: 80937 }) }]
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.206ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................5.614ms
+··End:     witness_collector-0 .....................................................400.172ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................576.712ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................18.131ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................8.380ms
+··End:     lookup_compressed_polys-1 ...............................................31.230ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................18.018ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................42.674ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................28.230ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.076s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................46.963ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................25.138ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.079s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.777ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................520.191ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.107s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................435.875µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.458µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................398.625µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................409.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................427.750µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................445.250µs
+··End:     fold_compressed .........................................................32.679ms
+End:     prove_accumulation_from_nark-primary-19 ...................................5.003s
+Prove steps time: 89.092947375s
+Start:   prove_decider-primary-19
+··Start:   permutation_z_polys-3
+····Start:   products
+····End:     products ..............................................................54.075ms
+····Start:   z_polys
+····End:     z_polys ...............................................................40.056ms
+····Start:   into_bh_order
+····End:     into_bh_order .........................................................3.666ms
+··End:     permutation_z_polys-3 ...................................................101.536ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.285s
+··Start:   sum_check_prove-19-5
+····Start:   sum_check_prove_round-0
+····End:     sum_check_prove_round-0 ...............................................393.276ms
+····Start:   sum_check_next_round-0
+····End:     sum_check_next_round-0 ................................................80.518ms
+····Start:   sum_check_prove_round-1
+····End:     sum_check_prove_round-1 ...............................................198.265ms
+····Start:   sum_check_next_round-1
+····End:     sum_check_next_round-1 ................................................23.027ms
+····Start:   sum_check_prove_round-2
+····End:     sum_check_prove_round-2 ...............................................95.060ms
+····Start:   sum_check_next_round-2
+····End:     sum_check_next_round-2 ................................................12.067ms
+····Start:   sum_check_prove_round-3
+····End:     sum_check_prove_round-3 ...............................................46.805ms
+····Start:   sum_check_next_round-3
+····End:     sum_check_next_round-3 ................................................7.216ms
+····Start:   sum_check_prove_round-4
+····End:     sum_check_prove_round-4 ...............................................22.651ms
+····Start:   sum_check_next_round-4
+····End:     sum_check_next_round-4 ................................................3.958ms
+····Start:   sum_check_prove_round-5
+····End:     sum_check_prove_round-5 ...............................................12.693ms
+····Start:   sum_check_next_round-5
+····End:     sum_check_next_round-5 ................................................2.598ms
+····Start:   sum_check_prove_round-6
+····End:     sum_check_prove_round-6 ...............................................6.859ms
+····Start:   sum_check_next_round-6
+····End:     sum_check_next_round-6 ................................................1.335ms
+····Start:   sum_check_prove_round-7
+····End:     sum_check_prove_round-7 ...............................................3.833ms
+····Start:   sum_check_next_round-7
+····End:     sum_check_next_round-7 ................................................928.292µs
+····Start:   sum_check_prove_round-8
+····End:     sum_check_prove_round-8 ...............................................1.959ms
+····Start:   sum_check_next_round-8
+····End:     sum_check_next_round-8 ................................................838.209µs
+····Start:   sum_check_prove_round-9
+····End:     sum_check_prove_round-9 ...............................................1.004ms
+····Start:   sum_check_next_round-9
+····End:     sum_check_next_round-9 ................................................682.958µs
+····Start:   sum_check_prove_round-10
+····End:     sum_check_prove_round-10 ..............................................522.167µs
+····Start:   sum_check_next_round-10
+····End:     sum_check_next_round-10 ...............................................680.000µs
+····Start:   sum_check_prove_round-11
+····End:     sum_check_prove_round-11 ..............................................288.084µs
+····Start:   sum_check_next_round-11
+····End:     sum_check_next_round-11 ...............................................687.917µs
+····Start:   sum_check_prove_round-12
+····End:     sum_check_prove_round-12 ..............................................180.375µs
+····Start:   sum_check_next_round-12
+····End:     sum_check_next_round-12 ...............................................534.542µs
+····Start:   sum_check_prove_round-13
+····End:     sum_check_prove_round-13 ..............................................96.084µs
+····Start:   sum_check_next_round-13
+····End:     sum_check_next_round-13 ...............................................54.167µs
+····Start:   sum_check_prove_round-14
+····End:     sum_check_prove_round-14 ..............................................83.500µs
+····Start:   sum_check_next_round-14
+····End:     sum_check_next_round-14 ...............................................53.083µs
+····Start:   sum_check_prove_round-15
+····End:     sum_check_prove_round-15 ..............................................66.084µs
+····Start:   sum_check_next_round-15
+····End:     sum_check_next_round-15 ...............................................41.125µs
+····Start:   sum_check_prove_round-16
+····End:     sum_check_prove_round-16 ..............................................68.541µs
+····Start:   sum_check_next_round-16
+····End:     sum_check_next_round-16 ...............................................38.917µs
+····Start:   sum_check_prove_round-17
+····End:     sum_check_prove_round-17 ..............................................51.750µs
+····Start:   sum_check_next_round-17
+····End:     sum_check_next_round-17 ...............................................37.833µs
+····Start:   sum_check_prove_round-18
+····End:     sum_check_prove_round-18 ..............................................28.500µs
+····Start:   sum_check_next_round-18
+····End:     sum_check_next_round-18 ...............................................33.542µs
+··End:     sum_check_prove-19-5 ....................................................937.802ms
+··Start:   evals-19
+··End:     evals-19 ................................................................20.814ms
+··Start:   pcs_batch_open-32
+····Start:   merged_polys
+····End:     merged_polys ..........................................................61.934ms
+····Start:   sum_check_prove-19-2
+······Start:   sum_check_prove_round-0
+······End:     sum_check_prove_round-0 .............................................58.317ms
+······Start:   sum_check_next_round-0
+······End:     sum_check_next_round-0 ..............................................45.746ms
+······Start:   sum_check_prove_round-1
+······End:     sum_check_prove_round-1 .............................................30.764ms
+······Start:   sum_check_next_round-1
+······End:     sum_check_next_round-1 ..............................................20.829ms
+······Start:   sum_check_prove_round-2
+······End:     sum_check_prove_round-2 .............................................15.440ms
+······Start:   sum_check_next_round-2
+······End:     sum_check_next_round-2 ..............................................13.785ms
+······Start:   sum_check_prove_round-3
+······End:     sum_check_prove_round-3 .............................................12.880ms
+······Start:   sum_check_next_round-3
+······End:     sum_check_next_round-3 ..............................................6.233ms
+······Start:   sum_check_prove_round-4
+······End:     sum_check_prove_round-4 .............................................5.394ms
+······Start:   sum_check_next_round-4
+······End:     sum_check_next_round-4 ..............................................3.785ms
+······Start:   sum_check_prove_round-5
+······End:     sum_check_prove_round-5 .............................................2.711ms
+······Start:   sum_check_next_round-5
+······End:     sum_check_next_round-5 ..............................................2.076ms
+······Start:   sum_check_prove_round-6
+······End:     sum_check_prove_round-6 .............................................1.795ms
+······Start:   sum_check_next_round-6
+······End:     sum_check_next_round-6 ..............................................1.233ms
+······Start:   sum_check_prove_round-7
+······End:     sum_check_prove_round-7 .............................................1.157ms
+······Start:   sum_check_next_round-7
+······End:     sum_check_next_round-7 ..............................................856.583µs
+······Start:   sum_check_prove_round-8
+······End:     sum_check_prove_round-8 .............................................776.125µs
+······Start:   sum_check_next_round-8
+······End:     sum_check_next_round-8 ..............................................894.583µs
+······Start:   sum_check_prove_round-9
+······End:     sum_check_prove_round-9 .............................................524.917µs
+······Start:   sum_check_next_round-9
+······End:     sum_check_next_round-9 ..............................................606.583µs
+······Start:   sum_check_prove_round-10
+······End:     sum_check_prove_round-10 ............................................473.167µs
+······Start:   sum_check_next_round-10
+······End:     sum_check_next_round-10 .............................................465.000µs
+······Start:   sum_check_prove_round-11
+······End:     sum_check_prove_round-11 ............................................362.125µs
+······Start:   sum_check_next_round-11
+······End:     sum_check_next_round-11 .............................................407.917µs
+······Start:   sum_check_prove_round-12
+······End:     sum_check_prove_round-12 ............................................314.916µs
+······Start:   sum_check_next_round-12
+······End:     sum_check_next_round-12 .............................................255.625µs
+······Start:   sum_check_prove_round-13
+······End:     sum_check_prove_round-13 ............................................217.458µs
+······Start:   sum_check_next_round-13
+······End:     sum_check_next_round-13 .............................................21.000µs
+······Start:   sum_check_prove_round-14
+······End:     sum_check_prove_round-14 ............................................292.875µs
+······Start:   sum_check_next_round-14
+······End:     sum_check_next_round-14 .............................................11.125µs
+······Start:   sum_check_prove_round-15
+······End:     sum_check_prove_round-15 ............................................257.667µs
+······Start:   sum_check_next_round-15
+······End:     sum_check_next_round-15 .............................................5.625µs
+······Start:   sum_check_prove_round-16
+······End:     sum_check_prove_round-16 ............................................5.125µs
+······Start:   sum_check_next_round-16
+······End:     sum_check_next_round-16 .............................................3.000µs
+······Start:   sum_check_prove_round-17
+······End:     sum_check_prove_round-17 ............................................3.166µs
+······Start:   sum_check_next_round-17
+······End:     sum_check_next_round-17 .............................................1.709µs
+······Start:   sum_check_prove_round-18
+······End:     sum_check_prove_round-18 ............................................2.208µs
+······Start:   sum_check_next_round-18
+······End:     sum_check_next_round-18 .............................................1.125µs
+····End:     sum_check_prove-19-2 ..................................................332.268ms
+····Start:   g_prime
+····End:     g_prime ...............................................................68.599ms
+····Start:   variable_base_msm-262144
+····End:     variable_base_msm-262144 ..............................................723.176ms
+····Start:   variable_base_msm-131072
+····End:     variable_base_msm-131072 ..............................................323.767ms
+····Start:   variable_base_msm-65536
+····End:     variable_base_msm-65536 ...............................................164.274ms
+····Start:   variable_base_msm-32768
+····End:     variable_base_msm-32768 ...............................................94.401ms
+····Start:   variable_base_msm-16384
+····End:     variable_base_msm-16384 ...............................................63.244ms
+····Start:   variable_base_msm-8192
+····End:     variable_base_msm-8192 ................................................32.923ms
+····Start:   variable_base_msm-4096
+····End:     variable_base_msm-4096 ................................................18.407ms
+····Start:   variable_base_msm-2048
+····End:     variable_base_msm-2048 ................................................11.893ms
+····Start:   variable_base_msm-1024
+····End:     variable_base_msm-1024 ................................................7.435ms
+····Start:   variable_base_msm-512
+····End:     variable_base_msm-512 .................................................3.968ms
+····Start:   variable_base_msm-256
+····End:     variable_base_msm-256 .................................................2.661ms
+····Start:   variable_base_msm-128
+····End:     variable_base_msm-128 .................................................1.846ms
+····Start:   variable_base_msm-64
+····End:     variable_base_msm-64 ..................................................1.211ms
+····Start:   variable_base_msm-32
+····End:     variable_base_msm-32 ..................................................1.096ms
+····Start:   variable_base_msm-16
+····End:     variable_base_msm-16 ..................................................978.167µs
+····Start:   variable_base_msm-8
+····End:     variable_base_msm-8 ...................................................643.500µs
+····Start:   variable_base_msm-4
+····End:     variable_base_msm-4 ...................................................512.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................447.875µs
+····Start:   variable_base_msm-524286
+····End:     variable_base_msm-524286 ..............................................1.005s
+····Start:   variable_base_msm-524287
+····End:     variable_base_msm-524287 ..............................................1.033s
+··End:     pcs_batch_open-32 .......................................................4.145s
+End:     prove_decider-primary-19 ..................................................6.492s
+Start:   prove_decider_with_last_nark-secondary-19
+··Start:   witness_collector-0
+input []
+output []
+····Start:   fold_accumulator_from_nark witness_comms-5
+····End:     fold_accumulator_from_nark witness_comms-5 ............................17.592ms
+····Start:   fold_accumulator_from_nark e_comm
+····End:     fold_accumulator_from_nark e_comm .....................................3.530ms
+··End:     witness_collector-0 .....................................................328.254ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................445.699ms
+··Start:   lookup_compressed_polys-1
+····Start:   compressed_input_poly
+····End:     compressed_input_poly .................................................5.931ms
+····Start:   compressed_table_poly
+····End:     compressed_table_poly .................................................4.424ms
+··End:     lookup_compressed_polys-1 ...............................................14.978ms
+··Start:   lookup_m_polys-1
+··End:     lookup_m_polys-1 ........................................................16.941ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................43.061ms
+··Start:   lookup_h_polys-1
+··End:     lookup_h_polys-1 ........................................................27.549ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.025s
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................47.025ms
+··Start:   powers_of_zeta_poly
+··End:     powers_of_zeta_poly .....................................................22.752ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.015s
+··Start:   evaluate_zeta_cross_term_poly
+··End:     evaluate_zeta_cross_term_poly ...........................................11.711ms
+··Start:   evaluate_compressed_cross_term_sums-3
+··End:     evaluate_compressed_cross_term_sums-3 ...................................469.343ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.025s
+··Start:   fold_compressed
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................397.541µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.375µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................391.958µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................430.208µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................392.000µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................424.125µs
+··End:     fold_compressed .........................................................29.520ms
+··Start:   permutation_z_polys-3
+····Start:   products
+····End:     products ..............................................................48.993ms
+····Start:   z_polys
+····End:     z_polys ...............................................................38.660ms
+····Start:   into_bh_order
+····End:     into_bh_order .........................................................3.801ms
+··End:     permutation_z_polys-3 ...................................................95.254ms
+··Start:   variable_base_msm-524288
+··End:     variable_base_msm-524288 ................................................1.007s
+··Start:   sum_check_prove-19-5
+····Start:   sum_check_prove_round-0
+····End:     sum_check_prove_round-0 ...............................................389.964ms
+····Start:   sum_check_next_round-0
+····End:     sum_check_next_round-0 ................................................73.049ms
+····Start:   sum_check_prove_round-1
+····End:     sum_check_prove_round-1 ...............................................197.540ms
+····Start:   sum_check_next_round-1
+····End:     sum_check_next_round-1 ................................................24.168ms
+····Start:   sum_check_prove_round-2
+····End:     sum_check_prove_round-2 ...............................................91.742ms
+····Start:   sum_check_next_round-2
+····End:     sum_check_next_round-2 ................................................12.254ms
+····Start:   sum_check_prove_round-3
+····End:     sum_check_prove_round-3 ...............................................50.313ms
+····Start:   sum_check_next_round-3
+····End:     sum_check_next_round-3 ................................................6.646ms
+····Start:   sum_check_prove_round-4
+····End:     sum_check_prove_round-4 ...............................................25.389ms
+····Start:   sum_check_next_round-4
+····End:     sum_check_next_round-4 ................................................3.912ms
+····Start:   sum_check_prove_round-5
+····End:     sum_check_prove_round-5 ...............................................15.861ms
+····Start:   sum_check_next_round-5
+····End:     sum_check_next_round-5 ................................................2.239ms
+····Start:   sum_check_prove_round-6
+····End:     sum_check_prove_round-6 ...............................................6.690ms
+····Start:   sum_check_next_round-6
+····End:     sum_check_next_round-6 ................................................1.382ms
+····Start:   sum_check_prove_round-7
+····End:     sum_check_prove_round-7 ...............................................3.914ms
+····Start:   sum_check_next_round-7
+····End:     sum_check_next_round-7 ................................................763.750µs
+····Start:   sum_check_prove_round-8
+····End:     sum_check_prove_round-8 ...............................................1.863ms
+····Start:   sum_check_next_round-8
+····End:     sum_check_next_round-8 ................................................757.625µs
+····Start:   sum_check_prove_round-9
+····End:     sum_check_prove_round-9 ...............................................1.264ms
+····Start:   sum_check_next_round-9
+····End:     sum_check_next_round-9 ................................................683.875µs
+····Start:   sum_check_prove_round-10
+····End:     sum_check_prove_round-10 ..............................................979.833µs
+····Start:   sum_check_next_round-10
+····End:     sum_check_next_round-10 ...............................................657.667µs
+····Start:   sum_check_prove_round-11
+····End:     sum_check_prove_round-11 ..............................................308.625µs
+····Start:   sum_check_next_round-11
+····End:     sum_check_next_round-11 ...............................................615.709µs
+····Start:   sum_check_prove_round-12
+····End:     sum_check_prove_round-12 ..............................................180.625µs
+····Start:   sum_check_next_round-12
+····End:     sum_check_next_round-12 ...............................................516.500µs
+····Start:   sum_check_prove_round-13
+····End:     sum_check_prove_round-13 ..............................................83.875µs
+····Start:   sum_check_next_round-13
+····End:     sum_check_next_round-13 ...............................................62.958µs
+····Start:   sum_check_prove_round-14
+····End:     sum_check_prove_round-14 ..............................................99.375µs
+····Start:   sum_check_next_round-14
+····End:     sum_check_next_round-14 ...............................................44.625µs
+····Start:   sum_check_prove_round-15
+····End:     sum_check_prove_round-15 ..............................................61.084µs
+····Start:   sum_check_next_round-15
+····End:     sum_check_next_round-15 ...............................................42.458µs
+····Start:   sum_check_prove_round-16
+····End:     sum_check_prove_round-16 ..............................................69.083µs
+····Start:   sum_check_next_round-16
+····End:     sum_check_next_round-16 ...............................................36.875µs
+····Start:   sum_check_prove_round-17
+····End:     sum_check_prove_round-17 ..............................................47.708µs
+····Start:   sum_check_next_round-17
+····End:     sum_check_next_round-17 ...............................................39.917µs
+····Start:   sum_check_prove_round-18
+····End:     sum_check_prove_round-18 ..............................................28.834µs
+····Start:   sum_check_next_round-18
+····End:     sum_check_next_round-18 ...............................................34.625µs
+··End:     sum_check_prove-19-5 ....................................................929.445ms
+··Start:   evals-19
+··End:     evals-19 ................................................................19.117ms
+··Start:   pcs_batch_open-32
+····Start:   merged_polys
+····End:     merged_polys ..........................................................63.628ms
+····Start:   sum_check_prove-19-2
+······Start:   sum_check_prove_round-0
+······End:     sum_check_prove_round-0 .............................................63.011ms
+······Start:   sum_check_next_round-0
+······End:     sum_check_next_round-0 ..............................................47.942ms
+······Start:   sum_check_prove_round-1
+······End:     sum_check_prove_round-1 .............................................31.951ms
+······Start:   sum_check_next_round-1
+······End:     sum_check_next_round-1 ..............................................21.470ms
+······Start:   sum_check_prove_round-2
+······End:     sum_check_prove_round-2 .............................................16.652ms
+······Start:   sum_check_next_round-2
+······End:     sum_check_next_round-2 ..............................................11.471ms
+······Start:   sum_check_prove_round-3
+······End:     sum_check_prove_round-3 .............................................8.881ms
+······Start:   sum_check_next_round-3
+······End:     sum_check_next_round-3 ..............................................6.398ms
+······Start:   sum_check_prove_round-4
+······End:     sum_check_prove_round-4 .............................................4.742ms
+······Start:   sum_check_next_round-4
+······End:     sum_check_next_round-4 ..............................................3.678ms
+······Start:   sum_check_prove_round-5
+······End:     sum_check_prove_round-5 .............................................2.655ms
+······Start:   sum_check_next_round-5
+······End:     sum_check_next_round-5 ..............................................2.333ms
+······Start:   sum_check_prove_round-6
+······End:     sum_check_prove_round-6 .............................................1.725ms
+······Start:   sum_check_next_round-6
+······End:     sum_check_next_round-6 ..............................................1.279ms
+······Start:   sum_check_prove_round-7
+······End:     sum_check_prove_round-7 .............................................1.226ms
+······Start:   sum_check_next_round-7
+······End:     sum_check_next_round-7 ..............................................807.459µs
+······Start:   sum_check_prove_round-8
+······End:     sum_check_prove_round-8 .............................................708.041µs
+······Start:   sum_check_next_round-8
+······End:     sum_check_next_round-8 ..............................................532.458µs
+······Start:   sum_check_prove_round-9
+······End:     sum_check_prove_round-9 .............................................502.500µs
+······Start:   sum_check_next_round-9
+······End:     sum_check_next_round-9 ..............................................562.542µs
+······Start:   sum_check_prove_round-10
+······End:     sum_check_prove_round-10 ............................................428.542µs
+······Start:   sum_check_next_round-10
+······End:     sum_check_next_round-10 .............................................480.625µs
+······Start:   sum_check_prove_round-11
+······End:     sum_check_prove_round-11 ............................................456.709µs
+······Start:   sum_check_next_round-11
+······End:     sum_check_next_round-11 .............................................551.125µs
+······Start:   sum_check_prove_round-12
+······End:     sum_check_prove_round-12 ............................................407.250µs
+······Start:   sum_check_next_round-12
+······End:     sum_check_next_round-12 .............................................383.917µs
+······Start:   sum_check_prove_round-13
+······End:     sum_check_prove_round-13 ............................................416.917µs
+······Start:   sum_check_next_round-13
+······End:     sum_check_next_round-13 .............................................20.000µs
+······Start:   sum_check_prove_round-14
+······End:     sum_check_prove_round-14 ............................................357.875µs
+······Start:   sum_check_next_round-14
+······End:     sum_check_next_round-14 .............................................10.500µs
+······Start:   sum_check_prove_round-15
+······End:     sum_check_prove_round-15 ............................................274.584µs
+······Start:   sum_check_next_round-15
+······End:     sum_check_next_round-15 .............................................5.583µs
+······Start:   sum_check_prove_round-16
+······End:     sum_check_prove_round-16 ............................................4.958µs
+······Start:   sum_check_next_round-16
+······End:     sum_check_next_round-16 .............................................6.291µs
+······Start:   sum_check_prove_round-17
+······End:     sum_check_prove_round-17 ............................................3.042µs
+······Start:   sum_check_next_round-17
+······End:     sum_check_next_round-17 .............................................1.667µs
+······Start:   sum_check_prove_round-18
+······End:     sum_check_prove_round-18 ............................................2.208µs
+······Start:   sum_check_next_round-18
+······End:     sum_check_next_round-18 .............................................1.083µs
+····End:     sum_check_prove-19-2 ..................................................344.460ms
+····Start:   g_prime
+····End:     g_prime ...............................................................67.666ms
+····Start:   variable_base_msm-262145
+····End:     variable_base_msm-262145 ..............................................589.705ms
+····Start:   variable_base_msm-262145
+····End:     variable_base_msm-262145 ..............................................704.968ms
+····Start:   variable_base_msm-131073
+····End:     variable_base_msm-131073 ..............................................330.715ms
+····Start:   variable_base_msm-131073
+····End:     variable_base_msm-131073 ..............................................354.729ms
+····Start:   variable_base_msm-65537
+····End:     variable_base_msm-65537 ...............................................183.858ms
+····Start:   variable_base_msm-65537
+····End:     variable_base_msm-65537 ...............................................167.298ms
+····Start:   variable_base_msm-32769
+····End:     variable_base_msm-32769 ...............................................96.444ms
+····Start:   variable_base_msm-32769
+····End:     variable_base_msm-32769 ...............................................108.920ms
+····Start:   variable_base_msm-16385
+····End:     variable_base_msm-16385 ...............................................58.367ms
+····Start:   variable_base_msm-16385
+····End:     variable_base_msm-16385 ...............................................56.566ms
+····Start:   variable_base_msm-8193
+····End:     variable_base_msm-8193 ................................................29.148ms
+····Start:   variable_base_msm-8193
+····End:     variable_base_msm-8193 ................................................36.462ms
+····Start:   variable_base_msm-4097
+····End:     variable_base_msm-4097 ................................................17.978ms
+····Start:   variable_base_msm-4097
+····End:     variable_base_msm-4097 ................................................20.885ms
+····Start:   variable_base_msm-2049
+····End:     variable_base_msm-2049 ................................................11.213ms
+····Start:   variable_base_msm-2049
+····End:     variable_base_msm-2049 ................................................11.543ms
+····Start:   variable_base_msm-1025
+····End:     variable_base_msm-1025 ................................................8.101ms
+····Start:   variable_base_msm-1025
+····End:     variable_base_msm-1025 ................................................7.166ms
+····Start:   variable_base_msm-513
+····End:     variable_base_msm-513 .................................................4.781ms
+····Start:   variable_base_msm-513
+····End:     variable_base_msm-513 .................................................3.856ms
+····Start:   variable_base_msm-257
+····End:     variable_base_msm-257 .................................................3.082ms
+····Start:   variable_base_msm-257
+····End:     variable_base_msm-257 .................................................3.076ms
+····Start:   variable_base_msm-129
+····End:     variable_base_msm-129 .................................................1.969ms
+····Start:   variable_base_msm-129
+····End:     variable_base_msm-129 .................................................1.887ms
+····Start:   variable_base_msm-65
+····End:     variable_base_msm-65 ..................................................1.693ms
+····Start:   variable_base_msm-65
+····End:     variable_base_msm-65 ..................................................1.645ms
+····Start:   variable_base_msm-33
+····End:     variable_base_msm-33 ..................................................1.215ms
+····Start:   variable_base_msm-33
+····End:     variable_base_msm-33 ..................................................1.158ms
+····Start:   variable_base_msm-17
+····End:     variable_base_msm-17 ..................................................877.416µs
+····Start:   variable_base_msm-17
+····End:     variable_base_msm-17 ..................................................1.166ms
+····Start:   variable_base_msm-9
+····End:     variable_base_msm-9 ...................................................808.000µs
+····Start:   variable_base_msm-9
+····End:     variable_base_msm-9 ...................................................727.584µs
+····Start:   variable_base_msm-5
+····End:     variable_base_msm-5 ...................................................562.958µs
+····Start:   variable_base_msm-5
+····End:     variable_base_msm-5 ...................................................563.334µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................471.042µs
+····Start:   variable_base_msm-3
+····End:     variable_base_msm-3 ...................................................470.500µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................436.583µs
+····Start:   variable_base_msm-2
+····End:     variable_base_msm-2 ...................................................441.375µs
+··End:     pcs_batch_open-32 .......................................................26.069s
+End:     prove_decider_with_last_nark-secondary-19 .................................32.652s
+test accumulation::protostar::ivc::halo2::test::gemini_kzg_ipa_protostar_hyperplonk_ivc ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 162.70s
+

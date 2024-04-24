@@ -829,7 +829,7 @@ where
         assigned_instances[0].push(h_ohs_from_incoming);
         assigned_instances[0].push(h_prime);
 
-        circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""));
+        circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""))?;
         circuit_builder.clear();
         drop(circuit_builder);
 

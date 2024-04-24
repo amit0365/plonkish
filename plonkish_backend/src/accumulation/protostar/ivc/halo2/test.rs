@@ -373,7 +373,7 @@ where
     let cyclefold_num_vars = cyclefold_circuit_params.k;
     let cyclefold_atp = accumulation_transcript_param();
     // let mut nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
-    let mut minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 10);
+    let mut minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 1024);
 
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut cyclefold_circuit, ivc_pp, ivc_vp) = preprocess::<
@@ -419,7 +419,7 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_STEPS: usize = 6;
+    const NUM_STEPS: usize = 10;
 
     let primary_circuit_params = BaseCircuitParams {
             k: 19,

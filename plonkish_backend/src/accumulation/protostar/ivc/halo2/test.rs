@@ -446,6 +446,31 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     >(NUM_STEPS, primary_circuit_params, cyclefold_circuit_params);
 }
 
+pub fn gemini_kzg_ipa_protostar_hyperplonk_ivc_bench(num_steps: usize) {
+    let primary_circuit_params = BaseCircuitParams {
+            k: 19,
+            num_advice_per_phase: vec![1],
+            num_lookup_advice_per_phase: vec![1],
+            num_fixed: 1,
+            lookup_bits: Some(13),
+            num_instance_columns: 1,
+        };
+
+    let cyclefold_circuit_params = BaseCircuitParams {
+            k: 17,
+            num_advice_per_phase: vec![1],
+            num_lookup_advice_per_phase: vec![0],
+            num_fixed: 1,
+            lookup_bits: Some(1),
+            num_instance_columns: 1,
+        };
+
+    run_protostar_hyperplonk_ivc::<
+        bn256::G1Affine,
+        Gemini<UnivariateKzg<Bn256>>,
+        MultilinearIpa<grumpkin::G1Affine>,
+    >(num_steps, primary_circuit_params, cyclefold_circuit_params);
+}
 
     // let primary_dtp = decider_transcript_param();
     // let cyclefold_dtp = decider_transcript_param();
@@ -515,7 +540,6 @@ pub mod strawman {
         }
     };
 
-    use ark_std::end_timer;
     use halo2_base::{
         gates::{
             circuit::{builder::BaseCircuitBuilder, BaseCircuitParams, BaseConfig, CircuitBuilderStage}, flex_gate::{threads::SinglePhaseCoreManager, BasicGateConfig, FlexGateConfig, FlexGateConfigParams, GateChip, GateInstructions}, range::RangeConfig, RangeChip

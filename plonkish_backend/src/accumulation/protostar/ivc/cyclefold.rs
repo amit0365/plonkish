@@ -315,11 +315,11 @@ where
 
         binding.synthesize(config.clone(), layouter.namespace(|| "cyclefold_circuit"));
         let total_lookup = binding.statistics().total_lookup_advice_per_phase;
-        println!("cyclefold_circuit_advice_lookup {:?}", total_lookup);
+        // println!("cyclefold_circuit_advice_lookup {:?}", total_lookup);
         let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
-        println!("cyclefold_circuit_copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
-        println!("cyclefold_circuit_copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        println!("cyclefold_circuit_copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
+        // println!("cyclefold_circuit_copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
+        // println!("cyclefold_circuit_copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
+        // println!("cyclefold_circuit_copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
 
         binding.clear();
@@ -367,7 +367,7 @@ where
         let synthesize_ec_time = Instant::now();
         self.synthesize_circuit(layouter.namespace(|| ""), config.clone())?;
         let duration_ec_synthesize = synthesize_ec_time.elapsed();
-        println!("Time for synthesize_ec: {:?}", duration_ec_synthesize);
+        // println!("Time for synthesize_ec: {:?}", duration_ec_synthesize);
         Ok(())
     }
 }

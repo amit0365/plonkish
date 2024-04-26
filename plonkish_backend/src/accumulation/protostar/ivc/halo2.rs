@@ -1342,9 +1342,9 @@ where
         circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""));
 
         let copy_manager = circuit_builder.pool(0).copy_manager.lock().unwrap();
-        println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
-        println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
+        // println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
+        // println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
+        // println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
 
         circuit_builder.clear();
@@ -1410,13 +1410,13 @@ where
             StepCircuit::<C>::synthesize(&mut *step_circuit, config.clone(), layouter.namespace(|| ""), &mut builder)?;
         drop(step_circuit);
         
-        println!("inputs: {:?}", input.clone());
-        println!("outputs: {:?}", output.clone());
+        // println!("inputs: {:?}", input.clone());
+        // println!("outputs: {:?}", output.clone());
 
         let synthesize_accumulation_verifier_time = Instant::now();
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output, &mut builder)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
-        println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
+        // println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
 
         Ok(())
     }

@@ -20,9 +20,9 @@ fn bench_gemini_kzg_ipa_protostar_hyperplonk_ivc(c: &mut Criterion) {
     group.finish();
 }
 
-fn ivc(c: &mut Criterion) {
+fn minroot_protostar_bctv(c: &mut Criterion) {
     bench_gemini_kzg_ipa_protostar_hyperplonk_ivc(c);
 }
 
-criterion_group!(benches, ivc);
+criterion_group!(benches, minroot_protostar_bctv);
 criterion_main!(benches);

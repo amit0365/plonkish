@@ -1344,7 +1344,7 @@ where
         let copy_manager = circuit_builder.pool(0).copy_manager.lock().unwrap();
         // println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
         // println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        // println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
+        println!("primary_circuit_witness_size {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
 
         circuit_builder.clear();

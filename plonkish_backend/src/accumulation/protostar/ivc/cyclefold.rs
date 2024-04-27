@@ -319,7 +319,7 @@ where
         let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
         // println!("cyclefold_circuit_copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
         // println!("cyclefold_circuit_copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        // println!("cyclefold_circuit_copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
+        println!("cyclefold_circuit_witness_size {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
 
         binding.clear();

@@ -830,6 +830,10 @@ where
         assigned_instances[0].push(h_prime);
 
         circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""))?;
+        let copy_manager = circuit_builder.pool(0).copy_manager.lock().unwrap();
+        println!("{} circuit_witness_size {:?}", if self.is_primary { "primary" } else { "secondary" }, copy_manager.assigned_advices.len());
+        drop(copy_manager);
+
         circuit_builder.clear();
         drop(circuit_builder);
 

@@ -61,7 +61,7 @@ harness = false
 required-features = ["benchmark"]
 
 [[bench]]
-name = "minroot_protostar_ivc"
+name = "minroot_protostar_bctv"
 harness = false 
 
 [[bench]]

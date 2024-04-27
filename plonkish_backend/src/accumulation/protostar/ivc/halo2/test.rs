@@ -39,6 +39,7 @@ use halo2_base::halo2_proofs::{
 };
 use rand::RngCore;
 
+use core::num;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant, cell::{RefCell, RefMut}, borrow::BorrowMut};
 use std::{mem, rc::Rc};
 
@@ -646,8 +647,7 @@ where
         seeded_std_rng(),
     )
     .unwrap();
-    let duration_preprocess = preprocess_time.elapsed();
-
+    println!("Preprocess time: {:?}", preprocess_time.elapsed());
 
     let prove_steps_time = Instant::now();
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
@@ -738,6 +738,25 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
     >(NUM_VARS, NUM_STEPS, circuit_params);
+}
+
+pub fn gemini_kzg_ipa_protostar_hyperplonk_ivc_bench (num_steps: usize) {
+    const NUM_VARS: usize = 19;
+
+    let circuit_params = BaseCircuitParams {
+            k: NUM_VARS,
+            num_advice_per_phase: vec![1],
+            num_lookup_advice_per_phase: vec![1],
+            num_fixed: 1,
+            lookup_bits: Some(13),
+            num_instance_columns: 1,
+        };
+
+    run_protostar_hyperplonk_ivc::<
+        bn256::G1Affine,
+        Gemini<UnivariateKzg<Bn256>>,
+        MultilinearIpa<grumpkin::G1Affine>,
+    >(NUM_VARS, num_steps, circuit_params);
 }
 
 // #[test]
@@ -1155,7 +1174,8 @@ pub mod strawman {
             lhs: &AssignedValue<C::Scalar>,
             rhs: &AssignedValue<C::Scalar>,
         ) -> Result<(), Error> {
-            Ok(builder.main().constrain_equal(lhs, rhs))
+            builder.main().constrain_equal(lhs, rhs);
+            Ok(())
         }
     
         pub fn assign_constant(

@@ -888,12 +888,12 @@ where
             StepCircuit::<C>::synthesize(&mut *step_circuit, config.clone(), layouter.namespace(|| ""), &mut builder)?;
         drop(step_circuit);
 
-        println!("input {:?}", input.clone());
-        println!("output {:?}", output.clone());
+        // println!("input {:?}", input.clone());
+        // println!("output {:?}", output.clone());
 
-        let synthesize_accumulation_verifier_time = Instant::now();
+        // let synthesize_accumulation_verifier_time = Instant::now();
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output, &mut builder)?;
-        let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
+        // let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
 
         Ok(())
     }

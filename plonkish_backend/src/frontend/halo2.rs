@@ -6,6 +6,7 @@ use crate::{
         Itertools,
     },
 };
+use ff::derive;
 use halo2_base::{halo2_proofs::{
     circuit::Value,
     plonk::{
@@ -47,6 +48,7 @@ pub trait CircuitExt<F: Field>: Circuit<F> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Halo2Circuit<F: Field, C: Circuit<F>> {
     k: u32,
     instances: Vec<Vec<F>>,

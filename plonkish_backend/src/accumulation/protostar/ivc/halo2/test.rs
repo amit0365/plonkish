@@ -724,7 +724,6 @@ where
 #[allow(clippy::type_complexity)]
 pub fn run_protostar_hyperplonk_ivc_minroot_preprocess<C, P1, P2>(
     num_vars: usize,
-    num_steps: usize,
     circuit_params: BaseCircuitParams,
 ) -> (
     Halo2Circuit<C::Scalar, RecursiveCircuit<C, MinRootCircuit<C>>>,
@@ -764,10 +763,10 @@ where
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
     // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
-    let mut minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ZERO, C::Scalar::ONE], 1024);
+    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ZERO, C::Scalar::ONE], 1024);
 
     let preprocess_time = Instant::now();
-    let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
+    let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
         P1,
         P2,
@@ -797,25 +796,24 @@ pub fn run_protostar_hyperplonk_ivc_prove<C, Sc1, Sc2, P1, P2, AT1, AT2>(
     mut secondary_circuit: Halo2Circuit<C::Base, RecursiveCircuit<C::Secondary, Sc2>>,
     ivc_pp: ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
     ivc_vp: ProtostarIvcVerifierParam<C, P1, P2>,
-    num_vars: usize,
     num_steps: usize,
-) -> (
-    ProtostarIvcVerifierParam<
-        C,
-        P1,
-        P2,
-    >,
-    usize,
-    Vec<C::Scalar>,
-    Vec<C::Scalar>,
-    ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
-    Vec<u8>,
-    Vec<C::Base>,
-    Vec<C::Base>,
-    ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
-    Vec<C::Base>,
-    Vec<u8>,
-)
+) // -> (
+    // ProtostarIvcVerifierParam<
+    //     C,
+    //     P1,
+    //     P2,
+    // >,
+    // usize,
+    // Vec<C::Scalar>,
+    // Vec<C::Scalar>,
+    // ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
+    // Vec<u8>,
+    // Vec<C::Base>,
+    // Vec<C::Base>,
+    // ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
+    // Vec<C::Base>,
+    // Vec<u8>,
+// )
 where
     C: TwoChainCurve,
     C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
@@ -841,9 +839,6 @@ where
         + TranscriptWrite<P2::CommitmentChunk, C::Base>
         + InMemoryTranscript,
 {
-    let primary_num_vars = num_vars;
-    let secondary_num_vars = num_vars;
-
     let prove_steps_time = Instant::now();
     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
         &ivc_pp, 
@@ -853,65 +848,65 @@ where
         seeded_std_rng(),
     )
     .unwrap();
-    println!("Prove steps time: {:?}", prove_steps_time.elapsed());
+    println!("PROVE STEPS TIME: {:?}", prove_steps_time.elapsed());
 
-    let primary_dtp = strawman::decider_transcript_param();
-    let secondary_dtp = strawman::decider_transcript_param();
+    // let primary_dtp = strawman::decider_transcript_param();
+    // let secondary_dtp = strawman::decider_transcript_param();
 
-    let primary_step_circuit = primary_circuit.circuit().step_circuit.clone().into_inner();
-    let secondary_step_circuit = secondary_circuit.circuit().step_circuit.clone().into_inner();
+    // let primary_step_circuit = primary_circuit.circuit().step_circuit.clone().into_inner();
+    // let secondary_step_circuit = secondary_circuit.circuit().step_circuit.clone().into_inner();
 
-    let prove_decider_time = Instant::now();
-    let (
-        primary_acc,
-        primary_initial_input,
-        primary_output,
-        primary_proof,
-        secondary_acc_before_last,
-        secondary_initial_input,
-        secondary_output,
-        secondary_proof,
-    ) = {
-        let secondary_acc_before_last = secondary_acc.instance.clone();
-        let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
-        let mut secondary_transcript = strawman::PoseidonTranscript::new(secondary_dtp.clone());
-        prove_decider(
-            &ivc_pp,
-            &primary_acc,
-            &mut primary_transcript,
-            &mut secondary_acc,
-            &secondary_circuit,
-            &mut secondary_transcript,
-            seeded_std_rng(),
-        )
-        .unwrap();
+    // let prove_decider_time = Instant::now();
+    // let (
+    //     primary_acc,
+    //     primary_initial_input,
+    //     primary_output,
+    //     primary_proof,
+    //     secondary_acc_before_last,
+    //     secondary_initial_input,
+    //     secondary_output,
+    //     secondary_proof,
+    // ) = {
+    //     let secondary_acc_before_last = secondary_acc.instance.clone();
+    //     let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
+    //     let mut secondary_transcript = strawman::PoseidonTranscript::new(secondary_dtp.clone());
+    //     prove_decider(
+    //         &ivc_pp,
+    //         &primary_acc,
+    //         &mut primary_transcript,
+    //         &mut secondary_acc,
+    //         &secondary_circuit,
+    //         &mut secondary_transcript,
+    //         seeded_std_rng(),
+    //     )
+    //     .unwrap();
 
-        (
-            primary_acc.instance,
-            StepCircuit::<C>::initial_input(&primary_step_circuit),
-            StepCircuit::<C>::output(&primary_step_circuit),
-            primary_transcript.into_proof(),
-            secondary_acc_before_last,
-            StepCircuit::<C::Secondary>::initial_input(&secondary_step_circuit),
-            StepCircuit::<C::Secondary>::output(&secondary_step_circuit),
-            secondary_transcript.into_proof(),
-        )
-    };
-    let duration_prove_decider = prove_decider_time.elapsed();
+    //     (
+    //         primary_acc.instance,
+    //         StepCircuit::<C>::initial_input(&primary_step_circuit),
+    //         StepCircuit::<C>::output(&primary_step_circuit),
+    //         primary_transcript.into_proof(),
+    //         secondary_acc_before_last,
+    //         StepCircuit::<C::Secondary>::initial_input(&secondary_step_circuit),
+    //         StepCircuit::<C::Secondary>::output(&secondary_step_circuit),
+    //         secondary_transcript.into_proof(),
+    //     )
+    // };
+    // let duration_prove_decider = prove_decider_time.elapsed();
 
-    (
-        ivc_vp,
-        num_steps,
-        primary_initial_input.to_vec(),
-        primary_output.to_vec(),
-        primary_acc,
-        primary_proof,
-        secondary_initial_input.to_vec(),
-        secondary_output.to_vec(),
-        secondary_acc_before_last,
-        secondary_last_instances,
-        secondary_proof,
-    )
+    // (
+    //     ivc_vp,
+    //     num_steps,
+    //     primary_initial_input.to_vec(),
+    //     primary_output.to_vec(),
+    //     primary_acc,
+    //     primary_proof,
+    //     secondary_initial_input.to_vec(),
+    //     secondary_output.to_vec(),
+    //     secondary_acc_before_last,
+    //     secondary_last_instances,
+    //     secondary_proof,
+    // )
 }
 
 #[test]

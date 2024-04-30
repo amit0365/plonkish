@@ -6,7 +6,6 @@ use plonkish_backend::pcs::multilinear::{Gemini, MultilinearIpa};
 use plonkish_backend::pcs::univariate::UnivariateKzg;
 
 const NUM_VARS: usize = 19;
-const NUM_STEPS: usize = 10;
 
 fn bench_gemini_kzg_ipa_protostar_hyperplonk_ivc(c: &mut Criterion) {
     let circuit_params = BaseCircuitParams {
@@ -22,7 +21,7 @@ fn bench_gemini_kzg_ipa_protostar_hyperplonk_ivc(c: &mut Criterion) {
             bn256::G1Affine,
             Gemini<UnivariateKzg<Bn256>>,
             MultilinearIpa<grumpkin::G1Affine>,
-        >(NUM_VARS, NUM_STEPS, circuit_params);
+        >(NUM_VARS, circuit_params);
         
     let num_steps_values = vec![5, 10]; //, 100, 1000, 10000];
     let mut group = c.benchmark_group("Gemini KZG IPA Protostar HyperPlonk IVC");
@@ -34,7 +33,7 @@ fn bench_gemini_kzg_ipa_protostar_hyperplonk_ivc(c: &mut Criterion) {
         
         group.bench_with_input(test_name, &num_steps, |b, &num_steps| {
             b.iter(|| {
-                run_protostar_hyperplonk_ivc_prove(primary_circuit.clone(), secondary_circuit.clone(), ivc_pp.clone(), ivc_vp.clone(), NUM_VARS, num_steps);
+                run_protostar_hyperplonk_ivc_prove(primary_circuit.clone(), secondary_circuit.clone(), ivc_pp.clone(), ivc_vp.clone(), num_steps);
             });
         });
     }

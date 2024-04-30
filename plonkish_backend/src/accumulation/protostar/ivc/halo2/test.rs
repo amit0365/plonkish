@@ -19,12 +19,12 @@ use crate::{
     util::{
         arithmetic::{
             fe_from_bits_le, fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits, TwoChainCurve
-        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
+        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::{InMemoryTranscript, TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
     },
 };
-use halo2_base::{halo2_proofs::{
-    halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-}, plonk::{Advice, Column}, poly::Rotation, dev::MockProver}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
+use halo2_base::{gates::circuit::{self, builder::BaseCircuitBuilder, BaseCircuitParams, BaseConfig}, halo2_proofs::{
+    dev::MockProver, halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
+}, plonk::{Advice, Column}, poly::Rotation}, AssignedValue};
 
 use halo2_base::{Context,
     gates::{range::RangeInstructions, circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
@@ -39,12 +39,12 @@ use halo2_base::halo2_proofs::{
 };
 use rand::RngCore;
 
-use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant};
+use std::{convert::From, fmt::Debug, hash::Hash, io::Cursor, marker::PhantomData, time::Instant};
 use std::{mem, rc::Rc};
 
 use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS, T, RATE, R_F, R_P, SECURE_MDS, Chip};
 
-use super::RecursiveCircuit;
+use super::{ProtostarIvcProverParam, RecursiveCircuit};
 
 
 
@@ -416,6 +416,192 @@ where
     )
 }
 
+#[allow(clippy::type_complexity)]
+pub fn run_protostar_hyperplonk_ivc_minroot_preprocess<C, P1, P2>(
+    primary_circuit_params: BaseCircuitParams,
+    cyclefold_circuit_params: BaseCircuitParams,
+) -> (
+    Halo2Circuit<C::Scalar, RecursiveCircuit<C, MinRootCircuit<C>>>,
+    Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
+    ProtostarIvcProverParam<
+        C,
+        P1,
+        P2,
+        PoseidonNativeTranscript<C::Scalar, Cursor<Vec<u8>>>,
+        PoseidonTranscript<C::Scalar, Cursor<Vec<u8>>>,
+    >,
+    ProtostarIvcVerifierParam<
+        C,
+        P1,
+        P2,
+    >,
+)
+where
+    C: TwoChainCurve,
+    C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+    C::Scalar: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+    P1: PolynomialCommitmentScheme<
+        C::ScalarExt,
+        Polynomial = MultilinearPolynomial<C::Scalar>,
+        CommitmentChunk = C,
+    >,
+    P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
+    P2: PolynomialCommitmentScheme<
+        C::Base,
+        Polynomial = MultilinearPolynomial<C::Base>,
+        CommitmentChunk = C::Secondary,
+    >,
+    P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
+{
+    let primary_num_vars = primary_circuit_params.k;
+    let primary_atp = strawman::accumulation_transcript_param();
+    let secondary_num_vars = cyclefold_circuit_params.k;
+    let secondary_atp = strawman::accumulation_transcript_param();
+    // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
+    let mut minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 1024);
+
+    let preprocess_time = Instant::now();
+    let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
+        C,
+        P1,
+        P2,
+        _,
+        _,
+        strawman::PoseidonTranscript<_, _>,
+    >(  
+        primary_num_vars,
+        primary_atp,
+        minroot_circuit,
+        secondary_num_vars,
+        secondary_atp,
+        primary_circuit_params,
+        cyclefold_circuit_params, 
+        seeded_std_rng(),
+    )
+    .unwrap();
+    println!("Preprocess time: {:?}", preprocess_time.elapsed());
+
+    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp)
+}
+
+#[allow(clippy::type_complexity)]
+pub fn run_protostar_hyperplonk_ivc_prove<C, Sc1, P1, P2, AT1, AT2>(
+    mut primary_circuit: Halo2Circuit<C::Scalar, RecursiveCircuit<C, Sc1>>,
+    mut secondary_circuit: Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
+    ivc_pp: ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
+    ivc_vp: ProtostarIvcVerifierParam<C, P1, P2>,
+    num_steps: usize,
+) // -> (
+    // ProtostarIvcVerifierParam<
+    //     C,
+    //     P1,
+    //     P2,
+    // >,
+    // usize,
+    // Vec<C::Scalar>,
+    // Vec<C::Scalar>,
+    // ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
+    // Vec<u8>,
+    // Vec<C::Base>,
+    // Vec<C::Base>,
+    // ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
+    // Vec<C::Base>,
+    // Vec<u8>,
+// )
+where
+    C: TwoChainCurve,
+    C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+    C::Scalar: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+    P1: PolynomialCommitmentScheme<
+        C::ScalarExt,
+        Polynomial = MultilinearPolynomial<C::Scalar>,
+        CommitmentChunk = C,
+    >,
+    P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
+    P2: PolynomialCommitmentScheme<
+        C::Base,
+        Polynomial = MultilinearPolynomial<C::Base>,
+        CommitmentChunk = C::Secondary,
+    >,
+    P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
+    Sc1: StepCircuit<C>,
+    AT1: TranscriptRead<P1::CommitmentChunk, C::Scalar>
+    + TranscriptWrite<P1::CommitmentChunk, C::Scalar>
+    + InMemoryTranscript,
+    AT2: TranscriptRead<P2::CommitmentChunk, C::Base>
+        + TranscriptWrite<P2::CommitmentChunk, C::Base>
+        + InMemoryTranscript,
+{
+    let prove_steps_time = Instant::now();
+    let (mut primary_acc, mut secondary_acc) = prove_steps(
+        &ivc_pp, 
+        &mut primary_circuit,
+        &mut secondary_circuit,
+        num_steps,
+        seeded_std_rng(),
+    )
+    .unwrap();
+    println!("PROVE STEPS TIME: {:?}", prove_steps_time.elapsed());
+
+    // let primary_dtp = strawman::decider_transcript_param();
+    // let secondary_dtp = strawman::decider_transcript_param();
+
+    // let primary_step_circuit = primary_circuit.circuit().step_circuit.clone().into_inner();
+    // let secondary_step_circuit = secondary_circuit.circuit().step_circuit.clone().into_inner();
+
+    // let prove_decider_time = Instant::now();
+    // let (
+    //     primary_acc,
+    //     primary_initial_input,
+    //     primary_output,
+    //     primary_proof,
+    //     secondary_acc_before_last,
+    //     secondary_initial_input,
+    //     secondary_output,
+    //     secondary_proof,
+    // ) = {
+    //     let secondary_acc_before_last = secondary_acc.instance.clone();
+    //     let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
+    //     let mut secondary_transcript = strawman::PoseidonTranscript::new(secondary_dtp.clone());
+    //     prove_decider(
+    //         &ivc_pp,
+    //         &primary_acc,
+    //         &mut primary_transcript,
+    //         &mut secondary_acc,
+    //         &secondary_circuit,
+    //         &mut secondary_transcript,
+    //         seeded_std_rng(),
+    //     )
+    //     .unwrap();
+
+    //     (
+    //         primary_acc.instance,
+    //         StepCircuit::<C>::initial_input(&primary_step_circuit),
+    //         StepCircuit::<C>::output(&primary_step_circuit),
+    //         primary_transcript.into_proof(),
+    //         secondary_acc_before_last,
+    //         StepCircuit::<C::Secondary>::initial_input(&secondary_step_circuit),
+    //         StepCircuit::<C::Secondary>::output(&secondary_step_circuit),
+    //         secondary_transcript.into_proof(),
+    //     )
+    // };
+    // let duration_prove_decider = prove_decider_time.elapsed();
+
+    // (
+    //     ivc_vp,
+    //     num_steps,
+    //     primary_initial_input.to_vec(),
+    //     primary_output.to_vec(),
+    //     primary_acc,
+    //     primary_proof,
+    //     secondary_initial_input.to_vec(),
+    //     secondary_output.to_vec(),
+    //     secondary_acc_before_last,
+    //     secondary_last_instances,
+    //     secondary_proof,
+    // )
+}
+
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
@@ -632,6 +818,7 @@ pub mod strawman {
         OptimizedPoseidonSpec::new::<R_F, R_P,SECURE_MDS>()
     }
 
+    #[derive(Clone, Debug)]
     pub struct PoseidonNativeTranscript<F: ScalarField, S> {
         state: PoseidonHash<F, T, RATE>,
         stream: S,
@@ -762,7 +949,7 @@ pub mod strawman {
         }
     }
 
-
+    #[derive(Clone, Debug)]
     pub struct PoseidonTranscript<F: ScalarField, S> {
         state: PoseidonHash<F, T, RATE>,
         stream: S,

@@ -46,6 +46,7 @@ pub trait CircuitExt<F: Field>: Circuit<F> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Halo2Circuit<F: Field, C: Circuit<F>> {
     k: u32,
     instances: Vec<Vec<F>>,

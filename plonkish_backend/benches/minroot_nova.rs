@@ -139,63 +139,10 @@ impl<G: Group> StepCircuit<G::Scalar> for MinRootCircuit<G> {
 }
 
 /// cargo run --release --example minroot
-fn nova_ivc(num_steps: usize) {
+fn nova_ivc(num_steps: usize, num_iters_per_step: usize, pp: PublicParams<E1, E2, MinRootCircuit<<E1 as Engine>::GE>, TrivialCircuit<<E2 as Engine>::Scalar>>, circuit_secondary: TrivialCircuit<<E2 as Engine>::Scalar>) {
 //   println!("Nova-based VDF with MinRoot delay function");
 //   println!("=========================================================");
-
-  for num_iters_per_step in [1024, 2048] {
-    // number of iterations of MinRoot per Nova's recursive step
-    let circuit_primary = MinRootCircuit {
-      seq: vec![
-        MinRootIteration {
-          x_i: <E1 as Engine>::Scalar::zero(),
-          y_i: <E1 as Engine>::Scalar::zero(),
-          x_i_plus_1: <E1 as Engine>::Scalar::zero(),
-          y_i_plus_1: <E1 as Engine>::Scalar::zero(),
-        };
-        num_iters_per_step
-      ],
-    };
-
-    let circuit_secondary = TrivialCircuit::default();
-
-    // println!("Proving {num_iters_per_step} iterations of MinRoot per step");
-
-    // produce public parameters
-    let start = Instant::now();
-    // println!("Producing public parameters...");
-    let pp = PublicParams::<
-      E1,
-      E2,
-      MinRootCircuit<<E1 as Engine>::GE>,
-      TrivialCircuit<<E2 as Engine>::Scalar>,
-    >::setup(
-      &circuit_primary,
-      &circuit_secondary,
-      &*S1::ck_floor(),
-      &*S2::ck_floor(),
-    )
-    .unwrap();
-    // println!("PublicParams::setup, took {:?} ", start.elapsed());
-
-    // println!(
-    //   "Number of constraints per step (primary circuit): {}",
-    //   pp.num_constraints().0
-    // );
-    // println!(
-    //   "Number of constraints per step (secondary circuit): {}",
-    //   pp.num_constraints().1
-    // );
-
-    // println!(
-    //   "Number of variables per step (primary circuit): {}",
-    //   pp.num_variables().0
-    // );
-    // println!(
-    //   "Number of variables per step (secondary circuit): {}",
-    //   pp.num_variables().1
-    // );
-
+    
     // produce non-deterministic advice
     let (z0_primary, minroot_iterations) = MinRootIteration::<<E1 as Engine>::GE>::new(
       num_iters_per_step * num_steps,
@@ -232,79 +179,99 @@ fn nova_ivc(num_steps: usize) {
       .unwrap();
 
     for (i, circuit_primary) in minroot_circuits.iter().enumerate() {
-      let start = Instant::now();
       let res = recursive_snark.prove_step(&pp, circuit_primary, &circuit_secondary);
       assert!(res.is_ok());
-    //   println!(
-    //     "RecursiveSNARK::prove_step {}: {:?}, took {:?} ",
-    //     i,
-    //     res.is_ok(),
-    //     start.elapsed()
-    //   );
     }
 
     // verify the recursive SNARK
     // println!("Verifying a RecursiveSNARK...");
-    let start = Instant::now();
-    let res = recursive_snark.verify(&pp, num_steps, &z0_primary, &z0_secondary);
-    // println!(
-    //   "RecursiveSNARK::verify: {:?}, took {:?}",
-    //   res.is_ok(),
-    //   start.elapsed()
-    // );
-    assert!(res.is_ok());
+    // let start = Instant::now();
+    // let res = recursive_snark.verify(&pp, num_steps, &z0_primary, &z0_secondary);
+    // // println!(
+    // //   "RecursiveSNARK::verify: {:?}, took {:?}",
+    // //   res.is_ok(),
+    // //   start.elapsed()
+    // // );
+    // assert!(res.is_ok());
 
-    // produce a compressed SNARK
-    // println!("Generating a CompressedSNARK using Spartan with HyperKZG...");
-    let (pk, vk) = CompressedSNARK::<_, _, _, _, S1, S2>::setup(&pp).unwrap();
+    // // produce a compressed SNARK
+    // // println!("Generating a CompressedSNARK using Spartan with HyperKZG...");
+    // let (pk, vk) = CompressedSNARK::<_, _, _, _, S1, S2>::setup(&pp).unwrap();
 
-    let start = Instant::now();
+    // let start = Instant::now();
 
-    let res = CompressedSNARK::<_, _, _, _, S1, S2>::prove(&pp, &pk, &recursive_snark);
-    // println!(
-    //   "CompressedSNARK::prove: {:?}, took {:?}",
-    //   res.is_ok(),
-    //   start.elapsed()
-    // );
-    assert!(res.is_ok());
-    let compressed_snark = res.unwrap();
+    // let res = CompressedSNARK::<_, _, _, _, S1, S2>::prove(&pp, &pk, &recursive_snark);
+    // // println!(
+    // //   "CompressedSNARK::prove: {:?}, took {:?}",
+    // //   res.is_ok(),
+    // //   start.elapsed()
+    // // );
+    // assert!(res.is_ok());
+    // let compressed_snark = res.unwrap();
 
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-    bincode::serialize_into(&mut encoder, &compressed_snark).unwrap();
-    let compressed_snark_encoded = encoder.finish().unwrap();
-    // println!(
-    //   "CompressedSNARK::len {:?} bytes",
-    //   compressed_snark_encoded.len()
-    // );
+    // let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+    // bincode::serialize_into(&mut encoder, &compressed_snark).unwrap();
+    // let compressed_snark_encoded = encoder.finish().unwrap();
+    // // println!(
+    // //   "CompressedSNARK::len {:?} bytes",
+    // //   compressed_snark_encoded.len()
+    // // );
 
-    // verify the compressed SNARK
-    // println!("Verifying a CompressedSNARK...");
-    let start = Instant::now();
-    let res = compressed_snark.verify(&vk, num_steps, &z0_primary, &z0_secondary);
-    // println!(
-    //   "CompressedSNARK::verify: {:?}, took {:?}",
-    //   res.is_ok(),
-    //   start.elapsed()
-    // );
-    assert!(res.is_ok());
-    // println!("=========================================================");
-  }
+    // // verify the compressed SNARK
+    // // println!("Verifying a CompressedSNARK...");
+    // let start = Instant::now();
+    // let res = compressed_snark.verify(&vk, num_steps, &z0_primary, &z0_secondary);
+    // // println!(
+    // //   "CompressedSNARK::verify: {:?}, took {:?}",
+    // //   res.is_ok(),
+    // //   start.elapsed()
+    // // );
+    // assert!(res.is_ok());
+    // // println!("=========================================================");
 }
 
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
 
 fn bench_nova_ivc(c: &mut Criterion) {
-    let num_steps_values = vec![5, 10]; //, 100, 1000, 10000];
+    let num_steps_values = vec![5, 10, 20]; //, 100, 1000, 10000];
     let mut group = c.benchmark_group("NOVA IVC");
 
     group.sample_size(10);
+
+    let num_iters_per_step = 1024;
+    // number of iterations of MinRoot per Nova's recursive step
+    let circuit_primary = MinRootCircuit {
+      seq: vec![
+        MinRootIteration {
+          x_i: <E1 as Engine>::Scalar::zero(),
+          y_i: <E1 as Engine>::Scalar::zero(),
+          x_i_plus_1: <E1 as Engine>::Scalar::zero(),
+          y_i_plus_1: <E1 as Engine>::Scalar::zero(),
+        };
+        num_iters_per_step
+      ],
+    };
+
+    let circuit_secondary = TrivialCircuit::default();
+    let pp = PublicParams::<
+      E1,
+      E2,
+      MinRootCircuit<<E1 as Engine>::GE>,
+      TrivialCircuit<<E2 as Engine>::Scalar>,
+    >::setup(
+      &circuit_primary,
+      &circuit_secondary,
+      &*S1::ck_floor(),
+      &*S2::ck_floor(),
+    )
+    .unwrap();
 
     for &num_steps in &num_steps_values {
         let test_name = BenchmarkId::new("entire_process", num_steps);
         
         group.bench_with_input(test_name, &num_steps, |b, &num_steps| {
             b.iter(|| {
-                nova_ivc(num_steps);
+                nova_ivc(num_steps, num_iters_per_step, pp.clone(), circuit_secondary.clone());
             });
         });
     }

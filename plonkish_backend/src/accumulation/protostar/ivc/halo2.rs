@@ -941,7 +941,7 @@ where
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RecursiveCircuit<C, Sc>
 where
     C: TwoChainCurve,
@@ -1440,7 +1440,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProtostarIvcProverParam<C, P1, P2, AT1, AT2>
 where
     C: TwoChainCurve,
@@ -1459,7 +1459,7 @@ where
     _marker: PhantomData<(C, AT1, AT2)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProtostarIvcVerifierParam<C, P1, P2>
 where
     C: TwoChainCurve,

@@ -39,7 +39,7 @@ use halo2_base::halo2_proofs::{
 };
 use rand::RngCore;
 
-use std::{convert::From, fmt::Debug, hash::Hash, io::Cursor, marker::PhantomData, time::Instant};
+use std::{convert::From, fmt::Debug, hash::Hash, io::Cursor, marker::PhantomData, time::{Duration, Instant}};
 use std::{mem, rc::Rc};
 
 use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS, T, RATE, R_F, R_P, SECURE_MDS, Chip};
@@ -491,23 +491,7 @@ pub fn run_protostar_hyperplonk_ivc_prove<C, Sc1, P1, P2, AT1, AT2>(
     ivc_pp: ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
     ivc_vp: ProtostarIvcVerifierParam<C, P1, P2>,
     num_steps: usize,
-) // -> (
-    // ProtostarIvcVerifierParam<
-    //     C,
-    //     P1,
-    //     P2,
-    // >,
-    // usize,
-    // Vec<C::Scalar>,
-    // Vec<C::Scalar>,
-    // ProtostarAccumulatorInstance<C::Scalar, P1::Commitment>,
-    // Vec<u8>,
-    // Vec<C::Base>,
-    // Vec<C::Base>,
-    // ProtostarAccumulatorInstance<C::Base, P2::Commitment>,
-    // Vec<C::Base>,
-    // Vec<u8>,
-// )
+) -> Duration
 where
     C: TwoChainCurve,
     C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
@@ -532,7 +516,7 @@ where
         + TranscriptWrite<P2::CommitmentChunk, C::Base>
         + InMemoryTranscript,
 {
-    let prove_steps_time = Instant::now();
+    let prove_time = Instant::now();
     let (mut primary_acc, mut secondary_acc) = prove_steps(
         &ivc_pp, 
         &mut primary_circuit,
@@ -541,65 +525,7 @@ where
         seeded_std_rng(),
     )
     .unwrap();
-    println!("PROVE STEPS TIME: {:?}", prove_steps_time.elapsed());
-
-    // let primary_dtp = strawman::decider_transcript_param();
-    // let secondary_dtp = strawman::decider_transcript_param();
-
-    // let primary_step_circuit = primary_circuit.circuit().step_circuit.clone().into_inner();
-    // let secondary_step_circuit = secondary_circuit.circuit().step_circuit.clone().into_inner();
-
-    // let prove_decider_time = Instant::now();
-    // let (
-    //     primary_acc,
-    //     primary_initial_input,
-    //     primary_output,
-    //     primary_proof,
-    //     secondary_acc_before_last,
-    //     secondary_initial_input,
-    //     secondary_output,
-    //     secondary_proof,
-    // ) = {
-    //     let secondary_acc_before_last = secondary_acc.instance.clone();
-    //     let mut primary_transcript = strawman::PoseidonTranscript::new(primary_dtp.clone());
-    //     let mut secondary_transcript = strawman::PoseidonTranscript::new(secondary_dtp.clone());
-    //     prove_decider(
-    //         &ivc_pp,
-    //         &primary_acc,
-    //         &mut primary_transcript,
-    //         &mut secondary_acc,
-    //         &secondary_circuit,
-    //         &mut secondary_transcript,
-    //         seeded_std_rng(),
-    //     )
-    //     .unwrap();
-
-    //     (
-    //         primary_acc.instance,
-    //         StepCircuit::<C>::initial_input(&primary_step_circuit),
-    //         StepCircuit::<C>::output(&primary_step_circuit),
-    //         primary_transcript.into_proof(),
-    //         secondary_acc_before_last,
-    //         StepCircuit::<C::Secondary>::initial_input(&secondary_step_circuit),
-    //         StepCircuit::<C::Secondary>::output(&secondary_step_circuit),
-    //         secondary_transcript.into_proof(),
-    //     )
-    // };
-    // let duration_prove_decider = prove_decider_time.elapsed();
-
-    // (
-    //     ivc_vp,
-    //     num_steps,
-    //     primary_initial_input.to_vec(),
-    //     primary_output.to_vec(),
-    //     primary_acc,
-    //     primary_proof,
-    //     secondary_initial_input.to_vec(),
-    //     secondary_output.to_vec(),
-    //     secondary_acc_before_last,
-    //     secondary_last_instances,
-    //     secondary_proof,
-    // )
+    prove_time.elapsed()
 }
 
 

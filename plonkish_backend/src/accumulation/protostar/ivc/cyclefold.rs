@@ -38,6 +38,7 @@ pub struct CycleFoldInputs<F, C>
     pub acc_prime_e_comm: C,
 }
 
+
 #[derive(Debug, Clone)]
 pub struct CycleFoldCircuit<C> 
 where
@@ -51,6 +52,7 @@ where
     pub transcript_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
     pub inputs: CycleFoldInputs<C::Scalar, C::Secondary>,
     pub circuit_builder: RefCell<BaseCircuitBuilder<C::Scalar>>,
+    pub witness_ref: RefCell<usize>,
 }
 
 impl<C> CycleFoldCircuit<C> 
@@ -99,6 +101,7 @@ where
             transcript_config,
             inputs,
             circuit_builder,
+            witness_ref: RefCell::new(0),
         }
     }
 
@@ -317,9 +320,8 @@ where
         let total_lookup = binding.statistics().total_lookup_advice_per_phase;
         // println!("cyclefold_circuit_advice_lookup {:?}", total_lookup);
         let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
-        // println!("cyclefold_circuit_copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
-        // println!("cyclefold_circuit_copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        println!("cyclefold_circuit_witness_size {:?}", copy_manager.assigned_advices.len());
+        let witness_size = copy_manager.assigned_advices.len();
+        self.witness_ref.replace(witness_size);
         drop(copy_manager);
 
         binding.clear();
@@ -327,6 +329,7 @@ where
 
         Ok(())
     }
+
 }
 
 impl<C> Circuit<C::Scalar> for CycleFoldCircuit<C>
@@ -348,6 +351,7 @@ where
             transcript_config: self.transcript_config.clone(),
             inputs: self.inputs.clone(),
             circuit_builder: self.circuit_builder.clone(),
+            witness_ref: RefCell::new(0),
         }
     }
 
@@ -364,10 +368,8 @@ where
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
-        let synthesize_ec_time = Instant::now();
+
         self.synthesize_circuit(layouter.namespace(|| ""), config.clone())?;
-        let duration_ec_synthesize = synthesize_ec_time.elapsed();
-        // println!("Time for synthesize_ec: {:?}", duration_ec_synthesize);
         Ok(())
     }
 }

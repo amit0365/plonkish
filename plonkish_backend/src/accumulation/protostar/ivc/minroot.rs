@@ -230,7 +230,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
     fn set_output(&mut self, output: &[C::Scalar]) {
         self.output = output.to_vec();
     }
-
+    
     fn step_idx(&self) -> usize {
         self.step_idx
     }

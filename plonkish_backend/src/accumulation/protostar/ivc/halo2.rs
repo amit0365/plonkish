@@ -970,6 +970,7 @@ where
     acc_ec: Value<ProtostarAccumulatorInstance<C::Base, C::Secondary>>,
     acc_prime_ec: Value<ProtostarAccumulatorInstance<C::Base, C::Secondary>>,
     inner: RefCell<BaseCircuitBuilder<C::Scalar>>,
+    pub witness_ref: RefCell<usize>,
 }
 
 impl<C, Sc> RecursiveCircuit<C, Sc>
@@ -1022,6 +1023,7 @@ where
                 acc_ec: Value::known(cyclefold_avp.clone().unwrap_or_default().init_accumulator()),
                 acc_prime_ec: Value::known(cyclefold_avp.clone().unwrap_or_default().init_accumulator()),
                 inner,
+                witness_ref: RefCell::new(0),
             }
     }
 
@@ -1221,7 +1223,7 @@ where
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
         circuit_builder: &mut BaseCircuitBuilder<C::Scalar>,
-    ) -> Result<(), Error> {
+    ) -> Result<usize, Error> {
         let Self {
             tcc_chip,
             transcript_config,
@@ -1344,13 +1346,14 @@ where
         let copy_manager = circuit_builder.pool(0).copy_manager.lock().unwrap();
         // println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
         // println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        println!("primary_circuit_witness_size {:?}", copy_manager.assigned_advices.len());
+        let witness_size = copy_manager.assigned_advices.len();
+        self.witness_ref.replace(witness_size);
         drop(copy_manager);
 
         circuit_builder.clear();
         drop(circuit_builder);
 
-        Ok(())
+        Ok(witness_size)
     }
 }
 
@@ -1388,6 +1391,7 @@ where
             acc_ec: Value::unknown(),
             acc_prime_ec: Value::unknown(),
             inner: self.inner.clone(),
+            witness_ref: self.witness_ref.clone(),
         }
     }
 
@@ -1409,15 +1413,8 @@ where
         let (input, output) =
             StepCircuit::<C>::synthesize(&mut *step_circuit, config.clone(), layouter.namespace(|| ""), &mut builder)?;
         drop(step_circuit);
-        
-        // println!("inputs: {:?}", input.clone());
-        // println!("outputs: {:?}", output.clone());
 
-        let synthesize_accumulation_verifier_time = Instant::now();
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output, &mut builder)?;
-        let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
-        // println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
-
         Ok(())
     }
 }

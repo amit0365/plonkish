@@ -180,7 +180,7 @@ impl<C> NonTrivialCircuit<C>
         Self { 
             step_idx: 0,
             setup_done: C::Scalar::from(0u64),
-            num_constraints: num_constraints, 
+            num_constraints, 
             initial_input: initial_input.clone(), 
             input: initial_input.clone(), 
             output: initial_input.clone(),
@@ -435,6 +435,8 @@ pub fn run_protostar_hyperplonk_ivc_minroot_preprocess<C, P1, P2>(
         P1,
         P2,
     >,
+    usize,
+    usize,
 )
 where
     C: TwoChainCurve,
@@ -481,7 +483,10 @@ where
     .unwrap();
     println!("Preprocess time: {:?}", preprocess_time.elapsed());
 
-    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp)
+    let primary_witness_size = primary_circuit.circuit().witness_ref.clone().into_inner();
+    let secondary_witness_size = secondary_circuit.circuit().witness_ref.clone().into_inner();
+
+    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp, primary_witness_size, secondary_witness_size)
 }
 
 #[allow(clippy::type_complexity)]

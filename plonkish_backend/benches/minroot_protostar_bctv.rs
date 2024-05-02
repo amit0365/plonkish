@@ -16,7 +16,7 @@ fn bench_gemini_kzg_ipa_protostar_hyperplonk_ivc(c: &mut Criterion) {
         lookup_bits: Some(13),
         num_instance_columns: 1,
     };
-    let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp)
+    let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp, primary_size, secondary_size)
         = run_protostar_hyperplonk_ivc_minroot_preprocess::<
             bn256::G1Affine,
             Gemini<UnivariateKzg<Bn256>>,

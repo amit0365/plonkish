@@ -51,6 +51,7 @@ use super::{ProtostarIvcProverParam, RecursiveCircuit};
 #[derive(Clone, Debug, Default)]
 pub struct TrivialCircuit<C> {
     step_idx: usize,
+    witness_size: usize,
     _marker: PhantomData<C>,
 }
 
@@ -127,6 +128,10 @@ where
         Vec::new()
     }
 
+    fn witness_size(&mut self, witness_size: usize) -> usize {
+        self.witness_size = witness_size;
+        self.witness_size
+    }
 
     fn step_idx(&self) -> usize {
         self.step_idx
@@ -169,6 +174,7 @@ pub struct NonTrivialCircuit<C>
     initial_input: Vec<C::Scalar>,
     input: Vec<C::Scalar>,
     output: Vec<C::Scalar>,
+    witness_size: usize,
 }
 
 impl<C> NonTrivialCircuit<C>
@@ -184,6 +190,7 @@ impl<C> NonTrivialCircuit<C>
             initial_input: initial_input.clone(), 
             input: initial_input.clone(), 
             output: initial_input.clone(),
+            witness_size: 0,
         }
     }
 }
@@ -275,6 +282,11 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
 
     fn set_output(&mut self, output: &[C::Scalar]) {
         self.output = output.to_vec();
+    }
+
+    fn witness_size(&mut self, witness_size: usize) -> usize {
+        self.witness_size = witness_size;
+        self.witness_size
     }
 
     fn step_idx(&self) -> usize {
@@ -740,6 +752,8 @@ pub fn run_protostar_hyperplonk_ivc_minroot_preprocess<C, P1, P2>(
         P1,
         P2,
     >,
+    usize,
+    usize,
 )
 where
     C: TwoChainCurve,
@@ -786,8 +800,11 @@ where
     )
     .unwrap();
     println!("Preprocess time: {:?}", preprocess_time.elapsed());
+    
+    let primary_circuit_size = primary_circuit.circuit().step_circuit.clone().into_inner().witness_size;
+    let secondary_circuit_size = secondary_circuit.circuit().step_circuit.clone().into_inner().witness_size;
 
-    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp)
+    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp, primary_circuit_size, secondary_circuit_size)
 }
 
 #[allow(clippy::type_complexity)]

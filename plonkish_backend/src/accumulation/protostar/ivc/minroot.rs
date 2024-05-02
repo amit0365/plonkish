@@ -92,6 +92,7 @@ pub struct MinRootCircuit<C>
     input: Vec<C::Scalar>,
     seq: Vec<MinRootIteration<C::Scalar>>,
     output: Vec<C::Scalar>,
+    pub witness_size: usize,
 }
 
 impl<C> MinRootCircuit<C>
@@ -111,6 +112,7 @@ impl<C> MinRootCircuit<C>
             input: initial_input.clone(),
             seq, 
             output,
+            witness_size: 0,
         }
     }
 }
@@ -249,6 +251,11 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
 
     fn num_constraints(&self) -> usize {
         unreachable!()
+    }
+
+    fn witness_size(&mut self, witness_size: usize) -> usize {
+        self.witness_size = witness_size;
+        self.witness_size
     }
 
     fn next(&mut self) {

@@ -127,6 +127,8 @@ where
 
     fn step_idx(&self) -> usize;
 
+    fn witness_size(&mut self, witness_size: usize) -> usize;
+
     fn next(&mut self);
 
     fn num_constraints(&self) -> usize;
@@ -750,7 +752,7 @@ where
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
         circuit_builder: &mut BaseCircuitBuilder<C::Scalar>,
-    ) -> Result<(), Error> {
+    ) -> Result<usize, Error> {
         let Self {
             tcc_chip,
             transcript_config,
@@ -831,13 +833,14 @@ where
 
         circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""))?;
         let copy_manager = circuit_builder.pool(0).copy_manager.lock().unwrap();
-        println!("{} circuit_witness_size {:?}", if self.is_primary { "primary" } else { "secondary" }, copy_manager.assigned_advices.len());
+        let witness_size = copy_manager.assigned_advices.len();
+        // println!("{} circuit_witness_size {:?}", if self.is_primary { "primary" } else { "secondary" }, copy_manager.assigned_advices.len());
         drop(copy_manager);
 
         circuit_builder.clear();
         drop(circuit_builder);
 
-        Ok(())
+        Ok(witness_size)
     }
 }
 
@@ -896,7 +899,11 @@ where
         // println!("output {:?}", output.clone());
 
         // let synthesize_accumulation_verifier_time = Instant::now();
-        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output, &mut builder)?;
+        let witness_size = self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output, &mut builder)?;
+        let mut step_circuit = self.step_circuit.borrow_mut();
+        step_circuit.witness_size(witness_size);
+        drop(step_circuit);
+
         // let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
 
         Ok(())

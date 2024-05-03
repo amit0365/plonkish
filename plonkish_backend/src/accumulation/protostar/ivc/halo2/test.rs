@@ -801,10 +801,10 @@ where
     .unwrap();
     println!("Preprocess time: {:?}", preprocess_time.elapsed());
     
-    let primary_circuit_size = primary_circuit.circuit().step_circuit.clone().into_inner().witness_size;
-    let secondary_circuit_size = secondary_circuit.circuit().step_circuit.clone().into_inner().witness_size;
+    let primary_witness_size = primary_circuit.circuit().witness_ref.clone().into_inner();
+    let secondary_witness_size = secondary_circuit.circuit().witness_ref.clone().into_inner();
 
-    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp, primary_circuit_size, secondary_circuit_size)
+    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp, primary_witness_size, secondary_witness_size)
 }
 
 #[allow(clippy::type_complexity)]

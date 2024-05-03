@@ -86,7 +86,7 @@ pub struct MinRootCircuit<C>
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
     step_idx: usize,
-    num_iters_per_step: usize,
+    pub num_iters_per_step: usize,
     setup_done: C::Scalar,
     initial_input: Vec<C::Scalar>,
     input: Vec<C::Scalar>,

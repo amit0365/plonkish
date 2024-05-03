@@ -581,7 +581,7 @@ where
 
 {
     is_primary: bool,
-    step_circuit: RefCell<Sc>,
+    pub step_circuit: RefCell<Sc>,
     tcc_chip: Chip<C>,
     hash_chip: Chip<C>,
     hash_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
@@ -593,6 +593,7 @@ where
     incoming_instances: [Value<C::Base>; 2],
     incoming_proof: Value<Vec<u8>>,
     inner: RefCell<BaseCircuitBuilder<C::Scalar>>,
+    pub witness_ref: RefCell<usize>,
 }
 
 impl<C, Sc> RecursiveCircuit<C, Sc>
@@ -635,6 +636,7 @@ where
                 incoming_instances: [Value::known(C::Base::ZERO); 2],
                 incoming_proof: Value::known(PoseidonTranscriptChip::<C>::dummy_proof(&avp.clone().unwrap_or_default())),
                 inner,
+                witness_ref: RefCell::new(0),
             }
     }
 
@@ -752,14 +754,13 @@ where
         input: &[AssignedValue<C::Scalar>],
         output: &[AssignedValue<C::Scalar>],
         circuit_builder: &mut BaseCircuitBuilder<C::Scalar>,
-    ) -> Result<usize, Error> {
+    ) -> Result<(), Error> {
         let Self {
             tcc_chip,
             transcript_config,
             avp,
             ..
         } = &self;
-
 
         let builder = circuit_builder.pool(0);  
         let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
@@ -834,13 +835,13 @@ where
         circuit_builder.synthesize(config.clone(), layouter.namespace(|| ""))?;
         let copy_manager = circuit_builder.pool(0).copy_manager.lock().unwrap();
         let witness_size = copy_manager.assigned_advices.len();
-        // println!("{} circuit_witness_size {:?}", if self.is_primary { "primary" } else { "secondary" }, copy_manager.assigned_advices.len());
+        self.witness_ref.replace(witness_size);
         drop(copy_manager);
 
         circuit_builder.clear();
         drop(circuit_builder);
 
-        Ok(witness_size)
+        Ok(())
     }
 }
 
@@ -871,6 +872,7 @@ where
             incoming_instances: [Value::unknown(), Value::unknown()],
             incoming_proof: Value::unknown(),
             inner: self.inner.clone(),
+            witness_ref: RefCell::new(0),
         }
     }
 
@@ -895,17 +897,7 @@ where
             StepCircuit::<C>::synthesize(&mut *step_circuit, config.clone(), layouter.namespace(|| ""), &mut builder)?;
         drop(step_circuit);
 
-        // println!("input {:?}", input.clone());
-        // println!("output {:?}", output.clone());
-
-        // let synthesize_accumulation_verifier_time = Instant::now();
-        let witness_size = self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output, &mut builder)?;
-        let mut step_circuit = self.step_circuit.borrow_mut();
-        step_circuit.witness_size(witness_size);
-        drop(step_circuit);
-
-        // let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
-
+        self.synthesize_accumulation_verifier(layouter.namespace(|| ""), config.clone(), &input, &output, &mut builder)?;
         Ok(())
     }
 }

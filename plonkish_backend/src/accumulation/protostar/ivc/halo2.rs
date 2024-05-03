@@ -951,7 +951,7 @@ where
 
 {
     is_primary: bool,
-    step_circuit: RefCell<Sc>,
+    pub step_circuit: RefCell<Sc>,
     tcc_chip: Chip<C>,
     hash_chip: Chip<C>,
     hash_config: OptimizedPoseidonSpec<C::Scalar, T, RATE>,

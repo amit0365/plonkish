@@ -128,11 +128,6 @@ where
         Vec::new()
     }
 
-    fn witness_size(&mut self, witness_size: usize) -> usize {
-        self.witness_size = witness_size;
-        self.witness_size
-    }
-
     fn step_idx(&self) -> usize {
         self.step_idx
     }
@@ -282,11 +277,6 @@ impl<C: TwoChainCurve> StepCircuit<C> for NonTrivialCircuit<C>
 
     fn set_output(&mut self, output: &[C::Scalar]) {
         self.output = output.to_vec();
-    }
-
-    fn witness_size(&mut self, witness_size: usize) -> usize {
-        self.witness_size = witness_size;
-        self.witness_size
     }
 
     fn step_idx(&self) -> usize {
@@ -639,7 +629,7 @@ where
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
     // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
-    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ZERO, C::Scalar::ONE], 1024);
+    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 1024);
 
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
@@ -777,7 +767,7 @@ where
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
     // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
-    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ZERO, C::Scalar::ONE], 1024);
+    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 1024);
 
     let preprocess_time = Instant::now();
     let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp) = preprocess::<

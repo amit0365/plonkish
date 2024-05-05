@@ -6,6 +6,7 @@ use crate::{
 #[cfg(feature = "frontend-halo2")]
 pub mod halo2;
 pub mod minroot;
+pub mod minroot_pp;
 pub mod minroot_curve;
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ProtostarAccumulationVerifierParam<F> {

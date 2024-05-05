@@ -15,15 +15,17 @@ use halo2_base::halo2_proofs::halo2curves::{
 
 #[derive(Clone, Debug)]
 struct MinRootIteration<F: PrimeField> {
+  i: F,
   x_i: F,
   y_i: F,
+  i_plus_1: F,
   x_i_plus_1: F,
   y_i_plus_1: F,
 }
 
 impl<F: PrimeField> MinRootIteration<F> {
   // produces a sample non-deterministic advice, executing one invocation of MinRoot per step
-  fn new(num_iters: usize, x_0: &F, y_0: &F) -> (Vec<F>, Vec<Self>) {
+  fn new(num_iters: usize, i_0: &F, x_0: &F, y_0: &F) -> (Vec<F>, Vec<Self>) {
     // although this code is written generically, it is tailored to Bn254' scalar field
     let bn256_order = BigInt::from_str_radix(
         "30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001",
@@ -42,9 +44,10 @@ impl<F: PrimeField> MinRootIteration<F> {
       };
 
     let mut res = Vec::new();
+    let mut i = *i_0;
     let mut x_i = *x_0;
     let mut y_i = *y_0;
-    for _i in 0..num_iters {
+    for _i1 in 0..num_iters {
       let x_i_plus_1 = (x_i + y_i).pow_vartime(exp.to_u64_digits()); // computes the fifth root of x_i + y_i
 
       // sanity check
@@ -53,20 +56,24 @@ impl<F: PrimeField> MinRootIteration<F> {
       let fifth = quad * x_i_plus_1;
       debug_assert_eq!(fifth, x_i + y_i);
 
-      let y_i_plus_1 = x_i;
+      let i_plus_1 = i + F::ONE;
+      let y_i_plus_1 = x_i + i_plus_1;
 
       res.push(Self {
+        i,
         x_i,
         y_i,
+        i_plus_1,
         x_i_plus_1,
         y_i_plus_1,
       });
 
+      i = i_plus_1;
       x_i = x_i_plus_1;
       y_i = y_i_plus_1;
     }
 
-    let z0 = vec![*x_0, *y_0];
+    let z0 = vec![*i_0, *x_0, *y_0];
 
     (z0, res)
   }
@@ -85,6 +92,7 @@ pub struct MinRootCircuit<C>
     input: Vec<C::Scalar>,
     seq: Vec<MinRootIteration<C::Scalar>>,
     output: Vec<C::Scalar>,
+    pub witness_size: usize,
 }
 
 impl<C> MinRootCircuit<C>
@@ -94,7 +102,7 @@ impl<C> MinRootCircuit<C>
 {
     pub fn new(initial_input: Vec<C::Scalar>, num_iters_per_step: usize) -> Self {
         let (output, seq) = 
-            MinRootIteration::new(num_iters_per_step, &initial_input[0], &initial_input[1]);
+            MinRootIteration::new(num_iters_per_step, &initial_input[0], &initial_input[1], &initial_input[2]);
 
         Self { 
             step_idx: 0,
@@ -104,6 +112,7 @@ impl<C> MinRootCircuit<C>
             input: initial_input.clone(),
             seq, 
             output,
+            witness_size: 0,
         }
     }
 }
@@ -160,7 +169,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
 {
 
     fn arity() -> usize {
-        2
+        3
     }
 
     fn setup(&mut self) -> C::Scalar {
@@ -191,35 +200,40 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
 
         // produces a sample non-deterministic advice, executing one invocation of MinRoot per step
         let (output, seq) = 
-            MinRootIteration::new(self.num_iters_per_step, &self.input[0], &self.input[1]);
+            MinRootIteration::new(self.num_iters_per_step, &self.input[0], &self.input[1], &self.input[2]);
 
         self.seq = seq;
 
         // use the provided inputs
-        let x_0 = self.input()[0].clone();
-        let y_0 = self.input()[1].clone();
+        let i_0 = self.input()[0].clone();
+        let x_0 = self.input()[1].clone();
+        let y_0 = self.input()[2].clone();
         let mut z_out: Vec<C::Scalar> = Vec::new();
 
         // variables to hold running x_i and y_i
+        let mut i = i_0;
         let mut x_i = x_0;
         let mut y_i = y_0;
-        for i in 0..self.seq.len() {
-        // non deterministic advice
-        let x_i_plus_1 = self.seq[i].x_i_plus_1;
 
-        // check the following conditions hold:
-        // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
-        // (ii) y_i_plus_1 = x_i
-        let x_i_plus_1_sq = x_i_plus_1 * x_i_plus_1;
-        let x_i_plus_1_quad = x_i_plus_1_sq * x_i_plus_1_sq;
-        assert_eq!(x_i_plus_1_quad * x_i_plus_1, x_i + y_i);
+        for _i in 0..self.seq.len() {
+            // non deterministic advice
+            let i_plus_1 = self.seq[_i].i_plus_1;
+            let x_i_plus_1 = self.seq[_i].x_i_plus_1;
 
-        if i == self.seq.len() - 1 {
-            z_out = vec![x_i_plus_1.clone(), x_i.clone()];
-        }
+            // check the following conditions hold:
+            // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
+            // (ii) y_i_plus_1 = x_i + i
+            let x_i_plus_1_sq = x_i_plus_1 * x_i_plus_1;
+            let x_i_plus_1_quad = x_i_plus_1_sq * x_i_plus_1_sq;
+            assert_eq!(x_i_plus_1_quad * x_i_plus_1, x_i + y_i);
 
-            // update x_i and y_i for the next iteration
-            y_i = x_i;
+            if _i == self.seq.len() - 1 {
+                z_out = vec![i_plus_1, x_i_plus_1, x_i + i_plus_1];
+            }
+
+            // update i, x_i and y_i for the next iteration
+            i = i_plus_1;
+            y_i = x_i + i_plus_1;
             x_i = x_i_plus_1;
         }
 
@@ -230,7 +244,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
     fn set_output(&mut self, output: &[C::Scalar]) {
         self.output = output.to_vec();
     }
-    
+
     fn step_idx(&self) -> usize {
         self.step_idx
     }
@@ -273,53 +287,75 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
 
                 // define the calculation logic for the circuit, also done in the next_output function
                 // use the provided inputs
-                let x_0 = self.input()[0].clone();
-                let y_0 = self.input()[1].clone();
+                let i_0 = self.input()[0].clone();
+                let x_0 = self.input()[1].clone();
+                let y_0 = self.input()[2].clone();
+
                 let mut z_out = Vec::new();
+                let i_0_assigned = ctx.load_witness(i_0);
                 let x_0_assigned = ctx.load_witness(x_0);
                 let y_0_assigned = ctx.load_witness(y_0);
                 let z_base = self.input().to_vec();
 
                 // variables to hold running x_i and y_i
+                let mut i = i_0;
                 let mut x_i = x_0;
                 let mut y_i = y_0;
 
-                for i in 0..self.seq.len() {
+                for _i in 0..self.seq.len() {
                     // non deterministic advice
+                    let one = ctx.load_constant(C::Scalar::ONE);
+                    let i_assigned = ctx.load_witness(i);
                     let x_i_assigned = ctx.load_witness(x_i);
                     let y_i_assigned = ctx.load_witness(y_i);
-                    let x_i_plus_1 = ctx.load_witness(self.seq[i].x_i_plus_1);
+                    let i_plus1_assigned = ctx.load_witness(self.seq[_i].i_plus_1);
+                    let x_i_plus_1assigned = ctx.load_witness(self.seq[_i].x_i_plus_1);
+                    let y_i_plus_1assigned = ctx.load_witness(self.seq[_i].y_i_plus_1);
 
                     // check the following conditions hold:
                     // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
-                    // (ii) y_i_plus_1 = x_i
-                    // (1) constraints for condition (i) are below
-                    // (2) constraints for condition (ii) is avoided because we just used x_i wherever y_i_plus_1 is used
-                    let x_i_plus_1_sq = gate_chip.mul(ctx, x_i_plus_1, x_i_plus_1);
+                    let x_i_plus_1_sq = gate_chip.mul(ctx, x_i_plus_1assigned, x_i_plus_1assigned);
                     let x_i_plus_1_quad = gate_chip.mul(ctx, x_i_plus_1_sq, x_i_plus_1_sq);
-                    let lhs = gate_chip.mul(ctx, x_i_plus_1_quad, x_i_plus_1);
-                    let rhs = gate_chip.add(ctx, x_i_assigned, y_i_assigned);
-                    let lhs_sel = gate_chip.select(ctx, lhs, zero, setup_sel);
-                    let rhs_sel = gate_chip.select(ctx, rhs, zero, setup_sel);
-                    ctx.constrain_equal(&lhs_sel, &rhs_sel);
+                    let lhs1 = gate_chip.mul(ctx, x_i_plus_1_quad, x_i_plus_1assigned);
+                    let rhs1 = gate_chip.add(ctx, x_i_assigned, y_i_assigned);
+                    let lhs1_sel = gate_chip.select(ctx, lhs1, zero, setup_sel);
+                    let rhs1_sel = gate_chip.select(ctx, rhs1, zero, setup_sel);
+                    ctx.constrain_equal(&lhs1_sel, &rhs1_sel);
 
-                    if i == self.seq.len() - 1 {
-                        z_out = vec![x_i_plus_1.clone(), x_i_assigned.clone()]; // todo check this
+                    // (ii) y_i_plus_1 = x_i + i 
+                    let lhs2 = y_i_plus_1assigned.clone();
+                    let rhs2 = gate_chip.add(ctx, x_i_assigned, i_plus1_assigned);
+                    let lhs2_sel = gate_chip.select(ctx, lhs2, zero, setup_sel);
+                    let rhs2_sel = gate_chip.select(ctx, rhs2, zero, setup_sel);
+                    ctx.constrain_equal(&lhs2_sel, &rhs2_sel);
+
+                    // (iii) i_plus_1 = i + 1
+                    let lhs3 = i_plus1_assigned.clone();
+                    let rhs3 = gate_chip.add(ctx, i_assigned, one);
+                    let lhs3_sel = gate_chip.select(ctx, lhs3, zero, setup_sel);
+                    let rhs3_sel = gate_chip.select(ctx, rhs3, zero, setup_sel);
+                    ctx.constrain_equal(&lhs3_sel, &rhs3_sel);
+
+                    if _i == self.seq.len() - 1 {
+                        z_out = vec![i_plus1_assigned.clone(), x_i_plus_1assigned.clone(), y_i_plus_1assigned.clone()]; // todo check this
                     }
 
-                    // update x_i and y_i for the next iteration
-                    y_i = *x_i_assigned.value();
-                    x_i = *x_i_plus_1.value();
+                    // update i, x_i and y_i for the next iteration
+                    i = *i_plus1_assigned.value();
+                    y_i = *y_i_plus_1assigned.value();
+                    x_i = *x_i_plus_1assigned.value();
                 }
 
                 let z0 = gate_chip.select(ctx, z_out[0], Constant(z_base[0]), setup_sel);
                 let z1 = gate_chip.select(ctx, z_out[1], Constant(z_base[1]), setup_sel);
+                let z3 = gate_chip.select(ctx, z_out[2], Constant(z_base[2]), setup_sel);
+                
                 // stores the output for the current step
-                self.set_output(&[*z0.value(), *z1.value()]);
+                self.set_output(&[*z0.value(), *z1.value(), *z3.value()]);
                 // updates the input to the output value for the next step // todo check this
-                self.set_input(&[*z0.value(), *z1.value()]);
+                self.set_input(&[*z0.value(), *z1.value(), *z3.value()]);
 
-                (vec![x_0_assigned, y_0_assigned], vec![z0, z1])
+                (vec![i_0_assigned, x_0_assigned, y_0_assigned], vec![z0, z1, z3])
                 
             },
                 None => (Vec::new(), Vec::new()),

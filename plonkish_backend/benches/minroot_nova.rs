@@ -271,7 +271,7 @@ fn bench_nova_ivc(c: &mut Criterion) {
         
         group.bench_with_input(test_name, &num_steps, |b, &num_steps| {
             b.iter(|| {
-                nova_ivc(num_steps, num_iters_per_step, pp.clone(), circuit_primary.clone(), circuit_secondary.clone());
+                nova_ivc(num_steps, num_iters_per_step, pp.clone(), circuit_secondary.clone());
             });
         });
     }

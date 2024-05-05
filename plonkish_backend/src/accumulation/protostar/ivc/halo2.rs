@@ -127,8 +127,6 @@ where
 
     fn step_idx(&self) -> usize;
 
-    fn witness_size(&mut self, witness_size: usize) -> usize;
-
     fn next(&mut self);
 
     fn num_constraints(&self) -> usize;

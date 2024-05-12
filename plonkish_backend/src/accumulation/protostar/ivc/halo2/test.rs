@@ -633,14 +633,14 @@ where
     // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
     
     let mut pt_ai_ext = <C::Secondary as CurveAffine>::CurveExt::identity();
-    while pt_ai_ext == <C::Secondary as CurveAffine>::CurveExt::random(rng) {
+    while pt_ai_ext == <C::Secondary as CurveAffine>::CurveExt::identity() {
         pt_ai_ext = <C::Secondary as CurveAffine>::CurveExt::random(rng);
     }
     let pt_ai_ext_coordinates = pt_ai_ext.to_affine().coordinates().unwrap();
     let pt_ai = C::Secondary::from_xy(*pt_ai_ext_coordinates.x(), *pt_ai_ext_coordinates.y()).unwrap();
 
     let mut pt_bi_ext = <C::Secondary as CurveAffine>::CurveExt::identity();
-    while pt_bi_ext == <C::Secondary as CurveAffine>::CurveExt::random(rng) {
+    while pt_bi_ext == <C::Secondary as CurveAffine>::CurveExt::identity() {
         pt_bi_ext = <C::Secondary as CurveAffine>::CurveExt::random(rng);
     }
     let pt_bi_ext_coordinates = pt_bi_ext.to_affine().coordinates().unwrap();

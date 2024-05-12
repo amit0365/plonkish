@@ -73,7 +73,8 @@ C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
     for _i1 in 0..num_iters {
 
       // implement double and add
-      let i_bits = <C::Scalar as PrimeFieldBits>::to_le_bits(&i);
+      let i_plus_1 = i + C::Scalar::ONE;
+      let i_bits = <C::Scalar as PrimeFieldBits>::to_le_bits(&i_plus_1);
       let mut scalar_mul = C::Secondary::identity();
       let mut multiple = pt_ai.clone() + scalar_mul;
       for bit in i_bits {
@@ -82,7 +83,6 @@ C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
           multiple = multiple.double();
       }
 
-      let i_plus_1 = i + C::Scalar::ONE;
       let pt_ai_plus_1 = (pt_ai + pt_bi).double().into();
       let pt_bi_plus_1 = scalar_mul.into();
 
@@ -357,7 +357,7 @@ where
 
                     // (iii) pt_bi_plus_1 = pt_ai * i 
                     let lhs2 = pt_bi_plus_1assigned.clone();
-                    let i_bits = gate_chip.num_to_bits(ctx, i_assigned, 254); 
+                    let i_bits = gate_chip.num_to_bits(ctx, i_plus1_assigned, 254); 
                     let rhs2 = ecc_chip.scalar_mult::<C::Secondary>(ctx, pt_ai_assigned, i_bits, 1, 4);
                     let lhs2_sel = ecc_chip.select(ctx, lhs2, identity.clone(), setup_sel);
                     let rhs2_sel = ecc_chip.select(ctx, rhs2, identity.clone(), setup_sel);

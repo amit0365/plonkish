@@ -646,7 +646,7 @@ where
     let pt_bi_ext_coordinates = pt_bi_ext.to_affine().coordinates().unwrap();
     let pt_bi = C::Secondary::from_xy(*pt_bi_ext_coordinates.x(), *pt_bi_ext_coordinates.y()).unwrap();
 
-    let minroot_circuit = MinRootCircuit::<C>::new(MinRootOutput{ i: C::Scalar::ZERO, pt_ai, pt_bi}, 1);    
+    let minroot_circuit = MinRootCircuit::<C>::new(MinRootOutput{ i: C::Scalar::ZERO, pt_ai, pt_bi}, 5);    
 
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<

@@ -342,9 +342,6 @@ where
                     let pt_ai_plus_1assigned = ecc_chip.assign_point_unchecked(ctx, self.seq[_i].pt_ai_plus_1);
                     let pt_bi_plus_1assigned = ecc_chip.assign_point_unchecked(ctx, self.seq[_i].pt_bi_plus_1);
 
-                    println!("pt_ai_assigned: {:?}", pt_ai_assigned);
-                    println!("pt_bi_assigned: {:?}", pt_bi_assigned);
-
                     // check the following conditions hold:
                     // (i) pt_ai_plus_1 = (pt_ai + pt_bi).double()
                     let identity = ecc_chip.assign_constant_point(ctx, C::Secondary::identity());
@@ -362,7 +359,6 @@ where
                     let lhs2_sel = ecc_chip.select(ctx, lhs2, identity.clone(), setup_sel);
                     let rhs2_sel = ecc_chip.select(ctx, rhs2, identity.clone(), setup_sel);
                     ecc_chip.assert_equal(ctx, lhs2_sel, rhs2_sel);
-                    println!("second_pass");
 
                     // (v) i_plus_1 = i + 1
                     let lhs3 = i_plus1_assigned.clone();
@@ -370,7 +366,6 @@ where
                     let lhs3_sel = gate_chip.select(ctx, lhs3, zero, setup_sel);
                     let rhs3_sel = gate_chip.select(ctx, rhs3, zero, setup_sel);
                     ctx.constrain_equal(&lhs3_sel, &rhs3_sel);
-                    println!("third_pass");
 
                     if _i == self.seq.len() - 1 {
                         z_out = vec![i_plus1_assigned.clone(), pt_ai_plus_1assigned.x().clone(), pt_ai_plus_1assigned.y().clone(), pt_bi_plus_1assigned.x().clone(), pt_bi_plus_1assigned.y().clone()]; 

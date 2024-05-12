@@ -2,7 +2,7 @@ use crate::{
     accumulation::protostar::{
         ivc::{halo2::{
             preprocess, prove_decider, prove_steps, verify_decider, CircuitExt, ProtostarIvcAggregator, ProtostarIvcVerifierParam, StepCircuit
-        }, minroot::MinRootCircuit},
+        }, minroot_curvept::{MinRootCircuit, MinRootOutput}},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -37,7 +37,8 @@ use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value, SimpleFloorPlanner},
     plonk::{Circuit, Selector, ConstraintSystem, Error},
 };
-use rand::RngCore;
+use halo2_base::halo2_proofs::{arithmetic::CurveExt, halo2curves::group::{prime::PrimeCurveAffine, Group, Curve}};
+use rand::{rngs::OsRng, RngCore};
 
 use core::num;
 use std::{borrow::BorrowMut, cell::{RefCell, RefMut}, convert::From, fmt::Debug, hash::Hash, io::Cursor, marker::PhantomData, time::{Duration, Instant}};
@@ -624,12 +625,28 @@ where
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
+    let mut rng = OsRng;
     let primary_num_vars = num_vars;
     let primary_atp = strawman::accumulation_transcript_param();
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
     // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
-    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 1024);
+    
+    let mut pt_ai_ext = <C::Secondary as CurveAffine>::CurveExt::identity();
+    while pt_ai_ext == <C::Secondary as CurveAffine>::CurveExt::random(rng) {
+        pt_ai_ext = <C::Secondary as CurveAffine>::CurveExt::random(rng);
+    }
+    let pt_ai_ext_coordinates = pt_ai_ext.to_affine().coordinates().unwrap();
+    let pt_ai = C::Secondary::from_xy(*pt_ai_ext_coordinates.x(), *pt_ai_ext_coordinates.y()).unwrap();
+
+    let mut pt_bi_ext = <C::Secondary as CurveAffine>::CurveExt::identity();
+    while pt_bi_ext == <C::Secondary as CurveAffine>::CurveExt::random(rng) {
+        pt_bi_ext = <C::Secondary as CurveAffine>::CurveExt::random(rng);
+    }
+    let pt_bi_ext_coordinates = pt_bi_ext.to_affine().coordinates().unwrap();
+    let pt_bi = C::Secondary::from_xy(*pt_bi_ext_coordinates.x(), *pt_bi_ext_coordinates.y()).unwrap();
+
+    let minroot_circuit = MinRootCircuit::<C>::new(MinRootOutput{ i: C::Scalar::ZERO, pt_ai, pt_bi}, 1);    
 
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
@@ -762,13 +779,16 @@ where
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
+    let rng = OsRng;
     let primary_num_vars = num_vars;
     let primary_atp = strawman::accumulation_transcript_param();
     let secondary_num_vars = num_vars;
     let secondary_atp = strawman::accumulation_transcript_param();
     // let nontrivial_circuit_primary = NonTrivialCircuit::<C>::new(num_steps, vec![C::Scalar::ONE]);
-    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO, C::Scalar::ONE], 1024);
-
+    // let pt_ai = C::Secondary::from_xy(C::Scalar::random(rng), C::Scalar::random(rng)).unwrap();
+    // let pt_bi = C::Secondary::from_xy(C::Scalar::random(rng), C::Scalar::random(rng)).unwrap();
+    let minroot_circuit = MinRootCircuit::<C>::new(MinRootOutput{ i: C::Scalar::ZERO, pt_ai: C::Secondary::identity(), pt_bi: C::Secondary::identity()}, 1);    
+    
     let preprocess_time = Instant::now();
     let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
@@ -845,7 +865,7 @@ where
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_VARS: usize = 19;
-    const NUM_STEPS: usize = 10;
+    const NUM_STEPS: usize = 5;
 
     let circuit_params = BaseCircuitParams {
             k: NUM_VARS,

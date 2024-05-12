@@ -54,7 +54,7 @@ where
     <Self as CurveAffine>::ScalarExt: BigPrimeField,
     <Self as CurveAffine>::Base: BigPrimeField,
 {
-    type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;//<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self> ;
+    type Secondary: TwoChainCurve<ScalarExt = Self::Base, Base = Self::ScalarExt, Secondary = Self>;
 }
 
 

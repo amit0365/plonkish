@@ -8,6 +8,7 @@ pub mod halo2;
 pub mod minroot;
 pub mod minroot_pp;
 pub mod minroot_curve;
+pub mod minroot_curvept;
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ProtostarAccumulationVerifierParam<F> {
     pub(crate) vp_digest: F,

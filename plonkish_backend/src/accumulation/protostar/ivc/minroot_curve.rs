@@ -3,6 +3,7 @@
 //     halo2_proofs::{circuit::{Layouter, SimpleFloorPlanner}, plonk::{Circuit, ConstraintSystem, Error}}, 
 //     utils::{BigPrimeField, CurveAffineExt, FromUniformBytes, PrimeField, ScalarField}, AssignedValue, QuantumCell::{Constant, Existing, Witness}
 // };
+// use halo2_ecc::fields::native_fp::NativeFieldChip;
 // use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 // use num_bigint::{BigInt, BigUint};
 // use num_traits::Num;
@@ -13,17 +14,24 @@
 // use halo2_base::halo2_proofs::halo2curves::{
 //     bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta}};
 
+// // here x and y represent two diff curve points 
 // #[derive(Clone, Debug)]
-// struct MinRootIteration<C: CurveAffine> {
-//   x1_i: C,
-//   x2_i: C,
-//   x1_i_plus_1: C,
-//   x2_i_plus_1: C,
+// struct MinRootIteration<F: PrimeField> {
+//   i: F,
+//   x_i: F,
+//   x_i_sign: F,
+//   y_i: F,
+//   y_i_sign: F,
+//   i_plus_1: F,
+//   x_i_plus_1: F,
+//   x_i_plus_1_sign: F,
+//   y_i_plus_1: F,
+//   y_i_plus_1_sign: F,
 // }
 
-// impl<C: CurveAffine> MinRootIteration<C> {
+// impl<F: PrimeField> MinRootIteration<F> {
 //   // produces a sample non-deterministic advice, executing one invocation of MinRoot per step
-//   fn new(num_iters: usize, x1_0: &C, x2_0: &C) -> (Vec<C>, Vec<Self>) {
+//   fn new(num_iters: usize, i_0: &F, x_0: &F, x_0_sign: &F, y_0: &F, y_0_sign: &F) -> (Vec<F>, Vec<Self>) {
 //     // although this code is written generically, it is tailored to Bn254' scalar field
 //     let bn256_order = BigInt::from_str_radix(
 //         "30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001",
@@ -32,22 +40,27 @@
 //       .unwrap();
     
 //     // exp = (p - 3) / 5 == 5^(p-2) * (p - 3) 
-//     // let exp = {
-//     //     let p = bn256_order.to_biguint().unwrap();
-//     //     let two = BigUint::parse_bytes(b"2", 10).unwrap();
-//     //     let three = BigUint::parse_bytes(b"3", 10).unwrap();
-//     //     let five = BigUint::parse_bytes(b"5", 10).unwrap();
-//     //     let five_inv = five.modpow(&(&p - &two), &p);
-//     //     (&five_inv * (&p - &three)) % &p
-//     //   };
+//     let exp = {
+//         let p = bn256_order.to_biguint().unwrap();
+//         let two = BigUint::parse_bytes(b"2", 10).unwrap();
+//         let three = BigUint::parse_bytes(b"3", 10).unwrap();
+//         let five = BigUint::parse_bytes(b"5", 10).unwrap();
+//         let five_inv = five.modpow(&(&p - &two), &p);
+//         (&five_inv * (&p - &three)) % &p
+//       };
 
 //     let mut res = Vec::new();
-//     let mut x1_i = *x1_0;
-//     let mut x2_i = *x2_0;
+//     let mut i = *i_0;
+//     let mut x_i = *x_0;
+//     let mut x_i_sign = *x_0_sign;
+//     let mut y_i = *y_0;
+//     let mut y_i_sign = *y_0_sign;
 
-//     for _i in 0..num_iters {
-//     //   let x_i_plus_1 = (x_i + y_i).pow_vartime(exp.to_u64_digits()); // computes the fifth root of x_i + y_i
-//     let x3 = x1_i + x2_i;
+//     for _i1 in 0..num_iters {
+//       let x_i_plus_1 = (x_i + y_i).pow_vartime(exp.to_u64_digits()); // computes the fifth root of x_i + y_i
+//       // xor of the signs of the two points
+//       // (a and not b) or (not a and b)
+//       let x_i_plus_1_sign = x_i_sign * (F::ONE - y_i_sign) + (F::ONE - x_i_sign) * y_i_sign;
 
 //       // sanity check
 //       let sq = x_i_plus_1 * x_i_plus_1;
@@ -55,20 +68,31 @@
 //       let fifth = quad * x_i_plus_1;
 //       debug_assert_eq!(fifth, x_i + y_i);
 
-//       let y_i_plus_1 = x_i;
+//       let i_plus_1 = i + F::ONE;
+//       let y_i_plus_1 = x_i + i_plus_1;
+//       let y_i_plus_1_sign = x_i_sign;
 
 //       res.push(Self {
-//         x1_i,
-//         x2_i,
-//         x1_i_plus_1,
-//         x2_i_plus_1,
+//         i,
+//         x_i,
+//         x_i_sign,
+//         y_i,
+//         y_i_sign,
+//         i_plus_1,
+//         x_i_plus_1,
+//         x_i_plus_1_sign,
+//         y_i_plus_1,
+//         y_i_plus_1_sign,
 //       });
 
+//       i = i_plus_1;
 //       x_i = x_i_plus_1;
+//       x_i_sign = x_i_plus_1_sign;
 //       y_i = y_i_plus_1;
+//       y_i_sign = y_i_plus_1_sign;
 //     }
 
-//     let z0 = vec![*x1_0, *x2_0];
+//     let z0 = vec![*i_0, *x_0, *y_0];
 
 //     (z0, res)
 //   }
@@ -81,12 +105,13 @@
 //         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 // {
 //     step_idx: usize,
-//     num_iters_per_step: usize,
+//     pub num_iters_per_step: usize,
 //     setup_done: C::Scalar,
 //     initial_input: Vec<C::Scalar>,
 //     input: Vec<C::Scalar>,
 //     seq: Vec<MinRootIteration<C::Scalar>>,
 //     output: Vec<C::Scalar>,
+//     pub witness_size: usize,
 // }
 
 // impl<C> MinRootCircuit<C>
@@ -96,7 +121,7 @@
 // {
 //     pub fn new(initial_input: Vec<C::Scalar>, num_iters_per_step: usize) -> Self {
 //         let (output, seq) = 
-//             MinRootIteration::new(num_iters_per_step, &initial_input[0], &initial_input[1]);
+//             MinRootIteration::new(num_iters_per_step, &initial_input[0], &initial_input[1], &initial_input[2], &initial_input[3], &initial_input[4]);
 
 //         Self { 
 //             step_idx: 0,
@@ -106,6 +131,7 @@
 //             input: initial_input.clone(),
 //             seq, 
 //             output,
+//             witness_size: 0,
 //         }
 //     }
 // }
@@ -162,7 +188,7 @@
 // {
 
 //     fn arity() -> usize {
-//         2
+//         3
 //     }
 
 //     fn setup(&mut self) -> C::Scalar {
@@ -193,36 +219,48 @@
 
 //         // produces a sample non-deterministic advice, executing one invocation of MinRoot per step
 //         let (output, seq) = 
-//             MinRootIteration::new(self.num_iters_per_step, &self.input[0], &self.input[1]);
+//             MinRootIteration::new(self.num_iters_per_step, &self.input[0], &self.input[1], &self.input[2], &self.input[3], &self.input[4]);
 
 //         self.seq = seq;
 
 //         // use the provided inputs
-//         let x_0 = self.input()[0].clone();
-//         let y_0 = self.input()[1].clone();
+//         let i_0 = self.input[0].clone();
+//         let x_0 = self.input[1].clone();
+//         let x_0_sign = self.input[2].clone();
+//         let y_0 = self.input[3].clone();
+//         let y_0_sign = self.input[4].clone();
 //         let mut z_out: Vec<C::Scalar> = Vec::new();
 
 //         // variables to hold running x_i and y_i
+//         let mut i = i_0;
 //         let mut x_i = x_0;
+//         let mut x_i_sign = x_0_sign;
 //         let mut y_i = y_0;
-//         for i in 0..self.seq.len() {
-//         // non deterministic advice
-//         let x_i_plus_1 = self.seq[i].x_i_plus_1;
+//         let mut y_i_sign = y_0_sign;
 
-//         // check the following conditions hold:
-//         // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
-//         // (ii) y_i_plus_1 = x_i
-//         let x_i_plus_1_sq = x_i_plus_1 * x_i_plus_1;
-//         let x_i_plus_1_quad = x_i_plus_1_sq * x_i_plus_1_sq;
-//         assert_eq!(x_i_plus_1_quad * x_i_plus_1, x_i + y_i);
+//         for _i in 0..self.seq.len() {
+//             // non deterministic advice
+//             let i_plus_1 = self.seq[_i].i_plus_1;
+//             let x_i_plus_1 = self.seq[_i].x_i_plus_1;
+//             let x_i_plus_1_sign = self.seq[_i].x_i_plus_1_sign;
 
-//         if i == self.seq.len() - 1 {
-//             z_out = vec![x_i_plus_1.clone(), x_i.clone()];
-//         }
+//             // check the following conditions hold:
+//             // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
+//             // (ii) y_i_plus_1 = x_i + i
+//             let x_i_plus_1_sq = x_i_plus_1 * x_i_plus_1;
+//             let x_i_plus_1_quad = x_i_plus_1_sq * x_i_plus_1_sq;
+//             assert_eq!(x_i_plus_1_quad * x_i_plus_1, x_i + y_i);
 
-//             // update x_i and y_i for the next iteration
-//             y_i = x_i;
+//             if _i == self.seq.len() - 1 {
+//                 z_out = vec![i_plus_1, x_i_plus_1, x_i_plus_1_sign, x_i + i_plus_1, x_i_sign];
+//             }
+
+//             // update i, x_i and y_i for the next iteration
+//             i = i_plus_1;
+//             y_i = x_i + i_plus_1;
+//             y_i_sign = x_i_sign;
 //             x_i = x_i_plus_1;
+//             x_i_sign = x_i_plus_1_sign;
 //         }
 
 //         z_out
@@ -259,6 +297,7 @@
 //     > {
 //         let range_chip = builder.range_chip();
 //         let gate_chip = range_chip.gate();
+//         let native_chip = NativeFieldChip::new(&range_chip);
 //         let ctx = builder.main(0);
 
 //         // check for the non-trivial circuit with some input, the other cycle runs trivial circuit with no computation
@@ -275,53 +314,97 @@
 
 //                 // define the calculation logic for the circuit, also done in the next_output function
 //                 // use the provided inputs
-//                 let x_0 = self.input()[0].clone();
-//                 let y_0 = self.input()[1].clone();
+//                 let i_0 = self.input()[0].clone();
+//                 let x_0 = self.input()[1].clone();
+//                 let x_0_sign = self.input()[2].clone();
+//                 let y_0 = self.input()[3].clone();
+//                 let y_0_sign = self.input()[4].clone();
+
 //                 let mut z_out = Vec::new();
+//                 let i_0_assigned = ctx.load_witness(i_0);
 //                 let x_0_assigned = ctx.load_witness(x_0);
+//                 let x_0_sign_assigned = ctx.load_witness(x_0_sign);
 //                 let y_0_assigned = ctx.load_witness(y_0);
+//                 let y_0_sign_assigned = ctx.load_witness(y_0_sign);
 //                 let z_base = self.input().to_vec();
 
 //                 // variables to hold running x_i and y_i
+//                 let mut i = i_0;
 //                 let mut x_i = x_0;
+//                 let mut x_i_sign = x_0_sign;
 //                 let mut y_i = y_0;
+//                 let mut y_i_sign = y_0_sign;
 
-//                 for i in 0..self.seq.len() {
+//                 for _i in 0..self.seq.len() {
 //                     // non deterministic advice
+//                     let one = ctx.load_constant(C::Scalar::ONE);
+//                     let i_assigned = ctx.load_witness(i);
 //                     let x_i_assigned = ctx.load_witness(x_i);
+//                     let x_i_sign_assigned = ctx.load_witness(x_i_sign); 
 //                     let y_i_assigned = ctx.load_witness(y_i);
-//                     let x_i_plus_1 = ctx.load_witness(self.seq[i].x_i_plus_1);
+//                     let y_i_sign_assigned = ctx.load_witness(y_i_sign);
+//                     let i_plus1_assigned = ctx.load_witness(self.seq[_i].i_plus_1);
+//                     let x_i_plus_1assigned = ctx.load_witness(self.seq[_i].x_i_plus_1);
+//                     let x_i_plus_1_sign_assigned = ctx.load_witness(self.seq[_i].x_i_plus_1_sign);
+//                     let y_i_plus_1assigned = ctx.load_witness(self.seq[_i].y_i_plus_1);
+//                     let y_i_plus_1_sign_assigned = ctx.load_witness(self.seq[_i].y_i_plus_1_sign);
 
 //                     // check the following conditions hold:
 //                     // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
-//                     // (ii) y_i_plus_1 = x_i
-//                     // (1) constraints for condition (i) are below
-//                     // (2) constraints for condition (ii) is avoided because we just used x_i wherever y_i_plus_1 is used
-//                     let x_i_plus_1_sq = gate_chip.mul(ctx, x_i_plus_1, x_i_plus_1);
+//                     let x_i_plus_1_sq = gate_chip.mul(ctx, x_i_plus_1assigned, x_i_plus_1assigned);
 //                     let x_i_plus_1_quad = gate_chip.mul(ctx, x_i_plus_1_sq, x_i_plus_1_sq);
-//                     let lhs = gate_chip.mul(ctx, x_i_plus_1_quad, x_i_plus_1);
-//                     let rhs = gate_chip.add(ctx, x_i_assigned, y_i_assigned);
-//                     let lhs_sel = gate_chip.select(ctx, lhs, zero, setup_sel);
-//                     let rhs_sel = gate_chip.select(ctx, rhs, zero, setup_sel);
-//                     ctx.constrain_equal(&lhs_sel, &rhs_sel);
+//                     let lhs1 = gate_chip.mul(ctx, x_i_plus_1_quad, x_i_plus_1assigned);
+//                     let rhs1 = gate_chip.add(ctx, x_i_assigned, y_i_assigned);
+//                     let lhs1_sel = gate_chip.select(ctx, lhs1, zero, setup_sel);
+//                     let rhs1_sel = gate_chip.select(ctx, rhs1, zero, setup_sel);
+//                     ctx.constrain_equal(&lhs1_sel, &rhs1_sel);
 
-//                     if i == self.seq.len() - 1 {
-//                         z_out = vec![x_i_plus_1.clone(), x_i_assigned.clone()]; // todo check this
+//                     // (ii) x_i_plus_1_sign = x_i_sign * (F::ONE - y_i_sign) + (F::ONE - x_i_sign) * y_i_sign;
+//                     let x_i_plus_1_half_sign = gate_chip.mul(ctx, x_i_sign_assigned, gate_chip.sub(ctx, one, y_i_sign_assigned));
+//                     let x_i_plus_1_sign = gate_chip.add(ctx, x_i_plus_1_half_sign, gate_chip.mul(ctx, gate_chip.sub(ctx, one, x_i_sign_assigned), y_i_sign_assigned));
+//                     ctx.constrain_equal(&x_i_plus_1_sign_assigned, &x_i_plus_1_sign);
+
+//                     // (iii) y_i_plus_1 = x_i + i 
+//                     let lhs2 = y_i_plus_1assigned.clone();
+//                     let rhs2 = gate_chip.add(ctx, x_i_assigned, i_plus1_assigned);
+//                     let lhs2_sel = gate_chip.select(ctx, lhs2, zero, setup_sel);
+//                     let rhs2_sel = gate_chip.select(ctx, rhs2, zero, setup_sel);
+//                     ctx.constrain_equal(&lhs2_sel, &rhs2_sel);
+
+//                     // (iv) y_i_plus_1_sign = x_i_plus_1_sign
+//                     ctx.constrain_equal(&y_i_plus_1_sign_assigned, &x_i_plus_1_sign);
+
+//                     // (v) i_plus_1 = i + 1
+//                     let lhs3 = i_plus1_assigned.clone();
+//                     let rhs3 = gate_chip.add(ctx, i_assigned, one);
+//                     let lhs3_sel = gate_chip.select(ctx, lhs3, zero, setup_sel);
+//                     let rhs3_sel = gate_chip.select(ctx, rhs3, zero, setup_sel);
+//                     ctx.constrain_equal(&lhs3_sel, &rhs3_sel);
+
+//                     if _i == self.seq.len() - 1 {
+//                         z_out = vec![i_plus1_assigned.clone(), x_i_plus_1assigned.clone(), x_i_plus_1_sign_assigned.clone(), y_i_plus_1assigned.clone(), y_i_plus_1_sign_assigned.clone()]; 
 //                     }
 
-//                     // update x_i and y_i for the next iteration
-//                     y_i = *x_i_assigned.value();
-//                     x_i = *x_i_plus_1.value();
+//                     // update i, x_i and y_i for the next iteration
+//                     i = *i_plus1_assigned.value();
+//                     y_i = *y_i_plus_1assigned.value();
+//                     y_i_sign = *y_i_plus_1_sign_assigned.value();
+//                     x_i = *x_i_plus_1assigned.value();
+//                     x_i_sign = *x_i_plus_1_sign_assigned.value();
 //                 }
 
 //                 let z0 = gate_chip.select(ctx, z_out[0], Constant(z_base[0]), setup_sel);
 //                 let z1 = gate_chip.select(ctx, z_out[1], Constant(z_base[1]), setup_sel);
+//                 let z3 = gate_chip.select(ctx, z_out[2], Constant(z_base[2]), setup_sel);
+//                 let z4 = gate_chip.select(ctx, z_out[3], Constant(z_base[3]), setup_sel);
+//                 let z5 = gate_chip.select(ctx, z_out[4], Constant(z_base[4]), setup_sel);
+                
 //                 // stores the output for the current step
-//                 self.set_output(&[*z0.value(), *z1.value()]);
+//                 self.set_output(&[*z0.value(), *z1.value(), *z3.value(), *z4.value(), *z5.value()]);
 //                 // updates the input to the output value for the next step // todo check this
-//                 self.set_input(&[*z0.value(), *z1.value()]);
+//                 self.set_input(&[*z0.value(), *z1.value(), *z3.value(), *z4.value(), *z5.value()]);
 
-//                 (vec![x_0_assigned, y_0_assigned], vec![z0, z1])
+//                 (vec![i_0_assigned, x_0_assigned, x_0_sign_assigned, y_0_assigned, y_0_sign_assigned], vec![z0, z1, z3, z4, z5])
                 
 //             },
 //                 None => (Vec::new(), Vec::new()),

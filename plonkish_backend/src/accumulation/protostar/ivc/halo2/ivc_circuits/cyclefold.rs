@@ -6,7 +6,7 @@ use halo2_base::halo2_proofs::halo2curves::ff::BatchInvert;
 use itertools::Itertools;
 use core::{borrow::Borrow, marker::PhantomData};
 use std::{iter, time::Instant, cell::RefCell};
-use super::{halo2::chips::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}}, scalar_mul::ecc_deg6_hash::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs, ScalarMulConfigInputs, NUM_ADVICE_SM, NUM_FIXED_SM, NUM_INSTANCE_SM}, transcript::NUM_CHALLENGE_BITS, L, NUM_ADVICE, NUM_CONSTANTS, R, T}, ProtostarAccumulationVerifierParam};
+use crate::accumulation::protostar::ivc::{halo2::chips::{poseidon::hash_chip::{PoseidonChip, PoseidonConfig}, scalar_mul::ecc_deg6_hash::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs, ScalarMulConfigInputs, NUM_ADVICE_SM, NUM_FIXED_SM, NUM_INSTANCE_SM}, transcript::NUM_CHALLENGE_BITS, L, NUM_ADVICE, NUM_CONSTANTS, R, T}, ProtostarAccumulationVerifierParam};
 use crate::{accumulation::protostar::ivc::halo2::chips::transcript::NUM_HASH_BITS, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates}};
 use crate::{accumulation::{protostar::{ProtostarAccumulatorInstance, ProtostarStrategy::{Compressing, NoCompressing}}, PlonkishNarkInstance}, backend::PlonkishCircuit, frontend::halo2::CircuitExt, poly::multilinear::MultilinearPolynomial, util::{
     arithmetic::{add_proj, add_proj_comp, double_proj, double_proj_comp, fe_from_bits_le, fe_to_bits_le, fe_to_fe, fe_truncated, into_coordinate_proj, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, CurveAffine, PrimeFieldBits, ProjectivePoint, TwoChainCurve}, end_timer, izip_eq, start_timer, transcript::{TranscriptRead, TranscriptWrite}}};

@@ -6,7 +6,7 @@ use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash}, spec::Poseidon
 use halo2_base::halo2_proofs::plonk::Error;
 use halo2_base::halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_base::halo2_proofs::arithmetic::Field;
-use crate::{accumulation::protostar::ivc::{cyclefold::CF_IO_LEN, halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::{hash_chip::PoseidonConfig}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
+use crate::{accumulation::protostar::ivc::{halo2::cyclefold::CF_IO_LEN, halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::{hash_chip::PoseidonConfig}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
 use crate::accumulation::protostar::{ivc::halo2::chips::{main_chip::{EcPointNonNative, Number}, transcript::{native::AssignedProtostarAccumulatorInstance, nonnative::PoseidonTranscriptChip}}, ProtostarStrategy::Compressing};
 use crate::{
     accumulation::{protostar::{ivc::halo2::chips::{poseidon::hash_chip::PoseidonChip, scalar_mul::sm_chip_primary::{ScalarMulChip, ScalarMulChipConfig}, main_chip::{MainChip, MainChipConfig}, transcript::native::PoseidonNativeTranscriptChip}, ProtostarAccumulatorInstance}, PlonkishNarkInstance}, 

@@ -1,6 +1,6 @@
 use crate::{
     accumulation::protostar::{
-        ivc::{cyclefold::{self, CycleFoldCircuit}, halo2::{
+        ivc::{halo2::cyclefold::{self, CycleFoldCircuit}, halo2::{
             // preprocess, prove_steps, prove_decider, verify_decider, 
             // ProtostarIvcVerifierParam,
             chips::transcript::{accumulation_transcript_param, PoseidonTranscript}, preprocess, prove_steps, CircuitExt, StepCircuit

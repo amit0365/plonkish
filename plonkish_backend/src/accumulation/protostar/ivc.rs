@@ -3,8 +3,6 @@ use crate::{
     util::{arithmetic::PrimeField, Deserialize, Serialize},
 };
 
-pub mod cyclefold;
-pub mod cyclefold_nfold;
 #[cfg(feature = "frontend-halo2")]
 pub mod halo2;
 

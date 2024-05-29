@@ -5,7 +5,7 @@ pub mod ivc_circuits;
 use crate::{
     accumulation::{
         protostar::{
-            ivc::{ProtostarAccumulationVerifierParam, cyclefold::{CycleFoldCircuit, self, CF_IO_LEN}},
+            ivc::{ProtostarAccumulationVerifierParam, halo2::ivc_circuits::cyclefold::{CycleFoldCircuit, self, CF_IO_LEN}},
             PlonkishNarkInstance, Protostar, ProtostarAccumulator, ProtostarAccumulatorInstance,
             ProtostarProverParam,
             ProtostarStrategy::{Compressing, NoCompressing},

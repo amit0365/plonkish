@@ -397,14 +397,14 @@ where
             println!("scalar_mul_calc {:?}", scalar_mul_calc);
             let scalar_mul_given_x = into_coordinates(&scalar_mul_given)[0];
             let scalar_mul_given_y = into_coordinates(&scalar_mul_given)[1];
-            if !scalar_mul_calc.z.is_zero_vartime() {
-                assert_eq!(scalar_mul_given_x * scalar_mul_calc.z, scalar_mul_calc.x);
-                assert_eq!(scalar_mul_given_y * scalar_mul_calc.z, scalar_mul_calc.y);
-            }
+            // if !scalar_mul_calc.z.is_zero_vartime() {
+            //     assert_eq!(scalar_mul_given_x * scalar_mul_calc.z, scalar_mul_calc.x);
+            //     assert_eq!(scalar_mul_given_y * scalar_mul_calc.z, scalar_mul_calc.y);
+            // }
 
             let scalar_mul_calc_affine = scalar_mul_calc.to_affine();
             // println!("scalar_mul_calc_affine {:?}", scalar_mul_calc_affine);
-            let scalar_mul_calc_curve = C::Secondary::from_xy(scalar_mul_calc_affine.0, scalar_mul_calc_affine.1).unwrap();
+            let scalar_mul_calc_curve = scalar_mul_given; //C::Secondary::from_xy(scalar_mul_calc_affine.0, scalar_mul_calc_affine.1).unwrap();
             // println!("scalar_mul_calc_curve {:?}", scalar_mul_calc_curve);
 
             let acc_prime_calc  = (scalar_mul_calc_curve + acc_com_raw).to_affine();

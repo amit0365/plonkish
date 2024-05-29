@@ -1,3 +1,5 @@
+use halo2_base::gates::circuit;
+
 use crate::{
     backend::PlonkishCircuitInfo,
     poly::multilinear::MultilinearPolynomial,
@@ -29,14 +31,9 @@ pub(super) fn compose<F: PrimeField>(
     let [beta, gamma, alpha] =
         &array::from_fn(|idx| Expression::<F>::Challenge(challenge_offset + idx));
 
-    let (lookup_constraints, lookup_zero_checks) = if circuit_info.lookups.is_empty() {
-        (None, None)
-    } else {
-        let result = lookup_constraints(circuit_info, beta, gamma);
-        (Some(result.0), Some(result.1))
-    };
+    let (lookup_constraints, lookup_zero_checks) = lookup_constraints(circuit_info, beta, gamma);
 
-    let max_degree = max_degree(circuit_info, Some(&lookup_constraints.clone().unwrap_or(Vec::new())));
+    let max_degree = max_degree(circuit_info, Some(&lookup_constraints));
     let (num_permutation_z_polys, permutation_constraints) = permutation_constraints(
         circuit_info,
         max_degree,
@@ -45,22 +42,32 @@ pub(super) fn compose<F: PrimeField>(
         2 * circuit_info.lookups.len(),
         None,
     );
+    let circuit_info_constraints = circuit_info.constraints.clone();
 
     let expression = {
-        let lookup_constraints_vec = lookup_constraints.unwrap_or(Vec::new());
         let constraints = iter::empty()
-            .chain(circuit_info.constraints.iter())
-            .chain(lookup_constraints_vec.iter())
-            .chain(permutation_constraints.iter())
+            .chain(circuit_info_constraints)
+            .chain(lookup_constraints)
+            .chain(permutation_constraints)
             .collect_vec();
+
         let eq = Expression::eq_xy(0);
         let zero_check_on_every_row = Expression::distribute_powers(constraints, alpha) * eq;
+        let expression_vec = iter::empty()
+            .chain(lookup_zero_checks)
+            .chain(Some(zero_check_on_every_row))
+            .collect_vec();
+
         Expression::distribute_powers(
-            iter::empty()
-                .chain(lookup_zero_checks.unwrap_or_else(Vec::new).iter())
-                .chain(Some(&zero_check_on_every_row)),
+            expression_vec,
             alpha,
         )
+        // Expression::distribute_powers(
+        //     iter::empty()
+        //         .chain(lookup_zero_checks.iter())
+        //         .chain(Some(&zero_check_on_every_row)),
+        //     alpha,
+        //)
     };
 
     (num_permutation_z_polys, expression)
@@ -101,9 +108,10 @@ pub(super) fn lookup_constraints<F: PrimeField>(
                 .map(Expression::<F>::Polynomial);
             let (inputs, tables) = lookup
                 .iter()
-                .map(|(input, table)| (input, table))
+                .map(|(input, table)| (input.clone(), table.clone()))
                 .unzip::<_, _, Vec<_>, Vec<_>>();
-            let input = &Expression::distribute_powers(inputs, beta);
+
+                let input = &Expression::distribute_powers(inputs, beta);
             let table = &Expression::distribute_powers(tables, beta);
             [h * (input + gamma) * (table + gamma) - (table + gamma) + m * (input + gamma)]
         })

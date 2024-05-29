@@ -167,7 +167,7 @@ pub fn fe_from_le_bytes<F: PrimeField>(bytes: impl AsRef<[u8]>) -> F {
 }
 
 pub fn fe_to_fe<F1: PrimeField, F2: PrimeField>(fe: F1) -> F2 {
-    debug_assert!(BigUint::from_bytes_le(fe.to_repr().as_ref()) < modulus::<F2>());
+    debug_assert!(BigUint::from_bytes_le(fe.to_repr().as_ref()) <modulus::<F2>());
     let mut repr = F2::Repr::default();
     repr.as_mut().copy_from_slice(fe.to_repr().as_ref());
     F2::from_repr(repr).unwrap()
@@ -217,4 +217,409 @@ pub fn fe_from_bits_le<F: PrimeField>(bits: Vec<F>) -> F {
     izip!(bits, pow_of_two)
     .map(|(bit, pow)| bit * pow)
     .sum()
+}
+
+pub fn field_integers<F: Field>() -> impl Iterator<Item = F> {
+    std::iter::successors(Some(F::ZERO), |acc| Some(*acc + F::ONE))
+}
+
+// use ff::{Field, PrimeField};
+// use halo2::arithmetic::best_fft;
+// use halo2::halo2curves::bn256;
+// use num_traits::pow;
+
+//use super::{powers_of_omega, half_squares, inv_lagrange_prod};
+
+pub fn into_coordinate_proj<C: CurveAffine>(ec_point: &C) -> ProjectivePoint<C::Base> {
+    let coords = ec_point.coordinates().unwrap();
+    let zero_proj = ProjectivePoint::identity();
+    if coords.x().is_zero().into() && coords.y().is_zero().into() { 
+        zero_proj
+    } else { 
+        ProjectivePoint::new(*coords.x(), *coords.y(), C::Base::ONE)
+    }
+}
+
+
+pub trait FieldUtils where Self: PrimeField {
+    fn scale(&self, scale: u64) -> Self;
+}
+
+impl<F> FieldUtils for F
+where
+    F: PrimeField + PrimeFieldBits,
+{
+    /// Addition chains mostly taken from https://github.com/mratsim/constantine/blob/master/constantine/math/arithmetic/finite_fields.nim#L443 
+    fn scale(&self, scale: u64) -> Self {
+        let mut x = *self;
+        let mut acc = Self::ZERO;
+        if scale > 15 {
+            let mut scale = scale;
+            while scale > 0 {
+                if scale%2 == 1 {
+                    acc += x;
+                }
+                x = x.double();
+                scale >>= 1;
+            }
+            acc
+        } else {
+            match scale {
+                0 => F::ZERO,
+                1 => x,
+                2 => x.double(),
+                3 => {let y = x.double(); y+x},
+                4 => x.double().double(),
+                5 => {let y = x.double().double(); y+x},
+                6 => {x = x.double(); let y = x.double(); y+x},
+                7 => {let y = x.double().double().double(); y-x},
+                8 => {x.double().double().double()},
+                9 => {let y = x.double().double().double(); y+x},
+                10 => {x = x.double(); let y = x.double().double(); y+x},
+                11 => {let y = x.double().double(); y.double()+y-x},
+                12 => {let y = x.double().double(); y.double()+y},
+                13 => {let y = x.double().double(); y.double()+y+x},
+                14 => {x=x.double(); let y = x.double().double().double(); y-x},
+                15 => {let y = x.double().double().double().double(); y-x},
+                _ => unreachable!(),
+            }
+        }
+    }
+}
+
+/// Incomplete Doubling in projective coordinates.
+pub fn double_proj<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> ProjectivePoint<F> {
+    let x = pt.x;
+    let y = pt.y;
+    let z = pt.z;
+
+    if y.is_zero().into() {
+        return ProjectivePoint::identity();
+    }
+
+    let y_sq = y.square();
+    let z_sq = z.square();
+
+    let w = x.square().scale(3);
+    let b = x*y_sq*z;
+    let h = w.square() - b.scale(8);
+    
+    ProjectivePoint::new(h*y*z.scale(2),
+    (w*(b.scale(4) - h) - z_sq*y_sq.square().scale(8)),
+    (z*z_sq*y*y_sq.scale(8)))
+}
+
+/// Incomplete Addition in projective coordinates.
+pub fn add_proj<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
+    let u1 = pt2.y * pt1.z;
+    let u2 = pt1.y * pt2.z;
+    let v1 = pt2.x * pt1.z;
+    let v2 = pt1.x * pt2.z;
+
+    if v1 == v2 {
+        if u1 != u2 {
+            return ProjectivePoint::identity();
+        } else {
+            return double_proj(pt1);
+        }
+    }
+    
+    let u = u1 - u2;
+    let v = v1 - v2;
+    let w = pt1.z * pt2.z;
+
+    let vsq = v.square();
+    let vcb = vsq*v;
+
+    let a = u.square() * w - vcb - vsq*v2.scale(2);
+
+    ProjectivePoint::new(v*a,
+    (u*(vsq*v2 - a) - vcb*u2),
+    vcb*w)
+}
+
+/// Incomplete Subtraction in projective coordinates.
+pub fn sub_proj<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
+    let u1 = - pt2.y * pt1.z;
+    let u2 = pt1.y * pt2.z;
+    let v1 = pt2.x * pt1.z;
+    let v2 = pt1.x * pt2.z;
+
+    if v1 == v2 {
+        if u1 != u2 {
+            return ProjectivePoint::identity();
+        } else {
+            return double_proj(pt1);
+        }
+    }
+    
+    let u = u1 - u2;
+    let v = v1 - v2;
+    let w = pt1.z * pt2.z;
+
+    let vsq = v.square();
+    let vcb = vsq*v;
+
+    let a = u.square() * w - vcb - vsq*v2.scale(2);
+
+    ProjectivePoint::new(v*a,
+    (u*(vsq*v2 - a) - vcb*u2),
+    vcb*w)
+}
+
+/// Doubling of affine to projective coordinates.
+pub fn double_aff_proj<F: PrimeField+FieldUtils>(pt: (F,F)) -> ProjectivePoint<F> {
+    let x = pt.0;
+    let y = pt.1;
+
+    if y.is_zero().into() {
+        return ProjectivePoint::identity();
+    }
+
+    let y_sq = y.square();
+
+    let w = x.square().scale(3);
+    let b = x*y_sq;
+    let h = w.square() - b.scale(8);
+    
+    ProjectivePoint::new(h*y.scale(2),
+    (w*(b.scale(4) - h) - y_sq.square().scale(8)),
+    (y*y_sq.scale(8)))
+}
+
+/// Addition of affines to projective coordinates.
+pub fn add_aff_proj<F: PrimeField+FieldUtils>(pt1: (F,F), pt2: (F,F)) -> ProjectivePoint<F> {
+    let u1 = pt2.1;
+    let u2 = pt1.1;
+    let v1 = pt2.0;
+    let v2 = pt1.0;
+
+    if v1 == v2 {
+        if u1 != u2 {
+            return ProjectivePoint::identity();
+        } else {
+            return double_aff_proj(pt1);
+        }
+    }
+    
+    let u = u1 - u2;
+    let v = v1 - v2;
+
+    let vsq = v.square();
+    let vcb = vsq*v;
+
+    let a = u.square() - vcb - vsq*v2.scale(2);
+
+    ProjectivePoint::new(v*a,
+    (u*(vsq*v2 - a) - vcb*u2),
+    vcb)
+}
+
+/// Subtraction in projective coordinates.
+pub fn sub_aff_proj<F: PrimeField+FieldUtils>(pt1: (F,F), pt2: (F,F)) -> ProjectivePoint<F> {
+    let u1 = -pt2.1;
+    let u2 = pt1.1;
+    let v1 = pt2.0;
+    let v2 = pt1.0;
+
+    if v1 == v2 {
+        if u1 != u2 {
+            return ProjectivePoint::identity();
+        } else {
+            return double_aff_proj(pt1);
+        }
+    }
+    
+    let u = u1 - u2;
+    let v = v1 - v2;
+
+    let vsq = v.square();
+    let vcb = vsq*v;
+
+    let a = u.square() - vcb - vsq*v2.scale(2);
+
+    ProjectivePoint::new(v*a,
+    (u*(vsq*v2 - a) - vcb*u2),
+    vcb)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ProjectivePoint<F: PrimeField> {
+    pub x: F,
+    pub y: F,
+    pub z: F,
+}
+
+impl<F> ProjectivePoint<F> 
+where F: PrimeField {
+    pub fn new(x: F, y: F, z: F) -> Self {
+        ProjectivePoint::<F> {
+            x,
+            y,
+            z,
+        }
+    }
+
+    pub fn identity() -> Self {
+        ProjectivePoint::<F> {
+            x: F::ZERO,
+            y: F::ONE,
+            z: F::ZERO,
+        }
+    }
+
+    pub fn to_affine(&self) -> (F, F) {
+        let z_inv = self.z.invert().unwrap_or(F::ZERO);
+        let x = self.x * z_inv;
+        let y = self.y * z_inv;
+        (x, y)
+    }
+    
+}
+
+/// Complete Doubling in projective coordinates.
+    // pt double, b = 3 for bn254
+    //  x' = 2xy(y^2 - 9bz^2)
+    //  y' = (y^2 - 9bz^2)(y^2 + 3bz^2) + 24*b*y^2*z^2 
+    //  z' = 8y^3*z
+pub fn double_proj_comp<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> ProjectivePoint<F> {
+    let x = pt.x;
+    let y = pt.y;
+    let z = pt.z;
+
+    if y.is_zero().into() {
+        return ProjectivePoint::identity();
+    }
+
+    let y_sq = y.square();
+    let z_sq = z.square();
+    let nine_z_sq = z_sq.scale(9);
+
+    let x2 = x*y.scale(2)*(y_sq - nine_z_sq.scale(3)); 
+    let y2 = (y_sq - nine_z_sq.scale(3))*(y_sq + nine_z_sq) + y_sq.scale(8)*nine_z_sq;
+    let z2 = y_sq*y*z.scale(8);
+
+    ProjectivePoint::new(x2, y2, z2)
+}
+
+/// Complete Addition in projective coordinates.
+    // X_3 &= (X_1(Y_2) + X_2Y_1)(Y_1(Y_2)) - 3bZ_1Z_2) \\
+    //  - (Y_1Z_2 + Y_2Z_1)(3b(X_1Z_2 + X_2Z_1)), \\
+    // Y_3 &= (3X_1X_2)(3b(X_1Z_2 + X_2Z_1)) \\
+    //  + (Y_1(Y_2) + 3bZ_1Z_2)(Y_1(Y_2) - 3bZ_1Z_2), \\
+    // Z_3 &= (Y_1Z_2 + Y_2Z_1)(Y_1(Y_2) + 3bZ_1Z_2) \\
+    //  + (X_1(Y_2) + X_2Y_1)(3X_1X_2).
+
+pub fn add_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
+
+    let x1 = pt1.x;
+    let y1 = pt1.y;
+    let z1 = pt1.z;
+
+    let x2 = pt2.x;
+    let y2 = pt2.y;
+    let z2 = pt2.z;
+
+    // b = 3
+    let x3 = (x1 * y2 + x2 * y1) * ((y1 * y2) - F::from(9) * z1 * z2) - (y1 * z2 + y2 * z1) * (F::from(9) * (x1 * z2 + x2 * z1));
+    let y3 = (F::from(3) * x1 * x2) * (F::from(9) * (x1 * z2 + x2 * z1)) + (y1 * y2 + F::from(9) * z1 * z2) * (y1 * y2 - F::from(9) * z1 * z2);
+    let z3 = (y1 * z2 + y2 * z1) * (y1 * y2 + F::from(9) * z1 * z2) + (x1 * y2 + x2 * y1) * (F::from(3) * x1 * x2);
+    
+    ProjectivePoint::<F> {
+        x: x3,
+        y: y3,
+        z: z3,
+    }
+
+}
+
+
+/// Complete Subtraction in projective coordinates.
+    // X_3 &= (X_1(-Y_2) + X_2Y_1)(Y_1(-Y_2) - 3bZ_1Z_2) \\
+    //  - (Y_1Z_2 - Y_2Z_1)(3b(X_1Z_2 + X_2Z_1)), \\
+    // Y_3 &= (3X_1X_2)(3b(X_1Z_2 + X_2Z_1)) \\
+    //  + (Y_1(-Y_2) + 3bZ_1Z_2)(Y_1(-Y_2) - 3bZ_1Z_2), \\
+    // Z_3 &= (Y_1Z_2 - Y_2Z_1)(Y_1(-Y_2) + 3bZ_1Z_2) \\
+    //  + (X_1(-Y_2) + X_2Y_1)(3X_1X_2).
+
+pub fn sub_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
+
+    let x1 = pt1.x;
+    let y1 = pt1.y;
+    let z1 = pt1.z;
+
+    let x2 = pt2.x;
+    let y2 = pt2.y;
+    let z2 = pt2.z;
+
+    // b = 3
+    let x3 = (x1 * -y2 + x2 * y1) * (y1 * -y2 - F::from(9) * z1 * z2) - (y1 * z2 - y2 * z1) * (F::from(9) * (x1 * z2 + x2 * z1));   
+    let y3 = (F::from(3) * x1 * x2) * (F::from(9) * (x1 * z2 + x2 * z1)) + (y1 * -y2 + F::from(9) * z1 * z2) * (y1 * -y2 - F::from(9) * z1 * z2);   
+    let z3 = (y1 * z2 - y2 * z1) * (y1 * -y2 + F::from(9) * z1 * z2) + (x1 * -y2 + x2 * y1) * (F::from(3) * x1 * x2);
+    
+    ProjectivePoint::<F> {
+        x: x3,
+        y: y3,
+        z: z3,
+    }
+
+}
+
+pub fn is_identity_proj<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> bool {
+
+    let x = pt.x;
+    let y = pt.y;
+    let z = pt.z;
+
+    if x.is_zero().into() && y == F::ONE && z.is_zero().into() {
+        return true;
+    } else {
+        return false;
+    }
+
+}
+
+pub fn is_scaled_identity_proj<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> bool {
+
+    let x = pt.x;
+    let y = pt.y;
+    let z = pt.z;
+
+    if x.is_zero().into() && y != F::ONE && z.is_zero().into() {
+        return true;
+    } else {
+        return false;
+    }
+
+}
+
+pub fn fe_to_limbs<F1: ScalarField, F2: ScalarField>(fe: F1, num_limb_bits: usize, num_limbs: usize) -> Vec<F2> {
+    fe.to_bytes_le()
+        .chunks(num_limb_bits/8)
+        .into_iter()
+        .map(|bytes| match bytes.len() {
+            1..=8 => F2::from_bytes_le(bytes),
+            9..=16 => {
+                let lo = &bytes[..8];
+                let hi = &bytes[8..];
+                F2::from_bytes_le(hi) * F2::from(2).pow_vartime([64]) + F2::from_bytes_le(lo)
+            }
+            _ => unimplemented!(),
+        })
+        .take(num_limbs)
+        .collect()
+}
+
+pub fn fe_from_limbs<F1: ScalarField, F2: ScalarField>(
+    limbs: &[F1],
+    num_limb_bits: usize,
+) -> F2 {
+    limbs.iter().rev().fold(F2::ZERO, |acc, limb| {
+        acc * F2::from_u128(1 << num_limb_bits) + fe_to_fe::<F1, F2>(*limb)
+    })
+}
+
+pub fn into_coordinates<C: CurveAffine>(ec_point: &C) -> [C::Base; 2] {
+    let coords = ec_point.coordinates().unwrap();
+    [*coords.x(), *coords.y()]
 }

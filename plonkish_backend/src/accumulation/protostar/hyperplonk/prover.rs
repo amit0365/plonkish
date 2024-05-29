@@ -1,3 +1,7 @@
+use rayon::prelude::*;
+use crossbeam::{scope, thread};
+use std::{borrow::Cow, hash::Hash, iter, sync::{Arc, Mutex}};
+
 use crate::{
     accumulation::protostar::ProtostarAccumulator,
     backend::hyperplonk::prover::instance_polys,
@@ -11,7 +15,24 @@ use crate::{
         Itertools,
     },
 };
-use std::{borrow::Cow, hash::Hash, iter};
+
+pub struct PolynomialsHolder<F> {
+    polys: [MultilinearPolynomial<F>; 2],
+}
+
+impl<F: PrimeField> PolynomialsHolder<F> {
+    pub fn new(num_vars: usize, zeta_values: [F; 2]) -> Self {
+        let polys = [
+            powers_of_zeta_poly(num_vars, zeta_values[0]),
+            powers_of_zeta_poly(num_vars, zeta_values[1]),
+        ];
+        PolynomialsHolder { polys }
+    }
+
+    pub fn get_polys_refs(&self) -> [&MultilinearPolynomial<F>; 2] {
+        [&self.polys[0], &self.polys[1]]
+    }
+}
 
 pub(crate) fn lookup_h_polys<F: PrimeField + Hash>(
     compressed_polys: &[[MultilinearPolynomial<F>; 2]],
@@ -71,7 +92,7 @@ fn lookup_h_poly<F: PrimeField + Hash>(
     ]
 }
 
-pub(super) fn powers_of_zeta_poly<F: PrimeField>(
+pub fn powers_of_zeta_poly<F: PrimeField>(
     num_vars: usize,
     zeta: F,
 ) -> MultilinearPolynomial<F> {
@@ -140,6 +161,7 @@ where
     if cross_term_expressions.is_empty() {
         return Vec::new();
     }
+
     let ev = init_hadamard_evaluator(
         cross_term_expressions,
         num_vars,
@@ -147,8 +169,10 @@ where
         accumulator,
         incoming,
     );
+
     let size = 1 << ev.num_vars;
     let num_threads = num_threads();
+
     let chunk_size = div_ceil(size, num_threads);
     let num_cross_terms = ev.reg.indexed_outputs().len();
 
@@ -193,6 +217,7 @@ where
             (pow, zeta, witness.instance.u)
         });
     assert_eq!(incoming_u, F::ONE);
+
     let size = 1 << num_vars;
     let mut cross_term = vec![F::ZERO; size];
 
@@ -246,6 +271,52 @@ where
         .chain(Some(incoming.instance.u))
         .collect_vec();
 
+    // println!("incoming_witness_polys: {:?}", incoming.witness_polys);
+    // println!("incoming_witness_polys_len: {:?}", incoming.witness_polys.len());
+    // println!("accumulator_witness_polys: {:?}", accumulator.witness_polys);
+    // println!("accumulator_witness_polys_len: {:?}", accumulator.witness_polys.len());
+
+    // println!("expressions: {:?}", expressions[0]);
+    // let builder = thread::Builder::new().stack_size(4 * 1024 * 1024); // 4 MB
+    // let handler = builder.spawn(move || {
+    //     let expressions = expressions_arc.as_slice()
+    //         .par_iter() // Use par_iter() instead of iter() for parallel iteration
+    //         .map(|expression| {
+    //             expression
+    //                 .simplified(Some(&challenges.clone()))
+    //                 .unwrap_or_else(Expression::zero)
+    //         })
+    //         .collect::<Vec<_>>();
+    // }).unwrap();
+    // handler.join().unwrap();
+    // let builder = thread::ScopedThreadBuilder::new().stack_size(4 * 1024 * 1024); // Set stack size to 4 MB
+
+    //let handle = builder.spawn(|| {
+
+        // scope(|s| {
+        //     s.builder().stack_size(4 * 1024 * 1024).spawn(|_| {
+        //         let expressions = expressions
+        //             .par_iter() // Use par_iter() instead of iter() for parallel iteration
+        //             .map(|expression| {
+        //                 expression
+        //                     .simplified(Some(&challenges.clone()))
+        //                     .unwrap_or_else(Expression::zero)
+        //             })
+        //             .collect::<Vec<_>>();
+        //     });
+        // }).unwrap();
+
+    //}).unwrap();
+
+    // let expressions = expressions
+    // .par_iter() // Use par_iter() instead of iter() for parallel iteration
+    // .map(|expression| {
+    //     expression
+    //         .simplified(Some(&challenges))
+    //         .unwrap_or_else(Expression::zero)
+    // })
+    // .collect::<Vec<_>>();
+
     let expressions = expressions
         .iter()
         .map(|expression| {
@@ -255,7 +326,7 @@ where
         })
         .collect_vec();
 
-    HadamardEvaluator::new(num_vars, &expressions, polys)
+        HadamardEvaluator::new(num_vars, &expressions, polys)
 }
 
 #[derive(Clone, Debug)]

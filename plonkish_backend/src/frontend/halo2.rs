@@ -6,17 +6,17 @@ use crate::{
         Itertools,
     },
 };
-use halo2_base::{halo2_proofs::{
+use bincode::config;
+use halo2_base::{gates::circuit::BaseCircuitParams, halo2_proofs::{
     circuit::Value,
     plonk::{
-        self, Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem,
-        Error, Fixed, FloorPlanner, Instance, Selector,
+        self, Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem, Error, Fixed, FloorPlanner, Instance, Selector
     },
-}, gates::circuit::BaseCircuitParams};
+}};
+use halo2_gadgets::ecc::chip::constants;
 use rand::RngCore;
 use std::{
-    collections::{HashMap, HashSet},
-    iter, mem,
+    collections::{HashMap, HashSet}, convert, iter, mem
 };
 
 pub mod layouter;
@@ -46,7 +46,6 @@ pub trait CircuitExt<F: Field>: Circuit<F> {
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct Halo2Circuit<F: Field, C: Circuit<F>> {
     k: u32,
     instances: Vec<Vec<F>>,
@@ -127,7 +126,17 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         })
         .collect();
 
-    let lookups: Vec<Vec<(Expression<F>, Expression<F>)>> = cs
+    let gate_expressions: Vec<plonk::Expression<F>> = cs
+        .gates()
+        .iter()
+        .flat_map(|gate| {
+            gate.polynomials().iter().map(|expression| {
+                expression.clone()
+            })
+        })
+    .collect_vec();
+
+    let lookups = cs
         .lookups()
         .iter()
         .map(|lookup| {
@@ -144,7 +153,25 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .collect_vec()
         })
         .collect();
-    
+
+    let lookup_expressions: Vec<Vec<(plonk::Expression<F>, plonk::Expression<F>)>> = cs
+        .lookups()
+        .iter()
+        .map(|lookup| {
+            lookup
+                .input_expressions()
+                .iter()
+                .zip(lookup.table_expressions())
+                .map(|(input, table)| {
+                    let [input, table] = [input, table].map(|expression| {
+                        expression.clone()
+                    });
+                    (input, table)
+                })
+                .collect_vec()
+        })
+        .collect_vec();
+
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
         vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];
@@ -185,7 +212,9 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         num_witness_polys: num_by_phase(&cs.advice_column_phase()),
         num_challenges: num_by_phase(&cs.challenge_phase()),
         constraints,
+        gate_expressions,
         lookups,
+        lookup_expressions,
         permutations,
         max_degree: Some(cs.degree()),
         fixed_permutation_idx_for_preprocess_poly,
@@ -224,6 +253,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         permutation: Permutation::new(permutation_column_idx),
         selectors: vec![vec![false; 1 << k]; cs.num_selectors()],
         row_mapping,
+        selector_map: HashMap::new(),
     };
     
     C::FloorPlanner::synthesize(
@@ -264,12 +294,13 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             challenges,
             row_mapping: &self.row_mapping,
         };
+        let constants = self.constants.clone();
 
         C::FloorPlanner::synthesize(
             &mut witness_collector,
             &self.circuit,
             self.config.clone(),
-            self.constants.clone(),
+            constants,
         )
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
@@ -285,6 +316,7 @@ struct PreprocessCollector<'a, F: Field> {
     permutation: Permutation,
     selectors: Vec<Vec<bool>>,
     row_mapping: &'a [usize],
+    selector_map: HashMap<usize, Vec<usize>>,
 }
 
 impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
@@ -308,7 +340,8 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-    {
+    {   
+        self.selector_map.entry(selector.index()).or_insert_with(Vec::new).push(row);
         let Some(row) = self.row_mapping.get(row).copied() else {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k});
         };
@@ -621,6 +654,7 @@ fn advice_idx<F: Field>(cs: &ConstraintSystem<F>) -> Vec<usize> {
 }
 
 fn column_idx<F: Field>(cs: &ConstraintSystem<F>) -> HashMap<(Any, usize), usize> {
+
     let advice_idx = advice_idx(cs);
     iter::empty()
         .chain((0..cs.num_instance_columns()).map(|idx| (Any::Instance, idx)))
@@ -684,8 +718,9 @@ fn convert_expression<F: Field>(
     cs: &ConstraintSystem<F>,
     advice_idx: &[usize],
     challenge_idx: &[usize],
-    expression: &plonk::Expression<F>,
+    expression: & plonk::Expression<F>,
 ) -> Expression<F> {
+
     expression.evaluate(
         &|constant| Expression::Constant(constant),
         &|selector| {

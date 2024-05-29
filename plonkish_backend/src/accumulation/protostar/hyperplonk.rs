@@ -5,10 +5,10 @@ use crate::{
                 preprocessor::{batch_size, preprocess},
                 prover::{
                     evaluate_compressed_cross_term_sums, evaluate_cross_term_polys,
-                    evaluate_zeta_cross_term_poly, lookup_h_polys, powers_of_zeta_poly,
+                    evaluate_zeta_cross_term_poly, lookup_h_polys, powers_of_zeta_poly, PolynomialsHolder,
                 },
             },
-            ivc::{halo2::test::strawman::{fe_to_limbs, NUM_CHALLENGE_BITS, NUM_LIMBS, NUM_LIMB_BITS}, ProtostarAccumulationVerifierParam},
+            ivc::ProtostarAccumulationVerifierParam,
             Protostar, ProtostarAccumulator, ProtostarAccumulatorInstance, ProtostarProverParam,
             ProtostarStrategy::{Compressing, NoCompressing},
             ProtostarVerifierParam,
@@ -18,8 +18,7 @@ use crate::{
     backend::{
         hyperplonk::{
             prover::{
-                instance_polys, lookup_compressed_polys, lookup_m_polys, permutation_z_polys,
-                prove_sum_check,
+                instance_polys, lookup_compressed_polys, lookup_m_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys, permutation_z_polys, prove_sum_check
             },
             verifier::verify_sum_check,
             HyperPlonk, HyperPlonkVerifierParam,
@@ -27,21 +26,24 @@ use crate::{
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
     },
     pcs::{AdditiveCommitment, Commitment, CommitmentChunk, PolynomialCommitmentScheme},
-    poly::{multilinear::MultilinearPolynomial, Polynomial},
+    poly::{multilinear::{concat_polys, MultilinearPolynomial}, Polynomial},
     util::{
-        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, PrimeField},
-        end_timer, start_timer,
-        transcript::{TranscriptRead, TranscriptWrite},
-        DeserializeOwned, Itertools, Serialize,
+        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, PrimeField}, end_timer, expression_new::paired::Paired, start_timer, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use rand::RngCore;
-use std::{borrow::{Borrow, BorrowMut}, hash::Hash, iter::{self, empty, once}};
-
+use core::time;
+use std::{borrow::{BorrowMut, Borrow}, hash::Hash, iter::{self, once}};
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
+use rayon::iter::IndexedParallelIterator;
+use rayon::iter::IntoParallelRefIterator;
 mod preprocessor;
-mod prover;
+pub mod prover;
+
+pub const NUM_CHALLENGE_BITS: usize = 128;
 
 impl<F, Pcs, const STRATEGY: usize> AccumulationScheme<F> for Protostar<HyperPlonk<Pcs>, STRATEGY>
 where
@@ -71,14 +73,33 @@ where
     fn preprocess(
         param: &Pcs::Param,
         circuit_info: &PlonkishCircuitInfo<F>,
-    ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
+    ) -> Result<(Box<Self::ProverParam>, Box<Self::VerifierParam>), Error> {
         assert!(circuit_info.is_well_formed());
-
         preprocess(param, circuit_info, STRATEGY.into())
+            // .map(|(prover_param, verifier_param)| (*prover_param, *verifier_param))
     }
+
+    // fn preprocess_ec(
+    //     param: &Pcs::Param,
+    //     circuit_info: &PlonkishCircuitInfo<F>,
+    // ) -> Result<(Self::ProverParam, Self::VerifierParam), Error> {
+    //     assert!(circuit_info.is_well_formed());
+
+    //     preprocess_ec(param, circuit_info, STRATEGY.into())
+    // }
 
     fn init_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error> {
         Ok(ProtostarAccumulator::init(
+            pp.strategy,
+            pp.pp.num_vars,
+            &pp.pp.num_instances,
+            pp.num_folding_witness_polys,
+            pp.num_folding_challenges,
+        ))
+    }
+
+    fn init_accumulator_ec(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error> {
+        Ok(ProtostarAccumulator::init_ec(
             pp.strategy,
             pp.pp.num_vars,
             &pp.pp.num_instances,
@@ -97,6 +118,150 @@ where
             nark,
         ))
     }
+
+    // fn prove_nark(
+    //     pp: &Self::ProverParam,
+    //     circuit: &impl PlonkishCircuit<F>,
+    //     transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
+    //     _: impl RngCore,
+    // ) -> Result<PlonkishNark<F, Pcs>, Error> {
+    //     let ProtostarProverParam {
+    //         pp,
+    //         strategy,
+    //         num_theta_primes,
+    //         num_alpha_primes,
+    //         num_folding_witness_polys,
+    //         ..
+    //     } = pp;
+
+    //     let instances = circuit.instances();
+    //     for (num_instances, instances) in pp.num_instances.iter().zip_eq(instances) {
+    //         assert_eq!(instances.len(), *num_instances);
+    //         for instance in instances.iter() {
+    //             transcript.common_field_element(instance)?;
+    //         }
+    //     }
+
+
+    //     // Round 0..n
+
+    //     let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
+    //     let mut witness_comms = Vec::with_capacity(witness_polys.len());
+    //     let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
+    //     for (round, (num_witness_polys, num_challenges)) in pp
+    //         .num_witness_polys
+    //         .iter()
+    //         .zip_eq(pp.num_challenges.iter())
+    //         .enumerate()
+    //     {
+    //         let timer = start_timer(|| format!("witness_collector-{round}"));
+    //         let polys = circuit
+    //             .synthesize(round, &challenges)?
+    //             .into_iter()
+    //             .map(MultilinearPolynomial::new)
+    //             .collect_vec();
+    //         assert_eq!(polys.len(), *num_witness_polys);
+    //         end_timer(timer);
+
+    //         witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
+    //         witness_polys.extend(polys);
+    //         challenges.extend(transcript.squeeze_challenges(*num_challenges));
+    //     }
+
+    //     // Round n
+    //     let theta_primes = powers(transcript.squeeze_challenge())
+    //         .skip(1)
+    //         .take(*num_theta_primes)
+    //         .collect_vec();
+
+    //     let timer = start_timer(|| format!("lookup_compressed_polys-{}", pp.lookups.len()));
+    //     let lookup_compressed_polys = {
+    //         let instance_polys = instance_polys(pp.num_vars, instances);
+    //         let polys = iter::empty()
+    //             .chain(instance_polys.iter())
+    //             .chain(pp.preprocess_polys.iter())
+    //             .chain(witness_polys.iter())
+    //             .collect_vec();
+    //         let thetas = iter::empty()
+    //             .chain(Some(F::ONE))
+    //             .chain(theta_primes.iter().cloned())
+    //             .collect_vec();
+    //         lookup_compressed_polys(&pp.lookups, &polys, &challenges, &thetas)
+    //     };
+    //     end_timer(timer);
+
+    //     let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
+    //     let lookup_m_polys = lookup_m_polys(&lookup_compressed_polys)?;
+    //     end_timer(timer);
+
+    //     let lookup_m_comms = Pcs::batch_commit_and_write(&pp.pcs, &lookup_m_polys, transcript)?;
+
+    //     // Round n+1
+
+    //     let beta_prime = transcript.squeeze_challenge();
+
+    //     let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
+    //     let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &beta_prime);
+    //     end_timer(timer);
+
+    //     let lookup_h_comms = {
+    //         let polys = lookup_h_polys.iter().flatten();
+    //         Pcs::batch_commit_and_write(&pp.pcs, polys, transcript)?
+    //     };
+
+    //     // Round n+2
+
+    //     let (zeta, powers_of_zeta_poly, powers_of_zeta_comm) = match strategy {
+    //         NoCompressing => (None, None, None),
+    //         Compressing => {
+    //             let zeta = transcript.squeeze_challenge();
+
+    //             let timer = start_timer(|| "powers_of_zeta_poly");
+    //             let powers_of_zeta_poly = powers_of_zeta_poly(pp.num_vars, zeta);
+    //             end_timer(timer);
+
+    //             let powers_of_zeta_comm =
+    //                 Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_poly, transcript)?;
+
+    //             (
+    //                 Some(zeta),
+    //                 Some(powers_of_zeta_poly),
+    //                 Some(powers_of_zeta_comm),
+    //             )
+    //         }
+    //     };
+
+    //     // Round n+3
+    //     let alpha_primes = powers(transcript.squeeze_challenge())
+    //         .skip(1)
+    //         .take(*num_alpha_primes)
+    //         .collect_vec();
+
+    //     let nark = PlonkishNark::new(
+    //         instances.to_vec(),
+    //         iter::empty()
+    //             .chain(challenges)
+    //             .chain(theta_primes)
+    //             .chain(Some(beta_prime))
+    //             .chain(zeta)
+    //             .chain(alpha_primes)
+    //             .collect(),
+    //         iter::empty()
+    //             .chain(witness_comms)
+    //             .chain(lookup_m_comms)
+    //             .chain(lookup_h_comms)
+    //             .chain(powers_of_zeta_comm)
+    //             .collect(),
+    //         iter::empty()
+    //             .chain(witness_polys)
+    //             .chain(lookup_m_polys)
+    //             .chain(lookup_h_polys.into_iter().flatten())
+    //             .chain(powers_of_zeta_poly)
+    //             .collect(),
+    //     );
+
+    //     Ok(nark)
+    // }
 
     fn prove_nark(
         pp: &Self::ProverParam,
@@ -120,6 +285,303 @@ where
             }
         }
 
+        let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
+        // num_challenges = 0 since all witness_polys are in one phase.
+        // Round 0
+
+        let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
+        let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
+
+        for (round, (num_witness_polys, num_challenges)) in pp
+            .num_witness_polys
+            .iter()
+            .zip_eq(pp.num_challenges.iter())
+            .enumerate()
+        {
+            let timer = start_timer(|| format!("witness_collector-{round}"));
+            let polys = circuit
+                .synthesize(round, &challenges)?
+                .into_iter()
+                .map(MultilinearPolynomial::new)
+                .collect_vec();
+            assert_eq!(polys.len(), *num_witness_polys);
+            end_timer(timer);
+
+            witness_polys.extend(polys);
+            challenges.extend(transcript.squeeze_challenges(*num_challenges));
+        }
+
+        let timer = start_timer(|| format!("lookup_uncompressed_polys-{}", pp.lookups.len()));
+        let lookup_uncompressed_polys = {
+            let instance_polys = instance_polys(pp.num_vars, instances);
+            let polys = iter::empty()
+                .chain(instance_polys.iter())
+                .chain(pp.preprocess_polys.iter())
+                .chain(witness_polys.iter())
+                .collect_vec();
+            lookup_uncompressed_polys(&pp.lookups, &polys, &challenges)
+        };
+        end_timer(timer);
+
+        let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
+        let lookup_m_polys = lookup_m_polys_uncompressed(&lookup_uncompressed_polys)?;
+        end_timer(timer);
+
+        let mut phase1_poly = witness_polys.clone(); 
+        phase1_poly.extend(lookup_m_polys.iter().cloned());
+
+
+        let phase1_poly_concat = concat_polys(phase1_poly);
+        println!("witness_polys_len {:?}", witness_polys.len());
+        println!("lookup_m_polys_len {:?}", lookup_m_polys.len());
+        println!("phase1_poly_concat_num_vars {:?}", phase1_poly_concat.num_vars());
+        let phase1_comm = Pcs::commit_and_write(&pp.pcs, &phase1_poly_concat, transcript)?;
+
+        // Round 1
+        // reuse the challenge to compress vector lookups
+        // todo add another challenge cant reuse
+        let beta_prime = transcript.squeeze_challenge();
+        let theta_primes = powers(beta_prime)
+            .skip(2)
+            .take(*num_theta_primes)
+            .collect_vec();
+
+        let timer = start_timer(|| format!("lookup_compressed_polys-{}", pp.lookups.len()));
+        let lookup_compressed_polys = {
+            let instance_polys = instance_polys(pp.num_vars, instances);
+            let polys = iter::empty()
+                .chain(instance_polys.iter())
+                .chain(pp.preprocess_polys.iter())
+                .chain(witness_polys.iter())
+                .collect_vec();
+            let thetas = iter::empty()
+                .chain(Some(F::ONE))
+                .chain(theta_primes.iter().cloned())
+                .collect_vec();
+            lookup_compressed_polys(&pp.lookups, &polys, &challenges, &thetas)
+        };
+        end_timer(timer);
+
+        let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
+        let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &beta_prime);
+        end_timer(timer);
+
+        let lookup_h_poly_vec = lookup_h_polys.clone().into_iter().flatten().collect_vec();
+
+        let powers_of_zeta_poly = match strategy {
+            NoCompressing => Vec::new(),
+            Compressing => {
+                let timer = start_timer(|| "powers_of_zeta_poly");
+                let powers_of_zeta_poly = powers_of_zeta_poly(pp.num_vars, beta_prime);
+                end_timer(timer);
+
+                vec![powers_of_zeta_poly]
+            }
+        };
+
+
+        let phase2_poly = [lookup_h_poly_vec.clone(), powers_of_zeta_poly.clone()].concat();
+        let phase2_poly_concat =  concat_polys(phase2_poly);
+        let phase2_comm = Pcs::commit_and_write(&pp.pcs, &phase2_poly_concat, transcript)?;
+        
+        println!("lookup_h_polys_len {:?}", lookup_h_poly_vec.len());
+        println!("powers_of_zeta_poly_len {:?}", powers_of_zeta_poly.len());
+        println!("phase2_poly_concat_num_vars {:?}", phase2_poly_concat.num_vars());
+
+
+        // Round 2
+        let alpha_primes = powers(transcript.squeeze_challenge())
+            .skip(1)
+            .take(*num_alpha_primes)
+            .collect_vec();
+
+            Ok(PlonkishNark::new(
+            instances.to_vec(),
+            iter::empty()
+                .chain(challenges)
+                .chain(Some(beta_prime))
+                .chain(theta_primes)
+                .chain(alpha_primes)
+                .collect(),
+            iter::empty()
+                .chain([phase1_comm])
+                .chain([phase2_comm])
+                .collect(),
+            iter::empty()
+                .chain(witness_polys)
+                .chain(lookup_m_polys)
+                .chain(lookup_h_polys.into_iter().flatten())
+                .chain(powers_of_zeta_poly)
+                .collect(),
+        ))
+    }
+
+    fn prove_accumulation<const IS_INCOMING_ABSORBED: bool>(
+        pp: &Self::ProverParam,
+        mut accumulator: impl BorrowMut<Self::Accumulator>,
+        incoming: &Self::Accumulator,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
+        _: impl RngCore,
+    ) -> Result<((Vec<F>, F, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
+        let ProtostarProverParam {
+            pp,
+            strategy,
+            num_alpha_primes,
+            num_theta_primes,
+            cross_term_expressions,
+            gate_expressions,
+            lookup_expressions,
+            ..
+        } = pp;
+        let accumulator = accumulator.borrow_mut();
+
+        accumulator.instance.absorb_into(transcript)?;
+        if !IS_INCOMING_ABSORBED {
+            incoming.instance.absorb_into(transcript)?;
+        }
+
+        let num_fixed = pp.fixed_permutation_idx_for_preprocess_poly.len();
+        let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
+        let num_challenges = pp.num_challenges.iter().sum::<usize>();
+        let lookups_empty = if pp.lookups.is_empty() {
+                true
+            } else {
+                false
+            };
+
+        let (r_le_bits, r, cross_term_comms) = match strategy {
+            NoCompressing => {
+                let timer = start_timer(|| {
+                    format!("evaluate_cross_term_polys-{}", cross_term_expressions.len())
+                });
+                let cross_term_polys = evaluate_cross_term_polys(
+                    cross_term_expressions,
+                    pp.num_vars,
+                    &pp.preprocess_polys,
+                    accumulator,
+                    incoming,
+                );
+                end_timer(timer);
+
+                let cross_term_comms =
+                    Pcs::batch_commit_and_write(&pp.pcs, &cross_term_polys, transcript)?;
+
+                // Round 0
+
+                let r = transcript.squeeze_challenge();
+                let r_le_bits = fe_to_bits_le(r.clone());
+                //assert_eq!(r_le_bits.len(), NUM_CHALLENGE_BITS);
+                assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
+
+                let timer = start_timer(|| "fold_uncompressed");
+                accumulator.fold_uncompressed(incoming, &cross_term_polys, &cross_term_comms, &r);
+                end_timer(timer);
+                (r_le_bits, r, cross_term_comms)
+            }
+            Compressing => {
+                let timer = start_timer(|| "evaluate_zeta_cross_term_poly");
+                let zeta_values = [accumulator, incoming].map(|witness| {
+                    let zeta = witness
+                        .instance
+                        .challenges
+                        .iter()
+                        .nth_back(*num_alpha_primes)
+                        .unwrap();
+                    *zeta
+                });
+                let holder = PolynomialsHolder::new(pp.num_vars, zeta_values);
+                let beta_refs = holder.get_polys_refs();
+
+                let zeta_cross_term_poly = evaluate_zeta_cross_term_poly(
+                    pp.num_vars,
+                    *num_alpha_primes,
+                    accumulator,
+                    incoming,
+                );
+                end_timer(timer);
+
+                let timer = start_timer(|| {
+                    let len = cross_term_expressions.len();
+                    format!("evaluate_compressed_cross_term_sums-{len}")
+                });
+                let compressed_cross_term_sums = evaluate_compressed_cross_term_sums(
+                    cross_term_expressions,
+                    pp.num_vars,
+                    &pp.preprocess_polys,
+                    accumulator,
+                    incoming,
+                );
+                end_timer(timer);
+
+                let zeta_cross_term_comm =
+                    Pcs::commit_and_write(&pp.pcs, &zeta_cross_term_poly, transcript)?;
+                transcript.write_field_elements(&compressed_cross_term_sums)?;
+
+                // Round 0
+
+                let r = transcript.squeeze_challenge();
+                let r_le_bits = fe_to_bits_le(r.clone()).iter().copied().take(NUM_CHALLENGE_BITS).collect_vec();
+                assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
+
+                // let timer = start_timer(|| "paired_data");
+                // let paired_data = Paired::<'_, F>::new_data(pp.num_vars, num_fixed, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes, &pp.preprocess_polys, beta_refs, &incoming, &accumulator);
+                // end_timer(timer);
+
+                // let timer = start_timer(|| "full_constraint");
+                // let full_constraint = paired_data.full_constraint(gate_expressions.to_vec(), lookup_expressions.to_vec());
+                // end_timer(timer);
+
+                // let rows = 1 << pp.num_vars;
+                // let usable_rows = 0..rows; // 0..num_rows - (cs.blinding_factors() + 1)
+
+                // let timer = start_timer(|| "evaluate_compressed_polynomial");
+                // let error_poly = Paired::<'_, F>::evaluate_compressed_polynomial(
+                //     full_constraint,
+                //     usable_rows, 
+                //     rows,
+                // );
+                // end_timer(timer);
+
+                let timer = start_timer(|| "fold_compressed");
+                accumulator.fold_compressed(
+                    incoming,
+                    &zeta_cross_term_poly,
+                    &zeta_cross_term_comm,
+                    &compressed_cross_term_sums,
+                    &r,
+                );
+                end_timer(timer);
+                (r_le_bits, r, vec![zeta_cross_term_comm])
+            }
+        };
+
+        Ok((r_le_bits, r, cross_term_comms))
+    }
+
+    fn prove_nark_ec(
+        pp: &Self::ProverParam,
+        circuit: &impl PlonkishCircuit<F>,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
+        _: impl RngCore,
+    ) -> Result<PlonkishNark<F, Pcs>, Error> {
+        let ProtostarProverParam {
+            pp,
+            strategy,
+            num_theta_primes,
+            num_alpha_primes,
+            ..
+        } = pp;
+
+        let instances = circuit.instances();
+        for (num_instances, instances) in pp.num_instances.iter().zip_eq(instances) {
+            assert_eq!(instances.len(), *num_instances);
+            for instance in instances.iter() {
+                transcript.common_field_element(instance)?;
+            }
+        }
+
+        let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
+        // num_challenges = 0 since all witness_polys are in one phase.
         // Round 0..n
 
         let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
@@ -140,55 +602,17 @@ where
             assert_eq!(polys.len(), *num_witness_polys);
             end_timer(timer);
 
-            witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
+            // witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
             witness_polys.extend(polys);
             challenges.extend(transcript.squeeze_challenges(*num_challenges));
         }
 
-        // Round n
-
-        let theta_primes = powers(transcript.squeeze_challenge())
-            .skip(1)
-            .take(*num_theta_primes)
-            .collect_vec();
-
-        let timer = start_timer(|| format!("lookup_compressed_polys-{}", pp.lookups.len()));
-        let lookup_compressed_polys = {
-            let instance_polys = instance_polys(pp.num_vars, instances);
-            let polys = iter::empty()
-                .chain(instance_polys.iter())
-                .chain(pp.preprocess_polys.iter())
-                .chain(witness_polys.iter())
-                .collect_vec();
-            let thetas = iter::empty()
-                .chain(Some(F::ONE))
-                .chain(theta_primes.iter().cloned())
-                .collect_vec();
-            lookup_compressed_polys(&pp.lookups, &polys, &challenges, &thetas)
-        };
-        end_timer(timer);
-
-        let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
-        let lookup_m_polys = lookup_m_polys(&lookup_compressed_polys)?;
-        end_timer(timer);
-
-        let lookup_m_comms = Pcs::batch_commit_and_write(&pp.pcs, &lookup_m_polys, transcript)?;
-
-        // Round n+1
-
-        let beta_prime = transcript.squeeze_challenge();
-
-        let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
-        let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &beta_prime);
-        end_timer(timer);
-
-        let lookup_h_comms = {
-            let polys = lookup_h_polys.iter().flatten();
-            Pcs::batch_commit_and_write(&pp.pcs, polys, transcript)?
-        };
+        let witness_poly_concat =  concat_polys(witness_polys.clone());
+        witness_comms.push(Pcs::commit_and_write(&pp.pcs, &witness_poly_concat, transcript)?);
+        println!("witness_polys_len {:?}", witness_polys.len());
+        println!("witness_poly_concat_num_vars {:?}", witness_poly_concat.num_vars());
 
         // Round n+2
-
         let (zeta, powers_of_zeta_poly, powers_of_zeta_comm) = match strategy {
             NoCompressing => (None, None, None),
             Compressing => {
@@ -219,210 +643,11 @@ where
             instances.to_vec(),
             iter::empty()
                 .chain(challenges)
-                .chain(theta_primes)
-                .chain(Some(beta_prime))
                 .chain(zeta)
                 .chain(alpha_primes)
                 .collect(),
             iter::empty()
                 .chain(witness_comms)
-                .chain(lookup_m_comms)
-                .chain(lookup_h_comms)
-                .chain(powers_of_zeta_comm)
-                .collect(),
-            iter::empty()
-                .chain(witness_polys)
-                .chain(lookup_m_polys)
-                .chain(lookup_h_polys.into_iter().flatten())
-                .chain(powers_of_zeta_poly)
-                .collect(),
-        );
-
-        Ok(nark)
-
-    }
-
-    fn prove_accumulation<const IS_INCOMING_ABSORBED: bool>(
-        pp: &Self::ProverParam,
-        mut accumulator: impl BorrowMut<Self::Accumulator>,
-        incoming: &Self::Accumulator,
-        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
-        _: impl RngCore,
-    ) -> Result<((Vec<F>, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
-        let ProtostarProverParam {
-            pp,
-            strategy,
-            num_alpha_primes,
-            cross_term_expressions,
-            ..
-        } = pp;
-        let accumulator = accumulator.borrow_mut();
-
-        accumulator.instance.absorb_into(transcript)?;
-        if !IS_INCOMING_ABSORBED {
-            incoming.instance.absorb_into(transcript)?;
-        }
-
-        let (r_le_bits, cross_term_comms) = match strategy {
-            NoCompressing => {
-                let timer = start_timer(|| {
-                    format!("evaluate_cross_term_polys-{}", cross_term_expressions.len())
-                });
-                let cross_term_polys = evaluate_cross_term_polys(
-                    cross_term_expressions,
-                    pp.num_vars,
-                    &pp.preprocess_polys,
-                    accumulator,
-                    incoming,
-                );
-                end_timer(timer);
-
-                let cross_term_comms =
-                    Pcs::batch_commit_and_write(&pp.pcs, &cross_term_polys, transcript)?;
-
-                // Round 0
-
-                let r = transcript.squeeze_challenge();
-                let r_le_bits = fe_to_bits_le(r.clone()).iter().copied().take(NUM_CHALLENGE_BITS).collect_vec();
-                assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
-
-                let timer = start_timer(|| "fold_uncompressed");
-                accumulator.fold_uncompressed(incoming, &cross_term_polys, &cross_term_comms, &r);
-                end_timer(timer);
-                (r_le_bits, cross_term_comms)
-            }
-            Compressing => {
-                let timer = start_timer(|| "evaluate_zeta_cross_term_poly");
-                let zeta_cross_term_poly = evaluate_zeta_cross_term_poly(
-                    pp.num_vars,
-                    *num_alpha_primes,
-                    accumulator,
-                    incoming,
-                );
-                end_timer(timer);
-                
-                let timer = start_timer(|| {
-                    let len = cross_term_expressions.len();
-                    format!("evaluate_compressed_cross_term_sums-{len}")
-                });
-                let compressed_cross_term_sums = evaluate_compressed_cross_term_sums(
-                    cross_term_expressions,
-                    pp.num_vars,
-                    &pp.preprocess_polys,
-                    accumulator,
-                    incoming,
-                );
-                end_timer(timer);
-
-                let zeta_cross_term_comm =
-                    Pcs::commit_and_write(&pp.pcs, &zeta_cross_term_poly, transcript)?;
-                transcript.write_field_elements(&compressed_cross_term_sums)?;
-
-                // Round 0
-
-                let r = transcript.squeeze_challenge();
-                let r_le_bits = fe_to_bits_le(r.clone()).iter().copied().take(NUM_CHALLENGE_BITS).collect_vec();
-                assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
-
-                let timer = start_timer(|| "fold_compressed");
-                accumulator.fold_compressed(
-                    incoming,
-                    &zeta_cross_term_poly,
-                    &zeta_cross_term_comm,
-                    &compressed_cross_term_sums,
-                    &r,
-                );
-                end_timer(timer);
-                (r_le_bits, vec![zeta_cross_term_comm])
-            }
-        };
-
-        Ok((r_le_bits, cross_term_comms))
-    }
-
-    fn prove_nark_ec(
-        pp: &Self::ProverParam,
-        circuit: &impl PlonkishCircuit<F>,
-        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
-        _: impl RngCore,
-    ) -> Result<PlonkishNark<F, Pcs>, Error> {
-        let ProtostarProverParam {
-            pp,
-            strategy,
-            num_theta_primes,
-            num_alpha_primes,
-            ..
-        } = pp;
-
-        let instances = circuit.instances();
-        for (num_instances, instances) in pp.num_instances.iter().zip_eq(instances) {
-            assert_eq!(instances.len(), *num_instances);
-            for instance in instances.iter() {
-                transcript.common_field_element(instance)?;
-            }
-        }
-
-        // Round 0..n
-
-        let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
-        let mut witness_comms = Vec::with_capacity(witness_polys.len());
-        let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
-        for (round, (num_witness_polys, num_challenges)) in pp
-            .num_witness_polys
-            .iter()
-            .zip_eq(pp.num_challenges.iter())
-            .enumerate()
-        {
-            let timer = start_timer(|| format!("witness_collector-{round}"));
-            let polys = circuit
-                .synthesize(round, &challenges)?
-                .into_iter()
-                .map(MultilinearPolynomial::new)
-                .collect_vec();
-            assert_eq!(polys.len(), *num_witness_polys);
-            end_timer(timer);
-
-            witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
-            witness_polys.extend(polys);
-            challenges.extend(transcript.squeeze_challenges(*num_challenges));
-        }
-
-        // no lookups req ec
-        // Round n+2
-
-        let (zeta, powers_of_zeta_poly, powers_of_zeta_comm) = match strategy {
-            NoCompressing => (None, None, None),
-            Compressing => {
-                let zeta = transcript.squeeze_challenge();
-
-                let timer = start_timer(|| "powers_of_zeta_poly");
-                let powers_of_zeta_poly = powers_of_zeta_poly(pp.num_vars, zeta);
-                end_timer(timer);
-
-                let powers_of_zeta_comm =
-                    Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_poly, transcript)?;
-
-                (
-                    Some(zeta),
-                    Some(powers_of_zeta_poly),
-                    Some(powers_of_zeta_comm),
-                )
-            }
-        };
-
-        // Round n+3
-        // let alpha_primes = powers(transcript.squeeze_challenge())
-        //     .skip(1)
-        //     .take(*num_alpha_primes)
-        //     .collect_vec();
-
-        let nark = PlonkishNark::new(
-            instances.to_vec(),
-            iter::empty()
-                .chain(zeta)
-                .collect(),
-            iter::empty()
-                .chain(witness_comms)
                 .chain(powers_of_zeta_comm)
                 .collect(),
             iter::empty()
@@ -430,6 +655,7 @@ where
                 .chain(powers_of_zeta_poly)
                 .collect(),
         );
+
         Ok(nark)
 
     }
@@ -445,7 +671,10 @@ where
             pp,
             strategy,
             num_alpha_primes,
+            num_theta_primes,
             cross_term_expressions,
+            gate_expressions,
+            lookup_expressions,
             ..
         } = pp;
         let accumulator = accumulator.borrow_mut();
@@ -454,6 +683,11 @@ where
         if !IS_INCOMING_ABSORBED {
             incoming.instance.absorb_into(transcript)?;
         }
+
+        let num_fixed = pp.fixed_permutation_idx_for_preprocess_poly.len();
+        let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
+        let num_challenges = pp.num_challenges.iter().sum::<usize>();
+        let lookups_empty = if pp.lookups.is_empty() { true } else { false };
 
         match strategy {
             NoCompressing => {
@@ -482,6 +716,16 @@ where
             }
             Compressing => {
                 let timer = start_timer(|| "evaluate_zeta_cross_term_poly");
+                let zeta_values = [accumulator, incoming].map(|witness| {
+                    let zeta = witness
+                        .instance
+                        .challenges
+                        .iter()
+                        .nth_back(*num_alpha_primes)
+                        .unwrap();
+                    *zeta
+                });
+
                 let zeta_cross_term_poly = evaluate_zeta_cross_term_poly(
                     pp.num_vars,
                     *num_alpha_primes,
@@ -490,32 +734,136 @@ where
                 );
                 end_timer(timer);
 
-                let timer = start_timer(|| {
-                    let len = cross_term_expressions.len();
-                    format!("evaluate_compressed_cross_term_sums-{len}")
-                });
-                let compressed_cross_term_sums = evaluate_compressed_cross_term_sums(
-                    cross_term_expressions,
-                    pp.num_vars,
-                    &pp.preprocess_polys,
-                    accumulator,
-                    incoming,
-                );
-                end_timer(timer);
+                let holder = PolynomialsHolder::new(pp.num_vars, zeta_values);
+                let beta_refs = holder.get_polys_refs();
+
+                // let timer = start_timer(|| {
+                //     let len = cross_term_expressions.len();
+                //     format!("evaluate_compressed_cross_term_sums-{len}")
+                // });
+                // let compressed_cross_term_sums = evaluate_compressed_cross_term_sums(
+                //     cross_term_expressions,
+                //     pp.num_vars,
+                //     &pp.preprocess_polys,
+                //     accumulator,
+                //     incoming,
+                // );
+                // end_timer(timer);
+
                 let zeta_cross_term_comm =
                     Pcs::commit_and_write(&pp.pcs, &zeta_cross_term_poly, transcript)?;
-                transcript.write_field_elements(&compressed_cross_term_sums)?;
+                // transcript.write_field_elements(&compressed_cross_term_sums)?;
 
                 // Round 0
 
                 let r = transcript.squeeze_challenge();
+
+                let paired_data = Paired::<'_, F>::new_data(pp.num_vars, num_fixed, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes, &pp.preprocess_polys, beta_refs, &incoming, &accumulator);
+                //let full_constraint = paired_data.full_constraint(gate_expressions.to_vec(), lookup_expressions.to_vec());
+                let ys_paired_vec = paired_data.ys_paired_vec();
+                let gate_constraint_vec = paired_data.full_constraint_vec(gate_expressions.to_vec(), lookup_expressions.to_vec());
+
+                let num_vars = pp.num_vars;
+                let rows = 1 << num_vars;
+                let last_row: usize = 685;
+                let usable_rows = 0..rows;
+                let sm_rows = 0..129;
+                let add_rows = 129..130;
+
+                let timer = start_timer(|| "evaluate_compressed_polynomial");
+                // let error_poly = Paired::<'_, F>::evaluate_compressed_polynomial(
+                //     full_constraint.clone(),
+                //     0..1<<pp.num_vars, 
+                //     pp.num_vars,
+                // );
+                // println!("error_poly_combined: {:?}", error_poly);
+
+                // let error_poly_sm: Vec<Vec<F>> = gate_constraint_vec[..3].into_par_iter().map(|constraint| 
+                //     Paired::<'_, F>::evaluate_compressed_polynomial(
+                //     constraint.clone(),
+                //     1..390, 
+                //     num_vars,
+                // )).collect();
+
+                //let error_poly_add: Vec<Vec<F>> = gate_constraint_vec[3..5].into_par_iter().map(|constraint| 
+                //     Paired::<'_, F>::evaluate_compressed_polynomial(
+                //     constraint.clone(),
+                //     129..130, 
+                //     num_vars,
+                // )).collect();
+
+                // let error_poly_aff: Vec<Vec<F>> = gate_constraint_vec[5..7].into_par_iter().map(|constraint| 
+                //     Paired::<'_, F>::evaluate_compressed_polynomial(
+                //     constraint.clone(),
+                //     129..130, 
+                //     num_vars,
+                // )).collect();
+
+                // let error_poly_num: Vec<Vec<F>> = gate_constraint_vec[7..10].into_par_iter().map(|constraint| 
+                //     Paired::<'_, F>::evaluate_compressed_polynomial(
+                //     constraint.clone(),
+                //     1..390, 
+                //     num_vars,
+                // )).collect();
+
+                // let error_poly_poseidon: Vec<Vec<F>> = gate_constraint_vec[10..].into_par_iter().map(|constraint| 
+                //     Paired::<'_, F>::evaluate_compressed_polynomial(
+                //     constraint.clone(),
+                //     390..last_row, 
+                //     num_vars,
+                // )).collect();
+
+                // let timer = start_timer(|| "error_poly_gatewise_par");
+                // let error_poly_gatewise: Vec<Vec<F>> = gate_constraint_vec.into_par_iter().map(|constraint| 
+                //     Paired::<'_, F>::evaluate_compressed_polynomial(
+                //     constraint.clone(),
+                //     0..rows, 
+                //     num_vars,
+                // )).collect();
+                // end_timer(timer);
+                // println!("error_poly_gatewise: {:?}", error_poly_gatewise.len());
+
+                // let error_poly_gatewise = [&error_poly_sm[..], &error_poly_add[..], &error_poly_aff[..], &error_poly_num[..], &error_poly_poseidon[..] ].concat();
+                // let ys_poly_gatewise: Vec<Vec<F>> = ys_paired_vec.into_par_iter().map(|constraint| 
+                //     Paired::<'_, F>::evaluate_ys_polynomial(
+                //     constraint.clone(),
+                //     0..last_row, 
+                //     num_vars,
+                // )).collect();
+
+                // let error_poly_vec: Vec<Vec<F>> = error_poly_gatewise.clone().into_iter().skip(1)
+                //     .zip(ys_poly_gatewise.into_iter()) // Pair up corresponding inner vectors
+                //     .map(|(inner_vec1, inner_vec2)| {
+                //         let mut r = vec![F::ZERO; inner_vec1.len() + inner_vec2.len() - 1];
+                //             for (k, value) in r.iter_mut().enumerate() {
+                //                 for (i, &pi) in inner_vec1.iter().enumerate() {
+                //                     if let Some(&qj) = inner_vec2.get(k - i) {
+                //                         *value += pi * qj;
+                //                     }
+                //                 }
+                //             }
+                //         r
+                //     }).collect_vec();
+                
+                // let error_poly_vec_corrected = [&vec![error_poly_gatewise[0].clone()], &error_poly_vec[..]].concat();
+                // let inner_len = error_poly_vec_corrected.par_iter().map(|v| v.len()).max().unwrap_or(0);
+                // let error_poly_sum: Vec<F> = (0..inner_len).into_par_iter().map(|i| {
+                //     error_poly_vec_corrected.par_iter()
+                //         .map(|inner_vec| inner_vec.get(i).unwrap_or(&F::ZERO).clone())
+                //         .reduce(|| F::ZERO, |a, b| a + b) // Use reduce with a starting value for parallel sum.
+                // }).collect();
+                end_timer(timer);
+                // println!("error_poly_sum: {:?}", error_poly_sum);
+                let error_poly_sum = vec![F::ZERO; 2];
+                // transcript.write_field_elements(&error_poly)?;
+                transcript.write_field_elements(&error_poly_sum)?;
 
                 let timer = start_timer(|| "fold_compressed");
                 accumulator.fold_compressed(
                     incoming,
                     &zeta_cross_term_poly,
                     &zeta_cross_term_comm,
-                    &compressed_cross_term_sums,
+                    &error_poly_sum,
                     &r,
                 );
                 end_timer(timer);
@@ -666,6 +1014,7 @@ where
         let instance_polys = instance_polys(pp.num_vars, &accumulator.instance.instances);
         let u = accumulator.instance.u.clone();
         let preprocess_polys = pp.preprocess_polys.iter().map(|poly| poly.clone().into_evals()).collect_vec();
+
         let fixed_permutation_idx_offset = &pp.fixed_permutation_idx_for_preprocess_poly; 
         let fixed_preprocess_polys = preprocess_polys.clone().iter().enumerate()
             .map(|(idx, poly)| {
@@ -685,6 +1034,7 @@ where
             .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
             .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
             .collect_vec();
+
         let polys_for_permutation = iter::empty()
             .chain(&instance_polys)
             .chain(&fixed_preprocess_polys)
@@ -768,7 +1118,7 @@ where
 
         let permutation_z_comms =
             Pcs::read_commitments(&vp.pcs, vp.num_permutation_z_polys, transcript)?;
-        
+
         // Round 1
 
         let alpha = transcript.squeeze_challenge();
@@ -820,51 +1170,22 @@ where
 {
     fn from(vp: &ProtostarVerifierParam<F, HyperPlonk<Pcs>>) -> Self {
         let num_witness_polys = iter::empty()
-            .chain(vp.vp.num_witness_polys.iter().cloned())
-            .chain(match vp.vp.num_lookups {
-                0 => None,
-                _ => Some(vp.vp.num_lookups),
-            })
-            .chain(match vp.vp.num_lookups {
-                0 => None,
-                _ => Some(2*vp.vp.num_lookups),
-            })
-            .chain(match vp.strategy {
-                NoCompressing => None,
-                Compressing => Some(1),
-            })
+            .chain([1])
+            .chain([1])
             .collect();
+
         let num_challenges = {
             let mut num_challenges = iter::empty()
                 .chain(vp.vp.num_challenges.iter().cloned())
                 .map(|num_challenge| vec![1; num_challenge])
                 .collect_vec();
-            num_challenges.last_mut().unwrap().push(vp.num_theta_primes);
-            // todo find better way to do this
-            if num_challenges[0][0] == 0 {
-                num_challenges = Vec::new();
-            }
+            num_challenges.last_mut().unwrap().push(vp.num_theta_primes + 1);
             iter::empty()
                 .chain(num_challenges)
-                .chain([vec![1]])
-                .chain( if vp.vp.num_lookups != 0 {
-                            match vp.strategy {
-                                NoCompressing => None,
-                                Compressing => Some(vec![1]),
-                            }
-                        } else {
-                            None 
-                    })
-                .chain(match vp.num_alpha_primes {
-                        0 => None,
-                        _ => Some(vec![vp.num_alpha_primes]),
-                    })
-                .chain(match vp.vp.num_lookups {
-                        0 => Some(vec![0]),
-                        _ => None,
-                    })                
+                .chain([vec![vp.num_alpha_primes]])
                 .collect()
         };
+        println!("num_challenges {:?}", num_challenges);
         Self {
             vp_digest: N::ZERO,
             strategy: vp.strategy,

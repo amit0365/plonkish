@@ -11,8 +11,6 @@ use crate::{
 use rand::RngCore;
 use std::{borrow::{BorrowMut, Borrow}, fmt::Debug, time::Instant};
 
-use self::protostar::ivc::cyclefold::CycleFoldInputs;
-
 pub mod protostar;
 pub mod sangria;
 
@@ -31,9 +29,16 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
     fn preprocess(
         param: &<Self::Pcs as PolynomialCommitmentScheme<F>>::Param,
         circuit_info: &PlonkishCircuitInfo<F>,
-    ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
+    ) -> Result<(Box<Self::ProverParam>, Box<Self::VerifierParam>), Error>;
+
+    // fn preprocess_ec(
+    //     param: &<Self::Pcs as PolynomialCommitmentScheme<F>>::Param,
+    //     circuit_info: &PlonkishCircuitInfo<F>,
+    // ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
 
     fn init_accumulator(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error>;
+
+    fn init_accumulator_ec(pp: &Self::ProverParam) -> Result<Self::Accumulator, Error>;
 
     fn init_accumulator_from_nark(
         pp: &Self::ProverParam,
@@ -53,7 +58,7 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         incoming: &Self::Accumulator,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
         rng: impl RngCore,
-    ) -> Result<((Vec<F>, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error>;
+    ) -> Result<((Vec<F>, F,  Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error>;
 
     fn prove_accumulation_from_nark(
         pp: &Self::ProverParam,
@@ -61,11 +66,11 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         circuit: &impl PlonkishCircuit<F>,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
         mut rng: impl RngCore,
-    ) -> Result<((Vec<F>, Self::Accumulator, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
+    ) -> Result<((Vec<F>, F, Self::Accumulator, Vec<<Self::Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
         let nark = Self::prove_nark(pp, circuit, transcript, &mut rng)?;
         let incoming = Self::init_accumulator_from_nark(pp, nark)?;
-        let (r_le_bits, cross_term_comms) = Self::prove_accumulation::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
-        Ok((r_le_bits, incoming, cross_term_comms))
+        let (r_le_bits, r,  cross_term_comms) = Self::prove_accumulation::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
+        Ok((r_le_bits, r, incoming, cross_term_comms))
     }
 
     fn prove_nark_ec(

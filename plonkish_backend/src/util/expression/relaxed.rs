@@ -1,13 +1,10 @@
 use crate::util::{
-    arithmetic::PrimeField,
-    expression::{CommonPolynomial, Expression, Query},
-    BitIndex, Itertools,
+    arithmetic::PrimeField, expression::{CommonPolynomial, Expression, Query}, timer, BitIndex, Itertools
 };
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::Debug,
-    iter,
+    collections::{BTreeMap, BTreeSet}, fmt::Debug, iter, time::Instant
 };
+use rayon::prelude::*;
 
 pub(crate) struct PolynomialSet {
     pub(crate) preprocess: BTreeSet<usize>,
@@ -31,19 +28,19 @@ impl<F> From<ExpressionPolynomial> for Expression<F> {
     }
 }
 
-// num_challenges is k-1, where challenges are r
 pub(crate) fn cross_term_expressions<F: PrimeField>(
     poly_set: &PolynomialSet,
     products: &[Product<F>],
     num_challenges: usize,
 ) -> Vec<Expression<F>> {
     let folding_degree = folding_degree(products);
+
     let num_ts = folding_degree.checked_sub(1).unwrap_or_default();
     let u = num_challenges;
     let [preprocess_poly_indices, folding_poly_indices] = [&poly_set.preprocess, &poly_set.folding]
         .map(|polys| polys.iter().zip(0..).collect::<BTreeMap<_, _>>());
 
-    products
+        products
         .iter()
         .fold(
             vec![BTreeMap::<Vec<_>, Expression<F>>::new(); num_ts],
@@ -130,11 +127,160 @@ pub(crate) fn cross_term_expressions<F: PrimeField>(
         .collect_vec()
 }
 
+pub(crate) fn cross_term_expressions_par<F: PrimeField + Send + Sync>(
+    poly_set: &PolynomialSet,
+    products: &[Product<F>],
+    num_challenges: usize,
+) -> Vec<Expression<F>> {
+    let folding_degree = folding_degree(products);
+
+    let num_ts = folding_degree.checked_sub(1).unwrap_or_default();
+    let u = num_challenges;
+
+    let preprocess_poly_vec = poly_set.preprocess.iter().enumerate().collect_vec();
+    let folding_poly_vec = poly_set.folding.iter().enumerate().collect_vec();
+
+    let preprocess_poly_indices: BTreeMap<_, _> = preprocess_poly_vec
+        .into_par_iter()
+        .map(|(index, &poly)| (poly, index))
+        .collect();
+
+    let folding_poly_indices: BTreeMap<_, _> = folding_poly_vec
+        .into_par_iter()
+        .map(|(index, &poly)| (poly, index))
+        .collect();
+
+    let initial_scalars: Vec<BTreeMap<Vec<_>, Expression<F>>> = vec![BTreeMap::new(); num_ts];
+
+    // Parallel processing starts here
+    let scalars_fold_time = Instant::now();
+    let scalars_fold = products.par_iter()
+        .fold(|| initial_scalars.clone(), |mut acc_scalars, product| {
+            let (common_scalar, common_poly) = product.preprocess.evaluate(
+                &|constant| (constant, Vec::new()),
+                &|common_poly| {
+                    (
+                        F::ONE,             
+                        vec![ExpressionPolynomial::CommonPolynomial(common_poly)],
+                    )
+                },
+                &|query| {
+                    let poly = preprocess_poly_indices[&query.poly()];
+                    let query = Query::new(poly, query.rotation());
+                    (F::ONE, vec![ExpressionPolynomial::Polynomial(query)])
+                },
+                &|_| unreachable!(),
+                &|(scalar, expr)| (-scalar, expr),
+                &|_, _| unreachable!(),
+                &|(lhs_scalar, lhs_expr), (rhs_scalar, rhs_expr)| {
+                    (lhs_scalar * rhs_scalar, [lhs_expr, rhs_expr].concat())
+                },
+                &|(lhs, expr), rhs| (lhs * rhs, expr),
+            );
+
+            for idx in 1usize..(1 << folding_degree) - 1 {
+                let (scalar, mut polys) = iter::empty()
+                    .chain(iter::repeat(None).take(folding_degree - product.folding_degree()))
+                    .chain(product.foldees.iter().map(Some))
+                    .enumerate()
+                    .fold(
+                        (Expression::Constant(common_scalar), common_poly.clone()),
+                        |(mut scalar, mut polys), (nth, foldee)| {
+                            let (poly_offset, challenge_offset) = if idx.nth_bit(nth) {
+                                (
+                                    preprocess_poly_indices.len() + folding_poly_indices.len(),
+                                    num_challenges + 1,
+                                )
+                            } else {
+                                (preprocess_poly_indices.len(), 0)
+                            };
+                            match foldee {
+                                None => {
+                                    scalar =
+                                        &scalar * Expression::Challenge(challenge_offset + u)
+                                }
+                                Some(Expression::Challenge(challenge)) => {
+                                    scalar = &scalar
+                                        * Expression::Challenge(challenge_offset + challenge)
+                                }
+                                Some(Expression::Polynomial(query)) => {
+                                    let poly =
+                                        poly_offset + folding_poly_indices[&query.poly()];
+                                    let query = Query::new(poly, query.rotation());
+                                    polys.push(ExpressionPolynomial::Polynomial(query));
+                                }
+                                _ => unreachable!(),
+                            }
+                            (scalar, polys)
+                        },
+                    );
+                polys.sort_unstable();
+                acc_scalars[idx.count_ones() as usize - 1]
+                    .entry(polys)
+                    .and_modify(|value| *value = value as &Expression<_> + &scalar)
+                    .or_insert(scalar);
+            }
+            acc_scalars
+        });
+        let scalars_fold_time = scalars_fold_time.elapsed();
+
+        let scalars_reduce_time = Instant::now();
+
+        let scalars_reduce = scalars_fold
+            .reduce(|| initial_scalars.clone(), |a, b| {
+                a.into_iter()
+                    .zip(b.into_iter())
+                    .map(|(a, b)| {
+                        a.into_iter()
+                            .chain(b)
+                            .map(|(key, value)| (key, value))
+                            .collect()
+                    })
+            .collect_vec()
+        }); 
+
+        // let scalars_reduce = scalars_fold
+        //     .reduce(|| initial_scalars.clone(), |a, b| {
+        //         a.into_par_iter()
+        //         .zip(b.into_par_iter()) // Use into_par_iter here for both `a` and `b`
+        //         .map(|(map_a, map_b)|{
+        //             map_a.into_par_iter().chain(map_b.into_par_iter()).collect()
+        //         })
+        //     .collect()
+        // });
+
+        let scalars_reduce_time = scalars_reduce_time.elapsed();
+    
+        let scalars_sum_time = Instant::now();
+        let scalars_sum = scalars_reduce.into_iter().map(|exprs| {
+            exprs.into_iter().map(|(polys, scalar)| {
+                polys.into_iter()
+                    .map_into::<Expression<F>>()
+                    .product::<Expression<F>>() * scalar
+            })
+            .sum::<Expression<F>>()
+        })
+        .collect::<Vec<Expression<F>>>();
+        let scalars_sum_time = scalars_sum_time.elapsed();
+
+        scalars_sum
+
+        // scalars.into_par_iter().map(|exprs| {
+        //     exprs.into_iter().map(|(polys, scalar)| {
+        //         polys.into_par_iter() // Convert this into a parallel iterator
+        //             .map(|poly| poly.into()) // Assuming .map_into() can be replaced with .map().into()
+        //             .reduce(|| Expression::<F>::zero(), |acc, expr: Expression<F>| acc * expr) * scalar
+        //     })
+        //     .reduce(|| Expression::<F>::zero(), |acc, expr| acc + expr)
+        // })
+        // .collect();
+
+}
+
 pub(crate) fn relaxed_expression<F: PrimeField>(
     products: &[Product<F>],
     u: usize,
 ) -> Expression<F> {
-    // d might the folding degree? check folding degree function
     let folding_degree = folding_degree(products);
     let powers_of_u = iter::successors(Some(Expression::<F>::one()), |power_of_u| {
         Some(power_of_u * Expression::Challenge(u))

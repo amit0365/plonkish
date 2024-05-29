@@ -1,9 +1,12 @@
+use ark_std::iterable::Iterable;
+use halo2_base::halo2_proofs::plonk;
+
 use crate::{
     accumulation::{
         protostar::ProtostarStrategy::{Compressing, NoCompressing},
         PlonkishNark, PlonkishNarkInstance,
     },
-    backend::PlonkishBackend,
+    backend::{hyperplonk::{prover::instance_polys, HyperPlonk}, PlonkishBackend, WitnessEncoding},
     pcs::{AdditiveCommitment, PolynomialCommitmentScheme},
     poly::Polynomial,
     util::{
@@ -55,6 +58,8 @@ where
     num_folding_witness_polys: usize,
     num_folding_challenges: usize,
     cross_term_expressions: Vec<Expression<F>>,
+    gate_expressions: Vec<plonk::Expression<F>>,
+    lookup_expressions: Vec<Vec<(plonk::Expression<F>, plonk::Expression<F>)>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -78,9 +83,11 @@ where
     F: Field,
     Pcs: PolynomialCommitmentScheme<F>,
 {
-    instance: ProtostarAccumulatorInstance<F, Pcs::Commitment>,
-    witness_polys: Vec<Pcs::Polynomial>,
-    e_poly: Pcs::Polynomial,
+    pub instance: ProtostarAccumulatorInstance<F, Pcs::Commitment>,
+    pub witness_polys: Vec<Pcs::Polynomial>,
+    pub e_poly: Pcs::Polynomial,
+    pub instance_polys: Vec<Pcs::Polynomial>,
+    //pub beta_poly: Pcs::Polynomial,
     _marker: PhantomData<Pcs>,
 }
 
@@ -118,19 +125,68 @@ where
             witness_polys: iter::repeat_with(|| zero_poly.clone())
                 .take(num_witness_polys)
                 .collect(),
-            e_poly: zero_poly,
+            e_poly: zero_poly.clone(),
+            instance_polys: iter::repeat_with(|| zero_poly.clone())
+                .take(num_instances.iter().sum())
+                .collect(),
+            _marker: PhantomData,
+        }
+    }
+
+    fn init_ec(
+        strategy: ProtostarStrategy,
+        k: usize,
+        num_instances: &[usize],
+        num_witness_polys: usize,
+        num_challenges: usize,
+    ) -> Self {
+        let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
+        Self {
+            instance: ProtostarAccumulatorInstance::init_ec(
+                strategy,
+                num_instances,
+                num_witness_polys,
+                num_challenges,
+            ),
+            witness_polys: iter::repeat_with(|| zero_poly.clone())
+                .take(num_witness_polys)
+                .collect(),
+            e_poly: zero_poly.clone(),
+            instance_polys: iter::repeat_with(|| zero_poly.clone())
+                .take(num_instances.iter().sum())
+                .collect(),
             _marker: PhantomData,
         }
     }
 
     fn from_nark(strategy: ProtostarStrategy, k: usize, nark: PlonkishNark<F, Pcs>) -> Self {
         let witness_polys = nark.witness_polys;
+        let instance_polys = Self::instance_polynomial(k, nark.instance.clone().instances);
         Self {
             instance: ProtostarAccumulatorInstance::from_nark(strategy, nark.instance),
             witness_polys,
             e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]),
+            instance_polys,
             _marker: PhantomData,
         }
+    }
+
+    fn instance_polynomial<'a>(
+        num_vars: usize,
+        instances: Vec<Vec<F>>,
+    ) -> Vec<Pcs::Polynomial> {
+        let row_mapping = HyperPlonk::<()>::row_mapping(num_vars);
+        instances
+            .into_iter()
+            .map(|instances| {
+                let mut poly = vec![F::ZERO; 1 << num_vars];
+                for (b, instance) in row_mapping.iter().zip(instances.into_iter()) {
+                    poly[*b] = instance;
+                }
+                poly
+            })
+            .map(Pcs::Polynomial::from_evals)
+            .collect()
     }
 
     // why make a tuple of witness poly? *lhs += (r, rhs) ?
@@ -182,12 +238,12 @@ where
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProtostarAccumulatorInstance<F, C> {
-    instances: Vec<Vec<F>>,
-    witness_comms: Vec<C>,
-    challenges: Vec<F>,
-    u: F,
-    e_comm: C,
-    compressed_e_sum: Option<F>,
+    pub instances: Vec<Vec<F>>,
+    pub witness_comms: Vec<C>,
+    pub challenges: Vec<F>,
+    pub u: F,
+    pub e_comm: C,
+    pub compressed_e_sum: Option<F>,
 }
 
 impl<F, C> ProtostarAccumulatorInstance<F, C> {
@@ -209,9 +265,30 @@ where
     ) -> Self {
         Self {
             instances: num_instances.iter().map(|n| vec![F::ZERO; *n]).collect(),
-            witness_comms: iter::repeat_with(C::default)
-                .take(num_witness_polys)
-                .collect(),
+            // witness_comms: iter::repeat_with(C::default)
+            //     .take(num_witness_polys)
+            //     .collect(),
+            witness_comms: vec![C::default(), C::default()],
+            challenges: vec![F::ZERO; num_challenges],
+            u: F::ZERO,
+            e_comm: C::default(),
+            compressed_e_sum: match strategy {
+                NoCompressing => None,
+                Compressing => Some(F::ZERO),
+                // CompressingWithSqrtPowers => Some(F::ZERO),
+            },
+        }
+    }
+
+    fn init_ec(
+        strategy: ProtostarStrategy,
+        num_instances: &[usize],
+        num_witness_polys: usize,
+        num_challenges: usize,
+    ) -> Self {
+        Self {
+            instances: num_instances.iter().map(|n| vec![F::ZERO; *n]).collect(),
+            witness_comms: vec![C::default(), C::default()],
             challenges: vec![F::ZERO; num_challenges],
             u: F::ZERO,
             e_comm: C::default(),

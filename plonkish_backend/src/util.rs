@@ -5,6 +5,7 @@ pub mod hash;
 pub mod parallel;
 mod timer;
 pub mod transcript;
+pub mod expression_new;
 
 pub use itertools::{chain, izip, Itertools};
 pub use num_bigint::BigUint;

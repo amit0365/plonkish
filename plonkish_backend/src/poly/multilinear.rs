@@ -10,14 +10,15 @@ use crate::{
 };
 use num_integer::Integer;
 use rand::RngCore;
+use core::num;
 use std::{
     borrow::Cow,
-    iter::{self, Sum},
+    iter::{self, repeat, repeat_with, Sum},
     mem,
     ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MultilinearPolynomial<F> {
     evals: Vec<F>,
     num_vars: usize,
@@ -612,6 +613,31 @@ pub(crate) fn merge_into<F: Field>(
     });
 }
 
+pub fn concat_polys<F>(polys: Vec<MultilinearPolynomial<F>>
+    ) -> MultilinearPolynomial<F> 
+    where F: Field {
+        let n = polys.len();
+        let num_vars = polys[0].num_vars;
+        if n & (n - 1) != 0 {
+            let next_power_of_two = n.next_power_of_two();
+            let mut padded = polys;
+            padded.extend(repeat(MultilinearPolynomial::new(vec![F::ZERO; 1 << num_vars])).take(next_power_of_two - n));
+            return concat_polys(padded);
+        }   
+
+        if n == 1 {
+            return polys[0].clone();
+        }
+            let reduced = polys.chunks(2)
+                .map(|chunk| {
+                        MultilinearPolynomial::new(chunk[0].evals().iter()
+                            .chain(chunk[1].evals().iter()).cloned().collect_vec())
+                })
+                .collect_vec();
+
+            concat_polys(reduced)
+}
+
 macro_rules! zip_self {
     (@ $iter:expr, $step:expr, $skip:expr) => {
         $iter.skip($skip).step_by($step).zip($iter.skip($skip + ($step >> 1)).step_by($step))
@@ -635,19 +661,21 @@ mod test {
         poly::{
             multilinear::{rotation_eval, zip_self, MultilinearPolynomial},
             Polynomial,
-        },
-        util::{
-            arithmetic::{BooleanHypercube, Field},
+        }, util::{
+            arithmetic::{fe_from_limbs, fe_to_limbs, BooleanHypercube, Field},
             expression::Rotation,
             test::rand_vec,
             Itertools,
-        }, accumulation::protostar::ivc::halo2::test::strawman::{fe_to_limbs, fe_from_limbs, NUM_LIMBS, NUM_LIMB_BITS},
+        }
     };
     use halo2_base::{halo2_proofs::halo2curves::bn256::{Fr, Fq}, gates::circuit::{builder::BaseCircuitBuilder, CircuitBuilderStage}};
     use halo2_base::utils::PrimeField;
     use halo2_ecc::{bn254, fields::{FieldChip, fp::FpChip}};
     use rand::{rngs::OsRng, RngCore};
     use std::iter;
+
+    pub const NUM_LIMB_BITS: usize = 88;
+    pub const NUM_LIMBS: usize = 3;
 
     fn fix_vars<F: Field>(evals: &[F], x: &[F]) -> Vec<F> {
         x.iter().fold(evals.to_vec(), |evals, x_i| {

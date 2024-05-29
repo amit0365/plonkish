@@ -2,10 +2,11 @@ use crate::{
     accumulation::protostar::{ProtostarAccumulatorInstance, ProtostarStrategy},
     util::{arithmetic::PrimeField, Deserialize, Serialize},
 };
+
 pub mod cyclefold;
+pub mod cyclefold_nfold;
 #[cfg(feature = "frontend-halo2")]
 pub mod halo2;
-pub mod minroot;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ProtostarAccumulationVerifierParam<F> {
@@ -27,6 +28,17 @@ impl<N: PrimeField> ProtostarAccumulationVerifierParam<N> {
     }
 
     pub fn init_accumulator<F: PrimeField, Comm: Default>(
+        &self,
+    ) -> ProtostarAccumulatorInstance<F, Comm> {
+        ProtostarAccumulatorInstance::init(
+            self.strategy,
+            &self.num_instances,
+            self.num_folding_witness_polys(),
+            self.num_folding_challenges(),
+        )
+    }
+
+    pub fn init_accumulator_cyclefold<F: PrimeField, Comm: Default>(
         &self,
     ) -> ProtostarAccumulatorInstance<F, Comm> {
         ProtostarAccumulatorInstance::init(

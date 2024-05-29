@@ -1,6 +1,8 @@
 #![allow(clippy::op_ref)]
 #![feature(anonymous_lifetime_in_impl_trait)]
 #![feature(associated_type_defaults)]
+#![feature(inherent_associated_types)]
+#![feature(iterator_try_collect)]
 
 pub mod accumulation;
 pub mod backend;

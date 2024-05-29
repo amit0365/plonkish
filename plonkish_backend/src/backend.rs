@@ -8,6 +8,7 @@ use crate::{
     },
     Error,
 };
+use halo2_base::halo2_proofs::plonk;
 use rand::RngCore;
 use std::{collections::BTreeSet, fmt::Debug, iter};
 
@@ -24,11 +25,6 @@ pub trait PlonkishBackend<F: Field>: Clone + Debug {
     ) -> Result<<Self::Pcs as PolynomialCommitmentScheme<F>>::Param, Error>;
 
     fn preprocess(
-        param: &<Self::Pcs as PolynomialCommitmentScheme<F>>::Param,
-        circuit_info: &PlonkishCircuitInfo<F>,
-    ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
-
-    fn preprocess_ec(
         param: &<Self::Pcs as PolynomialCommitmentScheme<F>>::Param,
         circuit_info: &PlonkishCircuitInfo<F>,
     ) -> Result<(Self::ProverParam, Self::VerifierParam), Error>;
@@ -65,10 +61,14 @@ pub struct PlonkishCircuitInfo<F> {
     pub num_challenges: Vec<usize>,
     /// Constraints.
     pub constraints: Vec<Expression<F>>,
+    /// for cross_terms_new
+    pub gate_expressions: Vec<plonk::Expression<F>>,
     /// Each item inside outer vector repesents an independent vector lookup,
     /// which contains vector of tuples representing the input and table
     /// respectively.
     pub lookups: Vec<Vec<(Expression<F>, Expression<F>)>>,
+    /// for cross_terms_new
+    pub lookup_expressions: Vec<Vec<(plonk::Expression<F>, plonk::Expression<F>)>>,
     /// Each item inside outer vector repesents an closed permutation cycle,
     /// which contains vetor of tuples representing the polynomial index and
     /// row respectively.

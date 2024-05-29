@@ -311,6 +311,28 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             Ok(fixed)
         }
 
+        // pub fn assign_fixed_col(
+        //     &self,
+        //     mut layouter: impl Layouter<C::Scalar>,
+        //     fixed: &C::Scalar,
+        //     index: usize,
+        // ) -> Result<Self::Num, Error> {
+        //     let config = &self.config;
+        //     let idx = index % NUM_MAIN_FIXED;
+        //     let fixed = layouter.assign_region(
+        //         || "assign fixed",
+        //         |mut region| {
+        //             let fixed = region.assign_fixed(|| "fixed value",
+        //             config.advice[idx],
+        //             0, 
+        //             *fixed
+        //             ).map(Number)?;
+        //             Ok(fixed)
+        //         },
+        //     )?;
+        //     Ok(fixed)
+        // }
+
         pub fn assign_fixed_base(
             &self,
             mut layouter: impl Layouter<C::Scalar>,
@@ -687,7 +709,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 &pow_two_assigned,
             )?; 
             //self.constrain_equal(layouter, num, &acc)?;
-            debug_assert!(range_bits > 0);
+            //debug_assert!(range_bits > 0);
             Ok(bits)
         }
 
@@ -696,7 +718,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         /// Assumes values of `bits` are boolean.
         /// * `bits`: slice of [QuantumCell]'s that contains bit representation in little-endian form
         pub fn bits_to_num(&self, mut layouter: impl Layouter<C::Scalar>, bits: &[Self::Num]) -> Result<Self::Num, Error> {
-            assert!((bits.len() as u32) <= C::Scalar::CAPACITY);
+            //assert!((bits.len() as u32) <= C::Scalar::CAPACITY);
             let pow_two_assigned = self.pow_of_two[..bits.len()].iter().enumerate().map(|(idx, c)| self.assign_fixed(layouter.namespace(|| "bits_to_num_assign"), c, idx).unwrap()).collect_vec();
             self.inner_product(
                 layouter.namespace(|| "bits_to_num_inner_product"),

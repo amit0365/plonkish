@@ -8,9 +8,8 @@ use halo2_gadgets::poseidon::{spec::PoseidonSpec, PoseidonHash};
 use halo2_proofs::arithmetic::CurveAffine;
 
 use crate::util::{arithmetic::{fe_from_le_bytes, fe_to_limbs, into_coordinates}, transcript::{FieldTranscript, FieldTranscriptRead, FieldTranscriptWrite, InMemoryTranscript, Transcript, TranscriptRead, TranscriptWrite}};
+use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{T, RATE};
 
-pub const T: usize = 3;
-pub const RATE: usize = 2;
 pub const R_F: usize = 8;
 pub const R_P: usize = 60;
 pub const SECURE_MDS: usize = 0;

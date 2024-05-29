@@ -287,10 +287,18 @@ where
             .map(|acc| &acc.witness_comms)
             .transpose_vec(avp.num_folding_witness_polys())
             .into_iter()
-            .map(|witness_comm| main_chip.assign_witness_primary(layouter.namespace(|| "assign_comm_outputs_from_accumulator"), witness_comm.copied().assign().unwrap()))
+            .map(|witness_comm| 
+                {
+                    let mut witness_comm_val = C::default();
+                    witness_comm.map(|val| witness_comm_val = *val);
+                    main_chip.assign_witness_primary(layouter.namespace(|| "assign_comm_outputs_from_accumulator"), witness_comm_val)
+                })
             .try_collect::<_, Vec<_>, _>()?;
-        let e_comm = main_chip.assign_witness_primary(layouter.namespace(|| "assign_comm_outputs_from_accumulator"), 
-            acc.map(|acc| acc.e_comm).assign().unwrap())?;
+
+        let mut acc_e_comm_val = C::default();
+        acc.map(|acc| acc.e_comm).map(|val| acc_e_comm_val = val);
+        let e_comm = main_chip.assign_witness_primary(layouter.namespace(|| "assign_comm_outputs_from_accumulator"), acc_e_comm_val)?;
+        
         let mut assigned_comm = witness_comms.clone();
         assigned_comm.push(e_comm);
         Ok(assigned_comm)
@@ -307,7 +315,6 @@ where
     > {
         let main_chip = &self.main_chip;
         let avp = &self.avp;
-
         let instances = avp
             .num_instances
             .iter()
@@ -320,15 +327,25 @@ where
                     .transpose_vec(*num_instances)
                     .into_iter()
                     .enumerate()
-                    .map(|(idx, instance)| main_chip.assign_witness(layouter.namespace(|| "assign_instances"), instance.assign().unwrap(), idx))
+                    .map(|(idx, instance)| 
+                    {
+                        let mut instance_val = C::Scalar::ZERO;
+                        instance.map(|val| instance_val = *val);
+                        main_chip.assign_witness(layouter.namespace(|| "assign_instances"), &instance_val, idx)
+                    })
                     .try_collect::<_, Vec<_>, _>()
             }).try_collect::<_, Vec<_>, _>()?;
-        
+
         let witness_comms = acc
             .map(|acc| &acc.witness_comms)
             .transpose_vec(avp.num_folding_witness_polys())
             .into_iter()
-            .map(|witness_comm| main_chip.assign_witness_primary(layouter.namespace(|| "assign_witness_comms"), witness_comm.copied().assign().unwrap()))
+            .map(|witness_comm| 
+                {
+                    let mut witness_comm_val = C::default();
+                    witness_comm.map(|val| witness_comm_val = *val);
+                    main_chip.assign_witness_primary(layouter.namespace(|| "assign_witness_comms"), witness_comm_val)
+                })
             .try_collect::<_, Vec<_>, _>()?;
 
         let challenges = acc
@@ -336,18 +353,29 @@ where
             .transpose_vec(avp.num_folding_challenges())
             .into_iter()
             .enumerate()
-            .map(|(idx, challenge)| main_chip.assign_witness(layouter.namespace(|| "assign_challenges"), &challenge.copied().assign().unwrap(), idx))
+            .map(|(idx, challenge)|
+                {
+                    let mut challenge_val = C::Scalar::ZERO;
+                    challenge.map(|val| challenge_val = *val);
+                    main_chip.assign_witness(layouter.namespace(|| "assign_challenges"), &challenge_val, idx)
+                })
             .try_collect::<_, Vec<_>, _>()?;
 
-        let u = main_chip.assign_witness(layouter.namespace(|| "assign_u"), acc.map(|acc| &acc.u).assign().unwrap(), 0)?;
-        let e_comm = main_chip.assign_witness_primary(layouter.namespace(|| "assign_e_comm"), 
-            acc.map(|acc| acc.e_comm).assign().unwrap())?;
-        let acc_compressed_e_sum = acc.map(|acc| acc.compressed_e_sum.unwrap()).assign().unwrap();
+        let mut acc_u_val = C::Scalar::ZERO;
+        acc.map(|acc| acc.u).map(|val| acc_u_val = val);
+        let u = main_chip.assign_witness(layouter.namespace(|| "assign_u"), &acc_u_val, 0)?;
+
+        let mut acc_e_comm_val = C::default();
+        acc.map(|acc| acc.e_comm).map(|val| acc_e_comm_val = val);
+        let e_comm = main_chip.assign_witness_primary(layouter.namespace(|| "assign_e_comm"), acc_e_comm_val)?;
+
+        let mut acc_compressed_e_sum_val = C::Scalar::ZERO;
+        acc.map(|acc| acc.compressed_e_sum.map(|val| acc_compressed_e_sum_val = val));
         let compressed_e_sum = match avp.strategy {
             NoCompressing => None,
             Compressing => Some(
                 main_chip
-                    .assign_witness(layouter.namespace(|| "assign_compressed_e_sum"), &acc_compressed_e_sum, 0)?,
+                    .assign_witness(layouter.namespace(|| "assign_compressed_e_sum"), &acc_compressed_e_sum_val, 0)?,
             ),
         };
 
@@ -382,7 +410,13 @@ where
                 instances
                     .transpose_vec(*num_instances)
                     .into_iter()
-                    .map(|instance| main_chip.assign_witness_base(layouter.namespace(|| "assign_instances"), instance.copied().assign().unwrap()))
+                    .map(|instance| 
+                        {
+                            let mut instance_val = C::Base::ZERO;
+                            instance.map(|val| instance_val = *val);
+                            main_chip.assign_witness_base(layouter.namespace(|| "assign_instances"), instance_val)
+                        }
+                    )
                     .try_collect::<_, Vec<_>, _>()
             }).try_collect::<_, Vec<_>, _>()?;
         
@@ -390,23 +424,41 @@ where
             .map(|acc| &acc.witness_comms)
             .transpose_vec(avp.num_folding_witness_polys())
             .into_iter()
-            .map(|witness_comm| main_chip.assign_witness_secondary(layouter.namespace(|| "assign_witness_comms"), witness_comm.copied().assign().unwrap()))
+            .map(|witness_comm| 
+                {
+                    let mut witness_comm_val = C::Secondary::default();
+                    witness_comm.map(|val| witness_comm_val = *val);
+                    main_chip.assign_witness_secondary(layouter.namespace(|| "assign_witness_comms"), witness_comm_val)
+                })
             .try_collect::<_, Vec<_>, _>()?;
 
         let challenges = acc
             .map(|acc| &acc.challenges)
             .transpose_vec(avp.num_folding_challenges())
             .into_iter()
-            .map(|challenge| main_chip.assign_witness_base(layouter.namespace(|| "assign_challenges"), challenge.copied().assign().unwrap()))
+            .map(|challenge| 
+                {
+                    let mut challenge_val = C::Base::ZERO;
+                    challenge.map(|val| challenge_val = *val);
+                    main_chip.assign_witness_base(layouter.namespace(|| "assign_challenges"), challenge_val)
+                })
             .try_collect::<_, Vec<_>, _>()?;
 
-        let u = main_chip.assign_witness_base(layouter.namespace(|| "assign_u"), acc.map(|acc| &acc.u).copied().assign().unwrap())?;
-        let e_comm = main_chip.assign_witness_secondary(layouter.namespace(|| "assign_e_comm"), acc.map(|acc| acc.e_comm).assign().unwrap())?;
+        let mut acc_u_val = C::Base::ZERO;
+        acc.map(|acc| acc.u).map(|val| acc_u_val = val);
+        let u = main_chip.assign_witness_base(layouter.namespace(|| "assign_u"), acc_u_val)?;
+
+        let mut acc_e_comm_val = C::Secondary::default();
+        acc.map(|acc| acc.e_comm).map(|val| acc_e_comm_val = val);
+        let e_comm = main_chip.assign_witness_secondary(layouter.namespace(|| "assign_e_comm"), acc_e_comm_val)?;
+
+        let mut acc_compressed_e_sum_val = C::Base::ZERO;
+        acc.map(|acc| acc.compressed_e_sum.map(|val| acc_compressed_e_sum_val = val));
         let compressed_e_sum = match avp.strategy {
             NoCompressing => None,
             Compressing => Some(
                 main_chip
-                    .assign_witness_base(layouter.namespace(|| "assign_compressed_e_sum"), (acc.map(|acc| acc.compressed_e_sum.unwrap())).assign().unwrap())?,
+                    .assign_witness_base(layouter.namespace(|| "assign_compressed_e_sum"), acc_compressed_e_sum_val)?
             ),
         };
 
@@ -450,7 +502,12 @@ where
         let instances = instances
             .into_iter()
             .enumerate()
-            .map(|(idx, instance)| main_chip.assign_witness(layouter.namespace(|| "assign_instances"), instance.assign().unwrap(), idx))
+            .map(|(idx, instance)| 
+                {
+                    let mut instance_val = C::Scalar::ZERO;
+                    instance.map(|val| instance_val = *val);
+                    main_chip.assign_witness(layouter.namespace(|| "assign_instances"), &instance_val, idx)
+                })
             .try_collect::<_, Vec<_>, _>()?;
         for instance in instances.iter() {
             transcript_chip.common_field_element(instance)?;
@@ -531,7 +588,12 @@ where
 
         let coordinates = cyclefold_instances[1..]
             .iter()
-            .map(|input| input.copied().assign().unwrap())
+            .map(|input| 
+                {
+                    let mut input_val = C::Base::ZERO;
+                    input.map(|val| input_val = *val);
+                    input_val
+                })
             .collect_vec();
 
         let assigned_comms = coordinates.chunks(2).map(|chunk| {
@@ -661,7 +723,12 @@ where
         // assert!(instances.len() == CF_IO_LEN);
         let instances = instances
             .into_iter()
-            .map(|instance| main_chip.assign_witness_base(layouter.namespace(|| "assign_cf_instances"), instance.copied().assign().unwrap()))
+            .map(|instance| 
+                {
+                    let mut instance_val = C::Base::ZERO;
+                    instance.map(|val| instance_val = *val);
+                    main_chip.assign_witness_base(layouter.namespace(|| "assign_cf_instances"), instance_val)
+                })
             .try_collect::<_, Vec<_>, _>()?;
         for instance in instances.iter() {
             transcript_chip.common_field_element(instance)?;
@@ -759,7 +826,7 @@ where
         } = self.avp;
 
         let powers_of_r = main_chip.powers(layouter.namespace(|| "powers_r"), r, num_cross_terms + 1)?;
-
+        
         // skip folding witness_comms
         let r_nark_instances = nark
             .instances
@@ -779,6 +846,8 @@ where
             .try_collect::<_, Vec<_>, _>()?;
 
         let acc_prime = {
+            println!("acc.instances.len() {:?}", acc.instances.len());
+            println!("r_nark_instances.len() {:?}", r_nark_instances.len());
             let instances = izip_eq!(&acc.instances, &r_nark_instances)
                 .map(|(lhs, rhs)| {
                     izip_eq!(lhs, rhs)
@@ -786,7 +855,7 @@ where
                         .try_collect::<_, Vec<_>, _>()
                 })
                 .try_collect::<_, Vec<_>, _>()?;
-
+            // println!(""
             let witness_comms = assigned_cyclefold_instances[..assigned_cyclefold_instances.len() - 1].to_vec();
             let challenges = izip_eq!(&acc.challenges, &r_nark_challenges)
                 .map(|(lhs, rhs)| main_chip.add(layouter.namespace(|| "fold_challenges"), lhs, rhs))

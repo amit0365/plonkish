@@ -1,6 +1,5 @@
 pub mod poseidon;
 pub mod scalar_mul;
-pub mod primary_gate;
 pub mod main_chip;
 pub mod transcript;
 

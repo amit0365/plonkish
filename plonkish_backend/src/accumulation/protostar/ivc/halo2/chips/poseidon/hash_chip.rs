@@ -11,7 +11,7 @@ use rand::rngs::OsRng;
 use super::spec::{PoseidonSpecFp, PoseidonSpec};
 use std::marker::PhantomData;
 
-const L: usize = 30;
+const L: usize = 23;
 
 #[derive(Debug, Clone)]
 pub struct PoseidonConfig<C, const WIDTH: usize, const RATE: usize, const L: usize> 
@@ -101,7 +101,7 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    type Config = (PoseidonConfig<C, 5, 4, L>, [Column<Advice>; 6]);
+    type Config = (PoseidonConfig<C, 3, 2, L>, [Column<Advice>; 4]);
     type FloorPlanner = SimpleFloorPlanner;
     type Params = ();
 
@@ -110,17 +110,17 @@ where
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        let advices = [0; 6].map(|_| meta.advice_column());
-        let constants = [0; 10].map(|_| meta.fixed_column());
-        meta.enable_constant(constants[5]);
+        let advices = [0; 4].map(|_| meta.advice_column());
+        let constants = [0; 6].map(|_| meta.fixed_column());
+        meta.enable_constant(constants[3]);
 
 
-        let poseidon_config = PoseidonChip::<C, PoseidonSpec, 5, 4, L>::configure(
+        let poseidon_config = PoseidonChip::<C, PoseidonSpec, 3, 2, L>::configure(
             meta,
-            advices[..5].try_into().unwrap(),
-            advices[5],
-            constants[..5].try_into().unwrap(), 
-            constants[5..].try_into().unwrap(), 
+            advices[..3].try_into().unwrap(),
+            advices[3],
+            constants[..3].try_into().unwrap(), 
+            constants[3..].try_into().unwrap(), 
         );
 
         (poseidon_config, advices)
@@ -132,7 +132,7 @@ where
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
 
-        let chip = PoseidonChip::<C, PoseidonSpec, 5, 4, L>::construct(
+        let chip = PoseidonChip::<C, PoseidonSpec, 3, 2, L>::construct(
             config.0,
         ); 
 
@@ -189,7 +189,7 @@ fn poseidon_hash_longer_input_custom() {
 
     let message = [0; L].map(|_| Fp::random(rng));
     let output =
-        inlineHash::<_, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
+        inlineHash::<_, PoseidonSpec, ConstantLength<L>, 3, 2>::init().hash(message);
     println!("output: {:?}", output);
 
     let k = 9;

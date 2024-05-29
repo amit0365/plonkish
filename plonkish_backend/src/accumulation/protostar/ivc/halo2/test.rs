@@ -50,7 +50,7 @@ use super::{chips::main_chip::{MainChipConfig, Number}, ProtostarIvcVerifierPara
 // use super::RecursiveCircuit;
 
 #[derive(Clone, Debug, Default)]
-struct TrivialCircuit<C> {
+pub struct TrivialCircuit<C> {
     step_idx: usize,
     _marker: PhantomData<C>,
 }

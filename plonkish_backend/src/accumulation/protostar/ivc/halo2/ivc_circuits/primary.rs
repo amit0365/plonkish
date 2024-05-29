@@ -6,15 +6,15 @@ use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash}, spec::Poseidon
 use halo2_base::halo2_proofs::plonk::Error;
 use halo2_base::halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_base::halo2_proofs::arithmetic::Field;
-use crate::{accumulation::protostar::ivc::{halo2::cyclefold::CF_IO_LEN, halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::{hash_chip::PoseidonConfig}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
+use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::hash_chip::PoseidonConfig, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
 use crate::accumulation::protostar::{ivc::halo2::chips::{main_chip::{EcPointNonNative, Number}, transcript::{native::AssignedProtostarAccumulatorInstance, nonnative::PoseidonTranscriptChip}}, ProtostarStrategy::Compressing};
 use crate::{
     accumulation::{protostar::{ivc::halo2::chips::{poseidon::hash_chip::PoseidonChip, scalar_mul::sm_chip_primary::{ScalarMulChip, ScalarMulChipConfig}, main_chip::{MainChip, MainChipConfig}, transcript::native::PoseidonNativeTranscriptChip}, ProtostarAccumulatorInstance}, PlonkishNarkInstance}, 
     util::arithmetic::{powers, TwoChainCurve}
 };
 
-pub const T: usize = 3;
-pub const RATE: usize = 2;
+pub const T: usize = 6;
+pub const RATE: usize = 5;
 pub const PRIMARY_HASH_LENGTH: usize = 23;
 pub const CF_HASH_LENGTH: usize = 13;
 
@@ -79,9 +79,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         let main_config = MainChip::<C>::configure(meta, main_advice.clone().try_into().unwrap(), main_fixed.try_into().unwrap());
 
         let mut sm_advice = main_advice;
-        for _ in 0..3 {
-            sm_advice.push(meta.advice_column());
-        }
+        //sm_advice.push(meta.advice_column());
 
         for col in sm_advice.iter() {
             meta.enable_equality(*col);
@@ -347,7 +345,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
     }
 
     pub fn init(&mut self, vp_digest: C::Scalar) {
-        assert_eq!(&self.primary_avp.num_instances, &[NUM_INSTANCES]);
+        //assert_eq!(&self.primary_avp.num_instances, &[NUM_INSTANCES]);
         self.primary_avp.vp_digest = vp_digest;
     }
 
@@ -418,7 +416,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         // lhs = h == 0 initalised 
         let lhs_is_zero = main_chip.is_equal(layouter.namespace(|| "lhs_is_zero"), lhs, &zero)?;
         let rhs = main_chip.select(layouter.namespace(|| "select_rhs_is_zero"), &lhs_is_zero, &zero, &rhs)?;
-        //main_chip.constrain_equal(layouter.namespace(|| "result"), lhs, &rhs)?;
+        // main_chip.constrain_equal(layouter.namespace(|| "result"), lhs, &rhs)?;
 
         Ok(())
     }
@@ -503,10 +501,11 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
 {
 
     type Config = PrimaryCircuitConfig<C>;
-    type FloorPlanner = SimpleFloorPlanner; //V1;
+    type FloorPlanner = V1; //SimpleFloorPlanner; //V1;
     type Params = ();
 
     fn without_witnesses(&self) -> Self {
+        println!("without_witnesses");
         Self { 
             is_primary: false,
             step_circuit: self.step_circuit.without_witnesses(),
@@ -554,7 +553,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         
         let mut hash_chip_primary = PoseidonChip::<C, PoseidonSpec, T, RATE, PRIMARY_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
         //let mut hash_chip_secondary = PoseidonChip::<C, PoseidonSpec, T, RATE, CF_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
-
+        
         let acc_verifier = ProtostarAccumulationVerifier::new(primary_avp.clone(), main_chip.clone(), sm_chip.clone());
         let zero = main_chip.assign_fixed(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;
         let one = main_chip.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 1)?;
@@ -565,8 +564,10 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             1,
         )?;
 
+        let mut h_prime_val = C::Scalar::ZERO;
+        self.h_prime.map(|val| h_prime_val = val);
         let step_idx_plus_one = main_chip.add(layouter.namespace(|| "add_step_idx"), &step_idx, &one)?;
-        let h_prime = main_chip.assign_witness(layouter.namespace(|| "assign_h_prime"), &self.h_prime.assign().unwrap(), 4)?;
+        let h_prime = main_chip.assign_witness(layouter.namespace(|| "assign_h_prime"), &h_prime_val, 4)?;
         let initial_input = self
             .step_circuit
             .initial_input()
@@ -581,8 +582,13 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             .map(|instance| Value::as_ref(instance))
             .collect_vec();  
 
-        let cyclefold_inputs_hash = main_chip.assign_witness_base(layouter.namespace(|| "assign_cyclefold_input_hash"), self.cyclefold_inputs_hash.assign().unwrap())?;
-        let cyclefold_inputs_hash_from_instances = main_chip.assign_witness_base(layouter.namespace(|| "assign_cyclefold_input_hash_from_instances"), self.cyclefold_instances[0].assign().unwrap())?;
+        let mut cyclefold_inputs_hash_val = C::Base::ZERO;
+        self.cyclefold_inputs_hash.map(|val| cyclefold_inputs_hash_val = val);
+        let cyclefold_inputs_hash = main_chip.assign_witness_base(layouter.namespace(|| "assign_cyclefold_input_hash"), cyclefold_inputs_hash_val)?;
+
+        let mut cyclefold_inputs_hash_from_instances_val = C::Base::ZERO;
+        self.cyclefold_instances[0].map(|val| cyclefold_inputs_hash_from_instances_val = val);
+        let cyclefold_inputs_hash_from_instances = main_chip.assign_witness_base(layouter.namespace(|| "assign_cyclefold_input_hash_from_instances"), cyclefold_inputs_hash_from_instances_val)?;
         let cyclefold_inputs_hash_from_instances_select = main_chip.select_base(layouter.namespace(|| "select_cyclefold_input_hash"), &is_base_case, &cyclefold_inputs_hash, &cyclefold_inputs_hash_from_instances)?;
         main_chip.constrain_equal_base(layouter.namespace(|| "constrain_equal_cyclefold_input_hash"), &cyclefold_inputs_hash, &cyclefold_inputs_hash_from_instances_select)?;
 
@@ -708,48 +714,68 @@ where
     }
 }
 
-// #[test]
-// fn primary_chip() {
+#[test]
+fn primary_chip() {
 
-//     let rng = OsRng;
-//     // let message = [Fp::from(6), Fp::from(5), Fp::from(4), Fp::from(3), Fp::from(2)];
-//     // let output =
-//     //     poseidonInline::Hash::<_, PoseidonSpec, VariableLength<Fp, 2>, 3, 2>::init().hash(&message);
-//     // println!("outputInline: {:?}", output);
+    let k = 12;
+    let primary_avp = ProtostarAccumulationVerifierParam::new(
+        bn256::Fr::ZERO,
+        Compressing,
+        vec![NUM_INSTANCES],
+        vec![1usize, 1usize],
+        vec![vec![1usize], vec![5usize]],
+        1,
+    );
 
-//     let k = 11;
-//     let circuit = PrimaryCircuit::<bn256::G1Affine> {
-//         marker: PhantomData,    
-//     };
-//     let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-//     assert_eq!(prover.verify(), Ok(()));
+    let cyclefold_avp = ProtostarAccumulationVerifierParam::new(
+        bn256::Fr::ZERO,
+        Compressing,
+        vec![CF_IO_LEN],
+        vec![1usize, 1usize],
+        vec![vec![1usize], vec![5usize]],
+        1,
+    );
 
-// }
+    let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), None, None);
+    let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+    //assert_eq!(prover.verify(), Ok(()));
 
-// #[test]
-// fn primary_chip_layout() {
-//     use plotters::prelude::*;
+}
 
-//     let root = BitMapBackend::new("PrimaryChip.png", (1024, 768)).into_drawing_area();
-//     root.fill(&WHITE).unwrap();
-//     let root = root
-//         .titled("Primary Chip Layout", ("sans-serif", 60))
-//         .unwrap();
+#[test]
+fn primary_chip_layout() {
+    use plotters::prelude::*;
 
-//     let rng = OsRng;
-//     // let message = [Fp::from(6), Fp::from(5), Fp::from(4), Fp::from(3), Fp::from(2)];
-//     // let output =
-//     //     poseidonInline::Hash::<_, PoseidonSpec, VariableLength<Fp, 2>, 3, 2>::init().hash(&message);
-//     // println!("outputInline: {:?}", output);
+    let root = BitMapBackend::new("PrimaryChip.png", (1024, 768)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let root = root
+        .titled("Primary Chip Layout", ("sans-serif", 60))
+        .unwrap();
 
-//     let k = 11;
-//     let circuit = PrimaryCircuit::<bn256::G1Affine> {
-//         marker: PhantomData,    
-//     };
-//     let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-//     assert_eq!(prover.verify(), Ok(()));
+    let k = 12;
+    let primary_avp = ProtostarAccumulationVerifierParam::new(
+        bn256::Fr::ZERO,
+        Compressing,
+        vec![NUM_INSTANCES],
+        vec![1usize, 1usize],
+        vec![vec![1usize], vec![5usize]],
+        1,
+    );
 
-//     halo2_base::halo2_proofs::dev::CircuitLayout::default()
-//     .render(k, &circuit, &root)
-//     .unwrap();
-// }
+    let cyclefold_avp = ProtostarAccumulationVerifierParam::new(
+        bn256::Fr::ZERO,
+        Compressing,
+        vec![CF_IO_LEN],
+        vec![1usize, 1usize],
+        vec![vec![1usize], vec![5usize]],
+        1,
+    );
+
+    let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
+    let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+    //assert_eq!(prover.verify(), Ok(()));
+
+    halo2_base::halo2_proofs::dev::CircuitLayout::default()
+    .render(k, &circuit, &root)
+    .unwrap();
+}

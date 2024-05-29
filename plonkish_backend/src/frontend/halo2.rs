@@ -293,6 +293,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             advices: vec![vec![F::ZERO.into(); 1 << self.k]; self.num_witness_polys[phase]],
             challenges,
             row_mapping: &self.row_mapping,
+            witness_count: 0,
         };
         let constants = self.constants.clone();
 
@@ -303,7 +304,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             constants,
         )
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
-
+        println!("witness_count: {}", witness_collector.witness_count);
         Ok(batch_invert_assigned(witness_collector.advices))
     }
 }
@@ -536,6 +537,7 @@ struct WitnessCollector<'a, F: Field> {
     advices: Vec<Vec<Assigned<F>>>,
     challenges: &'a [F],
     row_mapping: &'a [usize],
+    witness_count: usize,
 }
 
 impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
@@ -597,7 +599,8 @@ impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
             .get_mut(self.advice_idx_in_phase[column.index()])
             .and_then(|v| v.get_mut(row))
             .ok_or(Error::BoundsFailure)? = to().into_field().assign()?;
-
+        
+        self.witness_count += 1;
         Ok(())
     }
 

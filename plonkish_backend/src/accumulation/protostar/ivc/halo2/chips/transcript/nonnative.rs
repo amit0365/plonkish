@@ -8,7 +8,8 @@ use crate::{accumulation::protostar::ivc::{halo2::{chips::main_chip::{EcPointNat
 use crate::accumulation::protostar::ProtostarStrategy::{Compressing, NoCompressing};
 use std::io::Write;
 use super::native::AssignedProtostarAccumulatorInstance;
-use crate::accumulation::protostar::ivc::halo2::chips::transcript::{T, RATE};
+use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{T, RATE};
+
 pub const RANGE_BITS: usize = 254;
 pub const NUM_CHALLENGE_BITS: usize = 128;
 

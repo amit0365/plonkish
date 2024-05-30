@@ -6,18 +6,19 @@ use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash}, spec::Poseidon
 use halo2_base::halo2_proofs::plonk::Error;
 use halo2_base::halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_base::halo2_proofs::arithmetic::Field;
-use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::hash_chip::PoseidonConfig, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
+use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::hash_chip::PoseidonConfig, range_check::{RangeCheckChip, RangeCheckConfig}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
 use crate::accumulation::protostar::{ivc::halo2::chips::{main_chip::{EcPointNonNative, Number}, transcript::{native::AssignedProtostarAccumulatorInstance, nonnative::PoseidonTranscriptChip}}, ProtostarStrategy::Compressing};
 use crate::{
     accumulation::{protostar::{ivc::halo2::chips::{poseidon::hash_chip::PoseidonChip, scalar_mul::sm_chip_primary::{ScalarMulChip, ScalarMulChipConfig}, main_chip::{MainChip, MainChipConfig}, transcript::native::PoseidonNativeTranscriptChip}, ProtostarAccumulatorInstance}, PlonkishNarkInstance}, 
     util::arithmetic::{powers, TwoChainCurve}
 };
 
-pub const T: usize = 6;
-pub const RATE: usize = 5;
+pub const T: usize = 3;
+pub const RATE: usize = 2;
 pub const PRIMARY_HASH_LENGTH: usize = 23;
 pub const CF_HASH_LENGTH: usize = 13;
 
+pub const N_BYTES: usize = 16;
 pub const R_F: usize = 8;
 pub const R_P: usize = 56;
 pub const SECURE_MDS: usize = 0;
@@ -35,6 +36,7 @@ pub struct PrimaryCircuitConfig<C>
     poseidon_config: Pow5Config<C::Scalar, T, RATE>,
     main_config: MainChipConfig,
     sm_chip_config: ScalarMulChipConfig<C>,
+    // range_check_config: RangeCheckConfig,
     // transcript_config: PoseidonTranscriptChipConfig,
     // avp_config: AVPConfig,
 }
@@ -46,8 +48,11 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
 {
     pub fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self {
 
-        let state = (0..T).map(|_| meta.advice_column()).collect::<Vec<_>>();
-        let partial_sbox = meta.advice_column();
+        let advice = (0..7).map(|_| meta.advice_column()).collect::<Vec<_>>();
+
+        //let state = (0..T).map(|_| meta.advice_column()).collect::<Vec<_>>();
+        let state = advice.iter().skip(4).cloned().collect_vec();
+        let partial_sbox = advice[0];
 
         let rc_a = (0..T).map(|_| meta.fixed_column()).collect::<Vec<_>>();
         let rc_b = (0..T).map(|_| meta.fixed_column()).collect::<Vec<_>>();
@@ -62,8 +67,9 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
             rc_b.clone().try_into().unwrap(),
         );
 
-        let mut main_advice = state;
-        main_advice.push(partial_sbox);
+        // let mut main_advice = state.clone();
+        // main_advice.push(partial_sbox);
+        let main_advice = advice.clone();
         let mut main_fixed = rc_a;
         main_fixed.extend(rc_b);
         for col in main_fixed.iter() {
@@ -71,15 +77,16 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         }
 
         // let main_advice = (0..3).map(|_| meta.advice_column()).collect::<Vec<_>>();
-        // for col in main_advice.iter() {
-        //     meta.enable_equality(*col);
-        // }
+        for col in main_advice.iter() {
+            meta.enable_equality(*col);
+        }
         // let main_fixed = meta.fixed_column();
         // meta.enable_constant(main_fixed);    
+
         let main_config = MainChip::<C>::configure(meta, main_advice.clone().try_into().unwrap(), main_fixed.try_into().unwrap());
 
-        let mut sm_advice = main_advice;
-        //sm_advice.push(meta.advice_column());
+        let mut sm_advice = advice.clone(); //main_advice.iter().skip(1).cloned().collect_vec();
+        // sm_advice.push(meta.advice_column());
 
         for col in sm_advice.iter() {
             meta.enable_equality(*col);
@@ -87,10 +94,21 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
 
         let sm_chip_config = ScalarMulChipConfig::configure(meta, sm_advice.try_into().unwrap());
 
+        // let range_check_fixed = meta.fixed_column();
+        // // we need 1 complex selector for the lookup check in the range check chip
+        // let enable_lookup_selector = meta.complex_selector();
+        // let range_check_config = RangeCheckChip::<C>::configure(
+        //     meta,
+        //     main_advice[6],
+        //     range_check_fixed,
+        //     enable_lookup_selector,
+        // );
+
         Self {
             poseidon_config,
             main_config,
             sm_chip_config,
+            // range_check_config,
         }
     }
 }
@@ -547,10 +565,10 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config.main_config.clone(), layouter.namespace(|| ""))?;
 
+        //let range_chip = RangeCheckChip::<C>::construct(config.range_check_config.clone());
         let main_chip = MainChip::<C>::new(config.main_config.clone());
         let pow5_chip = Pow5Chip::construct(config.poseidon_config.clone());
         let sm_chip = ScalarMulChip::<C>::new(config.sm_chip_config.clone());
-        
         let mut hash_chip_primary = PoseidonChip::<C, PoseidonSpec, T, RATE, PRIMARY_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
         //let mut hash_chip_secondary = PoseidonChip::<C, PoseidonSpec, T, RATE, CF_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
         
@@ -599,7 +617,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
                 [&self.primary_instances[0]].map(Value::as_ref);  
             let proof = self.primary_proof.clone();
             let native_transcript_chip = 
-                &mut PoseidonNativeTranscriptChip::<C>::new(layouter.namespace(|| "native_transcript_chip"), pow5_chip.clone(), PoseidonSpec, config.main_config.clone(), proof);
+                &mut PoseidonNativeTranscriptChip::<C>::new(layouter.namespace(|| "native_transcript_chip"), pow5_chip.clone(), PoseidonSpec, main_chip.clone(), proof);
 
             acc_verifier.verify_accumulation_from_nark(layouter.namespace(|| "verify_accumulation_from_nark"), &acc, instances, native_transcript_chip, assigned_acc_prime_comms_checked)? 
         };
@@ -644,7 +662,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         let (nark_ec, acc_ec_prime) = {     
             let proof = self.cyclefold_proof.clone();
             let transcript_chip = 
-                &mut PoseidonTranscriptChip::<C>::new(layouter.namespace(|| "transcript_chip"), pow5_chip.clone(), PoseidonSpec, config.main_config.clone(), proof);
+                &mut PoseidonTranscriptChip::<C>::new(layouter.namespace(|| "transcript_chip"), pow5_chip.clone(), PoseidonSpec, main_chip.clone(), proof);
 
             acc_verifier_ec.verify_accumulation_from_nark_ec(layouter.namespace(|| "verify_accumulation_from_nark_ec"), &acc_ec, cyclefold_instances.try_into().unwrap(), transcript_chip)?
         };
@@ -736,17 +754,18 @@ fn primary_chip() {
         1,
     );
 
-    let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), None, None);
+    let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
     let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-    //assert_eq!(prover.verify(), Ok(()));
+    assert_eq!(prover.verify(), Ok(()));
 
 }
 
 #[test]
 fn primary_chip_layout() {
     use plotters::prelude::*;
+    use halo2_base::halo2_proofs::dev::CircuitLayout;
 
-    let root = BitMapBackend::new("PrimaryChip.png", (1024, 768)).into_drawing_area();
+    let root = BitMapBackend::new("PrimaryChip_debug.png", (10240, 7680)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let root = root
         .titled("Primary Chip Layout", ("sans-serif", 60))
@@ -772,10 +791,16 @@ fn primary_chip_layout() {
     );
 
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
-    let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-    //assert_eq!(prover.verify(), Ok(()));
+    // MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
 
-    halo2_base::halo2_proofs::dev::CircuitLayout::default()
-    .render(k, &circuit, &root)
+    let circuit_layout = CircuitLayout{
+        hide_labels: false,
+        mark_equality_cells: false,
+        show_equality_constraints: false,
+        view_width: Some(0..24),
+        view_height: Some(0..(1<<k)),
+    };
+    // let circuit_layout = CircuitLayout::default();
+    circuit_layout.render(k, &circuit, &root)
     .unwrap();
 }

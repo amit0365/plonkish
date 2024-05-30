@@ -45,13 +45,12 @@ where
 
     type Num = Number<C::Scalar>;
 
-    pub fn new(layouter: impl Layouter<C::Scalar>, pow5_chip: Pow5Chip<C::Scalar, T, RATE>, spec: PoseidonSpec
-        , chip_config: MainChipConfig, proof: Value<Vec<u8>>) -> Self {
+    pub fn new(layouter: impl Layouter<C::Scalar>, pow5_chip: Pow5Chip<C::Scalar, T, RATE>, spec: PoseidonSpec,
+        main_chip: MainChip<C>, proof: Value<Vec<u8>>) -> Self {
         let poseidon_chip = PoseidonSpongeChip::from_spec(pow5_chip, layouter, spec);
-        let chip = MainChip::new(chip_config);
         PoseidonTranscriptChip {
             poseidon_chip,
-            chip,
+            chip: main_chip,
             proof: proof.map(Cursor::new),
         }
     }

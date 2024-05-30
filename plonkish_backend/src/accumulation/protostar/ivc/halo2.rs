@@ -1,6 +1,7 @@
 pub mod test;
 pub mod chips;
 pub mod ivc_circuits;
+use ethereum_types::U256;
 
 use crate::{
     accumulation::{
@@ -54,8 +55,9 @@ use std::{
 };
 
 use halo2_gadgets::poseidon::spec::PoseidonSpec;
+use halo2_proofs::halo2curves::group::prime::{PrimeCurve, PrimeGroup};
 use poseidon::Spec;
-use rand::RngCore;
+use rand::{rngs::OsRng, RngCore};
 use std::cell::RefCell;
 
 use halo2_base::{
@@ -529,12 +531,14 @@ where
 
         let mut witness_comms = Vec::with_capacity(2);
         let mut challenges = Vec::with_capacity(3);
-
-        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm1"), &C::default())?);
+        
+        // write comm only for test
+        let mut rng = OsRng;
+        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm1"), &C::identity())?);
         //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
         //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge2"))?.challenge);
-        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm2"), &C::default())?);
+        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm2"), &C::identity())?);
         let challenge3 = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge;
         challenges.extend(main_chip.powers(layouter.namespace(|| "challenge3"), &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
@@ -750,12 +754,22 @@ where
 
         let mut witness_comms = Vec::with_capacity(2);
         let mut challenges = Vec::with_capacity(3);
+        
+        // write comm only for test
+        // 0x2bd9dcdba86889ed8988b66aa3f3eb49b3990420274d33b1eb66969b8ac0dd9a,
+        // 0x2c678516c21eef9231dc569ce9d6e41269dc4c1e7c923c25b0664cea8cb74890,
+        // let hex_str = "0x2c678516c21eef9231dc569ce9d6e41269dc4c1e7c923c25b0664cea8cb74890";
+        // let decimal_value = U256::from_str_radix(&hex_str[2..], 16).unwrap();
+        let grumpkin_random = C::Secondary::from_xy(
+            C::Scalar::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap(),
+            C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
+        ).unwrap();
 
-        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &C::Secondary::default())?);
+        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &grumpkin_random)?);
         let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar;
         // challenges.extend(main_chip.powers(layouter.namespace(|| "main_chip"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
-        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &C::Secondary::default())?);
+        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &grumpkin_random)?);
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
         let challenge3 = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.scalar;
         challenges.extend(main_chip.powers_base(layouter.namespace(|| "challenge3"), &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
@@ -846,8 +860,6 @@ where
             .try_collect::<_, Vec<_>, _>()?;
 
         let acc_prime = {
-            println!("acc.instances.len() {:?}", acc.instances.len());
-            println!("r_nark_instances.len() {:?}", r_nark_instances.len());
             let instances = izip_eq!(&acc.instances, &r_nark_instances)
                 .map(|(lhs, rhs)| {
                     izip_eq!(lhs, rhs)
@@ -855,7 +867,6 @@ where
                         .try_collect::<_, Vec<_>, _>()
                 })
                 .try_collect::<_, Vec<_>, _>()?;
-            // println!(""
             let witness_comms = assigned_cyclefold_instances[..assigned_cyclefold_instances.len() - 1].to_vec();
             let challenges = izip_eq!(&acc.challenges, &r_nark_challenges)
                 .map(|(lhs, rhs)| main_chip.add(layouter.namespace(|| "fold_challenges"), lhs, rhs))
@@ -947,8 +958,6 @@ where
                 let timer = start_timer(|| format!("fold_accumulator_from_nark e_comm-cross_term_comms.len()-{}", cross_term_comms.len()));
                 let mut e_comm = cross_term_comms.last().unwrap().clone();
                 for item in cross_term_comms.iter().rev().skip(1).chain([&acc.e_comm]) {
-                    println!("item {:?}", item);
-                    println!("e_comm {:?}", e_comm);
                     e_comm = self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), &e_comm, item)?;
                 }
                 end_timer(timer);

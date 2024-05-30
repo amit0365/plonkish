@@ -264,6 +264,7 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 { 
     pub config: ScalarMulChipConfig<C>,
+    // pub is_primary: Value<C::Scalar>,
     // pub inputs: Vec<ScalarMulConfigInputs<C>> 
 }
 
@@ -453,6 +454,7 @@ where
     ) -> Result<EcPointNative<C>, Error> {
 
         let inputs = self.preprocess_inputs(rbits_fe, nark_comm, acc_comm)?;
+
         let mut acc_prime_x = Vec::new();
         let mut acc_prime_y = Vec::new();
 

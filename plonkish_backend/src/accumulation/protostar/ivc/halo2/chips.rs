@@ -2,6 +2,7 @@ pub mod poseidon;
 pub mod scalar_mul;
 pub mod main_chip;
 pub mod transcript;
+pub mod range_check;
 
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
 use halo2_base::{

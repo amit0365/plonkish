@@ -11,6 +11,7 @@ gnuplot = "0.0.37"
 generic-array = { version = "0.14.7", features = ["serde"] }
 bitvec = "1.0.1"
 itertools = "0.10.5"
+ethereum-types = "0.11"
 num-bigint = "0.4.3"
 num-integer = "0.1.45"
 rand = "0.8"
@@ -21,11 +22,11 @@ poseidon = { git = "https://github.com/han0110/poseidon", branch = "feature/with
 plotters = { version = "0.3.0", optional = true }
 tabbycat = { version = "0.1", features = ["attributes"], optional = true }
 # Use halo2-base as non-optional dependency because it re-exports halo2_proofs, halo2curves, and poseidon, using different repos based on feature flag "halo2-axiom" or "halo2-pse"
-halo2-base = { git = "https://github.com/amit0365/halo2-lib", package="halo2-base", branch = "protostar" }
+halo2-base = { path = "/Users/ak36/Desktop/protostar/halo2-lib/halo2-base" }
 
-halo2-ecc = { git = "https://github.com/amit0365/halo2-lib", package="halo2-ecc", branch = "protostar" }
+halo2-ecc = { path = "/Users/ak36/Desktop/protostar/halo2-lib/halo2-ecc" }
 
-halo2_gadgets = { git = "https://github.com/amit0365/halo2", package="halo2_gadgets", branch = "protostar"}
+halo2_gadgets = { path = "/Users/ak36/Desktop/protostar/halo2/halo2_gadgets" }
 
 # timer
 ark-std = { version = "^0.4.0", default-features = false, optional = true }

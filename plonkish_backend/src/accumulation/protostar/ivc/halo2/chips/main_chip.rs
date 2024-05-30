@@ -2,12 +2,13 @@ use std::iter::once;
 
 use ark_std::One;
 use halo2_base::{halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation}, utils::{biguint_to_fe, decompose_biguint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes}};
-use halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
+use halo2_base::halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
 use num_bigint::BigUint;
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 use itertools::Itertools;
 
-pub const NUM_MAIN_ADVICE: usize = T + 1;
+use super::range_check::RangeCheckChip;
+pub const NUM_MAIN_ADVICE: usize = 7;//T + 1;
 pub const NUM_MAIN_FIXED: usize = 2*T;
 pub const NUM_LIMB_BITS_PRIMARY_NON_NATIVE: usize = 128;
 pub const NUM_LIMBS_PRIMARY_NON_NATIVE: usize = 2;
@@ -109,6 +110,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
     {
         pub config: MainChipConfig,
         pow_of_two: Vec<C::Scalar>,
+        //range_check_chip: RangeCheckChip<C>,
     }
 
     impl<C: TwoChainCurve> MainChip<C> 
@@ -120,6 +122,18 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         pub type NonNatNum = NonNativeNumber<C::Scalar>;
         pub type Ecc = EcPointNonNative<C>;
         pub type NatEcc = EcPointNative<C>;
+
+        // /// Returns a new [GateChip] with the given [GateStrategy].
+        // pub fn new(config: MainChipConfig, range_check_chip: RangeCheckChip<C>) -> Self {
+        //     let mut pow_of_two = Vec::with_capacity(C::Scalar::NUM_BITS as usize);
+        //     let two = C::Scalar::from(2);
+        //     pow_of_two.push(C::Scalar::ONE);
+        //     pow_of_two.push(two);
+        //     for _ in 2..C::Scalar::NUM_BITS {
+        //         pow_of_two.push(two * pow_of_two.last().unwrap());
+        //     }
+        //     Self { config, pow_of_two, range_check_chip }
+        // }
 
         /// Returns a new [GateChip] with the given [GateStrategy].
         pub fn new(config: MainChipConfig) -> Self {
@@ -139,11 +153,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             fixed: [Column<Fixed>; NUM_MAIN_FIXED],
         ) -> MainChipConfig {
 
-            let col_a = advice[0];
-            let col_b = advice[1];
-            let col_acc = advice[2];
-            let mul_add = meta.selector();
-            let inner_product = meta.selector();
+            let [mul_add, inner_product] = [(); 2].map(|_| meta.selector());
     
             // meta.create_gate("main constraint", |meta| {
             //     let s2 = meta.query_selector(inner_product);
@@ -157,19 +167,19 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
             meta.create_gate("mul add constraint", |meta| {
                 let s = meta.query_selector(mul_add);
-                let a = meta.query_advice(col_a, Rotation::cur());
-                let b = meta.query_advice(col_b, Rotation::cur());
-                let c = meta.query_advice(col_acc, Rotation::cur());
-                let out = meta.query_advice(col_acc, Rotation::next());
+                let a = meta.query_advice(advice[0], Rotation::cur());
+                let b = meta.query_advice(advice[1], Rotation::cur());
+                let c = meta.query_advice(advice[2], Rotation::cur());
+                let out = meta.query_advice(advice[3], Rotation::cur());
                 vec![s * (a * b + c - out)]
             });
 
             meta.create_gate("inner product constraint", |meta| {
                 let s = meta.query_selector(inner_product);
-                let a = meta.query_advice(col_a, Rotation::cur());
-                let b = meta.query_advice(col_b, Rotation::cur());
-                let acc = meta.query_advice(col_acc, Rotation::cur());
-                let acc_next = meta.query_advice(col_acc, Rotation::next());    
+                let a = meta.query_advice(advice[0], Rotation::cur());
+                let b = meta.query_advice(advice[1], Rotation::cur());
+                let acc = meta.query_advice(advice[2], Rotation::cur());
+                let acc_next = meta.query_advice(advice[3], Rotation::cur());    
                 vec![s * (a * b + acc - acc_next)]
             });
             
@@ -261,8 +271,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let a_computed_native = self.inner_product(layouter.namespace(|| "inner_product"), &limbs, &limb_bases_assigned)?;
             //self.constrain_equal(layouter, &a_computed_native, &a_native_assigned)?;
     
-            // self.range_check(ctx, a_loaded.clone(), Self::PRIME_FIELD_NUM_BITS as usize);
-
+            //self.range_check_chip.assign(layouter.namespace(|| "range check"), &a_computed_native);
             Ok(NonNativeNumber::new(limbs, a_native_assigned))
 
         }
@@ -310,28 +319,6 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             )?;
             Ok(fixed)
         }
-
-        // pub fn assign_fixed_col(
-        //     &self,
-        //     mut layouter: impl Layouter<C::Scalar>,
-        //     fixed: &C::Scalar,
-        //     index: usize,
-        // ) -> Result<Self::Num, Error> {
-        //     let config = &self.config;
-        //     let idx = index % NUM_MAIN_FIXED;
-        //     let fixed = layouter.assign_region(
-        //         || "assign fixed",
-        //         |mut region| {
-        //             let fixed = region.assign_fixed(|| "fixed value",
-        //             config.advice[idx],
-        //             0, 
-        //             *fixed
-        //             ).map(Number)?;
-        //             Ok(fixed)
-        //         },
-        //     )?;
-        //     Ok(fixed)
-        // }
 
         pub fn assign_fixed_base(
             &self,
@@ -573,19 +560,20 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                         .zip(b.iter())
                         .enumerate()
                         .map(|(i, (a, b))| {
-                            //self.config.selector[0].enable(&mut region, i);
+
                             self.config.selector[1].enable(&mut region, i);
 
                             a.0.copy_advice(|| "lhs", &mut region, self.config.advice[0], i);
                             b.0.copy_advice(|| "rhs", &mut region, self.config.advice[1], i);
-    
+                            zero.0.copy_advice(|| "zero", &mut region, self.config.advice[2], i);
+
                             let value = a.0.value().copied() * b.0.value() + acc[i];
     
                             // Finally, we do the assignment to the output, returning a
                             // variable to be used in another part of the circuit.
                             let result = region
                                 .assign_advice(|| "lhs * rhs + acc",
-                                self.config.advice[2], i, || value);
+                                self.config.advice[3], i, || value);
 
                             product.push(result.unwrap());
                             // product.as_ref().last().unwrap().unwrap()
@@ -609,6 +597,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             b: &[Self::NonNatNum],
         ) -> Result<Self::NonNatNum, Error> {
             let num_limbs = a[0].limbs.len();
+            let zero_native = self.assign_fixed(layouter.namespace(|| "assign_zero_native"), &C::Scalar::ZERO, 0)?;
             let zero = self.assign_fixed_base(layouter.namespace(|| "inner_product_base_0"), &C::Base::ZERO)?;
             let mut a_value = C::Scalar::ZERO;
             let mut b_value = C::Scalar::ZERO;
@@ -648,19 +637,19 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             .enumerate()
                             .map(|(j, (a, b))| {
                                 let offset = i * num_limbs + j;
-                                //self.config.selector[0].enable(&mut region, i);
                                 self.config.selector[1].enable(&mut region, offset);
 
                                 a.0.copy_advice(|| "lhs", &mut region, self.config.advice[0], offset);
                                 b.0.copy_advice(|| "rhs", &mut region, self.config.advice[1], offset);
-        
+                                zero_native.0.copy_advice(|| "zero_native", &mut region, self.config.advice[2], offset)?;
+
                                 let value = a.0.value().copied() * b.0.value().copied() + acc[i][j];
         
                                 // Finally, we do the assignment to the output, returning a
                                 // variable to be used in another part of the circuit.
                                 let result = region
                                     .assign_advice(|| "lhs * rhs + acc",
-                                    self.config.advice[2], offset, || value);
+                                    self.config.advice[3], offset, || value);
 
                                 product.push(Number(result?));
                                 Ok(())
@@ -696,7 +685,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 .enumerate()    
                 .map(|(idx, x)| self.assign_witness(layouter.namespace(|| "assign_witness"), &C::Scalar::from(x), idx).unwrap())
                 .collect_vec();
-    
+            //range check bits
             let pow_two_assigned = self.pow_of_two[..bits.len()]
                 .iter()
                 .enumerate()
@@ -709,7 +698,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 &pow_two_assigned,
             )?; 
             //self.constrain_equal(layouter, num, &acc)?;
-            //debug_assert!(range_bits > 0);
+            debug_assert!(range_bits > 0);
             Ok(bits)
         }
 
@@ -718,7 +707,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         /// Assumes values of `bits` are boolean.
         /// * `bits`: slice of [QuantumCell]'s that contains bit representation in little-endian form
         pub fn bits_to_num(&self, mut layouter: impl Layouter<C::Scalar>, bits: &[Self::Num]) -> Result<Self::Num, Error> {
-            //assert!((bits.len() as u32) <= C::Scalar::CAPACITY);
+            assert!((bits.len() as u32) <= C::Scalar::CAPACITY);
             let pow_two_assigned = self.pow_of_two[..bits.len()].iter().enumerate().map(|(idx, c)| self.assign_fixed(layouter.namespace(|| "bits_to_num_assign"), c, idx).unwrap()).collect_vec();
             self.inner_product(
                 layouter.namespace(|| "bits_to_num_inner_product"),
@@ -733,8 +722,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             a: &Self::Num,
             b: &Self::Num,
         ) -> Result<Self::Num, Error> {
-            // | a | 1 | b |
-            //         | a |
+            // | a | 1 | b | a + b |
             let one = self.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 0)?;
             let result = layouter.namespace(|| "add").assign_region(
                 || "add",
@@ -747,7 +735,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             let value = a.0.value().copied() + b.0.value();
                             region.assign_advice(
                                 || "lhs + rhs",
-                                self.config.advice[2], 1, || value
+                                self.config.advice[3], 0, || value
                             )
                         })?;
 
@@ -760,6 +748,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
+            // | a | 1 | b | a + b |
             let one = self.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 0)?;
             let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.namespace(|| "add_base").assign_region(
@@ -773,7 +762,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             let value = a.0.value().copied() + b.0.value();
                             let result = region.assign_advice(
                                 || "lhs + rhs",
-                                self.config.advice[2], 1, || value
+                                self.config.advice[3], 0, || value
                             )?;
 
                                 Ok(Number(result))
@@ -789,8 +778,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             a: &Self::Num,
             b: &Self::Num,
         ) -> Result<Self::Num, Error> {
-            // | a - b | 1 | b |
-            //             | a |
+            // | a - b | 1 | b | a |
             let one = self.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 0)?;
             let result = layouter.namespace(|| "sub").assign_region(
                 || "sub",
@@ -805,7 +793,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
                             one.0.copy_advice(|| "one", &mut region, self.config.advice[1], 0)?;
                             b.0.copy_advice(|| "rhs", &mut region, self.config.advice[2], 0)?;
-                            a.0.copy_advice(|| "rhs", &mut region, self.config.advice[2], 1)?;
+                            a.0.copy_advice(|| "rhs", &mut region, self.config.advice[3], 0)?;
                             diff
 
                         })?;
@@ -819,8 +807,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
-            // | a - b | 1 | b |
-            //             | a |
+            // | a - b | 1 | b | a |
             let one = self.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 0)?;
             let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.namespace(|| "sub_base").assign_region(
@@ -836,7 +823,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
                                 one.0.copy_advice(|| "one", &mut region, self.config.advice[1], 0)?;
                                 b.0.copy_advice(|| "rhs", &mut region, self.config.advice[2], 0)?;
-                                a.0.copy_advice(|| "rhs", &mut region, self.config.advice[2], 1)?;
+                                a.0.copy_advice(|| "rhs", &mut region, self.config.advice[3], 0)?;
                                 
                                 Ok(Number(diff))
                             })
@@ -850,6 +837,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             a: &Self::Num,
             b: &Self::Num,
         ) -> Result<Self::Num, Error> {
+            // | a | b | 0 | a * b |
             let zero = self.assign_witness(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;                           
             let result = layouter.namespace(|| "mul").assign_region(
                 || "mul",
@@ -863,7 +851,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             let value = a.0.value().copied() * b.0.value();
                             region.assign_advice(
                                 || "lhs * rhs + 0",
-                                self.config.advice[2], 1, || value
+                                self.config.advice[3], 0, || value
                             )
                         })?;
 
@@ -876,7 +864,8 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
-
+            // | a | b | 0 | a * b |
+            let zero = self.assign_witness(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;                           
             let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.assign_region(
                 || "mul",
@@ -885,11 +874,12 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             self.config.selector[0].enable(&mut region, 0)?;                            
                             a.0.copy_advice(|| "lhs", &mut region, self.config.advice[0], 0)?;
                             b.0.copy_advice(|| "rhs", &mut region, self.config.advice[1], 0)?;
-    
+                            zero.0.copy_advice(|| "zero", &mut region, self.config.advice[2], 0)?;
+
                             let value = a.0.value().copied() * b.0.value();
                             let result = region.assign_advice(
                                 || "lhs * rhs",
-                                self.config.advice[2], 0, || value
+                                self.config.advice[3], 0, || value
                             )?;
                             Ok(Number(result))
                         })
@@ -905,6 +895,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             b: &Self::Num,
             c: &Self::Num,
         ) -> Result<Self::Num, Error> {
+            // | a | b | c | a * b + c |
             let zero = self.assign_fixed(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;                           
             let result = layouter.namespace(|| "mul_add").assign_region(
                 || "inner product",
@@ -918,7 +909,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             let value = a.0.value().copied() * b.0.value() + c.0.value();
                             region.assign_advice(
                                 || "a * b + c",
-                                self.config.advice[2], 1, || value
+                                self.config.advice[3], 0, || value
                             )
                         })?;
 
@@ -946,7 +937,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             let value = num.0.value().copied() * a.0.value() + b.0.value();
                             let out = region.assign_advice(
                                 || "num * a + b",
-                                self.config.advice[2], 1, || value
+                                self.config.advice[3], 0, || value
                             )?;
                             Ok(Number(out))
                         })
@@ -976,7 +967,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             let value = a.0.value().copied() * b.0.value() + c.0.value();
                             let out = region.assign_advice(
                                 || "a * b + c",
-                                self.config.advice[2], 1, || value
+                                self.config.advice[3], 0, || value
                             )?;
                             Ok(Number(out))
                         })

@@ -285,6 +285,9 @@ where
         acc_comm: &EcPointNative<C>,
     ) -> Result<ScalarMulConfigInputs<C>, Error> {
 
+        // println!("nark_comm {:?}", nark_comm);
+        // println!("acc_comm {:?}", acc_comm);
+
         let mut rbits_fe = Vec::new();
         r_le_bits.iter().for_each(|fe| {
             let value = match *fe.0.value().unwrap() {
@@ -313,7 +316,6 @@ where
             nark_comm.y.0.value().map(|v| p_single_y = *v);
 
             let p = C::Secondary::from_xy(p_single_x, p_single_y).unwrap();
-            println!("p {:?}", p);
             let mut ptx_vec = Vec::new();
             let mut pty_vec = Vec::new();
             for i in 0..scalar_bits {
@@ -328,7 +330,6 @@ where
             acc_comm.y.0.value().map(|v| acc_comm_y = *v);
 
             let acc_com_raw = C::Secondary::from_xy(acc_comm_x, acc_comm_y).unwrap();
-            println!("acc_com_raw {:?}", acc_com_raw);
             let mut acc_prev = ProjectivePoint::identity();
             let mut acc_prev_xvec = Vec::new();
             let mut acc_prev_yvec = Vec::new();
@@ -392,24 +393,22 @@ where
             let r_native = fe_from_bits_le(rbits_fe.clone());
             let r_non_native: C::Base = fe_to_fe(r_native);
             let scalar_mul_given: C::Secondary = (p * r_non_native).into();
-            println!("scalar_mul_given {:?}", scalar_mul_given);
             // let scalar_mul_given_aff = scalar_mul_given.to_affine();
             let scalar_mul_calc = ProjectivePoint::new(*acc_prev_xvec.last().unwrap(), *acc_prev_yvec.last().unwrap(), *acc_prev_zvec.last().unwrap());
-            println!("scalar_mul_calc {:?}", scalar_mul_calc);
-            let scalar_mul_given_x = into_coordinates(&scalar_mul_given)[0];
-            let scalar_mul_given_y = into_coordinates(&scalar_mul_given)[1];
+            // let scalar_mul_given_x = into_coordinates(&scalar_mul_given)[0];
+            // let scalar_mul_given_y = into_coordinates(&scalar_mul_given)[1];
             // if !scalar_mul_calc.z.is_zero_vartime() {
             //     assert_eq!(scalar_mul_given_x * scalar_mul_calc.z, scalar_mul_calc.x);
             //     assert_eq!(scalar_mul_given_y * scalar_mul_calc.z, scalar_mul_calc.y);
             // }
 
             let scalar_mul_calc_affine = scalar_mul_calc.to_affine();
-            // println!("scalar_mul_calc_affine {:?}", scalar_mul_calc_affine);
-            let scalar_mul_calc_curve = scalar_mul_given; //C::Secondary::from_xy(scalar_mul_calc_affine.0, scalar_mul_calc_affine.1).unwrap();
-            // println!("scalar_mul_calc_curve {:?}", scalar_mul_calc_curve);
+            //println!("scalar_mul_calc_affine {:?}", scalar_mul_calc_affine);
+            let scalar_mul_calc_curve = scalar_mul_given; // C::Secondary::from_xy(scalar_mul_calc_affine.0, scalar_mul_calc_affine.1).unwrap();
+            //println!("scalar_mul_calc_curve {:?}", scalar_mul_calc_curve);
 
             let acc_prime_calc  = (scalar_mul_calc_curve + acc_com_raw).to_affine();
-            // assert_eq!(scalar_mul_given, scalar_mul_calc_curve);
+            //assert_eq!(scalar_mul_given, scalar_mul_calc_curve);
 
             // do point addition of comm and sm
             let result_given = acc_com_raw + scalar_mul_given;

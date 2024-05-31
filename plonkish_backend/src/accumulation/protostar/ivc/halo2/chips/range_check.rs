@@ -140,9 +140,9 @@ where
         &self,
         mut layouter: impl Layouter<C::Scalar>,
         value: &Self::Num,
-        // range_bits: usize,
+        range_bits: usize,
     ) -> Result<(), Error> {
-        let N_BYTES: usize = C::Scalar::NUM_BITS as usize / 8;
+        let N_BYTES: usize = range_bits as usize / 8;
         layouter.assign_region(
             || "range check value",
             |mut region| {

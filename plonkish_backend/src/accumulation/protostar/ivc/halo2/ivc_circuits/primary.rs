@@ -36,7 +36,7 @@ pub struct PrimaryCircuitConfig<C>
     poseidon_config: Pow5Config<C::Scalar, T, RATE>,
     main_config: MainChipConfig,
     sm_chip_config: ScalarMulChipConfig<C>,
-    // range_check_config: RangeCheckConfig,
+    range_check_config: RangeCheckConfig,
     // transcript_config: PoseidonTranscriptChipConfig,
     // avp_config: AVPConfig,
 }
@@ -50,7 +50,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
 
         let advice = (0..7).map(|_| meta.advice_column()).collect::<Vec<_>>();
 
-        //let state = (0..T).map(|_| meta.advice_column()).collect::<Vec<_>>();
+        // let state = (0..T).map(|_| meta.advice_column()).collect::<Vec<_>>();
         let state = advice.iter().skip(4).cloned().collect_vec();
         let partial_sbox = advice[0];
 
@@ -94,21 +94,21 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
 
         let sm_chip_config = ScalarMulChipConfig::configure(meta, sm_advice.try_into().unwrap());
 
-        // let range_check_fixed = meta.fixed_column();
-        // // we need 1 complex selector for the lookup check in the range check chip
-        // let enable_lookup_selector = meta.complex_selector();
-        // let range_check_config = RangeCheckChip::<C>::configure(
-        //     meta,
-        //     main_advice[6],
-        //     range_check_fixed,
-        //     enable_lookup_selector,
-        // );
+        let range_check_fixed = meta.fixed_column();
+        // we need 1 complex selector for the lookup check in the range check chip
+        let enable_lookup_selector = meta.complex_selector();
+        let range_check_config = RangeCheckChip::<C>::configure(
+            meta,
+            main_advice[6],
+            range_check_fixed,
+            enable_lookup_selector,
+        );
 
         Self {
             poseidon_config,
             main_config,
             sm_chip_config,
-            // range_check_config,
+            range_check_config,
         }
     }
 }
@@ -565,12 +565,12 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config.main_config.clone(), layouter.namespace(|| ""))?;
 
-        //let range_chip = RangeCheckChip::<C>::construct(config.range_check_config.clone());
-        let main_chip = MainChip::<C>::new(config.main_config.clone());
+        let range_chip = RangeCheckChip::<C>::construct(config.range_check_config.clone());
+        let main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
         let pow5_chip = Pow5Chip::construct(config.poseidon_config.clone());
         let sm_chip = ScalarMulChip::<C>::new(config.sm_chip_config.clone());
         let mut hash_chip_primary = PoseidonChip::<C, PoseidonSpec, T, RATE, PRIMARY_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
-        //let mut hash_chip_secondary = PoseidonChip::<C, PoseidonSpec, T, RATE, CF_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
+        // let mut hash_chip_secondary = PoseidonChip::<C, PoseidonSpec, T, RATE, CF_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
         
         let acc_verifier = ProtostarAccumulationVerifier::new(primary_avp.clone(), main_chip.clone(), sm_chip.clone());
         let zero = main_chip.assign_fixed(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;

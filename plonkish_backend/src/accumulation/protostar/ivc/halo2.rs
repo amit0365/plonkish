@@ -533,12 +533,13 @@ where
         let mut challenges = Vec::with_capacity(3);
         
         // write comm only for test
-        let mut rng = OsRng;
-        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm1"), &C::identity())?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm1"), &C::identity())?);
+        witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm1"))?);
         //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
         //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge2"))?.challenge);
-        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm2"), &C::identity())?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm2"), &C::identity())?);
+        witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm2"))?);
         let challenge3 = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge;
         challenges.extend(main_chip.powers(layouter.namespace(|| "challenge3"), &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
@@ -765,11 +766,13 @@ where
             C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
         ).unwrap();
 
-        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &grumpkin_random)?);
-        let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar;
+        //witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &grumpkin_random)?);
+        //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar;
+        witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm1"))?);
         // challenges.extend(main_chip.powers(layouter.namespace(|| "main_chip"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
-        witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &grumpkin_random)?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &grumpkin_random)?);
+        witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm2"))?);
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
         let challenge3 = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.scalar;
         challenges.extend(main_chip.powers_base(layouter.namespace(|| "challenge3"), &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
@@ -955,12 +958,10 @@ where
             let e_comm = if cross_term_comms.is_empty() {
                 acc.e_comm.clone()
             } else {
-                let timer = start_timer(|| format!("fold_accumulator_from_nark e_comm-cross_term_comms.len()-{}", cross_term_comms.len()));
                 let mut e_comm = cross_term_comms.last().unwrap().clone();
                 for item in cross_term_comms.iter().rev().skip(1).chain([&acc.e_comm]) {
                     e_comm = self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), &e_comm, item)?;
                 }
-                end_timer(timer);
                 e_comm
             };
             let compressed_e_sum = match strategy {

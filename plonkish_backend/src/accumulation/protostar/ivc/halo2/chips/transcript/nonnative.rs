@@ -45,9 +45,9 @@ where
 
     type Num = Number<C::Scalar>;
 
-    pub fn new(layouter: impl Layouter<C::Scalar>, pow5_chip: Pow5Chip<C::Scalar, T, RATE>, spec: PoseidonSpec,
+    pub fn new(layouter: &mut impl Layouter<C::Scalar>, pow5_chip: Pow5Chip<C::Scalar, T, RATE>, spec: PoseidonSpec,
         main_chip: MainChip<C>, proof: Value<Vec<u8>>) -> Self {
-        let poseidon_chip = PoseidonSpongeChip::from_spec(pow5_chip, layouter, spec);
+        let poseidon_chip = PoseidonSpongeChip::from_spec(pow5_chip, layouter.namespace(|| "poseidon_chip_nonnative"), spec);
         PoseidonTranscriptChip {
             poseidon_chip,
             chip: main_chip,
@@ -91,7 +91,7 @@ where
 
     pub fn read_field_element(
         &mut self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
     ) -> Result<NonNativeNumber<C::Scalar>, Error> {
         let fe = self.proof.as_mut().and_then(|proof| {
             let mut repr = <C::Base as PrimeField>::Repr::default();
@@ -102,7 +102,7 @@ where
                 .map(Value::known)
                 .unwrap_or_else(Value::unknown)
         });
-        let fe = self.chip.assign_witness_base(layouter.namespace(|| "assign_witness_base"), fe.assign().unwrap_or_default())?;
+        let fe = self.chip.assign_witness_base(layouter, fe.assign().unwrap_or_default())?;
         self.common_field_element(&fe)?;
         Ok(fe)
     }
@@ -110,7 +110,7 @@ where
     // not used in verifier circuit, only for testing
     pub fn write_field_element(
         &mut self, 
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         fe: &C::Base
     ) -> Result<NonNativeNumber<C::Scalar>, Error> {
         let repr = fe.to_repr();
@@ -119,7 +119,7 @@ where
                     .map_err(|err| crate::Error::Transcript(err.kind(), err.to_string()))
             }).unwrap(); 
 
-        let fe = self.chip.assign_witness_base(layouter.namespace(|| "assign_witness"), *fe)?;
+        let fe = self.chip.assign_witness_base(layouter, *fe)?;
         self.common_field_element(&fe)?;
         Ok(fe)
 
@@ -127,7 +127,7 @@ where
 
     pub fn read_commitment(
         &mut self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
     ) -> Result<EcPointNative<C>, Error> {
         let comm = self.proof.as_mut().and_then(|proof| {
             let mut reprs = [<C::Scalar as PrimeField>::Repr::default(); 2];
@@ -147,7 +147,7 @@ where
                     .unwrap_or_else(Value::unknown)
             })
         });
-        let comm = self.chip.assign_witness_secondary(layouter.namespace(|| "assign_witness_secondary"), comm.assign().unwrap_or_default())?;
+        let comm = self.chip.assign_witness_secondary(layouter, comm.assign().unwrap_or_default())?;
         self.common_commitment(&comm)?;
         Ok(comm)
     }
@@ -155,7 +155,7 @@ where
     // not used in verifier circuit, only for testing
     pub fn write_commitment(
         &mut self, 
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         ec_point: &C::Secondary
     ) -> Result<EcPointNative<C>, Error> {
         let coordinates = ec_point.coordinates().unwrap();
@@ -166,7 +166,7 @@ where
                             .map_err(|err| crate::Error::Transcript(err.kind(), err.to_string()))
                     }).unwrap();
                 }
-        let comm = self.chip.assign_witness_secondary(layouter.namespace(|| "assign_witness_primary"), *ec_point)?;
+        let comm = self.chip.assign_witness_secondary(layouter, *ec_point)?;
         self.common_commitment(&comm)?;
 
         Ok(comm)
@@ -174,10 +174,10 @@ where
 
     pub fn squeeze_challenges(
         &mut self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         n: usize,
     ) -> Result<Vec<Challenge<C::Scalar>>, Error> {
-        (0..n).map(|_| self.squeeze_challenge(layouter.namespace(||  "squeeze_challenge"))).collect()
+        (0..n).map(|_| self.squeeze_challenge(layouter)).collect()
     }
 
     pub fn common_field_elements(
@@ -189,10 +189,10 @@ where
 
     pub fn read_field_elements(
         &mut self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         n: usize,
     ) -> Result<Vec<NonNativeNumber<C::Scalar>>, Error> {
-        (0..n).map(|_| self.read_field_element(layouter.namespace(|| "read_field_element"))).collect()
+        (0..n).map(|_| self.read_field_element(layouter)).collect()
     }
 
     pub fn common_commitments(
@@ -206,10 +206,10 @@ where
 
     pub fn read_commitments(
         &mut self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         n: usize,
     ) -> Result<Vec<EcPointNative<C>>, Error> {
-        (0..n).map(|_| self.read_commitment(layouter.namespace(|| "read_commitment"))).collect()
+        (0..n).map(|_| self.read_commitment(layouter)).collect()
     }
 
     pub fn absorb_accumulator(
@@ -234,7 +234,7 @@ where
     
     pub fn squeeze_challenge(
         &mut self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
     ) -> Result<Challenge<C::Scalar>, Error> {
 
         let (challenge_le_bits, challenge) = {
@@ -242,17 +242,17 @@ where
             let hash = self.poseidon_chip.squeeze(layouter.namespace(|| "squeeze_poseidon"))?;
             self.poseidon_chip.update(&[hash.clone()]);
             // todo change this to num_to_bits_strict and use as r_le_bits in the verifier
-            let challenge_le_bits = self.chip.num_to_bits(layouter.namespace(|| "squeeze_num_to_bits"), RANGE_BITS, &Number(hash))?.into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
-            let challenge = self.chip.bits_to_num(layouter.namespace(|| "squeeze_bits_to_num"), &challenge_le_bits)?;     
+            let challenge_le_bits = self.chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?.into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
+            let challenge = self.chip.bits_to_num(layouter, &challenge_le_bits)?;     
             
             (challenge_le_bits, challenge)
         };
 
         let mut challenge_val = C::Scalar::ZERO;
         challenge.0.value().map(|v| challenge_val = *v);
-        let scalar = self.chip.assign_witness_base(layouter.namespace(|| "squeeze_assign"), fe_to_fe(challenge_val))?;
-        //let scalar_in_base = scalar.native();
-        //self.chip.constrain_equal(layouter.namespace(|| "squeeze_constrain_equal"), &challenge, scalar_in_base).unwrap();                                       
+        let scalar = self.chip.assign_witness_base(layouter, fe_to_fe(challenge_val))?;
+        // let scalar_in_base = scalar.native();
+        // self.chip.constrain_equal(layouter.namespace(|| "squeeze_constrain_equal"), &challenge, scalar_in_base).unwrap();                                       
 
         Ok(Challenge {
             le_bits: challenge_le_bits,

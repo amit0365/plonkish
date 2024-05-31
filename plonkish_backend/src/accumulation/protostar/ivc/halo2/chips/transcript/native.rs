@@ -47,9 +47,9 @@ impl<C: TwoChainCurve> PoseidonNativeTranscriptChip<C>
 
 pub type Num = Number<C::Scalar>;
 
-pub fn new(layouter: impl Layouter<C::Scalar>, pow5_chip: Pow5Chip<C::Scalar, T, RATE>, spec: PoseidonSpec,
+pub fn new(layouter: &mut impl Layouter<C::Scalar>, pow5_chip: Pow5Chip<C::Scalar, T, RATE>, spec: PoseidonSpec,
     main_chip: MainChip<C>, proof: Value<Vec<u8>>) -> Self {
-    let poseidon_chip = PoseidonSpongeChip::from_spec(pow5_chip, layouter, spec);
+    let poseidon_chip = PoseidonSpongeChip::from_spec(pow5_chip, layouter.namespace(|| "poseidon_chip"), spec);
     let chip = main_chip;
     PoseidonNativeTranscriptChip {
         poseidon_chip,
@@ -96,7 +96,7 @@ pub fn common_commitment(
 
 pub fn read_field_element(
     &mut self,
-    mut layouter: impl Layouter<C::Scalar>,
+    layouter: &mut impl Layouter<C::Scalar>,
 ) -> Result<Self::Num, Error> {
     let fe = self.proof.as_mut().and_then(|proof| {
         let mut repr = <C::Scalar as PrimeField>::Repr::default();
@@ -107,7 +107,7 @@ pub fn read_field_element(
             .map(Value::known)
             .unwrap_or_else(Value::unknown)
     });
-    let fe = self.chip.assign_witness(layouter.namespace(|| "assign_witness"), &fe.assign().unwrap_or_default(), 0)?;
+    let fe = self.chip.assign_witness(layouter, &fe.assign().unwrap_or_default(), 0)?;
     self.common_field_element(&fe)?;
     Ok(fe)
 }
@@ -115,7 +115,7 @@ pub fn read_field_element(
 // not used in verifier circuit, only for testing
 pub fn write_field_element(
     &mut self, 
-    mut layouter: impl Layouter<C::Scalar>,
+    layouter: &mut impl Layouter<C::Scalar>,
     fe: &C::Scalar
 ) -> Result<Number<C::Scalar>, Error> {
     let repr = fe.to_repr();
@@ -124,7 +124,7 @@ pub fn write_field_element(
                 .map_err(|err| crate::Error::Transcript(err.kind(), err.to_string()))
         }).unwrap(); 
 
-    let fe = self.chip.assign_witness(layouter.namespace(|| "assign_witness"), &fe, 0)?;
+    let fe = self.chip.assign_witness(layouter, &fe, 0)?;
     self.common_field_element(&fe)?;
     Ok(fe)
 
@@ -132,7 +132,7 @@ pub fn write_field_element(
 
 pub fn read_commitment(
     &mut self,
-    mut layouter: impl Layouter<C::Scalar>,
+    layouter: &mut impl Layouter<C::Scalar>,
 ) -> Result<EcPointNonNative<C>, Error> {
     let comm = self.proof.as_mut().and_then(|proof| {
         let mut reprs = [<C::Base as PrimeField>::Repr::default(); 2];
@@ -152,7 +152,7 @@ pub fn read_commitment(
                 .unwrap_or_else(Value::unknown)
         })
     });
-    let comm = self.chip.assign_witness_primary(layouter.namespace(|| "assign_witness_primary"), comm.assign().unwrap_or_default())?;
+    let comm = self.chip.assign_witness_primary(layouter, comm.assign().unwrap_or_default())?;
     self.common_commitment(&comm)?;
     Ok(comm)
 }
@@ -160,7 +160,7 @@ pub fn read_commitment(
 // not used in verifier circuit, only for testing
 pub fn write_commitment(
     &mut self, 
-    mut layouter: impl Layouter<C::Scalar>,
+    layouter: &mut impl Layouter<C::Scalar>,
     ec_point: &C
 ) -> Result<EcPointNonNative<C>, Error> {
     let coordinates = ec_point.coordinates().unwrap();
@@ -171,7 +171,7 @@ pub fn write_commitment(
                         .map_err(|err| crate::Error::Transcript(err.kind(), err.to_string()))
                 }).unwrap();
             }
-    let comm = self.chip.assign_witness_primary(layouter.namespace(|| "assign_witness_primary"), *ec_point)?;
+    let comm = self.chip.assign_witness_primary(layouter, *ec_point)?;
     self.common_commitment(&comm)?;
 
     Ok(comm)
@@ -179,10 +179,10 @@ pub fn write_commitment(
 
 pub fn squeeze_challenges(
     &mut self,
-    mut layouter: impl Layouter<C::Scalar>,
+    layouter: &mut impl Layouter<C::Scalar>,
     n: usize,
 ) -> Result<Vec<NativeChallenge<C::Scalar>>, Error> {
-    (0..n).map(|_| self.squeeze_challenge(layouter.namespace(|| "squeeze_challenge"))).collect()
+    (0..n).map(|_| self.squeeze_challenge(layouter)).collect()
 }
 
 pub fn common_field_elements(
@@ -194,10 +194,10 @@ pub fn common_field_elements(
 
 pub fn read_field_elements(
     &mut self,
-    mut layouter: impl Layouter<C::Scalar>,
+    layouter: &mut impl Layouter<C::Scalar>,
     n: usize,
 ) -> Result<Vec<Self::Num>, Error> {
-    (0..n).map(|_| self.read_field_element(layouter.namespace(|| "read_field_element"))).collect()
+    (0..n).map(|_| self.read_field_element(layouter)).collect()
 }
 
 pub fn common_commitments(
@@ -211,10 +211,10 @@ pub fn common_commitments(
 
 pub fn read_commitments(
     &mut self,
-    mut layouter: impl Layouter<C::Scalar>,
+    layouter: &mut impl Layouter<C::Scalar>,
     n: usize,
 ) -> Result<Vec<EcPointNonNative<C>>, Error> {
-    (0..n).map(|_| self.read_commitment(layouter.namespace(|| "read_commitment"))).collect()
+    (0..n).map(|_| self.read_commitment(layouter)).collect()
 }
 
 pub fn absorb_accumulator(
@@ -240,13 +240,13 @@ pub fn absorb_accumulator(
 
 pub fn squeeze_challenge(
     &mut self,
-    mut layouter: impl Layouter<C::Scalar>,
+    layouter: &mut impl Layouter<C::Scalar>,
 ) -> Result<NativeChallenge<C::Scalar>, Error> {
-    let hash = self.poseidon_chip.squeeze(layouter.namespace(|| "inner_product"))?;
+    let hash = self.poseidon_chip.squeeze(layouter.namespace(|| "squeeze"))?;
     self.poseidon_chip.update(&[hash.clone()]);
     // todo change this to num_to_bits_strict and use as r_le_bits in the verifier
-    let challenge_le_bits = self.chip.num_to_bits(layouter.namespace(|| "num_to_bits"), RANGE_BITS, &Number(hash))?.into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
-    let challenge = self.chip.bits_to_num(layouter.namespace(|| "bits_to_num"), &challenge_le_bits)?;                                   
+    let challenge_le_bits = self.chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?.into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
+    let challenge = self.chip.bits_to_num(layouter, &challenge_le_bits)?;                                   
 
     Ok(NativeChallenge {
         challenge_le_bits,

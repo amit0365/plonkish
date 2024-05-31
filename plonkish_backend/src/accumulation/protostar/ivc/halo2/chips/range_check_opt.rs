@@ -36,8 +36,6 @@ pub fn decompose_fp_to_bytes<F: BigPrimeField>(value: F, n: usize) -> Vec<u8> {
 
     // If the bytes length exceeds n, print a warning and truncate the byte array at the most significant bytes.
     if bytes.len() > n {
-        println!("bytes len: {}", bytes.len());
-        println!("n: {}", n);
         println!("Warning: `decompose_fp_to_bytes` value is decomposed in #bytes which are greater than n. Truncating the output to fit the specified length.");
         bytes.truncate(n);
     }
@@ -59,9 +57,8 @@ pub fn decompose_fp_to_bytes<F: BigPrimeField>(value: F, n: usize) -> Vec<u8> {
 /// Patterned after [halo2_gadgets](https://github.com/privacy-scaling-explorations/halo2/blob/main/halo2_gadgets/src/utilities/decompose_running_sum.rs)
 #[derive(Debug, Copy, Clone)]
 pub struct RangeCheckConfig {
-    z: Column<Advice>,
-    lookup_enable_selector: Selector,   
-    pub lookup_u8_table: Column<Fixed>,
+    z: [Column<Advice>; NUM_RANGE_COLS],
+    lookup_enable_selector: Selector,
 }
 
 /// Helper chip that verifies that the value witnessed in a given cell lies within a given range defined by N_BYTES.
@@ -112,7 +109,7 @@ where
     /// Note: the lookup table should be loaded with values from `0` to `2^LOOKUP_BITS - 1` otherwise the range check will fail.
     pub fn configure(
         meta: &mut ConstraintSystem<C::Scalar>,
-        z: Column<Advice>,
+        z: [Column<Advice>; NUM_RANGE_COLS],
         lookup_u8_table: Column<Fixed>,
         lookup_enable_selector: Selector,
     ) -> RangeCheckConfig {
@@ -121,33 +118,35 @@ where
         meta.lookup_any(
             "range u8 check for difference between each interstitial running sum output",
             |meta| {
-                let z_cur = meta.query_advice(z, Rotation::cur());
-                let z_next = meta.query_advice(z, Rotation::next());
+                let z_cur0 = meta.query_advice(z[0], Rotation::cur());
+                let z_next0 = meta.query_advice(z[1], Rotation::cur());
+                let z_cur1 = meta.query_advice(z[2], Rotation::cur());
+                let z_next1 = meta.query_advice(z[3], Rotation::cur());
 
                 let lookup_enable_selector = meta.query_selector(lookup_enable_selector);
                 let u8_range = meta.query_fixed(lookup_u8_table, Rotation::cur());
 
-                let diff = z_cur - z_next * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
+                let diff0 = z_cur0 - z_next0 * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
+                let diff1 = z_cur1 - z_next1 * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
 
-                vec![(lookup_enable_selector * diff, u8_range)]
+                vec![(lookup_enable_selector.clone() * diff0, u8_range.clone()), (lookup_enable_selector * diff1, u8_range)]
             },
         );
 
         RangeCheckConfig {
             z,
             lookup_enable_selector,
-            lookup_u8_table,
         }
     }
 
     /// Assign the running sum to the chip starting from the value within an assigned cell.
     pub fn assign(
         &self,
-        layouter: &mut impl Layouter<C::Scalar>,
+        mut layouter: impl Layouter<C::Scalar>,
         value: &Self::Num,
         range_bits: usize,
     ) -> Result<(), Error> {
-        let N_BYTES: usize = range_bits.div_ceil(8);
+        let N_BYTES: usize = range_bits as usize / 8;
         layouter.assign_region(
             || "range check value",
             |mut region| {
@@ -160,7 +159,7 @@ where
                 let z_0 = value.0.copy_advice(
                     || "range checked value",
                     &mut region,
-                    self.config.z,
+                    self.config.z[0],
                     0,
                 )?;
 
@@ -179,6 +178,7 @@ where
                 let two_pow_k_inv = Value::known(C::Scalar::from(1 << LOOKUP_BITS).invert().unwrap());
 
                 for (i, byte) in bytes.iter().enumerate() {
+                    let idx = i % NUM_RANGE_COLS;
                     // z_next = (z_cur - byte) / (2^K)
                     let z_next = {
                         let z_cur_val = z.value().copied();
@@ -186,7 +186,7 @@ where
                         let z_next_val = (z_cur_val - byte) * two_pow_k_inv;
                         region.assign_advice(
                             || format!("z_{:?}", i + 1),
-                            self.config.z,
+                            self.config.z[idx],
                             i + 1,
                             || z_next_val,
                         )?

@@ -189,7 +189,7 @@ where
 
     pub fn assign_default_accumulator(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
     ) -> Result<
         AssignedProtostarAccumulatorInstance<
         Self::Num, 
@@ -203,24 +203,24 @@ where
             .iter()
             .enumerate()
             .map(|(idx, num_instances)| {
-                iter::repeat_with(|| main_chip.assign_fixed(layouter.namespace(|| "assign_instances"), &C::Scalar::ZERO, idx))
+                iter::repeat_with(|| main_chip.assign_fixed(layouter, &C::Scalar::ZERO, idx))
                     .take(*num_instances)
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
         let witness_comms = iter::repeat_with(|| {
-            main_chip.assign_constant_primary(layouter.namespace(|| "assign_witness_comms"), C::identity())
+            main_chip.assign_constant_primary(layouter, C::identity())
             }).take(self.avp.num_folding_witness_polys())
             .try_collect::<_, Vec<_>, _>()?;
         let challenges =
-            iter::repeat_with(|| main_chip.assign_fixed(layouter.namespace(|| "assign_challenges"), &C::Scalar::ZERO, 0))
+            iter::repeat_with(|| main_chip.assign_fixed(layouter, &C::Scalar::ZERO, 0))
                 .take(self.avp.num_folding_challenges())
                 .try_collect::<_, Vec<_>, _>()?;
-        let u = main_chip.assign_fixed(layouter.namespace(|| "assign_u"), &C::Scalar::ZERO, 0)?;
-        let e_comm = main_chip.assign_constant_primary(layouter.namespace(|| "assign_e_comm"), C::identity())?;
+        let u = main_chip.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
+        let e_comm = main_chip.assign_constant_primary(layouter, C::identity())?;
         let compressed_e_sum = match self.avp.strategy {
             NoCompressing => None,
-            Compressing => Some(main_chip.assign_fixed(layouter.namespace(|| "assign_compressed_e_sum"), &C::Scalar::ZERO, 0)?),
+            Compressing => Some(main_chip.assign_fixed(layouter, &C::Scalar::ZERO, 0)?),
         };
 
         Ok(ProtostarAccumulatorInstance {
@@ -235,7 +235,7 @@ where
 
     pub fn assign_default_accumulator_ec(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
     ) -> Result<
         AssignedProtostarAccumulatorInstance<
         Self::NonNatNum, Self::NatEcc>,
@@ -247,25 +247,25 @@ where
         let instances = num_instances
             .iter()
             .map(|num_instances| {
-                iter::repeat_with(|| main_chip.assign_fixed_base(layouter.namespace(|| "assign_instances"), &C::Base::ZERO))
+                iter::repeat_with(|| main_chip.assign_fixed_base(layouter, &C::Base::ZERO))
                     .take(*num_instances)
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
         let witness_comms = iter::repeat_with(|| {
-            main_chip.assign_constant_secondary(layouter.namespace(|| "assign_witness_comms"), C::Secondary::identity())
+            main_chip.assign_constant_secondary(layouter, C::Secondary::identity())
         })
         .take(self.avp.num_folding_witness_polys())
         .try_collect::<_, Vec<_>, _>()?;
         let challenges =
-            iter::repeat_with(|| main_chip.assign_fixed_base(layouter.namespace(|| "assign_challenges"), &C::Base::ZERO))
+            iter::repeat_with(|| main_chip.assign_fixed_base(layouter, &C::Base::ZERO))
                 .take(self.avp.num_folding_challenges())
                 .try_collect::<_, Vec<_>, _>()?;
-        let u = main_chip.assign_fixed_base(layouter.namespace(|| "assign_u"), &C::Base::ZERO)?;
-        let e_comm = main_chip.assign_constant_secondary(layouter.namespace(|| "assign_e_comm"), C::Secondary::identity())?;
+        let u = main_chip.assign_fixed_base(layouter, &C::Base::ZERO)?;
+        let e_comm = main_chip.assign_constant_secondary(layouter, C::Secondary::identity())?;
         let compressed_e_sum = match self.avp.strategy {
             NoCompressing => None,
-            Compressing => Some(main_chip.assign_fixed_base(layouter.namespace(|| "assign_compressed_e_sum"), &C::Base::ZERO)?),
+            Compressing => Some(main_chip.assign_fixed_base(layouter, &C::Base::ZERO)?),
         };
 
         Ok(ProtostarAccumulatorInstance {
@@ -280,7 +280,7 @@ where
 
     pub fn assign_comm_outputs_from_accumulator(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         acc: Value<&ProtostarAccumulatorInstance<C::Scalar, C>>,
     ) -> Result<Vec<Self::Ecc>, Error> {
         let main_chip = &self.main_chip;
@@ -293,13 +293,13 @@ where
                 {
                     let mut witness_comm_val = C::default();
                     witness_comm.map(|val| witness_comm_val = *val);
-                    main_chip.assign_witness_primary(layouter.namespace(|| "assign_comm_outputs_from_accumulator"), witness_comm_val)
+                    main_chip.assign_witness_primary(layouter, witness_comm_val)
                 })
             .try_collect::<_, Vec<_>, _>()?;
 
         let mut acc_e_comm_val = C::default();
         acc.map(|acc| acc.e_comm).map(|val| acc_e_comm_val = val);
-        let e_comm = main_chip.assign_witness_primary(layouter.namespace(|| "assign_comm_outputs_from_accumulator"), acc_e_comm_val)?;
+        let e_comm = main_chip.assign_witness_primary(layouter, acc_e_comm_val)?;
         
         let mut assigned_comm = witness_comms.clone();
         assigned_comm.push(e_comm);
@@ -308,7 +308,7 @@ where
 
     pub fn assign_accumulator(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         acc: Value<&ProtostarAccumulatorInstance<C::Scalar, C>>,
     ) -> Result<
         AssignedProtostarAccumulatorInstance<
@@ -333,7 +333,7 @@ where
                     {
                         let mut instance_val = C::Scalar::ZERO;
                         instance.map(|val| instance_val = *val);
-                        main_chip.assign_witness(layouter.namespace(|| "assign_instances"), &instance_val, idx)
+                        main_chip.assign_witness(layouter, &instance_val, idx)
                     })
                     .try_collect::<_, Vec<_>, _>()
             }).try_collect::<_, Vec<_>, _>()?;
@@ -346,7 +346,7 @@ where
                 {
                     let mut witness_comm_val = C::default();
                     witness_comm.map(|val| witness_comm_val = *val);
-                    main_chip.assign_witness_primary(layouter.namespace(|| "assign_witness_comms"), witness_comm_val)
+                    main_chip.assign_witness_primary(layouter, witness_comm_val)
                 })
             .try_collect::<_, Vec<_>, _>()?;
 
@@ -359,17 +359,17 @@ where
                 {
                     let mut challenge_val = C::Scalar::ZERO;
                     challenge.map(|val| challenge_val = *val);
-                    main_chip.assign_witness(layouter.namespace(|| "assign_challenges"), &challenge_val, idx)
+                    main_chip.assign_witness(layouter, &challenge_val, idx)
                 })
             .try_collect::<_, Vec<_>, _>()?;
 
         let mut acc_u_val = C::Scalar::ZERO;
         acc.map(|acc| acc.u).map(|val| acc_u_val = val);
-        let u = main_chip.assign_witness(layouter.namespace(|| "assign_u"), &acc_u_val, 0)?;
+        let u = main_chip.assign_witness(layouter, &acc_u_val, 0)?;
 
         let mut acc_e_comm_val = C::default();
         acc.map(|acc| acc.e_comm).map(|val| acc_e_comm_val = val);
-        let e_comm = main_chip.assign_witness_primary(layouter.namespace(|| "assign_e_comm"), acc_e_comm_val)?;
+        let e_comm = main_chip.assign_witness_primary(layouter, acc_e_comm_val)?;
 
         let mut acc_compressed_e_sum_val = C::Scalar::ZERO;
         acc.map(|acc| acc.compressed_e_sum.map(|val| acc_compressed_e_sum_val = val));
@@ -377,7 +377,7 @@ where
             NoCompressing => None,
             Compressing => Some(
                 main_chip
-                    .assign_witness(layouter.namespace(|| "assign_compressed_e_sum"), &acc_compressed_e_sum_val, 0)?,
+                    .assign_witness(layouter, &acc_compressed_e_sum_val, 0)?,
             ),
         };
 
@@ -393,7 +393,7 @@ where
 
     pub fn assign_accumulator_ec(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         acc: Value<&ProtostarAccumulatorInstance<C::Base, C::Secondary>>,
     ) -> Result<
         AssignedProtostarAccumulatorInstance<Self::NonNatNum, Self::NatEcc>,
@@ -416,7 +416,7 @@ where
                         {
                             let mut instance_val = C::Base::ZERO;
                             instance.map(|val| instance_val = *val);
-                            main_chip.assign_witness_base(layouter.namespace(|| "assign_instances"), instance_val)
+                            main_chip.assign_witness_base(layouter, instance_val)
                         }
                     )
                     .try_collect::<_, Vec<_>, _>()
@@ -430,7 +430,7 @@ where
                 {
                     let mut witness_comm_val = C::Secondary::default();
                     witness_comm.map(|val| witness_comm_val = *val);
-                    main_chip.assign_witness_secondary(layouter.namespace(|| "assign_witness_comms"), witness_comm_val)
+                    main_chip.assign_witness_secondary(layouter, witness_comm_val)
                 })
             .try_collect::<_, Vec<_>, _>()?;
 
@@ -442,17 +442,17 @@ where
                 {
                     let mut challenge_val = C::Base::ZERO;
                     challenge.map(|val| challenge_val = *val);
-                    main_chip.assign_witness_base(layouter.namespace(|| "assign_challenges"), challenge_val)
+                    main_chip.assign_witness_base(layouter, challenge_val)
                 })
             .try_collect::<_, Vec<_>, _>()?;
 
         let mut acc_u_val = C::Base::ZERO;
         acc.map(|acc| acc.u).map(|val| acc_u_val = val);
-        let u = main_chip.assign_witness_base(layouter.namespace(|| "assign_u"), acc_u_val)?;
+        let u = main_chip.assign_witness_base(layouter, acc_u_val)?;
 
         let mut acc_e_comm_val = C::Secondary::default();
         acc.map(|acc| acc.e_comm).map(|val| acc_e_comm_val = val);
-        let e_comm = main_chip.assign_witness_secondary(layouter.namespace(|| "assign_e_comm"), acc_e_comm_val)?;
+        let e_comm = main_chip.assign_witness_secondary(layouter, acc_e_comm_val)?;
 
         let mut acc_compressed_e_sum_val = C::Base::ZERO;
         acc.map(|acc| acc.compressed_e_sum.map(|val| acc_compressed_e_sum_val = val));
@@ -460,7 +460,7 @@ where
             NoCompressing => None,
             Compressing => Some(
                 main_chip
-                    .assign_witness_base(layouter.namespace(|| "assign_compressed_e_sum"), acc_compressed_e_sum_val)?
+                    .assign_witness_base(layouter, acc_compressed_e_sum_val)?
             ),
         };
 
@@ -477,7 +477,7 @@ where
     #[allow(clippy::type_complexity)]
     pub fn verify_accumulation_from_nark(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             Self::Num,
             Self::Ecc,
@@ -508,7 +508,7 @@ where
                 {
                     let mut instance_val = C::Scalar::ZERO;
                     instance.map(|val| instance_val = *val);
-                    main_chip.assign_witness(layouter.namespace(|| "assign_instances"), &instance_val, idx)
+                    main_chip.assign_witness(layouter, &instance_val, idx)
                 })
             .try_collect::<_, Vec<_>, _>()?;
         for instance in instances.iter() {
@@ -533,34 +533,34 @@ where
         let mut challenges = Vec::with_capacity(3);
         
         // write comm only for test
-        //witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm1"), &C::identity())?);
-        witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm1"))?);
+        witness_comms.push(transcript_chip.write_commitment(layouter, &C::identity())?);
+        //witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm1"))?);
         //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
         //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
-        challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge2"))?.challenge);
-        //witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "comm2"), &C::identity())?);
-        witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm2"))?);
-        let challenge3 = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge;
-        challenges.extend(main_chip.powers(layouter.namespace(|| "challenge3"), &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
+        challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
+        witness_comms.push(transcript_chip.write_commitment(layouter, &C::identity())?);
+        //witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm2"))?);
+        let challenge3 = transcript_chip.squeeze_challenge(layouter)?.challenge;
+        challenges.extend(main_chip.powers(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
         let nark = PlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(layouter.namespace(|| "absorb_accumulator"), acc)?;
 
         let (cross_term_comms, compressed_cross_term_sums) = match strategy {
             NoCompressing => {
-                let cross_term_comms = transcript_chip.read_commitments(layouter.namespace(|| "cross_term_comms"), *num_cross_terms)?;
+                let cross_term_comms = transcript_chip.read_commitments(layouter, *num_cross_terms)?;
 
                 (cross_term_comms, None)
             }
             Compressing => {
-                let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter.namespace(|| "zeta_cross_term_comm"))?];
+                let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
                 let compressed_cross_term_sums =
-                    transcript_chip.read_field_elements(layouter.namespace(|| "compressed_cross_term_sums"), *num_cross_terms)?;
+                    transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
 
-        let r = transcript_chip.squeeze_challenge(layouter.namespace(|| "squeeze_challenge"))?;
+        let r = transcript_chip.squeeze_challenge(layouter)?;
         let r_le_bits = transcript_chip.challenge_to_le_bits(&r)?;
 
         // let assigned_cyclefold_instances = self.assign_cyclefold_instances_acc_prime(builder, cyclefold_instances)?;
@@ -568,7 +568,7 @@ where
         // self.check_assigned_cyclefold_instances(builder, r.as_ref(), &nark, &cross_term_comms, &acc, &assigned_cyclefold_instances);
 
         let acc_prime = self.fold_accumulator_from_nark(
-            layouter.namespace(|| "fold_accumulator_from_nark"),
+            layouter,
             acc,
             &nark,
             &cross_term_comms,
@@ -583,7 +583,7 @@ where
 
     pub fn assign_cyclefold_instances_acc_prime(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         cyclefold_instances: [Value<&C::Base>; CF_IO_LEN]
     ) -> Result<Vec<Self::Ecc>, Error> 
     {
@@ -602,7 +602,7 @@ where
             .collect_vec();
 
         let assigned_comms = coordinates.chunks(2).map(|chunk| {
-            main_chip.assign_witness_primary(layouter.namespace(|| "assigned_comms_cf"), C::from_xy(chunk[0], chunk[1]).unwrap()).unwrap()
+            main_chip.assign_witness_primary(layouter, C::from_xy(chunk[0], chunk[1]).unwrap()).unwrap()
         }).collect_vec();
 
         Ok(assigned_comms)
@@ -610,7 +610,7 @@ where
 
     // pub fn assign_cyclefold_instances(
     //     &self,
-    //     mut layouter: impl Layouter<C::Scalar>,
+    //     layouter: &mut impl Layouter<C::Scalar>,
     //     cyclefold_instances: [Value<&C::Base>; CF_IO_LEN]
     // ) -> Result<AssignedCycleFoldInputsInPrimary<
     //     Self::Num, 
@@ -668,7 +668,7 @@ where
 
     // pub fn check_assigned_cyclefold_instances(
     //     &self,
-    //     mut layouter: impl Layouter<C::Scalar>,
+    //     layouter: &mut impl Layouter<C::Scalar>,
     //     r: &Self::Num,
     //     nark: &AssignedPlonkishNarkInstance<
     //         Self::Num, 
@@ -703,7 +703,7 @@ where
     #[allow(clippy::type_complexity)]
     pub fn verify_accumulation_from_nark_ec(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             Self::NonNatNum,
             Self::NatEcc
@@ -732,7 +732,7 @@ where
                 {
                     let mut instance_val = C::Base::ZERO;
                     instance.map(|val| instance_val = *val);
-                    main_chip.assign_witness_base(layouter.namespace(|| "assign_cf_instances"), instance_val)
+                    main_chip.assign_witness_base(layouter, instance_val)
                 })
             .try_collect::<_, Vec<_>, _>()?;
         for instance in instances.iter() {
@@ -766,16 +766,16 @@ where
             C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
         ).unwrap();
 
-        //witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &grumpkin_random)?);
-        //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar;
-        witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm1"))?);
+        witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
+        // let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar;
+        // witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm1"))?);
         // challenges.extend(main_chip.powers(layouter.namespace(|| "main_chip"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
-        challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
-        //witness_comms.push(transcript_chip.write_commitment(layouter.namespace(|| "transcript_chip"), &grumpkin_random)?);
-        witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm2"))?);
+        challenges.push(transcript_chip.squeeze_challenge(layouter)?.scalar);
+        witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
+        //witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm2"))?);
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
-        let challenge3 = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.scalar;
-        challenges.extend(main_chip.powers_base(layouter.namespace(|| "challenge3"), &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
+        let challenge3 = transcript_chip.squeeze_challenge(layouter)?.scalar;
+        challenges.extend(main_chip.powers_base(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
 
         let nark = AssignedPlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(acc)?;
@@ -783,22 +783,22 @@ where
         let (cross_term_comms, compressed_cross_term_sums) = match strategy {
             NoCompressing => {
                 let cross_term_comms = 
-                transcript_chip.read_commitments(layouter.namespace(|| "cross_term_comms"), *num_cross_terms)?;
+                transcript_chip.read_commitments(layouter, *num_cross_terms)?;
                 (cross_term_comms, None)
             }
             Compressing => {
-                let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter.namespace(|| "zeta_cross_term_comm"))?];
+                let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
                 let compressed_cross_term_sums =
-                    transcript_chip.read_field_elements(layouter.namespace(|| "compressed_cross_term_sums"), *num_cross_terms)?;
+                    transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
 
-        let r = transcript_chip.squeeze_challenge(layouter.namespace(|| "squeeze_r"))?;
+        let r = transcript_chip.squeeze_challenge(layouter)?;
         let r_le_bits = r.le_bits.clone();
 
         let acc_prime = self.fold_accumulator_from_nark_ec(
-            layouter.namespace(|| "fold_accumulator_from_nark_ec"),
+            layouter,
             acc,
             &nark,
             &cross_term_comms,
@@ -814,7 +814,7 @@ where
     #[allow(clippy::type_complexity)]
     fn fold_accumulator_from_nark(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             Self::Num,
             Self::Ecc,
@@ -842,7 +842,7 @@ where
             ..
         } = self.avp;
 
-        let powers_of_r = main_chip.powers(layouter.namespace(|| "powers_r"), r, num_cross_terms + 1)?;
+        let powers_of_r = main_chip.powers(layouter, r, num_cross_terms + 1)?;
         
         // skip folding witness_comms
         let r_nark_instances = nark
@@ -851,7 +851,7 @@ where
             .map(|instances| {
                 instances
                     .iter()
-                    .map(|instance| main_chip.mul(layouter.namespace(|| "fold_instances_rnark"), r, instance))
+                    .map(|instance| main_chip.mul(layouter, r, instance))
                     .try_collect::<_, Vec<_>, _>()
             })
             .try_collect::<_, Vec<_>, _>()?;
@@ -859,23 +859,23 @@ where
         let r_nark_challenges = nark
             .challenges
             .iter()
-            .map(|challenge| main_chip.mul(layouter.namespace(|| "fold_challenges_rnark"), r, challenge))
+            .map(|challenge| main_chip.mul(layouter, r, challenge))
             .try_collect::<_, Vec<_>, _>()?;
 
         let acc_prime = {
             let instances = izip_eq!(&acc.instances, &r_nark_instances)
                 .map(|(lhs, rhs)| {
                     izip_eq!(lhs, rhs)
-                        .map(|(lhs, rhs)| main_chip.add(layouter.namespace(|| "fold_instances"), lhs, rhs))
+                        .map(|(lhs, rhs)| main_chip.add(layouter, lhs, rhs))
                         .try_collect::<_, Vec<_>, _>()
                 })
                 .try_collect::<_, Vec<_>, _>()?;
             let witness_comms = assigned_cyclefold_instances[..assigned_cyclefold_instances.len() - 1].to_vec();
             let challenges = izip_eq!(&acc.challenges, &r_nark_challenges)
-                .map(|(lhs, rhs)| main_chip.add(layouter.namespace(|| "fold_challenges"), lhs, rhs))
+                .map(|(lhs, rhs)| main_chip.add(layouter, lhs, rhs))
                 .try_collect::<_, Vec<_>, _>()?;
 
-            let u = main_chip.add(layouter.namespace(|| "fold_u"), &acc.u, r)?;
+            let u = main_chip.add(layouter, &acc.u, r)?;
             let e_comm = if cross_term_comms.is_empty() {
                 acc.e_comm.clone()
             } else {
@@ -886,12 +886,12 @@ where
                 NoCompressing => None,
                 Compressing => {
                     let rhs = main_chip.inner_product(
-                        layouter.namespace(|| "fold_compressed_e_sum"),
+                        layouter,
                         &powers_of_r[1..],
                         compressed_cross_term_sums.unwrap(),
                     )?;
                     Some(main_chip.add(
-                        layouter.namespace(|| "fold_compressed_e_sum"),
+                        layouter,
                         acc.compressed_e_sum.as_ref().unwrap(),
                         &rhs,
                     )?)
@@ -915,7 +915,7 @@ where
     #[allow(clippy::type_complexity)]
     fn fold_accumulator_from_nark_ec(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         acc: &AssignedProtostarAccumulatorInstance<
             Self::NonNatNum,
             Self::NatEcc,
@@ -939,12 +939,15 @@ where
             ..
         } = self.avp;
 
-        let powers_of_r = main_chip.powers_base(layouter.namespace(|| "powers_r"), r, num_cross_terms + 1)?;
+        let powers_of_r = main_chip.powers_base(layouter, r, num_cross_terms + 1)?;
         let acc_prime = {
             let instances = izip_eq!(&acc.instances, &nark.instances)
                 .map(|(lhs, rhs)| {
                     izip_eq!(lhs, rhs)
-                        .map(|(lhs, rhs)| main_chip.mul_add_base(layouter.namespace(|| "acc_prime_instance"), r, lhs, rhs))
+                        .map(|(lhs, rhs)| {
+                            let no_mod = main_chip.mul_add_base(layouter, r, lhs, rhs)?;
+                            main_chip.mod_reduce(layouter, no_mod)
+                        })
                         .try_collect::<_, Vec<_>, _>()
                 })
                 .try_collect::<_, Vec<_>, _>()?;
@@ -952,9 +955,13 @@ where
                 .map(|(lhs, rhs)| self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), lhs, rhs))
                 .try_collect::<_, Vec<_>, _>()?;
             let challenges = izip_eq!(&acc.challenges, &nark.challenges)
-                .map(|(lhs, rhs)| main_chip.mul_add_base(layouter.namespace(|| "acc_prime_challenges"), r, lhs, rhs))
+                .map(|(lhs, rhs)| {
+                    let no_mod = main_chip.mul_add_base(layouter, r, lhs, rhs)?;
+                    main_chip.mod_reduce(layouter, no_mod)
+                })
                 .try_collect::<_, Vec<_>, _>()?;
-            let u = main_chip.add_base(layouter.namespace(|| "acc_prime_u"), &acc.u, r)?;
+            let no_mod_u = main_chip.add_base(layouter, &acc.u, r)?;
+            let u = main_chip.mod_reduce(layouter, no_mod_u)?;
             let e_comm = if cross_term_comms.is_empty() {
                 acc.e_comm.clone()
             } else {
@@ -967,15 +974,20 @@ where
             let compressed_e_sum = match strategy {
                 NoCompressing => None,
                 Compressing => {
-                    let rhs = main_chip.inner_product_base(
-                        layouter.namespace(|| "acc_prime_compressed_e_sum"),
+                    let rhs_no_mod = main_chip.inner_product_base(
+                        layouter,
                         &powers_of_r[1..],
                         compressed_cross_term_sums.unwrap(),
                     )?;
-                    Some(main_chip.add_base(
-                        layouter.namespace(|| "acc_prime_compressed_e_sum"),
+                    let rhs = main_chip.mod_reduce(layouter, rhs_no_mod)?;
+                    let compressed_e_sum_no_mod = main_chip.add_base(
+                        layouter,
                         acc.compressed_e_sum.as_ref().unwrap(),
                         &rhs,
+                    )?;
+                    Some(main_chip.mod_reduce(
+                        layouter,
+                        compressed_e_sum_no_mod,
                     )?)
                 }
             };
@@ -995,7 +1007,7 @@ where
 
     fn select_accumulator(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         condition: &Self::Num,
         when_true: &AssignedProtostarAccumulatorInstance<
             Self::Num,
@@ -1014,24 +1026,24 @@ where
             .map(|(when_true, when_false)| {
                 izip_eq!(when_true, when_false)
                     .map(|(when_true, when_false)| {
-                        main_chip.select(layouter.namespace(|| "select_instances"), condition, when_true, when_false)
+                        main_chip.select(layouter, condition, when_true, when_false)
                     })
                     .try_collect()
             })
             .try_collect()?;
         let witness_comms = izip_eq!(&when_true.witness_comms, &when_false.witness_comms)
             .map(|(when_true, when_false)| {
-                main_chip.select_primary(layouter.namespace(|| "select_witness_comms"), condition, when_true, when_false)
+                main_chip.select_primary(layouter, condition, when_true, when_false)
             })
             .try_collect()?;
         let challenges = izip_eq!(&when_true.challenges, &when_false.challenges)
             .map(|(when_true, when_false)| {
-                main_chip.select(layouter.namespace(|| "select_challenges"), condition, when_true, when_false)
+                main_chip.select(layouter, condition, when_true, when_false)
             })
             .try_collect()?;
-        let u = main_chip.select(layouter.namespace(|| "select_u"), condition, &when_true.u, &when_false.u)?;
+        let u = main_chip.select(layouter, condition, &when_true.u, &when_false.u)?;
         let e_comm = main_chip.select_primary(
-            layouter.namespace(|| "select_e_comm"),
+            layouter,
             condition,
             &when_true.e_comm,
             &when_false.e_comm,
@@ -1039,7 +1051,7 @@ where
         let compressed_e_sum = match self.avp.strategy {
             NoCompressing => None,
             Compressing => Some(main_chip.select(
-                layouter.namespace(|| "select_compressed_e_sum"),
+                layouter,
                 condition,
                 when_true.compressed_e_sum.as_ref().unwrap(),
                 when_false.compressed_e_sum.as_ref().unwrap(),
@@ -1058,7 +1070,7 @@ where
 
     fn select_accumulator_ec(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         condition: &Self::Num,
         when_true: &AssignedProtostarAccumulatorInstance<
             Self::NonNatNum,
@@ -1078,7 +1090,7 @@ where
             .map(|(when_true, when_false)| {
                 izip_eq!(when_true, when_false)
                     .map(|(when_true, when_false)| {
-                        main_chip.select_base(layouter.namespace(|| "select_instances"), condition, when_true, when_false)
+                        main_chip.select_base(layouter, condition, when_true, when_false)
                     })
                     .try_collect()
             })
@@ -1086,19 +1098,19 @@ where
 
         let witness_comms = izip_eq!(&when_true.witness_comms, &when_false.witness_comms)
             .map(|(when_true, when_false)| {
-                main_chip.select_secondary(layouter.namespace(|| "select_witness_comms"), condition, when_true, when_false)
+                main_chip.select_secondary(layouter, condition, when_true, when_false)
             })
             .try_collect()?;
 
         let challenges = izip_eq!(&when_true.challenges, &when_false.challenges)
             .map(|(when_true, when_false)| {
-                main_chip.select_base(layouter.namespace(|| "select_challenges"), condition, when_true, when_false)
+                main_chip.select_base(layouter, condition, when_true, when_false)
             })
             .try_collect()?;
 
-        let u = main_chip.select_base(layouter.namespace(|| "select_u"), condition, &when_true.u, &when_false.u)?;
+        let u = main_chip.select_base(layouter, condition, &when_true.u, &when_false.u)?;
         let e_comm = main_chip.select_secondary(
-            layouter.namespace(|| "select_e_comm"),
+            layouter,
             condition,
             &when_true.e_comm,
             &when_false.e_comm,
@@ -1107,7 +1119,7 @@ where
         let compressed_e_sum = match self.avp.strategy {
             NoCompressing => None,
             Compressing => Some(main_chip.select_base(
-                layouter.namespace(|| "select_compressed_e_sum"),
+                layouter,
                 condition,
                 when_true.compressed_e_sum.as_ref().unwrap(),
                 when_false.compressed_e_sum.as_ref().unwrap(),

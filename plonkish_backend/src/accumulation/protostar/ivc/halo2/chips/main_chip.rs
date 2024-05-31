@@ -5,19 +5,20 @@ use halo2_base::utils::ScalarField;
 use halo2_base::{halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation}, utils::{bigint_to_fe, biguint_to_fe, decompose_bigint, decompose_biguint, fe_to_bigint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes}};
 use halo2_base::halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
 use num_bigint::{BigUint, BigInt};
-use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 use itertools::Itertools;
 use num_integer::Integer;
 use num_traits::sign::Signed;
 use super::range_check::RangeCheckChip;
+use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
-pub const LOOKUP_BITS: usize = 16;
-pub const NUM_MAIN_ADVICE: usize = 7; // T + 1;
+pub const LOOKUP_BITS: usize = 8;
+pub const NUM_MAIN_ADVICE: usize = T + 1;
 pub const NUM_MAIN_FIXED: usize = 2*T;
 pub const NUM_LIMB_BITS_PRIMARY_NON_NATIVE: usize = 128;
 pub const NUM_LIMBS_PRIMARY_NON_NATIVE: usize = 2;
 pub const NUM_LIMB_BITS_NON_NATIVE: usize = 88;
 pub const NUM_LIMBS_NON_NATIVE: usize = 3;
+
 
     #[derive(Clone, Debug)]
     pub struct Number<F: Field>(pub AssignedCell<F, F>);
@@ -206,9 +207,29 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             }
         }
 
+        /// Loads the lookup table with values from `0` to `2^LOOKUP_BITS - 1`
+        pub fn load_range_check_table(&self, layouter: &mut impl Layouter<C::Scalar>, column: Column<Fixed>) -> Result<(), Error> {
+            let range = 1 << LOOKUP_BITS;
+
+            layouter.assign_region(
+                || format!("load range check table of {} bits", LOOKUP_BITS),
+                |mut region| {
+                    for i in 0..range {
+                        region.assign_fixed(
+                            || "assign cell in fixed column",
+                            column,
+                            i,
+                            || Value::known(C::Scalar::from(i as u64)),
+                        )?;
+                    }
+                    Ok(())
+                },
+            )
+        }
+
         pub fn assign_witness(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             witness: &C::Scalar,
             witness_index: usize,
         ) -> Result<Self::Num, Error> {
@@ -231,16 +252,16 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn assign_witnesses(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             witnesses: &[C::Scalar],
         ) -> Result<Vec<Self::Num>, Error> {
-            let witnesses = witnesses.iter().enumerate().map(|(idx, witness)| self.assign_witness(layouter.namespace(|| "assign_witness"), witness, idx).unwrap()).collect_vec();
+            let witnesses = witnesses.iter().enumerate().map(|(idx, witness)| self.assign_witness(layouter, witness, idx).unwrap()).collect_vec();
             Ok(witnesses)
         }
 
         pub fn from_limbs(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             limbs: Vec<Self::Num>,
             result_value: BigInt,
         ) -> Result<Self::NonNatNum, Error> {
@@ -254,15 +275,15 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             while limb_bases.len() != num_limbs {
                 limb_bases.push(limb_base * limb_bases.last().unwrap());
             }
-            let limb_bases_assigned = self.assign_witnesses(layouter.namespace(|| "assign_non_native_limb_bases"), &limb_bases)?;
+            let limb_bases_assigned = self.assign_witnesses(layouter, &limb_bases)?;
     
-            let a_computed_native = self.inner_product(layouter.namespace(|| "inner_product"), &limbs, &limb_bases_assigned)?;
+            let a_computed_native = self.inner_product(layouter, &limbs, &limb_bases_assigned)?;
             Ok(NonNativeNumber::new(limbs, a_computed_native, result_value, modulus::<C::Base>()))
         }
 
         pub fn assign_witness_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: C::Base,
         ) -> Result<Self::NonNatNum, Error> {
 
@@ -270,12 +291,12 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let native_modulus = modulus::<C::Scalar>();
             let a = fe_to_biguint(&a);
             let a_native = biguint_to_fe(&(&a % &native_modulus)); 
-            let a_native_assigned = self.assign_witness(layouter.namespace(|| "assign_non_native_a"), &a_native, 0)?;
+            let a_native_assigned = self.assign_witness(layouter, &a_native, 0)?;
 
             let num_limbs = NUM_LIMBS_PRIMARY_NON_NATIVE;
             let limb_bits = NUM_LIMB_BITS_PRIMARY_NON_NATIVE;
             let a_vec = decompose_biguint::<C::Scalar>(&a, num_limbs, limb_bits);
-            let limbs = self.assign_witnesses(layouter.namespace(|| "assign_non_native_limbs"), &a_vec)?;
+            let limbs = self.assign_witnesses(layouter, &a_vec)?;
     
             let limb_base = biguint_to_fe::<C::Scalar>(&(BigUint::one() << limb_bits));
             let mut limb_bases = Vec::with_capacity(num_limbs);
@@ -283,41 +304,42 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             while limb_bases.len() != num_limbs {
                 limb_bases.push(limb_base * limb_bases.last().unwrap());
             }
-            let limb_bases_assigned = self.assign_witnesses(layouter.namespace(|| "assign_non_native_limb_bases"), &limb_bases)?;
+            let limb_bases_assigned = self.assign_witnesses(layouter, &limb_bases)?;
 
-            let a_computed_native = self.inner_product(layouter.namespace(|| "inner_product"), &limbs, &limb_bases_assigned)?;
-            // self.constrain_equal(layouter, &a_computed_native, &a_native_assigned)?;
-    
-            self.range_check_chip.assign(layouter.namespace(|| "range check"), &a_computed_native, C::Scalar::NUM_BITS as usize)?;
+            let a_computed_native = self.inner_product(layouter, &limbs, &limb_bases_assigned)?;
+            self.constrain_equal(layouter, &a_computed_native, &a_native_assigned)?;
+            
+            println!("assign_witness_base_range_bits: {}", C::Scalar::NUM_BITS as usize);
+            self.range_check_chip.assign(layouter, &a_computed_native, C::Scalar::NUM_BITS as usize)?;
             Ok(NonNativeNumber::new(limbs, a_native_assigned, a.into(), modulus::<C::Base>()))
 
         }
 
         pub fn assign_witness_primary(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             witness: C,
         ) -> Result<Self::Ecc, Error> {
             let coords = into_coordinates(&witness);
-            let x = self.assign_witness_base(layouter.namespace(|| "assign_witness_primary_x"), coords[0])?;
-            let y = self.assign_witness_base(layouter.namespace(|| "assign_witness_primary_y"), coords[1])?;
+            let x = self.assign_witness_base(layouter, coords[0])?;
+            let y = self.assign_witness_base(layouter, coords[1])?;
             Ok(EcPointNonNative { x, y })
         }
 
         pub fn assign_witness_secondary(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             witness: C::Secondary,
         ) -> Result<Self::NatEcc, Error> {
             let coords = into_coordinates(&witness);
-            let x = self.assign_witness(layouter.namespace(|| "assign_witness_secondary_x"), &coords[0], 0)?;
-            let y = self.assign_witness(layouter.namespace(|| "assign_witness_secondary_y"), &coords[1], 1)?;
+            let x = self.assign_witness(layouter, &coords[0], 0)?;
+            let y = self.assign_witness(layouter, &coords[1], 1)?;
             Ok(EcPointNative { x, y })
         }
             
         pub fn assign_fixed(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             fixed: &C::Scalar,
             index: usize,
         ) -> Result<Self::Num, Error> {
@@ -339,7 +361,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn assign_fixed_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             fixed: &C::Base,
         ) -> Result<Self::NonNatNum, Error> {
             let config = &self.config;
@@ -349,7 +371,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let native_modulus = modulus::<C::Scalar>();
             let a = fe_to_biguint(fixed);
             let a_native = biguint_to_fe(&(&a % &native_modulus)); 
-            let a_native_assigned = self.assign_witness(layouter.namespace(|| "assign_non_native_a"), &a_native, 0)?;
+            let a_native_assigned = self.assign_witness(layouter, &a_native, 0)?;
             let a_vec = decompose_biguint::<C::Scalar>(&a, num_limbs, limb_bits);
             
             let fixed = a_vec.iter().enumerate().map(|(idx, fixed)|
@@ -370,107 +392,107 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn assign_constant_primary(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             witness: C,
         ) -> Result<Self::Ecc, Error> {
             let coords = into_coordinates(&witness);
-            let x = self.assign_witness_base(layouter.namespace(|| "assign_witness_primary_x"), coords[0])?;
-            let y = self.assign_witness_base(layouter.namespace(|| "assign_witness_primary_y"), coords[1])?;
+            let x = self.assign_witness_base(layouter, coords[0])?;
+            let y = self.assign_witness_base(layouter, coords[1])?;
             Ok(EcPointNonNative { x, y })
         }
 
         pub fn assign_constant_secondary(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             witness: C::Secondary,
         ) -> Result<Self::NatEcc, Error> {
             let coords = into_coordinates(&witness);
-            let x = self.assign_witness(layouter.namespace(|| "assign_witness_primary_x"), &coords[0], 0)?;
-            let y = self.assign_witness(layouter.namespace(|| "assign_witness_primary_y"), &coords[1], 1)?;
+            let x = self.assign_witness(layouter, &coords[0], 0)?;
+            let y = self.assign_witness(layouter, &coords[1], 1)?;
             Ok(EcPointNative { x, y })
         }
 
         pub fn select(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             is_base_case: &Self::Num,
             a: &Self::Num,
             b: &Self::Num,
         )-> Result<Self::Num, Error>{
             // | sel | a - b | b | out |
-            let diff = self.sub(layouter.namespace(|| "select_diff"), a, b)?;
-            self.mul_add(layouter.namespace(|| "select_out"), b, &diff, is_base_case)
+            let diff = self.sub(layouter, a, b)?;
+            self.mul_add(layouter, b, &diff, is_base_case)
         }
 
         pub fn select_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             is_base_case: &Self::Num,
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         )-> Result<Self::NonNatNum, Error>{
             // | sel | a - b | b | out |
-            let diff = self.sub_base(layouter.namespace(|| "select_diff"), a, b)?;
-            self.mul_native_add_base(layouter.namespace(|| "select_out"), is_base_case, &diff , b)
+            let diff = self.sub_base(layouter, a, b)?;
+            self.mul_native_add_base(layouter, is_base_case, &diff , b)
         }
 
         pub fn select_primary(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             is_base_case: &Self::Num,
             a: &Self::Ecc,
             b: &Self::Ecc,
         )-> Result<Self::Ecc, Error>{    
-            let x = self.select_base(layouter.namespace(|| "select_primary_x"), is_base_case, &a.x, &b.x)?;
-            let y = self.select_base(layouter.namespace(|| "select_primary_y"), is_base_case, &a.y, &b.y)?;
+            let x = self.select_base(layouter, is_base_case, &a.x, &b.x)?;
+            let y = self.select_base(layouter, is_base_case, &a.y, &b.y)?;
             Ok(EcPointNonNative { x, y })
         }
 
         pub fn select_secondary(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             is_base_case: &Self::Num,
             a: &Self::NatEcc,
             b: &Self::NatEcc,
         )-> Result<Self::NatEcc, Error>{    
-            let x = self.select(layouter.namespace(|| "select_primary_x"), is_base_case, &a.x, &b.x)?;
-            let y = self.select(layouter.namespace(|| "select_primary_y"), is_base_case, &a.y, &b.y)?;
+            let x = self.select(layouter, is_base_case, &a.x, &b.x)?;
+            let y = self.select(layouter, is_base_case, &a.y, &b.y)?;
             Ok(EcPointNative { x, y })
         }
 
         pub fn is_zero(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::Num,
         )-> Result<Self::Num, Error>{
 
             let mut val = C::Scalar::ZERO;
             a.0.value().map(|v| val = *v);
 
-            let zero = self.assign_fixed(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;
+            let zero = self.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
             let a_inv = if val.is_zero().into() { C::Scalar::ONE } else { C::Scalar::ZERO };
-            let a_inv_assigned = self.assign_witness(layouter.namespace(|| "assign_a_inv"), &a_inv, 1)?;
+            let a_inv_assigned = self.assign_witness(layouter, &a_inv, 1)?;
 
-            let out = self.mul(layouter.namespace(|| "out_is_zero"), a, &a_inv_assigned)?;
-            let out_constraint = self.mul(layouter.namespace(|| "out_constraint"), a, &out)?;
+            let out = self.mul(layouter, a, &a_inv_assigned)?;
+            let out_constraint = self.mul(layouter, a, &out)?;
             self.constrain_equal(layouter, &out_constraint, &zero)?;
             Ok(out)
         }
 
         pub fn is_equal(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             lhs: &Self::Num,
             rhs: &Self::Num,
         )-> Result<Self::Num, Error>{
-            let diff = self.sub(layouter.namespace(|| "is_equal_diff"), lhs, rhs)?;
-            let is_zero = self.is_zero(layouter.namespace(|| "is_equal_is_zero"), &diff)?;
+            let diff = self.sub(layouter, lhs, rhs)?;
+            let is_zero = self.is_zero(layouter, &diff)?;
             Ok(is_zero)
         }
 
         pub fn constrain_equal(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::Num,
             b: &Self::Num,
         ) -> Result<(), Error> {
@@ -486,7 +508,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn constrain_equal_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         ) -> Result<(), Error> {
@@ -504,7 +526,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn constrain_equal_primary(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::Ecc,
             b: &Self::Ecc,
         ) -> Result<(), Error> {
@@ -522,7 +544,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn constrain_equal_secondary(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::NatEcc,
             b: &Self::NatEcc,
         ) -> Result<(), Error> {
@@ -540,12 +562,12 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn inner_product(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &[Self::Num],
             b: &[Self::Num],
         ) -> Result<Self::Num, Error> {
 
-            let zero = self.assign_witness(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;
+            let zero = self.assign_witness(layouter, &C::Scalar::ZERO, 0)?;
             let mut accumulator = C::Scalar::ZERO;
             let mut product = Vec::new();
             let acc = a.iter()
@@ -592,13 +614,13 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn inner_product_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &[Self::NonNatNum],
             b: &[Self::NonNatNum],
         ) -> Result<Self::NonNatNum, Error> {
             let num_limbs = a[0].limbs.len();
-            let zero_native = self.assign_fixed(layouter.namespace(|| "assign_zero_native"), &C::Scalar::ZERO, 0)?;
-            let zero = self.assign_fixed_base(layouter.namespace(|| "inner_product_base_0"), &C::Base::ZERO)?;
+            let zero_native = self.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
+            let zero = self.assign_fixed_base(layouter, &C::Base::ZERO)?;
 
             let inner_product_value = 
                 a.iter().zip(b.iter()).fold(
@@ -652,7 +674,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             if product.is_empty() {
                 Ok(zero.clone())
             } else {
-                self.from_limbs(layouter.namespace(|| "from_limbs"), product.iter().rev().take(num_limbs).cloned().collect_vec(), inner_product_value)
+                self.from_limbs(layouter, product.iter().rev().take(num_limbs).cloned().collect_vec(), inner_product_value)
             }  
 
         }
@@ -664,7 +686,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         /// * `range_bits`: range of bits needed to represent `a`. Assumes `range_bits > 0`.
         pub fn num_to_bits(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             range_bits: usize,
             num: &Self::Num,
         ) -> Result<Vec<Self::Num>, Error> {
@@ -673,21 +695,21 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let bits = number.to_u64_limbs(range_bits, 1)
                 .into_iter()
                 .enumerate()    
-                .map(|(idx, x)| self.assign_witness(layouter.namespace(|| "assign_witness"), &C::Scalar::from(x), idx).unwrap())
+                .map(|(idx, x)| self.assign_witness(layouter, &C::Scalar::from(x), idx).unwrap())
                 .collect_vec();
             //range check bits
             let pow_two_assigned = self.pow_of_two[..bits.len()]
                 .iter()
                 .enumerate()
-                .map(|(idx, c)| self.assign_fixed(layouter.namespace(|| "bits_to_num_assign"), c, idx).unwrap())
+                .map(|(idx, c)| self.assign_fixed(layouter, c, idx).unwrap())
                 .collect_vec();
 
             let acc = self.inner_product(
-                layouter.namespace(|| "inner_product"),
+                layouter,
                 &bits,
                 &pow_two_assigned,
             )?; 
-            //self.constrain_equal(layouter, num, &acc)?;
+            self.constrain_equal(layouter, num, &acc)?;
             debug_assert!(range_bits > 0);
             Ok(bits)
         }
@@ -696,11 +718,11 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         ///
         /// Assumes values of `bits` are boolean.
         /// * `bits`: slice of [QuantumCell]'s that contains bit representation in little-endian form
-        pub fn bits_to_num(&self, mut layouter: impl Layouter<C::Scalar>, bits: &[Self::Num]) -> Result<Self::Num, Error> {
+        pub fn bits_to_num(&self, layouter: &mut impl Layouter<C::Scalar>, bits: &[Self::Num]) -> Result<Self::Num, Error> {
             assert!((bits.len() as u32) <= C::Scalar::CAPACITY);
-            let pow_two_assigned = self.pow_of_two[..bits.len()].iter().enumerate().map(|(idx, c)| self.assign_fixed(layouter.namespace(|| "bits_to_num_assign"), c, idx).unwrap()).collect_vec();
+            let pow_two_assigned = self.pow_of_two[..bits.len()].iter().enumerate().map(|(idx, c)| self.assign_fixed(layouter, c, idx).unwrap()).collect_vec();
             self.inner_product(
-                layouter.namespace(|| "bits_to_num_inner_product"),
+                layouter,
                 bits,
                 &pow_two_assigned,
             )
@@ -708,12 +730,12 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         
         pub fn add(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::Num,
             b: &Self::Num,
         ) -> Result<Self::Num, Error> {
             // | a | 1 | b | a + b |
-            let one = self.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 0)?;
+            let one = self.assign_fixed(layouter, &C::Scalar::ONE, 0)?;
             let result = layouter.namespace(|| "add").assign_region(
                 || "add",
                 |mut region | {
@@ -734,12 +756,12 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn add_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
             // | a | 1 | b | a + b |
-            let one = self.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 0)?;
+            let one = self.assign_fixed(layouter, &C::Scalar::ONE, 0)?;
             let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.namespace(|| "add_base").assign_region(
                     || "add_base",
@@ -760,17 +782,17 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 }).collect::<Result<Vec<_>, _>>()?;
             
             let result_value = a.value.clone() + b.value.clone();
-            self.from_limbs(layouter.namespace(|| "from_limbs"), result, result_value)
+            self.from_limbs(layouter, result, result_value)
         }
 
         pub fn sub(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::Num,
             b: &Self::Num,
         ) -> Result<Self::Num, Error> {
             // | a - b | 1 | b | a |
-            let one = self.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 0)?;
+            let one = self.assign_fixed(layouter, &C::Scalar::ONE, 0)?;
             let result = layouter.namespace(|| "sub").assign_region(
                 || "sub",
                 |mut region | {
@@ -794,12 +816,12 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn sub_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
             // | a - b | 1 | b | a |
-            let one = self.assign_fixed(layouter.namespace(|| "assign_one"), &C::Scalar::ONE, 0)?;
+            let one = self.assign_fixed(layouter, &C::Scalar::ONE, 0)?;
             let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.namespace(|| "sub_base").assign_region(
                     || "sub_base",
@@ -821,18 +843,18 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 }).collect::<Result<Vec<_>, _>>()?;
             
             let result_value = a.value.clone() - b.value.clone();
-            self.from_limbs(layouter.namespace(|| "from_limbs"), result, result_value)
+            self.from_limbs(layouter, result, result_value)
         }
 
         pub fn mul(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::Num,
             b: &Self::Num,
         ) -> Result<Self::Num, Error> {
             // | a | b | 0 | a * b |
-            let zero = self.assign_witness(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;                           
-            let result = layouter.namespace(|| "mul").assign_region(
+            let zero = self.assign_witness(layouter, &C::Scalar::ZERO, 0)?;                           
+            let result = layouter.assign_region(
                 || "mul",
                 |mut region | {
 
@@ -853,12 +875,12 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn mul_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
             // | a | b | 0 | a * b |
-            let zero = self.assign_witness(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;                           
+            let zero = self.assign_witness(layouter, &C::Scalar::ZERO, 0)?;                           
             let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.assign_region(
                 || "mul",
@@ -879,19 +901,19 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             }).collect::<Result<Vec<_>, _>>()?;
             
             let result_value = a.value.clone() * b.value.clone();
-            self.from_limbs(layouter.namespace(|| "from_limbs"), result, result_value)
+            self.from_limbs(layouter, result, result_value)
         }
 
         pub fn mul_add(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::Num,
             b: &Self::Num,
             c: &Self::Num,
         ) -> Result<Self::Num, Error> {
             // | a | b | c | a * b + c |
-            let result = layouter.namespace(|| "mul_add").assign_region(
-                || "inner product",
+            let result = layouter.assign_region(
+                || "mul_add",
                 |mut region | {
 
                             self.config.selector[0].enable(&mut region, 0)?; 
@@ -911,7 +933,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn mul_native_add_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             num: &Self::Num,
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
@@ -938,19 +960,19 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let mut num_val = C::Scalar::ZERO;
             num.0.value().map(|v| num_val = *v);
             let result_value = a.value.clone() * fe_to_bigint(&num_val) + b.value.clone();
-            self.from_limbs(layouter.namespace(|| "from_limbs"), result, result_value)
+            self.from_limbs(layouter, result, result_value)
         }
 
         pub fn mul_add_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
             c: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
-            let zero = self.assign_witness(layouter.namespace(|| "assign_zero"), &C::Scalar::ZERO, 0)?;                           
+            let zero = self.assign_witness(layouter, &C::Scalar::ZERO, 0)?;                           
             let result = a.limbs.iter().zip_eq(b.limbs.iter()).zip_eq(c.limbs.iter()).map(|((a, b), c)| {
-                layouter.namespace(|| "mul_add").assign_region(
+                layouter.assign_region(
                     || "inner product",
                 |mut region | {
 
@@ -969,28 +991,28 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             }).collect::<Result<Vec<_>, _>>()?;
             
             let result_value = a.value.clone() * b.value.clone() + c.value.clone();
-            self.from_limbs(layouter.namespace(|| "from_limbs"), result, result_value)
+            self.from_limbs(layouter, result, result_value)
         }
 
         pub fn powers(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             num: &Self::Num,
             n: usize,
         ) -> Result<Vec<Self::Num>, Error> {
             Ok(match n {
                 0 => Vec::new(),
-                1 => vec![self.assign_fixed(layouter.namespace(|| "assign_fixed"), &C::Scalar::ONE, 0)?],
+                1 => vec![self.assign_fixed(layouter, &C::Scalar::ONE, 0)?],
                 2 => vec![
-                    self.assign_fixed(layouter.namespace(|| "assign_fixed"), &C::Scalar::ONE, 0)?,
+                    self.assign_fixed(layouter, &C::Scalar::ONE, 0)?,
                     num.clone(),
                 ],
                 _ => {
                     let mut powers = Vec::with_capacity(n);
-                    powers.push(self.assign_fixed(layouter.namespace(|| "assign_fixed"), &C::Scalar::ONE, 0)?);
+                    powers.push(self.assign_fixed(layouter, &C::Scalar::ONE, 0)?);
                     powers.push(num.clone());
                     for _ in 0..n - 2 {
-                        powers.push(self.mul(layouter.namespace(|| "mul"), powers.last().unwrap(), num)?);
+                        powers.push(self.mul(layouter, powers.last().unwrap(), num)?);
                     }
                     powers
                 }
@@ -999,23 +1021,24 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         pub fn powers_base(
             &self,
-            mut layouter: impl Layouter<C::Scalar>,
+            layouter: &mut impl Layouter<C::Scalar>,
             num: &Self::NonNatNum,
             n: usize,
         ) -> Result<Vec<Self::NonNatNum>, Error> {
             Ok(match n {
                 0 => Vec::new(),
-                1 => vec![self.assign_fixed_base(layouter.namespace(|| "powers_base_1"), &C::Base::ONE)?],
+                1 => vec![self.assign_fixed_base(layouter, &C::Base::ONE)?],
                 2 => vec![
-                    self.assign_fixed_base(layouter.namespace(|| "powers_base_2"), &C::Base::ONE)?,
+                    self.assign_fixed_base(layouter, &C::Base::ONE)?,
                     num.clone(),
                 ],
                 _ => {
                     let mut powers = Vec::with_capacity(n);
-                    powers.push(self.assign_fixed_base(layouter.namespace(|| "powers_base_1"), &C::Base::ONE)?);
+                    powers.push(self.assign_fixed_base(layouter, &C::Base::ONE)?);
                     powers.push(num.clone());
                     for _ in 0..n - 2 {
-                        powers.push(self.mul_base(layouter.namespace(|| "mul"), powers.last().unwrap(), num)?);
+                        let power_no_mod = self.mul_base(layouter, powers.last().unwrap(), num)?;
+                        powers.push(self.mod_reduce(layouter, power_no_mod)?);
                     }
                     powers
                 }
@@ -1041,7 +1064,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
     // so we only need to range check `c_i` every `w + 1` steps, starting with `i = w`
     pub fn truncate(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         a: Vec<Self::Num>,
         limb_bits: usize,
         limb_base_assigned: &Self::Num,
@@ -1077,20 +1100,20 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
         let shift_val = self.pow_of_two[range_bits];
         // let num_windows = (k - 1) / window + 1; // = ((k - 1) - (window - 1) + window - 1) / window + 1;
-        let zero = self.assign_fixed(layouter.namespace(|| "assign_fixed"), &C::Scalar::ZERO, 0)?;
+        let zero = self.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
         let mut previous = None;
-        for (a_limb, carry) in a.into_iter().zip(carries) {
+        for (idx, (a_limb, carry)) in a.into_iter().zip(carries).enumerate() {
             let neg_carry_val = bigint_to_fe(&-carry);
-            let neg_carry_assigned = self.assign_fixed(layouter.namespace(|| "assign_fixed"), &neg_carry_val, 0)?;
-            let previous_assigned = self.mul_add(layouter.namespace(|| "mul_add"), limb_base_assigned, &neg_carry_assigned, &a_limb)?;
-            self.constrain_equal(layouter.namespace(|| "constrain_equal"), &previous_assigned, previous.as_ref().unwrap_or(&zero))?;
+            let neg_carry_assigned = self.assign_fixed(layouter, &neg_carry_val, idx)?;
+            let previous_assigned = self.mul_add(layouter, limb_base_assigned, &neg_carry_assigned, &a_limb)?;
+            self.constrain_equal(layouter, &previous_assigned, previous.as_ref().unwrap_or(&zero))?;
 
             // i in 0..num_windows {
             // let idx = std::cmp::min(window * i + window - 1, k - 1);
             // let carry_cell = &neg_carry_assignments[idx];
-            let shift_val_assigned = self.assign_fixed(layouter.namespace(|| "assign_fixed"), &shift_val, 0)?;
-            let shifted_carry = self.add(layouter.namespace(|| "add"), &neg_carry_assigned, &shift_val_assigned)?;
-            self.range_check_chip.assign(layouter.namespace(|| "range_check"), &shifted_carry, range_bits + 1)?;
+            let shift_val_assigned = self.assign_fixed(layouter, &shift_val, idx)?;
+            let shifted_carry = self.add(layouter, &neg_carry_assigned, &shift_val_assigned)?;
+            self.range_check_chip.assign(layouter, &shifted_carry, range_bits + 1)?;
 
             previous = Some(neg_carry_assigned);
         }
@@ -1115,7 +1138,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
     // In the future we'll need a slightly different implementation for limbs that fit in 32 or 64 bits (e.g., `F` is Goldilocks)
     pub fn mod_reduce(
         &self,
-        mut layouter: impl Layouter<C::Scalar>,
+        layouter: &mut impl Layouter<C::Scalar>,
         a: Self::NonNatNum,
     ) -> Result<Self::NonNatNum, Error> {
 
@@ -1190,34 +1213,34 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         for (i, ((a_limb, quot_v), out_v)) in
             a.limbs.into_iter().zip(quot_vec).zip(out_vec).enumerate()
         {
-            let new_quot_cell = self.assign_witness(layouter.namespace(|| "assign_witness"), &quot_v, i)?;
+            let new_quot_cell = self.assign_witness(layouter, &quot_v, i)?;
             let mod_vec_assigned: Result<Vec<_>, _> = mod_limbs[..=i]
                 .iter()
                 .rev()
                 .enumerate()
-                .map(|(index, c)| self.assign_fixed(layouter.namespace(|| "assign_fixed"), c, index))
+                .map(|(index, c)| self.assign_fixed(layouter, c, index))
                 .collect();
             let prod = self.inner_product(
-                layouter.namespace(|| "inner_product_left_last"),
+                layouter,
                 quot_assigned.iter().chain(iter::once(&new_quot_cell)).cloned().collect_vec().as_slice(),
                 &mod_vec_assigned?,
             )?;
 
             // perform step 2: compute prod - a + out
             let temp1 = prod.value() - a_limb.value();
-            let temp1_assigned = self.assign_witness(layouter.namespace(|| "assign_witness"), &temp1, i)?;
+            let temp1_assigned = self.assign_witness(layouter, &temp1, i)?;
             let check_val = temp1 + out_v;
-            let out_val_assigned = self.assign_witness(layouter.namespace(|| "assign_witness"), &out_v, i)?;
-            let check_val_assigned = self.assign_witness(layouter.namespace(|| "assign_witness"), &check_val, i)?;
+            let out_val_assigned = self.assign_witness(layouter, &out_v, i)?;
+            let check_val_assigned = self.assign_witness(layouter, &check_val, i)?;
 
             // transpose of:
             // | prod | -1 | a | prod - a | 1 | out | prod - a + out
             // where prod is at relative row `offset`
-            let prod_minus_a = self.sub(layouter.namespace(|| "carry_mod"), &prod, &a_limb)?;
-            self.constrain_equal(layouter.namespace(|| "constrain_equal"), &prod_minus_a, &temp1_assigned)?;
-            let prod_minus_a_plus_out = self.add(layouter.namespace(|| "carry_mod"), &prod_minus_a, &out_val_assigned)?;
-            self.constrain_equal(layouter.namespace(|| "constrain_equal"), &prod_minus_a_plus_out, &check_val_assigned)?;
-            
+            let prod_minus_a = self.sub(layouter, &prod, &a_limb)?;
+            self.constrain_equal(layouter, &prod_minus_a, &temp1_assigned)?;
+            let prod_minus_a_plus_out = self.add(layouter, &prod_minus_a, &out_val_assigned)?;
+            self.constrain_equal(layouter, &prod_minus_a_plus_out, &check_val_assigned)?;
+
             quot_assigned.push(new_quot_cell);
             out_assigned.push(out_val_assigned);
             check_assigned.push(check_val_assigned);
@@ -1226,7 +1249,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         // range check limbs of `out` are in [0, 2^n) except last limb should be in [0, 2^out_last_limb_bits)
         for (out_index, out_cell) in out_assigned.iter().enumerate() {
             let limb_bits = if out_index == k - 1 { out_last_limb_bits } else { n };
-            self.range_check_chip.assign(layouter.namespace(|| "range_check"), out_cell, limb_bits)?;
+            self.range_check_chip.assign(layouter, out_cell, limb_bits)?;
         }
 
         // range check that quot_cell in quot_assigned is in [-2^n, 2^n) except for last cell check it's in [-2^quot_last_limb_bits, 2^quot_last_limb_bits)
@@ -1234,20 +1257,20 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let limb_bits = if q_index == k - 1 { quot_last_limb_bits } else { n };
             let limb_base =
                 if q_index == k - 1 { self.pow_of_two[limb_bits] } else { limb_bases[1] };
-            let limb_base_assigned = self.assign_fixed(layouter.namespace(|| "assign_fixed"), &limb_base, 0)?;
+            let limb_base_assigned = self.assign_fixed(layouter, &limb_base, q_index)?;
             // compute quot_cell + 2^n and range check with n + 1 bits
-            let quot_shift = self.add(layouter.namespace(|| "add"), quot_cell, &limb_base_assigned)?;
-            self.range_check_chip.assign(layouter.namespace(|| "range_check"), &quot_shift, limb_bits + 1)?;
+            let quot_shift = self.add(layouter, quot_cell, &limb_base_assigned)?;
+            self.range_check_chip.assign(layouter, &quot_shift, limb_bits + 1)?;
         }
 
         let check_overflow_int_limbs = check_assigned;
         // using const NUM_LIMB_BITS_NON_NATIVE as max_limb_bits for each nonnative limb
         let max_limb_bits = max(max(num_limb_bits, NUM_LIMB_BITS_NON_NATIVE) + 1, 2 * n + num_limbs);
 
-        let limb_bases_assigned = limb_bases.iter().enumerate().map(|(index, c)| self.assign_fixed(layouter.namespace(|| "assign_fixed"), c, index)).collect::<Result<Vec<_>, _>>()?;
+        let limb_bases_assigned = limb_bases.iter().enumerate().map(|(index, c)| self.assign_fixed(layouter, c, index)).collect::<Result<Vec<_>, _>>()?;
         // check that `out - a + modulus * quotient == 0 mod 2^{trunc_len}` after carry
         self.truncate(
-            layouter.namespace(|| "truncate"),
+            layouter,
             check_overflow_int_limbs,
             num_limb_bits,
             &limb_bases_assigned[1],
@@ -1256,16 +1279,16 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         )?;
 
         // Constrain `quot_native = sum_i quot_assigned[i] * 2^{n*i}` in `F`
-        let quot_native = self.inner_product(layouter.namespace(|| "inner_product_quot_native"), &quot_assigned, &limb_bases_assigned)?;
+        let quot_native = self.inner_product(layouter, &quot_assigned, &limb_bases_assigned)?;
 
         // Constrain `out_native = sum_i out_assigned[i] * 2^{n*i}` in `F`
-        let out_native = self.inner_product(layouter.namespace(|| "inner_product_out_native"), &out_assigned, &limb_bases_assigned)?;
-        // // We save 1 cell by connecting `out_native` computation with the following:
+        let out_native = self.inner_product(layouter, &out_assigned, &limb_bases_assigned)?;
+        // We can save 1 cell by connecting `out_native` computation with the following:
 
-        // // Check `out + modulus * quotient - a = 0` in native field
-        let mod_native_assigned = self.assign_fixed(layouter.namespace(|| "assign_fixed"), &mod_native, 0)?;
-        let mul_add_result = self.mul_add(layouter.namespace(|| "mul_add"), &mod_native_assigned, &quot_native, &out_native)?;
-        self.constrain_equal(layouter.namespace(|| "constrain_equal"), &mul_add_result, &a.native)?;
+        // Check `out + modulus * quotient - a = 0` in native field
+        let mod_native_assigned = self.assign_fixed(layouter, &mod_native, 0)?;
+        let mul_add_result = self.mul_add(layouter, &mod_native_assigned, &quot_native, &out_native)?;
+        self.constrain_equal(layouter, &mul_add_result, &a.native)?;
         Ok(NonNativeNumber::new(out_assigned, out_native, out_val, modulus::<C::Base>()))
     }
 }

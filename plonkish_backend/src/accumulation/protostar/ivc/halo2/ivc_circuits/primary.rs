@@ -388,7 +388,6 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         for (lhs, rhs) in input.iter().zip(initial_input.iter()) {
             let lhs = main_chip.select(layouter, is_base_case, lhs, &zero)?;
             let rhs = main_chip.select(layouter, is_base_case, rhs, &zero)?;
-            // main_chip.constrain_equal(layouter.namespace(|| "result"), &lhs, &rhs)?;
             main_chip.constrain_equal(layouter, &lhs, &rhs)?;
         }
 
@@ -437,7 +436,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         // lhs = h == 0 initalised 
         let lhs_is_zero = main_chip.is_equal(layouter, lhs, &zero)?;
         let rhs = main_chip.select(layouter, &lhs_is_zero, &zero, &rhs)?;
-        // main_chip.constrain_equal(layouter.namespace(|| "result"), lhs, &rhs)?;
+        main_chip.constrain_equal(layouter, lhs, &rhs)?;
 
         Ok(())
     }
@@ -776,7 +775,7 @@ fn primary_chip_layout() {
         .titled("Primary Chip Layout", ("sans-serif", 60))
         .unwrap();
 
-    let k = 14;
+    let k = 13;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,

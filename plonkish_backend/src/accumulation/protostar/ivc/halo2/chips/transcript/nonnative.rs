@@ -249,8 +249,8 @@ where
         };
 
         let scalar = self.chip.assign_witness_base(layouter, fe_to_fe(challenge.value()))?;
-        // let scalar_in_base = scalar.native();
-        // self.chip.constrain_equal(layouter.namespace(|| "squeeze_constrain_equal"), &challenge, scalar_in_base).unwrap();                                       
+        let scalar_in_base = scalar.native();
+        self.chip.constrain_equal(layouter, &challenge, scalar_in_base).unwrap();                                       
 
         Ok(Challenge {
             le_bits: challenge_le_bits,

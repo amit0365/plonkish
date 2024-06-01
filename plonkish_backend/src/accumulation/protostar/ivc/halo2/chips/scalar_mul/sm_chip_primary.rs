@@ -309,11 +309,8 @@ where
                 z: C::Scalar::ZERO,
             };
             
-            let mut p_single_x = C::Scalar::ZERO;
-            let mut p_single_y = C::Scalar::ZERO;
-
-            nark_comm.x.0.value().map(|v| p_single_x = *v);
-            nark_comm.y.0.value().map(|v| p_single_y = *v);
+            let p_single_x = nark_comm.x.value();
+            let p_single_y = nark_comm.y.value();
 
             let p = C::Secondary::from_xy(p_single_x, p_single_y).unwrap();
             let mut ptx_vec = Vec::new();
@@ -323,11 +320,8 @@ where
                 pty_vec.push(Value::known(p_single_y));
             }
 
-            let mut acc_comm_x = C::Scalar::ZERO;
-            let mut acc_comm_y = C::Scalar::ZERO;
-
-            acc_comm.x.0.value().map(|v| acc_comm_x = *v);
-            acc_comm.y.0.value().map(|v| acc_comm_y = *v);
+            let acc_comm_x = acc_comm.x.value();
+            let acc_comm_y = acc_comm.y.value();
 
             let acc_com_raw = C::Secondary::from_xy(acc_comm_x, acc_comm_y).unwrap();
             let mut acc_prev = ProjectivePoint::identity();

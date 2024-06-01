@@ -291,7 +291,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                         .as_ref()
                         .into_iter())
                 .collect_vec();
-            println!("inputs_len {:?}", inputs.len());
+            // println!("inputs_len {:?}", inputs.len());
             let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
             let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
             // change to strict
@@ -526,7 +526,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
     type Params = ();
 
     fn without_witnesses(&self) -> Self {
-        println!("without_witnesses");
+
         Self { 
             is_primary: false,
             step_circuit: self.step_circuit.without_witnesses(),
@@ -739,7 +739,7 @@ where
 #[test]
 fn primary_chip() {
 
-    let k = 13;
+    let k = 14;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,
@@ -770,13 +770,13 @@ fn primary_chip_layout() {
     use plotters::prelude::*;
     use halo2_base::halo2_proofs::dev::CircuitLayout;
 
-    let root = BitMapBackend::new("PrimaryChip_debug.png", (50240, 12680)).into_drawing_area();
+    let root = BitMapBackend::new("PrimaryChip_debug.png", (10240, 7680)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let root = root
         .titled("Primary Chip Layout", ("sans-serif", 60))
         .unwrap();
 
-    let k = 13;
+    let k = 14;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,
@@ -799,7 +799,7 @@ fn primary_chip_layout() {
     //MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
 
     let circuit_layout = CircuitLayout{
-        hide_labels: true,
+        hide_labels: false,
         mark_equality_cells: false,
         show_equality_constraints: false,
         view_width: Some(0..24),

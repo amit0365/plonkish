@@ -248,9 +248,7 @@ where
             (challenge_le_bits, challenge)
         };
 
-        let mut challenge_val = C::Scalar::ZERO;
-        challenge.0.value().map(|v| challenge_val = *v);
-        let scalar = self.chip.assign_witness_base(layouter, fe_to_fe(challenge_val))?;
+        let scalar = self.chip.assign_witness_base(layouter, fe_to_fe(challenge.value()))?;
         // let scalar_in_base = scalar.native();
         // self.chip.constrain_equal(layouter.namespace(|| "squeeze_constrain_equal"), &challenge, scalar_in_base).unwrap();                                       
 

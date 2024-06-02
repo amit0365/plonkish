@@ -18,7 +18,7 @@ use rand::rngs::OsRng;
 use super::range_check::{RangeCheckChip, RangeCheckConfig};
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
-pub const LOOKUP_BITS: usize = 11;
+pub const LOOKUP_BITS: usize = 8;
 pub const NUM_MAIN_ADVICE: usize = T + 1;
 pub const NUM_MAIN_FIXED: usize = 2*T;
 pub const NUM_LIMB_BITS_PRIMARY_NON_NATIVE: usize = 128;
@@ -60,8 +60,8 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
     impl<F: BigPrimeField> NonNativeNumber<F> {
 
         pub fn new(limbs: Vec<Number<F>>, native: Number<F>, value: BigInt, wrong_mod: BigUint) -> Self {
-            let num_limbs = NUM_LIMBS_PRIMARY_NON_NATIVE;
-            let num_limb_bits = NUM_LIMB_BITS_PRIMARY_NON_NATIVE;
+            let num_limbs = NUM_LIMBS_NON_NATIVE;
+            let num_limb_bits = NUM_LIMB_BITS_NON_NATIVE;
             let modulus = modulus::<F>();
             let mod_native = biguint_to_fe(&(&wrong_mod % &modulus));
             let mod_limbs = decompose_biguint(&wrong_mod, num_limbs, num_limb_bits);    
@@ -240,21 +240,19 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             witness: &C::Scalar,
             witness_index: usize,
         ) -> Result<Self::Num, Error> {
-            let config = self.config.clone();
+            let config = &self.config;
             let idx = witness_index % NUM_MAIN_ADVICE;
-            let witness = layouter.assign_region(
+            layouter.assign_region(
                 || "assign witness",
                 |mut region| {
-                    let witness = region.assign_advice(
+                    region.assign_advice(
                             || "witness",
                             config.advice[idx],
                             0,
                             || Value::known(*witness),
-                        ).map(Number)?;
-                    Ok(witness)
+                        ).map(Number)
                 },
-            )?;
-            Ok(witness)
+            )
         }
 
         pub fn assign_witnesses(
@@ -262,18 +260,19 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             layouter: &mut impl Layouter<C::Scalar>,
             witnesses: &[C::Scalar],
         ) -> Result<Vec<Self::Num>, Error> {
-            let witnesses = witnesses.iter().enumerate().map(|(idx, witness)| self.assign_witness(layouter, witness, idx).unwrap()).collect_vec();
-            Ok(witnesses)
+            witnesses.iter().enumerate().map(|(idx, witness)| self.assign_witness(layouter, witness, idx)).collect::<Result<Vec<_>, _>>()
         }
 
+        //todo check this
         pub fn from_limbs(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
             limbs: Vec<Self::Num>,
             result_value: BigInt,
         ) -> Result<Self::NonNatNum, Error> {
-            let num_limbs = NUM_LIMBS_PRIMARY_NON_NATIVE;
-            let limb_bits = NUM_LIMB_BITS_PRIMARY_NON_NATIVE;
+            let num_limbs = limbs.len();
+            let limb_bits = if num_limbs == NUM_LIMBS_NON_NATIVE { NUM_LIMB_BITS_NON_NATIVE } 
+                else if num_limbs == NUM_LIMBS_PRIMARY_NON_NATIVE { NUM_LIMB_BITS_PRIMARY_NON_NATIVE } else { unreachable!() };
                 
             let limb_base = biguint_to_fe::<C::Scalar>(&(BigUint::one() << limb_bits));
             let mut limb_bases = Vec::with_capacity(num_limbs);
@@ -293,18 +292,15 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             layouter: &mut impl Layouter<C::Scalar>,
             a: C::Base,
         ) -> Result<Self::NonNatNum, Error> {
-
-            // move this into nonnative number impl
             let native_modulus = modulus::<C::Scalar>();
             let a = fe_to_biguint(&a);
             let a_native = biguint_to_fe(&(&a % &native_modulus)); 
             let a_native_assigned = self.assign_witness(layouter, &a_native, 0)?;
 
-            let num_limbs = NUM_LIMBS_PRIMARY_NON_NATIVE;
-            let limb_bits = NUM_LIMB_BITS_PRIMARY_NON_NATIVE;
+            let num_limbs = NUM_LIMBS_NON_NATIVE;
+            let limb_bits = NUM_LIMB_BITS_NON_NATIVE;
             let a_vec = decompose_biguint::<C::Scalar>(&a, num_limbs, limb_bits);
             let limbs = self.assign_witnesses(layouter, &a_vec)?;
-    
             let limb_base = biguint_to_fe::<C::Scalar>(&(BigUint::one() << limb_bits));
             let mut limb_bases = Vec::with_capacity(num_limbs);
             limb_bases.push(C::Scalar::ONE);
@@ -914,28 +910,19 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             b: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
             // | a | b | 0 | a * b |
-            let zero = self.assign_witness(layouter, &C::Scalar::ZERO, 0)?;                           
-            let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
-                layouter.assign_region(
-                || "mul",
-                |mut region | {
-
-                            self.config.selector[0].enable(&mut region, 0)?;                            
-                            a.0.copy_advice(|| "lhs", &mut region, self.config.advice[0], 0)?;
-                            b.0.copy_advice(|| "rhs", &mut region, self.config.advice[1], 0)?;
-                            zero.0.copy_advice(|| "zero", &mut region, self.config.advice[2], 0)?;
-
-                            let value = a.0.value().copied() * b.0.value();
-                            let result = region.assign_advice(
-                                || "lhs * rhs",
-                                self.config.advice[3], 0, || value
-                            )?;
-                            Ok(Number(result))
-                        })
-            }).collect::<Result<Vec<_>, _>>()?;
-            
-            let result_value = a.value.clone() * b.value.clone();
-            self.from_limbs(layouter, result, result_value)
+            let k = a.limbs.len();
+            let out_limbs = (0..k)
+                .map(|i| {
+                    self.inner_product(
+                        layouter,
+                        &a.limbs[..=i],
+                        &b.limbs[..=i].iter().rev().cloned().collect_vec(),
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let out_native = self.mul(layouter, &a.native, &b.native)?;
+            let out_int_value = a.value.clone() * b.value.clone();
+            Ok(NonNativeNumber::new(out_limbs, out_native, out_int_value, modulus::<C::Base>()))
         }
 
         pub fn mul_add(
@@ -995,6 +982,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             self.from_limbs(layouter, result, result_value)
         }
 
+        //todo split into mul base and add base
         pub fn mul_add_base(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
@@ -1124,7 +1112,6 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         let lookup_bits = LOOKUP_BITS;
         let range_bits =
             ((range_bits + lookup_bits) / lookup_bits) * lookup_bits - 1;
-
         // `window = w + 1` valid as long as `range_bits + n * (w+1) < native_modulus::<F>().bits() - 1`
         // let window = (F::NUM_BITS as usize - 2 - range_bits) / limb_bits;
         // assert!(window > 0);
@@ -1139,7 +1126,6 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let neg_carry_assigned = self.assign_fixed(layouter, &neg_carry_val, idx)?;
             let previous_assigned = self.mul_add(layouter, limb_base_assigned, &neg_carry_assigned, &a_limb)?;
             self.constrain_equal(layouter, &previous_assigned, previous.as_ref().unwrap_or(&zero))?;
-
             // i in 0..num_windows {
             // let idx = std::cmp::min(window * i + window - 1, k - 1);
             // let carry_cell = &neg_carry_assignments[idx];
@@ -1244,7 +1230,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         //    BigIntStrategy::Simple => {
         for (i, ((a_limb, quot_v), out_v)) in
             a.limbs.into_iter().zip(quot_vec).zip(out_vec).enumerate()
-        {
+        {   
             let new_quot_cell = self.assign_witness(layouter, &quot_v, i)?;
             let mod_vec_assigned: Result<Vec<_>, _> = mod_limbs[..=i]
                 .iter()
@@ -1266,6 +1252,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let out_val_assigned = self.assign_witness(layouter, &out_v, i)?;
             let check_val_assigned = self.assign_witness(layouter, &check_val, i)?;
 
+            // can be written as one gate
             // transpose of:
             // | prod | -1 | a | prod - a | 1 | out | prod - a + out
             // where prod is at relative row `offset`
@@ -1296,15 +1283,14 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             self.range_check_chip.assign(layouter, &quot_shift, limb_bits + 1)?;
         }
 
-        let check_overflow_int_limbs = check_assigned;
-        // using const NUM_LIMB_BITS_NON_NATIVE as max_limb_bits for each nonnative limb
+        // using const NUM_LIMB_BITS_NON_NATIVE as max_limb_bits for each nonnative limb, since we dont do mod reduce for primary nonnative limbs
         let max_limb_bits = max(max(num_limb_bits, NUM_LIMB_BITS_NON_NATIVE) + 1, 2 * n + num_limbs);
 
         let limb_bases_assigned = limb_bases.iter().enumerate().map(|(index, c)| self.assign_fixed(layouter, c, index)).collect::<Result<Vec<_>, _>>()?;
         // check that `out - a + modulus * quotient == 0 mod 2^{trunc_len}` after carry
         self.truncate(
             layouter,
-            check_overflow_int_limbs,
+            check_assigned,
             num_limb_bits,
             &limb_bases_assigned[1],
             &limb_base_big,
@@ -1318,6 +1304,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         let out_native = self.inner_product(layouter, &out_assigned, &limb_bases_assigned)?;
         // We can save 1 cell by connecting `out_native` computation with the following:
 
+        // todo write as one gate mul_add_constrain
         // Check `out + modulus * quotient - a = 0` in native field
         let mod_native_assigned = self.assign_fixed(layouter, &mod_native, 0)?;
         let mul_add_result = self.mul_add(layouter, &mod_native_assigned, &quot_native, &out_native)?;
@@ -1367,6 +1354,7 @@ where
 
         let main_config = MainChip::<C>::configure(meta, main_advice.clone().try_into().unwrap(), main_fixed.try_into().unwrap());
         let range_check_fixed = meta.fixed_column();
+        meta.enable_constant(range_check_fixed);
         // we need 1 complex selector for the lookup check in the range check chip
         let enable_lookup_selector = meta.complex_selector();
         let range_check_config = RangeCheckChip::<C>::configure(
@@ -1390,7 +1378,9 @@ where
 
         let range_chip = RangeCheckChip::<C>::construct(config.range_check_config);
         let main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
+        main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
 
+        /// test inner product
         // let mut rng = OsRng;
         // let a = (0..5).map(|_| C::Scalar::random(&mut rng)).collect::<Vec<_>>();
         // let b = (0..5).map(|_| C::Scalar::random(&mut rng)).collect::<Vec<_>>();
@@ -1410,33 +1400,51 @@ where
         // let inner_product_assigned = main_chip.assign_witness(&mut layouter, &inner_product_value, 0)?;
         // main_chip.constrain_equal(&mut layouter, &result, &inner_product_assigned)?;
 
+        /// test num_to_bits
+        // let mut rng = OsRng;
+        // let a = C::Scalar::random(&mut rng);
+        // let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
+        // let bits = main_chip.num_to_bits(&mut layouter, C::Scalar::NUM_BITS as usize, &a_assigned)?;
+        // let num = main_chip.bits_to_num(&mut layouter, &bits)?;
+        // main_chip.constrain_equal(&mut layouter, &num, &a_assigned)?;
+
+        /// test assign_witness_base and mod_reduce
         let mut rng = OsRng;
-        let a = C::Scalar::random(&mut rng);
-        let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
-        let bits = main_chip.num_to_bits(&mut layouter, C::Scalar::NUM_BITS as usize, &a_assigned)?;
-        let num = main_chip.bits_to_num(&mut layouter, &bits)?;
-        main_chip.constrain_equal(&mut layouter, &num, &a_assigned)?;
+        let a = C::Base::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap();
+        let a_assigned = main_chip.assign_witness_base(&mut layouter, a)?;
+        let power_no_mod = main_chip.mul_base(&mut layouter, &a_assigned, &a_assigned)?;
+        let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
+
         Ok(())
     }
 }
 
 #[test]
 fn circuit_test() {
-    use plotters::prelude::*;
-    let root = BitMapBackend::new("MainChip_debug.png", (10240, 7680)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
-    let root = root
-        .titled("Main Chip Layout", ("sans-serif", 60))
-        .unwrap();
+    let k = 11;
+    let circuit = MainChipCircuit::<bn256::G1Affine>{ marker: PhantomData::<bn256::G1Affine> };
+    MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
+    // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+    // assert_eq!(prover.verify(), Ok(()));
+}
+
+#[test]
+fn circuit_test_layout() {
+    // use plotters::prelude::*;
+    // let root = BitMapBackend::new("MainChip_debug.png", (10240, 7680)).into_drawing_area();
+    // root.fill(&WHITE).unwrap();
+    // let root = root
+    //     .titled("Main Chip Layout", ("sans-serif", 60))
+    //     .unwrap();
 
     let k = 10;
     let circuit = MainChipCircuit::<bn256::G1Affine>{ marker: PhantomData::<bn256::G1Affine> };
-    // MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
+    MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
     // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
     // assert_eq!(prover.verify(), Ok(()));
 
-    halo2_base::halo2_proofs::dev::CircuitLayout::default()
-    .render(k, &circuit, &root)
-    .unwrap();
+    // halo2_base::halo2_proofs::dev::CircuitLayout::default()
+    // .render(k, &circuit, &root)
+    // .unwrap();
 
 }

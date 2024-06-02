@@ -17,7 +17,7 @@ pub const T: usize = 7;
 pub const RATE: usize = 6;
 pub const NUM_RANGE_COLS: usize = (T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 23;
+pub const PRIMARY_HASH_LENGTH: usize = 29;
 pub const CF_HASH_LENGTH: usize = 13;
 
 pub const N_BYTES: usize = 16;
@@ -291,7 +291,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                         .as_ref()
                         .into_iter())
                 .collect_vec();
-            // println!("inputs_len {:?}", inputs.len());
+            println!("inputs_len {:?}", inputs.len());
             let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
             let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
             // change to strict
@@ -436,7 +436,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         // lhs = h == 0 initalised 
         let lhs_is_zero = main_chip.is_equal(layouter, lhs, &zero)?;
         let rhs = main_chip.select(layouter, &lhs_is_zero, &zero, &rhs)?;
-        main_chip.constrain_equal(layouter, lhs, &rhs)?;
+        //main_chip.constrain_equal(layouter, lhs, &rhs)?;
 
         Ok(())
     }

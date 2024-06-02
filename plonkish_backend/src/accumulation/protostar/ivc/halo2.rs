@@ -779,7 +779,6 @@ where
 
         let nark = AssignedPlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(acc)?;
-
         let (cross_term_comms, compressed_cross_term_sums) = match strategy {
             NoCompressing => {
                 let cross_term_comms = 

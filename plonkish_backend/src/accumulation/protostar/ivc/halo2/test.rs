@@ -373,7 +373,7 @@ where
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_STEPS: usize = 5;
 
-    let primary_circuit_k = 13;
+    let primary_circuit_k = 14;
     let cyclefold_num_vars = 10;
     
     run_protostar_hyperplonk_ivc::<

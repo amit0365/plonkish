@@ -670,7 +670,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 });
 
             let mut accumulator = C::Scalar::ZERO;
-            let mut acc = vec![vec![Value::known(C::Scalar::ZERO)]];
+            let mut acc = vec![vec![Value::known(C::Scalar::ZERO); num_limbs]];
             acc.extend(a.iter()
                 .zip(b.iter())
                 .map(|(a, b)| {
@@ -681,7 +681,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 }).collect_vec());
             acc.pop();
 
-            let limbs = layouter.assign_region(
+            let out_limbs = layouter.assign_region(
                 || "inner product base",
                 |mut region | {
                     a.iter()
@@ -708,8 +708,11 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             }).collect::<Result<Vec<_>, _>>()          
                 }).collect::<Result<Vec<_>, _>>()
             })?.last().cloned().ok_or(Error::Synthesis)?;
-            
-            self.from_limbs(layouter, limbs, inner_product_value)
+
+            let a_native_vec = a.iter().map(|x| x.native.clone()).collect_vec();
+            let b_native_vec = b.iter().map(|x| x.native.clone()).collect_vec();
+            let out_native = self.inner_product(layouter, &a_native_vec, &b_native_vec)?;
+            Ok(NonNativeNumber::new(out_limbs, out_native, inner_product_value, modulus::<C::Base>()))
         }
 
         /// Constrains and returns little-endian bit vector representation of `a`.
@@ -792,7 +795,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         ) -> Result<Self::NonNatNum, Error> {
             // | a | 1 | b | a + b |
             let one = self.assign_fixed(layouter, &C::Scalar::ONE, 0)?;
-            let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
+            let out_limbs = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.namespace(|| "add_base").assign_region(
                     || "add_base",
                 |mut region | {
@@ -811,8 +814,9 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             })
                 }).collect::<Result<Vec<_>, _>>()?;
             
-            let result_value = a.value.clone() + b.value.clone();
-            self.from_limbs(layouter, result, result_value)
+            let out_native = self.add(layouter, &a.native, &b.native)?;
+            let out_int_value = a.value.clone() + b.value.clone();
+            Ok(NonNativeNumber::new(out_limbs, out_native, out_int_value, modulus::<C::Base>()))
         }
 
         pub fn sub(
@@ -852,7 +856,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         ) -> Result<Self::NonNatNum, Error> {
             // | a - b | 1 | b | a |
             let one = self.assign_fixed(layouter, &C::Scalar::ONE, 0)?;
-            let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
+            let out_limbs = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.namespace(|| "sub_base").assign_region(
                     || "sub_base",
                     |mut region | {
@@ -872,8 +876,9 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                             })
                 }).collect::<Result<Vec<_>, _>>()?;
             
-            let result_value = a.value.clone() - b.value.clone();
-            self.from_limbs(layouter, result, result_value)
+            let out_native = self.sub(layouter, &a.native, &b.native)?;
+            let out_int_value = a.value.clone() - b.value.clone();
+            Ok(NonNativeNumber::new(out_limbs, out_native, out_int_value, modulus::<C::Base>()))
         }
 
         pub fn mul(
@@ -959,7 +964,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             a: &Self::NonNatNum,
             b: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
-            let result = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
+            let out_limbs = a.limbs.iter().zip(b.limbs.iter()).map(|(a, b)| {
                 layouter.namespace(|| "mul_add").assign_region(
                     || "inner product",
                 |mut region | {
@@ -978,11 +983,11 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                         })
             }).collect::<Result<Vec<_>, _>>()?;
 
-            let result_value = a.value.clone() * fe_to_bigint(&num.value()) + b.value.clone();
-            self.from_limbs(layouter, result, result_value)
+            let out_native = self.mul_add(layouter, &num,&a.native, &b.native)?;
+            let out_int_value = fe_to_bigint(&num.value()) * a.value.clone() + b.value.clone();
+            Ok(NonNativeNumber::new(out_limbs, out_native, out_int_value, modulus::<C::Base>()))
         }
 
-        //todo split into mul base and add base
         pub fn mul_add_base(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
@@ -990,28 +995,8 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             b: &Self::NonNatNum,
             c: &Self::NonNatNum,
         ) -> Result<Self::NonNatNum, Error> {
-            let zero = self.assign_witness(layouter, &C::Scalar::ZERO, 0)?;                           
-            let result = a.limbs.iter().zip_eq(b.limbs.iter()).zip_eq(c.limbs.iter()).map(|((a, b), c)| {
-                layouter.assign_region(
-                    || "inner product",
-                |mut region | {
-
-                            self.config.selector[0].enable(&mut region, 0)?; 
-                            a.0.copy_advice(|| "a", &mut region, self.config.advice[0], 0)?;
-                            b.0.copy_advice(|| "b", &mut region, self.config.advice[1], 0)?;
-                            c.0.copy_advice(|| "c", &mut region, self.config.advice[2], 0)?;
-
-                            let value = a.0.value().copied() * b.0.value() + c.0.value();
-                            let out = region.assign_advice(
-                                || "a * b + c",
-                                self.config.advice[3], 0, || value
-                            )?;
-                            Ok(Number(out))
-                        })
-            }).collect::<Result<Vec<_>, _>>()?;
-            
-            let result_value = a.value.clone() * b.value.clone() + c.value.clone();
-            self.from_limbs(layouter, result, result_value)
+            let result = self.mul_base(layouter, a, b)?;
+            self.add_base(layouter, &result, c)
         }
 
         pub fn powers(

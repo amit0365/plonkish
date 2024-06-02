@@ -1,20 +1,20 @@
 use itertools::Itertools;
 use rand::{rngs::OsRng, RngCore};
-use std::{marker::PhantomData, os::macos::raw::stat, iter};
+use std::{iter, marker::PhantomData, os::macos::raw::stat, time::Instant};
 use halo2_base::{halo2_proofs::{circuit::{floor_planner::V1, AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}}, utils::{BigPrimeField, FromUniformBytes, PrimeField}};
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash}, spec::PoseidonSpec, PoseidonSpongeChip, Pow5Chip, Pow5Config};
 use halo2_base::halo2_proofs::plonk::Error;
 use halo2_base::halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_base::halo2_proofs::arithmetic::Field;
-use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::hash_chip::PoseidonConfig, range_check::{RangeCheckChip, RangeCheckConfig}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
+use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::hash_chip::PoseidonConfig, range_check::{RangeCheckChip, RangeCheckConfig}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
 use crate::accumulation::protostar::{ivc::halo2::chips::{main_chip::{EcPointNonNative, Number}, transcript::{native::AssignedProtostarAccumulatorInstance, nonnative::PoseidonTranscriptChip}}, ProtostarStrategy::Compressing};
 use crate::{
     accumulation::{protostar::{ivc::halo2::chips::{poseidon::hash_chip::PoseidonChip, scalar_mul::sm_chip_primary::{ScalarMulChip, ScalarMulChipConfig}, main_chip::{MainChip, MainChipConfig}, transcript::native::PoseidonNativeTranscriptChip}, ProtostarAccumulatorInstance}, PlonkishNarkInstance}, 
     util::arithmetic::{powers, TwoChainCurve}
 };
 
-pub const T: usize = 7;
-pub const RATE: usize = 6;
+pub const T: usize = 3;
+pub const RATE: usize = 2;
 pub const NUM_RANGE_COLS: usize = (T + 1) / 2;
 
 pub const PRIMARY_HASH_LENGTH: usize = 29;
@@ -86,8 +86,11 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
 
         let main_config = MainChip::<C>::configure(meta, main_advice.clone().try_into().unwrap(), main_fixed.try_into().unwrap());
 
-        let sm_advice = main_advice.iter().skip(1).cloned().collect_vec();
+        // let sm_advice = main_advice.iter().skip(1).cloned().collect_vec();
         // sm_advice.push(meta.advice_column());
+
+        let mut sm_advice = main_advice.clone();
+        sm_advice.extend((0..3).map(|_| meta.advice_column()));
 
         for col in sm_advice.iter() {
             meta.enable_equality(*col);
@@ -95,13 +98,13 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
 
         let sm_chip_config = ScalarMulChipConfig::configure(meta, sm_advice.try_into().unwrap());
 
-        //let range_advice = main_advice.iter().skip(NUM_RANGE_COLS).cloned().collect_vec();
+        // let range_advice = main_advice.iter().skip(NUM_RANGE_COLS).cloned().collect_vec();
         let range_check_fixed = meta.fixed_column();
         // we need 1 complex selector for the lookup check in the range check chip
         let enable_lookup_selector = meta.complex_selector();
         let range_check_config = RangeCheckChip::<C>::configure(
             meta,
-            main_advice[7], //range_advice.try_into().unwrap(),
+            main_advice[T], //range_advice.try_into().unwrap(),
             range_check_fixed,
             enable_lookup_selector,
         );
@@ -236,7 +239,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
         ) -> C::Scalar {
             let mut poseidon = Hash::<_, PoseidonSpec, ConstantLength<PRIMARY_HASH_LENGTH>, T, RATE>::init();
-            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE);
+            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMBS_NON_NATIVE);
             let inputs = iter::empty()
                 .chain([vp_digest, C::Scalar::from(step_idx as u64)])
                 .chain(initial_input.iter().copied())
@@ -253,7 +256,6 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 .chain(into_coordinates(acc.e_comm.as_ref()).into_iter().map(fe_to_limbs).flatten())
                 .chain(acc.compressed_e_sum.into_iter())
                 .collect_vec();
-
             let hash = poseidon.hash(inputs.try_into().unwrap());
             fe_truncated(hash, NUM_HASH_BITS)
         }
@@ -521,7 +523,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
 {
 
     type Config = PrimaryCircuitConfig<C>;
-    type FloorPlanner = V1; //SimpleFloorPlanner; //V1;
+    type FloorPlanner = SimpleFloorPlanner; //V1;
     type Params = ();
 
     fn without_witnesses(&self) -> Self {
@@ -563,7 +565,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             cyclefold_avp,
             ..
         } = &self;
-
+        let synthesize_start = Instant::now();
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config.main_config.clone(), layouter.namespace(|| ""))?;
 
@@ -612,7 +614,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         let cyclefold_inputs_hash_from_instances = main_chip.assign_witness_base(&mut layouter, cyclefold_inputs_hash_from_instances_val)?;
         let cyclefold_inputs_hash_from_instances_select = main_chip.select_base(&mut layouter, &is_base_case, &cyclefold_inputs_hash, &cyclefold_inputs_hash_from_instances)?;
         main_chip.constrain_equal_base(&mut layouter, &cyclefold_inputs_hash, &cyclefold_inputs_hash_from_instances_select)?;
-
+        println!("before_primary_acc_synthesize_time: {:?}", synthesize_start.elapsed());
         let acc = acc_verifier.assign_accumulator(&mut layouter, self.acc.as_ref())?;
         let assigned_acc_prime_comms_checked = acc_verifier.assign_comm_outputs_from_accumulator(&mut layouter, self.acc_prime.as_ref())?;
         let (nark, acc_prime) = {
@@ -659,6 +661,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &acc_prime,
         )?;
 
+        println!("before_primary_acc_ec_synthesize_time: {:?}", synthesize_start.elapsed());
         let acc_verifier_ec = ProtostarAccumulationVerifier::new(cyclefold_avp.clone(), main_chip.clone(), sm_chip.clone());
         let acc_ec = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_ec.as_ref())?;
         let acc_ec_prime_result = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_prime_ec.as_ref())?;
@@ -676,7 +679,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             let acc_ec_prime_result = acc_verifier_ec.select_accumulator_ec(&mut layouter, &is_base_case, &acc_ec_default, &acc_ec_prime_result)?;
             (acc_ec_prime, acc_ec_prime_result)
         };
-
+        println!("after_primary_acc_ec_synthesize_time: {:?}", synthesize_start.elapsed());
         // self.check_folding_ec(
         //     layouter.namespace(|| "check_folding_ec"),
         //     &main_chip,

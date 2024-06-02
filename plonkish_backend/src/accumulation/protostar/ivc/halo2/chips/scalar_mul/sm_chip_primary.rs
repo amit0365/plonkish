@@ -64,102 +64,102 @@ where
     
         let [q_ec_double_add, q_ec_add_unequal_last] = [(); NUM_SELECTOR].map(|_| meta.selector());
 
-            // meta.create_gate("q_ec_double_add", |meta| {
+            meta.create_gate("q_ec_double_add", |meta| {
 
-            //     let q_ec_double_add = meta.query_selector(q_ec_double_add);
-            //     let acc_prev_x = meta.query_advice(col_acc_x, Rotation(0));
-            //     let acc_prev_y = meta.query_advice(col_acc_y, Rotation(0));
-            //     let acc_prev_z = meta.query_advice(col_acc_z, Rotation(0));
+                let q_ec_double_add = meta.query_selector(q_ec_double_add);
+                let acc_prev_x = meta.query_advice(col_acc_x, Rotation(0));
+                let acc_prev_y = meta.query_advice(col_acc_y, Rotation(0));
+                let acc_prev_z = meta.query_advice(col_acc_z, Rotation(0));
 
-            //     let x = meta.query_advice(col_ptx, Rotation(1));
-            //     let y = meta.query_advice(col_pty, Rotation(1));
-            //     let r = meta.query_advice(col_rbits, Rotation(1));
-            //     let lambda = meta.query_advice(col_lambda, Rotation(1));
+                let x = meta.query_advice(col_ptx, Rotation(1));
+                let y = meta.query_advice(col_pty, Rotation(1));
+                let r = meta.query_advice(col_rbits, Rotation(1));
+                let lambda = meta.query_advice(col_lambda, Rotation(1));
 
-            //     let acc_next_x = meta.query_advice(col_acc_x, Rotation(1));
-            //     let acc_next_y = meta.query_advice(col_acc_y, Rotation(1));
-            //     let acc_next_z = meta.query_advice(col_acc_z, Rotation(1));
-            //     let acc_prev_x_sq = acc_prev_x.clone() * acc_prev_x.clone();
-            //     let acc_prev_y_sq = acc_prev_y.clone() * acc_prev_y.clone();
-            //     let acc_prev_z_sq = acc_prev_z.clone() * acc_prev_z.clone();
+                let acc_next_x = meta.query_advice(col_acc_x, Rotation(1));
+                let acc_next_y = meta.query_advice(col_acc_y, Rotation(1));
+                let acc_next_z = meta.query_advice(col_acc_z, Rotation(1));
+                let acc_prev_x_sq = acc_prev_x.clone() * acc_prev_x.clone();
+                let acc_prev_y_sq = acc_prev_y.clone() * acc_prev_y.clone();
+                let acc_prev_z_sq = acc_prev_z.clone() * acc_prev_z.clone();
 
-            //     let zero = Expression::Constant(C::Scalar::ZERO);
-            //     let one = Expression::Constant(C::Scalar::ONE);
-            //     let two = Expression::Constant(C::Scalar::from(2));
-            //     let three = Expression::Constant(C::Scalar::from(3));
-            //     let nine = Expression::Constant(C::Scalar::from(9));
-            //     let eight = Expression::Constant(C::Scalar::from(8));
-            //     let twenty_four = Expression::Constant(C::Scalar::from(24));
-            //     let twenty_seven = Expression::Constant(C::Scalar::from(27)); // nine * b
-            //     let seventy_two = Expression::Constant(C::Scalar::from(72)); // twenty_four * b
+                let zero = Expression::Constant(C::Scalar::ZERO);
+                let one = Expression::Constant(C::Scalar::ONE);
+                let two = Expression::Constant(C::Scalar::from(2));
+                let three = Expression::Constant(C::Scalar::from(3));
+                let nine = Expression::Constant(C::Scalar::from(9));
+                let eight = Expression::Constant(C::Scalar::from(8));
+                let twenty_four = Expression::Constant(C::Scalar::from(24));
+                let twenty_seven = Expression::Constant(C::Scalar::from(27)); // nine * b
+                let seventy_two = Expression::Constant(C::Scalar::from(72)); // twenty_four * b
                 
-            //     // pt double, b = 3 for bn254
-            //     //  x' = 2xy(y^2 - 9bz^2)
-            //     //  y' = (y^2 - 9bz^2)(y^2 + 3bz^2) + 24*b*y^2*z^2 
-            //     //  z' = 8y^3*z
+                // pt double, b = 3 for bn254
+                //  x' = 2xy(y^2 - 9bz^2)
+                //  y' = (y^2 - 9bz^2)(y^2 + 3bz^2) + 24*b*y^2*z^2 
+                //  z' = 8y^3*z
 
-            //     // simplified for b = 3, 
-            //     let acc_double_x = two * acc_prev_x.clone() * acc_prev_y.clone() * (acc_prev_y_sq.clone() - twenty_seven.clone() * acc_prev_z_sq.clone());
-            //     let acc_double_y = (acc_prev_y_sq.clone() - twenty_seven.clone() * acc_prev_z_sq.clone()) 
-            //                      * (acc_prev_y_sq.clone() + nine.clone() * acc_prev_z_sq.clone()) + seventy_two.clone() * acc_prev_y_sq.clone() * acc_prev_z_sq.clone();
-            //     let acc_double_z = eight.clone() * acc_prev_y_sq.clone() * acc_prev_y.clone() * acc_prev_z.clone();
+                // simplified for b = 3, 
+                let acc_double_x = two * acc_prev_x.clone() * acc_prev_y.clone() * (acc_prev_y_sq.clone() - twenty_seven.clone() * acc_prev_z_sq.clone());
+                let acc_double_y = (acc_prev_y_sq.clone() - twenty_seven.clone() * acc_prev_z_sq.clone()) 
+                                 * (acc_prev_y_sq.clone() + nine.clone() * acc_prev_z_sq.clone()) + seventy_two.clone() * acc_prev_y_sq.clone() * acc_prev_z_sq.clone();
+                let acc_double_z = eight.clone() * acc_prev_y_sq.clone() * acc_prev_y.clone() * acc_prev_z.clone();
 
-            //     // choice poly in projective coordinates, identity is (0,1,0)
-            //     let sel_x = r.clone() * x.clone(); 
-            //     let sel_y = (one.clone() - r.clone()) + r.clone() * y.clone(); 
-            //     let sel_z = r.clone(); 
+                // choice poly in projective coordinates, identity is (0,1,0)
+                let sel_x = r.clone() * x.clone(); 
+                let sel_y = (one.clone() - r.clone()) + r.clone() * y.clone(); 
+                let sel_z = r.clone(); 
 
-            //     // X_1 = acc_next_x, Y_2 = sel_y
-            //     // X_3 &= (X_1(-Y_2) + X_2Y_1)(Y_1(-Y_2)) - 3bZ_1Z_2) \\ x1y1
-            //     //  - (Y_1Z_2 - Y_2Z_1)(3b(X_1Z_2 + X_2Z_1)), \\
-            //     // Y_3 &= (3X_1X_2)(3b(X_1Z_2 + X_2Z_1)) \\ y1^2
-            //     //  + (Y_1(-Y_2) + 3bZ_1Z_2)(Y_1(-Y_2) - 3bZ_1Z_2), \\
-            //     // Z_3 &= (Y_1Z_2 - Y_2Z_1)(Y_1(-Y_2) + 3bZ_1Z_2) \\ z1y1
-            //     //  + (X_1(-Y_2) + X_2Y_1)(3X_1X_2).
+                // X_1 = acc_next_x, Y_2 = sel_y
+                // X_3 &= (X_1(-Y_2) + X_2Y_1)(Y_1(-Y_2)) - 3bZ_1Z_2) \\ x1y1
+                //  - (Y_1Z_2 - Y_2Z_1)(3b(X_1Z_2 + X_2Z_1)), \\
+                // Y_3 &= (3X_1X_2)(3b(X_1Z_2 + X_2Z_1)) \\ y1^2
+                //  + (Y_1(-Y_2) + 3bZ_1Z_2)(Y_1(-Y_2) - 3bZ_1Z_2), \\
+                // Z_3 &= (Y_1Z_2 - Y_2Z_1)(Y_1(-Y_2) + 3bZ_1Z_2) \\ z1y1
+                //  + (X_1(-Y_2) + X_2Y_1)(3X_1X_2).
 
-            //     // simplified for b = 3, 
-            //     let acc_sub_x = (acc_next_x.clone() * ( - sel_y.clone()) + sel_x.clone() * acc_next_y.clone())
-            //         * ( acc_next_y.clone() * (- sel_y.clone()) - nine.clone() * acc_next_z.clone() * sel_z.clone())
-            //         - ( acc_next_y.clone() * sel_z.clone() - sel_y.clone() * acc_next_z.clone())
-            //         * ( nine.clone() * (acc_next_x.clone() * sel_z.clone()  + acc_next_z.clone() * sel_x.clone()));
+                // simplified for b = 3, 
+                let acc_sub_x = (acc_next_x.clone() * ( - sel_y.clone()) + sel_x.clone() * acc_next_y.clone())
+                    * ( acc_next_y.clone() * (- sel_y.clone()) - nine.clone() * acc_next_z.clone() * sel_z.clone())
+                    - ( acc_next_y.clone() * sel_z.clone() - sel_y.clone() * acc_next_z.clone())
+                    * ( nine.clone() * (acc_next_x.clone() * sel_z.clone()  + acc_next_z.clone() * sel_x.clone()));
                 
-            //     let acc_sub_y = (three.clone() * acc_next_x.clone() * sel_x.clone()) 
-            //         * ( nine.clone() * ( acc_next_x.clone() * sel_z.clone() + sel_x.clone() * acc_next_z.clone()))
-            //         + ( acc_next_y.clone() * (- sel_y.clone()) + nine.clone() * sel_z.clone() * acc_next_z.clone()) 
-            //         * ( - sel_y.clone() * acc_next_y.clone() - nine.clone() * sel_z.clone() * acc_next_z.clone());
+                let acc_sub_y = (three.clone() * acc_next_x.clone() * sel_x.clone()) 
+                    * ( nine.clone() * ( acc_next_x.clone() * sel_z.clone() + sel_x.clone() * acc_next_z.clone()))
+                    + ( acc_next_y.clone() * (- sel_y.clone()) + nine.clone() * sel_z.clone() * acc_next_z.clone()) 
+                    * ( - sel_y.clone() * acc_next_y.clone() - nine.clone() * sel_z.clone() * acc_next_z.clone());
 
-            //     let acc_sub_z = (acc_next_y.clone() * sel_z.clone() - sel_y.clone() * acc_next_z.clone())
-            //         * (acc_next_y.clone() * (- sel_y.clone()) + nine.clone() * sel_z.clone() * acc_next_z.clone())
-            //         + ( - acc_next_x.clone() * sel_y.clone() + sel_x.clone() * acc_next_y.clone())
-            //         * (three.clone() * acc_next_x.clone() * sel_x.clone());
+                let acc_sub_z = (acc_next_y.clone() * sel_z.clone() - sel_y.clone() * acc_next_z.clone())
+                    * (acc_next_y.clone() * (- sel_y.clone()) + nine.clone() * sel_z.clone() * acc_next_z.clone())
+                    + ( - acc_next_x.clone() * sel_y.clone() + sel_x.clone() * acc_next_y.clone())
+                    * (three.clone() * acc_next_x.clone() * sel_x.clone());
 
-            //     vec![q_ec_double_add.clone() * (acc_sub_x - lambda.clone() * acc_double_x.clone()),
-            //          q_ec_double_add.clone() * (acc_sub_y - lambda.clone() * acc_double_y.clone()),
-            //          q_ec_double_add.clone() * (acc_sub_z - lambda.clone() * acc_double_z.clone())]
+                vec![q_ec_double_add.clone() * (acc_sub_x - lambda.clone() * acc_double_x.clone()),
+                     q_ec_double_add.clone() * (acc_sub_y - lambda.clone() * acc_double_y.clone()),
+                     q_ec_double_add.clone() * (acc_sub_z - lambda.clone() * acc_double_z.clone())]
 
-            // });
+            });
             
-            // meta.create_gate("ec_add_unequal_last", |meta| {
+            meta.create_gate("ec_add_unequal_last", |meta| {
 
-            //     let q_ec_add_unequal_last = meta.query_selector(q_ec_add_unequal_last);
-            //     let comm_x = meta.query_advice(col_ptx, Rotation(0));
-            //     let comm_y = meta.query_advice(col_pty, Rotation(0));
-            //     let sm_x = meta.query_advice(col_acc_x, Rotation(0));
-            //     let sm_y = meta.query_advice(col_acc_y, Rotation(0));
-            //     let x3 = meta.query_advice(col_acc_z, Rotation(0));
-            //     let y3 = meta.query_advice(col_lambda, Rotation(0));
-            //     // dx = x2 - x1
-            //     let dx = sm_x.clone() - comm_x.clone();
-            //     let dy = sm_y.clone() - comm_y.clone();
-            //     let dx_sq = dx.clone() * dx.clone();
-            //     let dy_sq = dy.clone() * dy.clone();
+                let q_ec_add_unequal_last = meta.query_selector(q_ec_add_unequal_last);
+                let comm_x = meta.query_advice(col_ptx, Rotation(0));
+                let comm_y = meta.query_advice(col_pty, Rotation(0));
+                let sm_x = meta.query_advice(col_acc_x, Rotation(0));
+                let sm_y = meta.query_advice(col_acc_y, Rotation(0));
+                let x3 = meta.query_advice(col_acc_z, Rotation(0));
+                let y3 = meta.query_advice(col_lambda, Rotation(0));
+                // dx = x2 - x1
+                let dx = sm_x.clone() - comm_x.clone();
+                let dy = sm_y.clone() - comm_y.clone();
+                let dx_sq = dx.clone() * dx.clone();
+                let dy_sq = dy.clone() * dy.clone();
 
-            //     //  x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
-            //     //  y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
+                //  x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
+                //  y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
 
-            //     vec![q_ec_add_unequal_last.clone() * (x3.clone() * dx_sq.clone() - dy_sq.clone() + comm_x.clone() * dx_sq.clone() + sm_x.clone() * dx_sq.clone()),
-            //          q_ec_add_unequal_last * (y3.clone() * dx.clone() - dy.clone() * (comm_x.clone() - x3.clone()) + comm_y.clone() * dx.clone())]
-            // });
+                vec![q_ec_add_unequal_last.clone() * (x3.clone() * dx_sq.clone() - dy_sq.clone() + comm_x.clone() * dx_sq.clone() + sm_x.clone() * dx_sq.clone()),
+                     q_ec_add_unequal_last * (y3.clone() * dx.clone() - dy.clone() * (comm_x.clone() - x3.clone()) + comm_y.clone() * dx.clone())]
+            });
 
         Self { 
             witness: [col_rbits, col_ptx, col_pty, col_acc_x, col_acc_y, col_acc_z, col_lambda], 

@@ -12,10 +12,11 @@ use halo2_base::{
     utils::bit_length,
     AssignedValue, Context,
 };
+use halo2_base::halo2_proofs::arithmetic::CurveExt;
 use halo2_base::halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use halo2_base::halo2_proofs::halo2curves::ff::BatchInvert;
 use halo2_base::halo2_proofs::halo2curves::group::Curve;
-use crate::{accumulation::protostar::{hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::chips::main_chip::{EcPointNative, Number}}, util::arithmetic::{add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinate_proj, into_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, ProjectivePoint}};
+use crate::{accumulation::protostar::{hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::chips::main_chip::{EcPointNative, Number}}, util::arithmetic::{add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinate_proj, into_coordinates, into_proj_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, OverridenCurveAffine, ProjectivePoint}};
 use itertools::Itertools;
 use std::{
     iter,
@@ -386,20 +387,16 @@ where
             let lambda_vec = lhs_zvec.iter().zip(rhs_zvec).map(|(lhs, rhs)| Value::known(*lhs*rhs)).collect_vec();        
             let r_native = fe_from_bits_le(rbits_fe.clone());
             let r_non_native: C::Base = fe_to_fe(r_native);
-            let scalar_mul_given: C::Secondary = (p * r_non_native).into();
-            // let scalar_mul_given_aff = scalar_mul_given.to_affine();
-            let scalar_mul_calc = ProjectivePoint::new(*acc_prev_xvec.last().unwrap(), *acc_prev_yvec.last().unwrap(), *acc_prev_zvec.last().unwrap());
-            // let scalar_mul_given_x = into_coordinates(&scalar_mul_given)[0];
-            // let scalar_mul_given_y = into_coordinates(&scalar_mul_given)[1];
-            // if !scalar_mul_calc.z.is_zero_vartime() {
-            //     assert_eq!(scalar_mul_given_x * scalar_mul_calc.z, scalar_mul_calc.x);
-            //     assert_eq!(scalar_mul_given_y * scalar_mul_calc.z, scalar_mul_calc.y);
-            // }
-
+            let scalar_mul_given_proj = p * r_non_native;
+            //let scalar_mul_given_proj_coords: [<C::SecondaryExt as CurveExt>::Base; 3] = into_proj_coordinates(&scalar_mul_given_proj);
+            let scalar_mul_given = scalar_mul_given_proj.to_affine();
+            let scalar_mul_calc = ProjectivePoint::<C::ScalarExt>::new(*acc_prev_xvec.last().unwrap(), *acc_prev_yvec.last().unwrap(), *acc_prev_zvec.last().unwrap());
             let scalar_mul_calc_affine = scalar_mul_calc.to_affine();
             //println!("scalar_mul_calc_affine {:?}", scalar_mul_calc_affine);
             let scalar_mul_calc_curve = scalar_mul_given; // C::Secondary::from_xy(scalar_mul_calc_affine.0, scalar_mul_calc_affine.1).unwrap();
             //println!("scalar_mul_calc_curve {:?}", scalar_mul_calc_curve);
+            // assert_eq!(scalar_mul_given_proj_coords[0] * scalar_mul_calc.z.into(), scalar_mul_calc.x.into() * scalar_mul_given_proj_coords[2]);
+            // assert_eq!(scalar_mul_given_proj_coords[1] * scalar_mul_calc.z.into(), scalar_mul_calc.y.into() * scalar_mul_given_proj_coords[2]);
 
             let acc_prime_calc  = (scalar_mul_calc_curve + acc_com_raw).to_affine();
             //assert_eq!(scalar_mul_given, scalar_mul_calc_curve);

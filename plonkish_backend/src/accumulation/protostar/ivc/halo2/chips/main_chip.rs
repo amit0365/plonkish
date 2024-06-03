@@ -6,7 +6,7 @@ use halo2_base::halo2_proofs::circuit::floor_planner::V1;
 use halo2_base::halo2_proofs::circuit::{Region, SimpleFloorPlanner};
 use halo2_base::halo2_proofs::dev::MockProver;
 use halo2_base::halo2_proofs::halo2curves::bn256;
-use halo2_base::halo2_proofs::plonk::Circuit;
+use halo2_base::halo2_proofs::plonk::{Circuit, Instance};
 use halo2_base::utils::ScalarField;
 use halo2_base::{halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation}, utils::{bigint_to_fe, biguint_to_fe, decompose_bigint, decompose_biguint, fe_to_bigint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes}};
 use halo2_base::halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
@@ -145,6 +145,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
     pub struct MainChipConfig {
         advice: [Column<Advice>; NUM_MAIN_ADVICE],
         fixed: [Column<Fixed>; NUM_MAIN_FIXED],
+        instance: Column<Instance>,
         selector: [Selector; 2],
     }
 
@@ -188,6 +189,8 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         ) -> MainChipConfig {
 
             let [mul_add, inner_product] = [(); 2].map(|_| meta.selector());
+            let instance = meta.instance_column();
+            meta.enable_equality(instance);
 
             meta.create_gate("mul add constraint", |meta| {
                 let s = meta.query_selector(mul_add);
@@ -210,8 +213,18 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             MainChipConfig {
                 advice,
                 fixed,
+                instance,
                 selector: [mul_add, inner_product],
             }
+        }
+
+        pub fn expose_public(
+            &self,
+            mut layouter: impl Layouter<C::Scalar>,
+            num: &Self::Num,
+            row: usize,
+        ) -> Result<(), Error> {
+            layouter.constrain_instance(num.0.cell(), self.config.instance, row)
         }
 
         /// Loads the lookup table with values from `0` to `2^LOOKUP_BITS - 1`
@@ -417,13 +430,13 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         pub fn select(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
-            is_base_case: &Self::Num,
+            sel: &Self::Num,
             a: &Self::Num,
             b: &Self::Num,
         )-> Result<Self::Num, Error>{
             // | sel | a - b | b | out |
             let diff = self.sub(layouter, a, b)?;
-            self.mul_add(layouter, b, &diff, is_base_case)
+            self.mul_add(layouter, sel, &diff, b)
         }
 
         pub fn select_base(
@@ -462,19 +475,22 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             Ok(EcPointNative { x, y })
         }
 
+        //todo can replace with is_zero gate
         pub fn is_zero(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
             a: &Self::Num,
         )-> Result<Self::Num, Error>{
             let zero = self.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
-            let a_inv = if a.value().is_zero().into() { C::Scalar::ONE } else { C::Scalar::ZERO };
-            let a_inv_assigned = self.assign_witness(layouter, &a_inv, 1)?;
+            let one = self.assign_fixed(layouter, &C::Scalar::ONE, 1)?;
+            let a_inv = if a.value().is_zero().into() { C::Scalar::ONE } else { a.value().invert().unwrap_or(C::Scalar::ZERO) };
+            let a_inv_assigned = self.assign_witness(layouter, &a_inv, 2)?;
 
             let out = self.mul(layouter, a, &a_inv_assigned)?;
-            let out_constraint = self.mul(layouter, a, &out)?;
+            let one_minus_out = self.sub(layouter, &one, &out)?;
+            let out_constraint = self.mul(layouter, a, &one_minus_out)?;
             self.constrain_equal(layouter, &out_constraint, &zero)?;
-            Ok(out)
+            Ok(one_minus_out)
         }
 
         pub fn is_equal(

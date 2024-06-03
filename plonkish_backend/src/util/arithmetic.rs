@@ -623,3 +623,8 @@ pub fn into_coordinates<C: CurveAffine>(ec_point: &C) -> [C::Base; 2] {
     let coords = ec_point.coordinates().unwrap();
     [*coords.x(), *coords.y()]
 }
+
+pub fn into_proj_coordinates<C: CurveExt>(ec_point: &C) -> [C::Base; 3] {
+    let coords = ec_point.jacobian_coordinates();
+    [coords.0, coords.1, coords.2]
+}

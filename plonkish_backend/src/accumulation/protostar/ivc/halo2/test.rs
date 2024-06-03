@@ -333,23 +333,6 @@ where
     //     secondary_proof,
     // )
 
-// // #[test]
-// // fn gemini_kzg_ipa_protostar_hyperplonk_cyclefold_mock() {
-// //     let cyclefold_circuit_params = BaseCircuitParams {
-// //         k: 16,
-// //         num_advice_per_phase: vec![1],
-// //         num_lookup_advice_per_phase: vec![1],
-// //         num_fixed: 1,
-// //         lookup_bits: Some(13),
-// //         num_instance_columns: 1,
-// //     };
-
-// //     let cyclefold_circuit = CycleFoldCircuit::<bn256::G1Affine>::new(None, cyclefold_circuit_params.clone());
-// //     // let instances = cyclefold_circuit.instances();
-// //     // println!("instances: {:?}", instances.len());
-// //     MockProver::run(16, &cyclefold_circuit, vec![]).unwrap().assert_satisfied();
-// // }
-
 // pub fn fn_gemini_kzg_ipa_protostar_hyperplonk_ivc(num_steps: usize) {
 //     let primary_circuit_params = BaseCircuitParams {
 //             k: 19,

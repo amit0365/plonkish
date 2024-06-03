@@ -436,9 +436,13 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         };
 
         // lhs = h == 0 initalised 
-        let lhs_is_zero = main_chip.is_equal(layouter, lhs, &zero)?;
+        println!("lhs: {:?}", lhs);
+        println!("rhs: {:?}", rhs);
+        let lhs_is_zero = main_chip.is_zero(layouter, lhs)?;
+        println!("lhs_is_zero: {:?}", lhs_is_zero);
         let rhs = main_chip.select(layouter, &lhs_is_zero, &zero, &rhs)?;
-        //main_chip.constrain_equal(layouter, lhs, &rhs)?;
+        println!("rhs: {:?}", rhs);
+        main_chip.constrain_equal(layouter, lhs, &rhs)?;
 
         Ok(())
     }
@@ -614,7 +618,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         let cyclefold_inputs_hash_from_instances = main_chip.assign_witness_base(&mut layouter, cyclefold_inputs_hash_from_instances_val)?;
         let cyclefold_inputs_hash_from_instances_select = main_chip.select_base(&mut layouter, &is_base_case, &cyclefold_inputs_hash, &cyclefold_inputs_hash_from_instances)?;
         main_chip.constrain_equal_base(&mut layouter, &cyclefold_inputs_hash, &cyclefold_inputs_hash_from_instances_select)?;
-        println!("before_primary_acc_synthesize_time: {:?}", synthesize_start.elapsed());
+
         let acc = acc_verifier.assign_accumulator(&mut layouter, self.acc.as_ref())?;
         let assigned_acc_prime_comms_checked = acc_verifier.assign_comm_outputs_from_accumulator(&mut layouter, self.acc_prime.as_ref())?;
         let (nark, acc_prime) = {
@@ -632,6 +636,9 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             acc_verifier.select_accumulator(&mut layouter, &is_base_case, &acc_default, &acc_prime)?
         };
 
+        println!("nark.instances[0][0]: {:?}", nark.instances[0][0]);
+        println!("h_prime: {:?}", h_prime);
+
         // check if nark.instances[0][0] = Hash(inputs, acc)
         self.check_state_hash::<PRIMARY_HASH_LENGTH>(
             &mut layouter,
@@ -645,7 +652,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &input,
             &acc,
         )?;
-
+        println!("primary_hash_pass");
         // checks if folding was done correctly
         // h_prime = Hash(inputs, acc_prime)
         self.check_state_hash::<PRIMARY_HASH_LENGTH>(
@@ -661,7 +668,6 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &acc_prime,
         )?;
 
-        println!("before_primary_acc_ec_synthesize_time: {:?}", synthesize_start.elapsed());
         let acc_verifier_ec = ProtostarAccumulationVerifier::new(cyclefold_avp.clone(), main_chip.clone(), sm_chip.clone());
         let acc_ec = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_ec.as_ref())?;
         let acc_ec_prime_result = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_prime_ec.as_ref())?;
@@ -679,39 +685,16 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             let acc_ec_prime_result = acc_verifier_ec.select_accumulator_ec(&mut layouter, &is_base_case, &acc_ec_default, &acc_ec_prime_result)?;
             (acc_ec_prime, acc_ec_prime_result)
         };
-        println!("after_primary_acc_ec_synthesize_time: {:?}", synthesize_start.elapsed());
-        // self.check_folding_ec(
-        //     layouter.namespace(|| "check_folding_ec"),
-        //     &main_chip,
-        //     &acc_ec_prime,
-        //     &acc_ec_prime_result,
-        // )?; 
 
-        // let assigned_instances = &mut binding.assigned_instances;
-        // assert_eq!(
-        //     assigned_instances.len(),
-        //     1,
-        //     "Circuit must have exactly 1 instance column"
-        // );
-        // assert!(assigned_instances[0].is_empty());
-        // assigned_instances[0].push(h_prime);
+        self.check_folding_ec(
+            &mut layouter,
+            &main_chip,
+            &acc_ec_prime,
+            &acc_ec_prime_result,
+        )?; 
 
-
-        // let instances = self.instances();
-        // MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
-
-        // layouter.assign_region(
-        //     || "constrain output",
-        //     |mut region| {
-        //         let expected_var = region.assign_advice(
-        //             || "load output",
-        //             config.state[0],
-        //             0,
-        //             || self.output,
-        //         )?;
-        //         region.constrain_equal(output.cell(), expected_var.cell())
-        //     },
-        // )
+        // assign public instances
+        main_chip.expose_public(layouter, &h_prime, 0)?;
 
         Ok(())
     }
@@ -726,10 +709,7 @@ where
 {
     fn instances(&self) -> Vec<Vec<C::Scalar>> {
         let mut instances = vec![vec![C::Scalar::ZERO; NUM_INSTANCES]];
-        // skip this
-        // self.incoming_instances[1].map(|h_ohs| instances[0][0] = fe_to_fe(h_ohs));
-        // check if this is correct
-        // self.h_prime.map(|h_prime| instances[0][0] = h_prime);
+        self.h_prime.map(|h_prime| instances[0][0] = h_prime);
         instances
     }
 
@@ -778,7 +758,7 @@ fn primary_chip_layout() {
         .titled("Primary Chip Layout", ("sans-serif", 60))
         .unwrap();
 
-    let k = 13;
+    let k = 14;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,

@@ -533,13 +533,13 @@ where
         let mut challenges = Vec::with_capacity(3);
         
         // write comm only for test
-        witness_comms.push(transcript_chip.write_commitment(layouter, &C::identity())?);
-        //witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm1"))?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter, &C::identity())?);
+        witness_comms.push(transcript_chip.read_commitment(layouter)?);
         //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
         //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
-        witness_comms.push(transcript_chip.write_commitment(layouter, &C::identity())?);
-        //witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm2"))?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter, &C::identity())?);
+        witness_comms.push(transcript_chip.read_commitment(layouter)?);
         let challenge3 = transcript_chip.squeeze_challenge(layouter)?.challenge;
         challenges.extend(main_chip.powers(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
@@ -766,13 +766,13 @@ where
             C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
         ).unwrap();
 
-        witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
+        // witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
         // let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar;
-        // witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm1"))?);
+        witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // challenges.extend(main_chip.powers(layouter.namespace(|| "main_chip"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.scalar);
-        witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
-        //witness_comms.push(transcript_chip.read_commitment(layouter.namespace(|| "comm2"))?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
+        witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
         let challenge3 = transcript_chip.squeeze_challenge(layouter)?.scalar;
         challenges.extend(main_chip.powers_base(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
@@ -951,7 +951,9 @@ where
                 })
                 .try_collect::<_, Vec<_>, _>()?;
             let witness_comms = izip_eq!(&nark.witness_comms, &acc.witness_comms)
-                .map(|(lhs, rhs)| self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), lhs, rhs))
+                .map(|(lhs, rhs)| {
+                    self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), lhs, rhs)
+                })
                 .try_collect::<_, Vec<_>, _>()?;
             let challenges = izip_eq!(&acc.challenges, &nark.challenges)
                 .map(|(lhs, rhs)| {
@@ -1423,6 +1425,7 @@ where
                     primary_acc_ec_x,
                     primary_acc_ec.instance.clone(),
                 );
+                // MockProver::run(14, circuit, vec![]).unwrap().assert_satisfied();
             });
 
         } else {

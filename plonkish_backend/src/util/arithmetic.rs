@@ -287,6 +287,40 @@ where
     }
 }
 
+/// Incomplete Addition in affine coordinates.
+/// 
+// dx = x2 - x1
+// dy = y2 - y1
+// x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
+// y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
+
+pub fn add_aff_unequal<F: PrimeField+FieldUtils>(pt1: (F, F), pt2: (F, F)) -> (F, F) {
+    let u1 = pt2.1;
+    let u2 = pt1.1;
+    let v1 = pt2.0;
+    let v2 = pt1.0;
+
+    // if v1 == v2 {
+    //     if u1 != u2 {
+    //         return (F::ZERO, F::ZERO);
+    //     } else {
+    //         return double_proj(pt1);
+    //     }
+    // }
+    
+    let dx = v1 - v2;
+    let dy = u1 - u2;
+    let dx_sq = dx * dx;
+    let dy_sq = dy * dy;
+
+    // x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
+    // y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
+    let v3 = (dy_sq - v1*dx_sq - v2*dx_sq) * dx_sq.invert().unwrap();
+    let u3 = dy * (v1 - v3) * dx.invert().unwrap() - u1;
+
+    (v3, u3)
+}
+
 /// Incomplete Doubling in projective coordinates.
 pub fn double_proj<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> ProjectivePoint<F> {
     let x = pt.x;

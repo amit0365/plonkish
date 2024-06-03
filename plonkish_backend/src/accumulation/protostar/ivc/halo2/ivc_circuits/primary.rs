@@ -13,8 +13,8 @@ use crate::{
     util::arithmetic::{powers, TwoChainCurve}
 };
 
-pub const T: usize = 3;
-pub const RATE: usize = 2;
+pub const T: usize = 7;
+pub const RATE: usize = 6;
 pub const NUM_RANGE_COLS: usize = (T + 1) / 2;
 
 pub const PRIMARY_HASH_LENGTH: usize = 29;
@@ -31,7 +31,6 @@ pub const NUM_INSTANCES: usize = 1;
 pub struct PrimaryCircuitConfig<C> 
     where
     C: TwoChainCurve,
-    // Sc: StepCircuit<C>,
     C::Base: BigPrimeField + PrimeFieldBits,
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
@@ -49,9 +48,6 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
     pub fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self {
-
-        // let advice = (0..7).map(|_| meta.advice_column()).collect::<Vec<_>>();
-        // let state = advice.iter().skip(4).cloned().collect_vec();
 
         let state = (0..T).map(|_| meta.advice_column()).collect::<Vec<_>>();
         let partial_sbox = meta.advice_column();
@@ -73,38 +69,28 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         main_advice.push(partial_sbox);
         let mut main_fixed = rc_a;
         main_fixed.extend(rc_b);
+
         for col in main_fixed.iter() {
             meta.enable_constant(*col);
         }
 
-        // let main_advice = (0..3).map(|_| meta.advice_column()).collect::<Vec<_>>();
         for col in main_advice.iter() {
             meta.enable_equality(*col);
-        }
-        // let main_fixed = meta.fixed_column();
-        // meta.enable_constant(main_fixed);    
+        }  
 
         let main_config = MainChip::<C>::configure(meta, main_advice.clone().try_into().unwrap(), main_fixed.try_into().unwrap());
-
-        // let sm_advice = main_advice.iter().skip(1).cloned().collect_vec();
-        // sm_advice.push(meta.advice_column());
-
-        let mut sm_advice = main_advice.clone();
-        sm_advice.extend((0..3).map(|_| meta.advice_column()));
-
+        let sm_advice = main_advice.iter().skip(1).cloned().collect_vec();
         for col in sm_advice.iter() {
             meta.enable_equality(*col);
         }
 
         let sm_chip_config = ScalarMulChipConfig::configure(meta, sm_advice.try_into().unwrap());
 
-        // let range_advice = main_advice.iter().skip(NUM_RANGE_COLS).cloned().collect_vec();
         let range_check_fixed = meta.fixed_column();
-        // we need 1 complex selector for the lookup check in the range check chip
         let enable_lookup_selector = meta.complex_selector();
         let range_check_config = RangeCheckChip::<C>::configure(
             meta,
-            main_advice[T], //range_advice.try_into().unwrap(),
+            main_advice[T],
             range_check_fixed,
             enable_lookup_selector,
         );
@@ -168,7 +154,6 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         // let poseidon_spec_base = OptimizedPoseidonSpec::<C::Base, T, RATE>::new::<R_F, R_P, SECURE_MDS>();
         // let hash_config_base = poseidon_spec_base.clone();
         // let transcript_config = poseidon_spec.clone();
-
 
         Self {
                 is_primary,
@@ -436,12 +421,8 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         };
 
         // lhs = h == 0 initalised 
-        println!("lhs: {:?}", lhs);
-        println!("rhs: {:?}", rhs);
         let lhs_is_zero = main_chip.is_zero(layouter, lhs)?;
-        println!("lhs_is_zero: {:?}", lhs_is_zero);
         let rhs = main_chip.select(layouter, &lhs_is_zero, &zero, &rhs)?;
-        println!("rhs: {:?}", rhs);
         main_chip.constrain_equal(layouter, lhs, &rhs)?;
 
         Ok(())
@@ -527,7 +508,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
 {
 
     type Config = PrimaryCircuitConfig<C>;
-    type FloorPlanner = SimpleFloorPlanner; //V1;
+    type FloorPlanner = V1; //SimpleFloorPlanner;
     type Params = ();
 
     fn without_witnesses(&self) -> Self {
@@ -564,12 +545,11 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
     ) -> Result<(), Error> {
 
         let Self {
-            //transcript_config,
             primary_avp,
             cyclefold_avp,
             ..
         } = &self;
-        let synthesize_start = Instant::now();
+
         let (input, output) =
             StepCircuit::synthesize(&self.step_circuit, config.main_config.clone(), layouter.namespace(|| ""))?;
 
@@ -636,9 +616,6 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             acc_verifier.select_accumulator(&mut layouter, &is_base_case, &acc_default, &acc_prime)?
         };
 
-        println!("nark.instances[0][0]: {:?}", nark.instances[0][0]);
-        println!("h_prime: {:?}", h_prime);
-
         // check if nark.instances[0][0] = Hash(inputs, acc)
         self.check_state_hash::<PRIMARY_HASH_LENGTH>(
             &mut layouter,
@@ -652,7 +629,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &input,
             &acc,
         )?;
-        println!("primary_hash_pass");
+
         // checks if folding was done correctly
         // h_prime = Hash(inputs, acc_prime)
         self.check_state_hash::<PRIMARY_HASH_LENGTH>(
@@ -741,9 +718,9 @@ fn primary_chip() {
     );
 
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
-    MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
-    //let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-    //assert_eq!(prover.verify(), Ok(()));
+    MockProver::run(k, &circuit, vec![vec![]]).unwrap().assert_satisfied();
+    // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+    // assert_eq!(prover.verify(), Ok(()));
 
 }
 
@@ -752,7 +729,7 @@ fn primary_chip_layout() {
     use plotters::prelude::*;
     use halo2_base::halo2_proofs::dev::CircuitLayout;
 
-    let root = BitMapBackend::new("PrimaryChip_debug.png", (10240, 7680)).into_drawing_area();
+    let root = BitMapBackend::new("PrimaryChip.png", (10240, 7680)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let root = root
         .titled("Primary Chip Layout", ("sans-serif", 60))
@@ -778,7 +755,7 @@ fn primary_chip_layout() {
     );
 
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
-    //MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
+    MockProver::run(k, &circuit, vec![vec![]]).unwrap().assert_satisfied();
 
     let circuit_layout = CircuitLayout{
         hide_labels: false,

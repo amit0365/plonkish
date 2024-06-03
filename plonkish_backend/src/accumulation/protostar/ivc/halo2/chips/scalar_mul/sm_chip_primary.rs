@@ -1,11 +1,6 @@
-use halo2_base::{halo2_proofs::
-    {circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Selector, Expression, Assigned, Fixed},
-    poly::Rotation, 
-    halo2curves::{bn256::{G1Affine, G2Affine, G1}, grumpkin::{self, Fr as Fq}},
-}, 
-gates::flex_gate::{FlexGateConfig, FlexGateConfigParams},
-utils::{CurveAffineExt, ScalarField, BigPrimeField},
+use halo2_base::{gates::flex_gate::{FlexGateConfig, FlexGateConfigParams}, halo2_proofs::
+    {circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value}, halo2curves::{bn256::{G1Affine, G2Affine, G1}, grumpkin::{self, Fr as Fq}}, plonk::{Advice, Assigned, Circuit, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Selector}, poly::Rotation
+}, utils::{BigPrimeField, CurveAffineExt, ScalarField}
 };
 use halo2_base::{
     gates::GateInstructions,
@@ -16,7 +11,9 @@ use halo2_base::halo2_proofs::arithmetic::CurveExt;
 use halo2_base::halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use halo2_base::halo2_proofs::halo2curves::ff::BatchInvert;
 use halo2_base::halo2_proofs::halo2curves::group::Curve;
-use crate::{accumulation::protostar::{hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::chips::main_chip::{EcPointNative, Number}}, util::arithmetic::{add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinate_proj, into_coordinates, into_proj_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, OverridenCurveAffine, ProjectivePoint}};
+use halo2_base::halo2_proofs::halo2curves::group::prime::PrimeCurveAffine;
+use halo2_proofs::halo2curves::pasta::pallas::Scalar;
+use crate::{accumulation::protostar::{hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::chips::main_chip::{EcPointNative, Number}}, util::arithmetic::{add_aff_unequal, add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinate_proj, into_coordinates, into_proj_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, OverridenCurveAffine, ProjectivePoint}};
 use itertools::Itertools;
 use std::{
     iter,
@@ -28,7 +25,7 @@ use crate::util::arithmetic::{Field, PrimeFieldBits, TwoChainCurve};
 
 pub const NUM_ADVICE_SM: usize = 7;
 pub const NUM_FIXED: usize = 1;
-pub const NUM_SELECTOR: usize = 2;
+pub const NUM_SELECTOR: usize = 3;
 
 #[derive(Clone, Debug)]
 pub struct ScalarMulChipConfig<C>
@@ -57,13 +54,13 @@ where
         // | 3   |    1      |     x     |    y      |    4x     |    4y     |    4z     |    1      | 
         // | 4   |    1      |     x     |    y      |    16x    |    16y    |    16z    |    0      |
         // ...
-        // | 128 |    1      |     x     |    y      |    sm.x   |    sm.y   |    sm.z   |    1      | 
-        // | 129 |    -      |  comm.X   |  comm.Y   |    sm.X   |    sm.Y   |     X3    |    Y3     |
+        // | 128 |    0      |     x     |    y      |    sm.x   |    sm.y   |    sm.z   |    1      | 
+        // | 129 | comm.is_0 |  comm.X   |  comm.Y   |     x3    |     y3    |     X3    |    Y3     |
 
         let [col_rbits, col_ptx, col_pty, col_acc_x, col_acc_y, col_acc_z, col_lambda] = 
             advices;
     
-        let [q_ec_double_add, q_ec_add_unequal_last] = [(); NUM_SELECTOR].map(|_| meta.selector());
+        let [q_ec_double_add, q_ec_add_unequal_last, q_ec_convert_affine] = [(); NUM_SELECTOR].map(|_| meta.selector());
 
             meta.create_gate("q_ec_double_add", |meta| {
 
@@ -139,16 +136,19 @@ where
                      q_ec_double_add.clone() * (acc_sub_z - lambda.clone() * acc_double_z.clone())]
 
             });
-            
+
             meta.create_gate("ec_add_unequal_last", |meta| {
 
                 let q_ec_add_unequal_last = meta.query_selector(q_ec_add_unequal_last);
+                let one = Expression::Constant(C::Scalar::ONE);
                 let comm_x = meta.query_advice(col_ptx, Rotation(0));
                 let comm_y = meta.query_advice(col_pty, Rotation(0));
+                let comm_is_zero = meta.query_advice(col_rbits, Rotation(0));
                 let sm_x = meta.query_advice(col_acc_x, Rotation(0));
                 let sm_y = meta.query_advice(col_acc_y, Rotation(0));
                 let x3 = meta.query_advice(col_acc_z, Rotation(0));
                 let y3 = meta.query_advice(col_lambda, Rotation(0));
+                
                 // dx = x2 - x1
                 let dx = sm_x.clone() - comm_x.clone();
                 let dy = sm_y.clone() - comm_y.clone();
@@ -158,13 +158,40 @@ where
                 //  x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
                 //  y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
 
-                vec![q_ec_add_unequal_last.clone() * (x3.clone() * dx_sq.clone() - dy_sq.clone() + comm_x.clone() * dx_sq.clone() + sm_x.clone() * dx_sq.clone()),
-                     q_ec_add_unequal_last * (y3.clone() * dx.clone() - dy.clone() * (comm_x.clone() - x3.clone()) + comm_y.clone() * dx.clone())]
+                vec![q_ec_add_unequal_last.clone() * ((one.clone() - comm_is_zero.clone()) * (x3.clone() * dx_sq.clone() - dy_sq.clone() + comm_x.clone() * dx_sq.clone() + sm_x.clone() * dx_sq.clone())
+                        + (comm_is_zero.clone()) * (x3.clone() - sm_x.clone())),
+                        q_ec_add_unequal_last.clone() * ((one.clone() - comm_is_zero.clone()) * (y3.clone() * dx.clone() - dy.clone() * (comm_x.clone() - x3.clone()) + comm_y.clone() * dx.clone())
+                        + (comm_is_zero.clone()) * (y3.clone() - sm_y.clone()))]
+            });
+
+            meta.create_gate("ec_convert_affine", |meta| {
+
+                let q_ec_convert_affine = meta.query_selector(q_ec_convert_affine);
+                let sm_x = meta.query_advice(col_acc_x, Rotation(-1));
+                let sm_y = meta.query_advice(col_acc_y, Rotation(-1));
+                let sm_z = meta.query_advice(col_acc_z, Rotation(-1));
+
+                let x3_aff = meta.query_advice(col_acc_x, Rotation(0));
+                let y3_aff = meta.query_advice(col_acc_y, Rotation(0));
+
+                Constraints::with_selector(
+                    q_ec_convert_affine,
+                    [
+                        (
+                            "Constrain affine_x conversion",
+                            sm_z.clone() * x3_aff - sm_x.clone(),
+                        ),
+                        (
+                            "Constrain affine_y conversion",
+                            sm_z.clone() * y3_aff - sm_y.clone(),
+                        )
+                    ],
+                )
             });
 
         Self { 
             witness: [col_rbits, col_ptx, col_pty, col_acc_x, col_acc_y, col_acc_z, col_lambda], 
-            selector: [q_ec_double_add, q_ec_add_unequal_last],
+            selector: [q_ec_double_add, q_ec_add_unequal_last, q_ec_convert_affine],
             _marker: PhantomData 
         }
     }
@@ -180,14 +207,14 @@ where
             |mut region| {
 
             // | row |  r_bits   |    ptx    |   pty     |   acc.x   |   acc.y   |   acc.z   |  lambda   | 
-            // | 0   |    -      |     -     |    -      |    0      |    1      |    0      |    -      |
+            // | 0   |    -      |     -     |    -      |    0      |    1      |    0      |    1      |
             // | 1   |    0      |     x     |    y      |    x      |    y      |    z      |    1      | 
             // | 2   |    1      |     x     |    y      |    2x     |    2y     |    2z     |    0      |
             // | 3   |    1      |     x     |    y      |    4x     |    4y     |    4z     |    1      | 
             // | 4   |    1      |     x     |    y      |    16x    |    16y    |    16z    |    0      |
             // ...
-            // | 128 |    1      |     x     |    y      |   sm.x    |   sm.y    |    sm.z   |    1      | 
-            // | 129 |    -      |   acc.x   |   acc.y   |   r.x/z   |   r.y/z   |    -      |    -      |
+            // | 128 |    1      |     x     |    y      |   sm.x    |   sm.y    |    sm.z   |   z3_inv  | 
+            // | 129 |    z3     |   acc.x   |   acc.y   |    x3     |    y3     |    X3     |    Y3     |
 
                 for row in 0..NUM_CHALLENGE_BITS + 2 { 
                     if row != NUM_CHALLENGE_BITS + 1 {
@@ -196,6 +223,7 @@ where
                             region.assign_advice(|| "ptx_vec",self.witness[1], row, || inputs.ptx_vec[row - 1])?;
                             region.assign_advice(|| "pty_vec",self.witness[2], row, || inputs.pty_vec[row - 1])?;
                             region.assign_advice(|| "lambda_vec",self.witness[6], row, || inputs.lambda_vec[row - 1])?;
+
                         }
 
                         region.assign_advice(|| "acc_x_vec",self.witness[3], row, || inputs.acc_x_vec[row])?;
@@ -209,6 +237,8 @@ where
 
                     if row == NUM_CHALLENGE_BITS + 1 {
                         self.selector[1].enable(&mut region, row)?;
+                        self.selector[2].enable(&mut region, row)?;
+                            region.assign_advice(|| "comm_is_zero",self.witness[0], row, || inputs.comm_is_zero)?;
                             region.assign_advice(|| "comm_X",self.witness[1], row, || inputs.comm_X)?;
                             region.assign_advice(|| "comm_Y",self.witness[2], row, || inputs.comm_Y)?;
                             region.assign_advice(|| "sm_X",self.witness[3], row, || inputs.sm_X)?;
@@ -249,6 +279,7 @@ where
     pub acc_y_vec: Vec<Value<C::Scalar>>,
     pub acc_z_vec: Vec<Value<C::Scalar>>,
     pub lambda_vec: Vec<Value<C::Scalar>>,
+    pub comm_is_zero: Value<C::Scalar>,
     pub comm_X: Value<C::Scalar>,
     pub comm_Y: Value<C::Scalar>,
     pub sm_X: Value<C::Scalar>,
@@ -291,11 +322,7 @@ where
 
         let mut rbits_fe = Vec::new();
         r_le_bits.iter().for_each(|fe| {
-            let value = match *fe.0.value().unwrap() {
-                Some(v) => *v,
-                None => C::Scalar::ZERO, 
-            };
-            rbits_fe.push(value);
+            rbits_fe.push(fe.value());
         });
 
         let scalar_bits = NUM_CHALLENGE_BITS;
@@ -323,8 +350,10 @@ where
 
             let acc_comm_x = acc_comm.x.value();
             let acc_comm_y = acc_comm.y.value();
+            let comm_is_zero_bool = acc_comm_x == C::Scalar::ZERO && acc_comm_y == C::Scalar::ZERO;
+            let comm_is_zero = if comm_is_zero_bool { C::Scalar::ONE } else { C::Scalar::ZERO };
 
-            let acc_com_raw = C::Secondary::from_xy(acc_comm_x, acc_comm_y).unwrap();
+            let acc_com_proj = ProjectivePoint::new(acc_comm_x, acc_comm_y, C::Scalar::ONE);
             let mut acc_prev = ProjectivePoint::identity();
             let mut acc_prev_xvec = Vec::new();
             let mut acc_prev_yvec = Vec::new();
@@ -380,37 +409,17 @@ where
                 }
             }
     
-            let batch_invert_time = Instant::now();
-            lhs_zvec.batch_invert();
-            // println!("batch_invert_time2: {:?}", batch_invert_time.elapsed());
-            
+            lhs_zvec.batch_invert();            
             let lambda_vec = lhs_zvec.iter().zip(rhs_zvec).map(|(lhs, rhs)| Value::known(*lhs*rhs)).collect_vec();        
-            let r_native = fe_from_bits_le(rbits_fe.clone());
-            let r_non_native: C::Base = fe_to_fe(r_native);
-            let scalar_mul_given_proj = p * r_non_native;
-            //let scalar_mul_given_proj_coords: [<C::SecondaryExt as CurveExt>::Base; 3] = into_proj_coordinates(&scalar_mul_given_proj);
-            let scalar_mul_given = scalar_mul_given_proj.to_affine();
-            let scalar_mul_calc = ProjectivePoint::<C::ScalarExt>::new(*acc_prev_xvec.last().unwrap(), *acc_prev_yvec.last().unwrap(), *acc_prev_zvec.last().unwrap());
+            let scalar_mul_calc = ProjectivePoint::<C::Scalar>::new(*acc_prev_xvec.last().unwrap(), *acc_prev_yvec.last().unwrap(), *acc_prev_zvec.last().unwrap());
             let scalar_mul_calc_affine = scalar_mul_calc.to_affine();
-            //println!("scalar_mul_calc_affine {:?}", scalar_mul_calc_affine);
-            let scalar_mul_calc_curve = scalar_mul_given; // C::Secondary::from_xy(scalar_mul_calc_affine.0, scalar_mul_calc_affine.1).unwrap();
-            //println!("scalar_mul_calc_curve {:?}", scalar_mul_calc_curve);
-            // assert_eq!(scalar_mul_given_proj_coords[0] * scalar_mul_calc.z.into(), scalar_mul_calc.x.into() * scalar_mul_given_proj_coords[2]);
-            // assert_eq!(scalar_mul_given_proj_coords[1] * scalar_mul_calc.z.into(), scalar_mul_calc.y.into() * scalar_mul_given_proj_coords[2]);
 
-            let acc_prime_calc  = (scalar_mul_calc_curve + acc_com_raw).to_affine();
-            //assert_eq!(scalar_mul_given, scalar_mul_calc_curve);
-
-            // do point addition of comm and sm
-            let result_given = acc_com_raw + scalar_mul_given;
-            let comm_proj = ProjectivePoint::new(acc_comm_x, acc_comm_y, C::Scalar::ONE);
-            let result_calc = acc_com_raw + scalar_mul_calc_curve;
-            // assert_eq!(result_given.x * result_calc.z, result_calc.x * result_given.z);
-            // assert_eq!(result_given.y * result_calc.z, result_calc.y * result_given.z);
-
-            let result_calc_affine = result_calc.to_affine();
-            let result_calc_affine_x = into_coordinates(&result_calc_affine)[0];
-            let result_calc_affine_y = into_coordinates(&result_calc_affine)[1];
+            let acc_prime  = if comm_is_zero_bool {
+                scalar_mul_calc_affine
+            } else {
+                add_aff_unequal(scalar_mul_calc_affine, (acc_comm_x, acc_comm_y))
+            };
+            
             let acc_x_vec = acc_prev_xvec.iter().map(|fe| Value::known(*fe)).collect_vec();
             let acc_y_vec = acc_prev_yvec.iter().map(|fe| Value::known(*fe)).collect_vec();
             let acc_z_vec = acc_prev_zvec.iter().map(|fe| Value::known(*fe)).collect_vec();
@@ -424,14 +433,14 @@ where
                     acc_y_vec, 
                     acc_z_vec,
                     lambda_vec, 
+                    comm_is_zero: Value::known(comm_is_zero),
                     comm_X: Value::known(acc_comm_x),
                     comm_Y: Value::known(acc_comm_y),
                     sm_X: Value::known(scalar_mul_calc_affine.0),
                     sm_Y: Value::known(scalar_mul_calc_affine.1),
-                    X3: Value::known(result_calc_affine_x),
-                    Y3: Value::known(result_calc_affine_y),
+                    X3: Value::known(acc_prime.0),
+                    Y3: Value::known(acc_prime.1),
                 };  
-            println!("prepare_inputs");
         Ok(inputs)
     }
 
@@ -470,7 +479,7 @@ where
                             region.assign_advice(|| "pty_vec",self.config.witness[2], row, || inputs.pty_vec[row - 1])?;
                             region.assign_advice(|| "lambda_vec",self.config.witness[6], row, || inputs.lambda_vec[row - 1])?;
                         }
-
+                        
                         region.assign_advice(|| "acc_x_vec",self.config.witness[3], row, || inputs.acc_x_vec[row])?;
                         region.assign_advice(|| "acc_y_vec",self.config.witness[4], row, || inputs.acc_y_vec[row])?;
                         region.assign_advice(|| "acc_z_vec",self.config.witness[5], row, || inputs.acc_z_vec[row])?;
@@ -482,6 +491,8 @@ where
 
                     if row == NUM_CHALLENGE_BITS + 1 {
                         self.config.selector[1].enable(&mut region, row)?;
+                        self.config.selector[2].enable(&mut region, row)?;
+                            region.assign_advice(|| "comm_is_zero",self.config.witness[0], row, || inputs.comm_is_zero)?;
                             region.assign_advice(|| "comm_X",self.config.witness[1], row, || inputs.comm_X)?;
                             region.assign_advice(|| "comm_Y",self.config.witness[2], row, || inputs.comm_Y)?;
                             region.assign_advice(|| "sm_X",self.config.witness[3], row, || inputs.sm_X)?;

@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use ark_std::One;
 use halo2_base::halo2_proofs::circuit::floor_planner::V1;
 use halo2_base::halo2_proofs::circuit::{Region, SimpleFloorPlanner};
-use halo2_base::halo2_proofs::dev::MockProver;
+use halo2_base::halo2_proofs::dev::{CircuitLayout, MockProver};
 use halo2_base::halo2_proofs::halo2curves::bn256;
 use halo2_base::halo2_proofs::plonk::{Circuit, Instance};
 use halo2_base::utils::ScalarField;
@@ -202,6 +202,15 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             });
 
             meta.create_gate("inner product constraint", |meta| {
+                let s = meta.query_selector(inner_product);
+                let a = meta.query_advice(advice[0], Rotation::cur());
+                let b = meta.query_advice(advice[1], Rotation::cur());
+                let acc = meta.query_advice(advice[2], Rotation::cur());
+                let acc_next = meta.query_advice(advice[3], Rotation::cur());    
+                vec![s * (a * b + acc - acc_next)]
+            });
+
+            meta.create_gate("inner product opt", |meta| {
                 let s = meta.query_selector(inner_product);
                 let a = meta.query_advice(advice[0], Rotation::cur());
                 let b = meta.query_advice(advice[1], Rotation::cur());
@@ -1333,7 +1342,7 @@ where
 
     type Params = ();
     type Config = MainChipCircuitConfig; 
-    type FloorPlanner = SimpleFloorPlanner;
+    type FloorPlanner = V1;
 
     fn without_witnesses(&self) -> Self {
         Self {
@@ -1360,7 +1369,7 @@ where
         let enable_lookup_selector = meta.complex_selector();
         let range_check_config = RangeCheckChip::<C>::configure(
             meta,
-            main_advice[7], //range_advice.try_into().unwrap(),
+            main_advice[NUM_MAIN_ADVICE - 1], //range_advice.try_into().unwrap(),
             range_check_fixed,
             enable_lookup_selector,
         );
@@ -1401,20 +1410,20 @@ where
         // let inner_product_assigned = main_chip.assign_witness(&mut layouter, &inner_product_value, 0)?;
         // main_chip.constrain_equal(&mut layouter, &result, &inner_product_assigned)?;
 
-        /// test num_to_bits
-        // let mut rng = OsRng;
-        // let a = C::Scalar::random(&mut rng);
-        // let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
-        // let bits = main_chip.num_to_bits(&mut layouter, C::Scalar::NUM_BITS as usize, &a_assigned)?;
-        // let num = main_chip.bits_to_num(&mut layouter, &bits)?;
-        // main_chip.constrain_equal(&mut layouter, &num, &a_assigned)?;
-
-        /// test assign_witness_base and mod_reduce
+        /// test num_to_bits, k = 11
         let mut rng = OsRng;
-        let a = C::Base::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap();
-        let a_assigned = main_chip.assign_witness_base(&mut layouter, a)?;
-        let power_no_mod = main_chip.mul_base(&mut layouter, &a_assigned, &a_assigned)?;
-        let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
+        let a = C::Scalar::random(&mut rng);
+        let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
+        let bits = main_chip.num_to_bits(&mut layouter, C::Scalar::NUM_BITS as usize, &a_assigned)?;
+        let num = main_chip.bits_to_num(&mut layouter, &bits)?;
+        main_chip.constrain_equal(&mut layouter, &num, &a_assigned)?;
+
+        /// test assign_witness_base and mod_reduce, k = 8
+        // let mut rng = OsRng;
+        // let a = C::Base::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap();
+        // let a_assigned = main_chip.assign_witness_base(&mut layouter, a)?;
+        // let power_no_mod = main_chip.mul_base(&mut layouter, &a_assigned, &a_assigned)?;
+        // let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
 
         Ok(())
     }
@@ -1424,28 +1433,35 @@ where
 fn circuit_test() {
     let k = 11;
     let circuit = MainChipCircuit::<bn256::G1Affine>{ marker: PhantomData::<bn256::G1Affine> };
-    MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
+    MockProver::run(k, &circuit, vec![vec![]]).unwrap().assert_satisfied();
     // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
     // assert_eq!(prover.verify(), Ok(()));
 }
 
 #[test]
 fn circuit_test_layout() {
-    // use plotters::prelude::*;
-    // let root = BitMapBackend::new("MainChip_debug.png", (10240, 7680)).into_drawing_area();
-    // root.fill(&WHITE).unwrap();
-    // let root = root
-    //     .titled("Main Chip Layout", ("sans-serif", 60))
-    //     .unwrap();
+    use plotters::prelude::*;
+    let root = BitMapBackend::new("MainChip_debug.png", (1024, 768)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let root = root
+        .titled("Main Chip Layout", ("sans-serif", 60))
+        .unwrap();
 
-    let k = 10;
+    let k = 11;
     let circuit = MainChipCircuit::<bn256::G1Affine>{ marker: PhantomData::<bn256::G1Affine> };
-    MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
+    MockProver::run(k, &circuit, vec![vec![]]).unwrap().assert_satisfied();
     // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
     // assert_eq!(prover.verify(), Ok(()));
 
-    // halo2_base::halo2_proofs::dev::CircuitLayout::default()
-    // .render(k, &circuit, &root)
-    // .unwrap();
+    let circuit_layout = CircuitLayout{
+        hide_labels: false,
+        mark_equality_cells: false,
+        show_equality_constraints: false,
+        view_width: Some(0..24),
+        view_height: Some(0..(1<<k)),
+    };
+
+    circuit_layout.render(k, &circuit, &root)
+    .unwrap();
 
 }

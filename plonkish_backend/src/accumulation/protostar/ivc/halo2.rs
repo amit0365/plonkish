@@ -766,13 +766,13 @@ where
             C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
         ).unwrap();
 
-        // witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
+        witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
         // let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar;
-        witness_comms.push(transcript_chip.read_commitment(layouter)?);
+        // witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // challenges.extend(main_chip.powers(layouter.namespace(|| "main_chip"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.scalar);
-        //witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
-        witness_comms.push(transcript_chip.read_commitment(layouter)?);
+        witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
+        // witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
         let challenge3 = transcript_chip.squeeze_challenge(layouter)?.scalar;
         challenges.extend(main_chip.powers_base(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
@@ -786,7 +786,8 @@ where
                 (cross_term_comms, None)
             }
             Compressing => {
-                let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
+                //let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
+                let zeta_cross_term_comm = vec![transcript_chip.write_commitment(layouter, &grumpkin_random)?];
                 let compressed_cross_term_sums =
                     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))

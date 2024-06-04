@@ -6,7 +6,7 @@ use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash}, spec::Poseidon
 use halo2_base::halo2_proofs::plonk::Error;
 use halo2_base::halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_base::halo2_proofs::arithmetic::Field;
-use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE}, poseidon::hash_chip::PoseidonConfig, range_check::{RangeCheckChip, RangeCheckConfig}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
+use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_MAIN_ADVICE}, poseidon::hash_chip::PoseidonConfig, range_check::{RangeCheckChip, RangeCheckConfig}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
 use crate::accumulation::protostar::{ivc::halo2::chips::{main_chip::{EcPointNonNative, Number}, transcript::{native::AssignedProtostarAccumulatorInstance, nonnative::PoseidonTranscriptChip}}, ProtostarStrategy::Compressing};
 use crate::{
     accumulation::{protostar::{ivc::halo2::chips::{poseidon::hash_chip::PoseidonChip, scalar_mul::sm_chip_primary::{ScalarMulChip, ScalarMulChipConfig}, main_chip::{MainChip, MainChipConfig}, transcript::native::PoseidonNativeTranscriptChip}, ProtostarAccumulatorInstance}, PlonkishNarkInstance}, 
@@ -278,7 +278,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                         .as_ref()
                         .into_iter())
                 .collect_vec();
-            println!("inputs_len {:?}", inputs.len());
+
             let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
             let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
             // change to strict
@@ -755,7 +755,10 @@ fn primary_chip_layout() {
     );
 
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
-    MockProver::run(k, &circuit, vec![vec![]]).unwrap().assert_satisfied();
+    //let config = PrimaryCircuitConfig::configure(ConstraintSystem::<bn256::G1Affine>::default());
+    let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
+    println!("Witness count: {}", prover.witness_count);
+    prover.assert_satisfied();
 
     let circuit_layout = CircuitLayout{
         hide_labels: false,

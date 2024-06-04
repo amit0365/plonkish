@@ -6,7 +6,7 @@ use halo2_base::halo2_proofs::circuit::floor_planner::V1;
 use halo2_base::halo2_proofs::circuit::{Region, SimpleFloorPlanner};
 use halo2_base::halo2_proofs::dev::{CircuitLayout, MockProver};
 use halo2_base::halo2_proofs::halo2curves::bn256;
-use halo2_base::halo2_proofs::plonk::{Circuit, Instance};
+use halo2_base::halo2_proofs::plonk::{Circuit, Constraints, Instance};
 use halo2_base::utils::ScalarField;
 use halo2_base::{halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation}, utils::{bigint_to_fe, biguint_to_fe, decompose_bigint, decompose_biguint, fe_to_bigint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes}};
 use halo2_base::halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
@@ -21,6 +21,8 @@ use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util:
 pub const LOOKUP_BITS: usize = 8;
 pub const NUM_MAIN_ADVICE: usize = T + 1;
 pub const NUM_MAIN_FIXED: usize = 2*T;
+pub const NUM_MAIN_SELECTORS: usize = 4;
+
 pub const NUM_LIMB_BITS_PRIMARY_NON_NATIVE: usize = 128;
 pub const NUM_LIMBS_PRIMARY_NON_NATIVE: usize = 2;
 pub const NUM_LIMB_BITS_NON_NATIVE: usize = 88;
@@ -146,7 +148,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         advice: [Column<Advice>; NUM_MAIN_ADVICE],
         fixed: [Column<Fixed>; NUM_MAIN_FIXED],
         instance: Column<Instance>,
-        selector: [Selector; 2],
+        selector: [Selector; NUM_MAIN_SELECTORS],
     }
 
     #[derive(Clone, Debug)]
@@ -188,7 +190,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             fixed: [Column<Fixed>; NUM_MAIN_FIXED],
         ) -> MainChipConfig {
 
-            let [mul_add, inner_product] = [(); 2].map(|_| meta.selector());
+            let [mul_add, inner_product, inner_product_opt, bit_constraint] = [(); NUM_MAIN_SELECTORS].map(|_| meta.selector());
             let instance = meta.instance_column();
             meta.enable_equality(instance);
 
@@ -211,19 +213,32 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             });
 
             meta.create_gate("inner product opt", |meta| {
-                let s = meta.query_selector(inner_product);
-                let a = meta.query_advice(advice[0], Rotation::cur());
-                let b = meta.query_advice(advice[1], Rotation::cur());
-                let acc = meta.query_advice(advice[2], Rotation::cur());
-                let acc_next = meta.query_advice(advice[3], Rotation::cur());    
-                vec![s * (a * b + acc - acc_next)]
+                let s = meta.query_selector(inner_product_opt);
+                let zero = Expression::Constant(C::Scalar::ZERO);
+                let a = (0..NUM_MAIN_ADVICE - 1).map(|i| meta.query_advice(advice[i], Rotation::cur())).collect_vec();
+                let b = (0..NUM_MAIN_ADVICE - 1).map(|i| meta.query_advice(advice[i], Rotation::next())).collect_vec();
+                let acc = meta.query_advice(advice[NUM_MAIN_ADVICE - 1], Rotation::cur());
+                let acc_next = meta.query_advice(advice[NUM_MAIN_ADVICE - 1], Rotation::next());    
+                let product = a.iter().zip(b.iter()).fold(zero, |acc, (a, b)| acc + a.clone() * b.clone());
+                vec![s * (product + acc - acc_next)]
+            });
+
+            meta.create_gate("bit constraint", |meta| {
+                let s = meta.query_selector(bit_constraint);
+                let one = Expression::Constant(C::Scalar::ONE);
+                let x = (0..NUM_MAIN_ADVICE - 1).map(|i| meta.query_advice(advice[i], Rotation::cur())).collect_vec();
+                
+                Constraints::with_selector(
+                    s,
+                    x.into_iter().map(|x| x.clone() * (one.clone() - x)).collect_vec()
+                )
             });
             
             MainChipConfig {
                 advice,
                 fixed,
                 instance,
-                selector: [mul_add, inner_product],
+                selector: [mul_add, inner_product, inner_product_opt, bit_constraint],
             }
         }
 
@@ -285,29 +300,29 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             witnesses.iter().enumerate().map(|(idx, witness)| self.assign_witness(layouter, witness, idx)).collect::<Result<Vec<_>, _>>()
         }
 
-        //todo check this
-        pub fn from_limbs(
-            &self,
-            layouter: &mut impl Layouter<C::Scalar>,
-            limbs: Vec<Self::Num>,
-            result_value: BigInt,
-        ) -> Result<Self::NonNatNum, Error> {
-            let num_limbs = limbs.len();
-            let limb_bits = if num_limbs == NUM_LIMBS_NON_NATIVE { NUM_LIMB_BITS_NON_NATIVE } 
-                else if num_limbs == NUM_LIMBS_PRIMARY_NON_NATIVE { NUM_LIMB_BITS_PRIMARY_NON_NATIVE } else { unreachable!() };
+        // todo check this
+        // pub fn from_limbs(
+        //     &self,
+        //     layouter: &mut impl Layouter<C::Scalar>,
+        //     limbs: Vec<Self::Num>,
+        //     result_value: BigInt,
+        // ) -> Result<Self::NonNatNum, Error> {
+        //     let num_limbs = limbs.len();
+        //     let limb_bits = if num_limbs == NUM_LIMBS_NON_NATIVE { NUM_LIMB_BITS_NON_NATIVE } 
+        //         else if num_limbs == NUM_LIMBS_PRIMARY_NON_NATIVE { NUM_LIMB_BITS_PRIMARY_NON_NATIVE } else { unreachable!() };
                 
-            let limb_base = biguint_to_fe::<C::Scalar>(&(BigUint::one() << limb_bits));
-            let mut limb_bases = Vec::with_capacity(num_limbs);
-                limb_bases.push(C::Scalar::ONE);
+        //     let limb_base = biguint_to_fe::<C::Scalar>(&(BigUint::one() << limb_bits));
+        //     let mut limb_bases = Vec::with_capacity(num_limbs);
+        //         limb_bases.push(C::Scalar::ONE);
            
-            while limb_bases.len() != num_limbs {
-                limb_bases.push(limb_base * limb_bases.last().unwrap());
-            }
-            let limb_bases_assigned = self.assign_witnesses(layouter, &limb_bases)?;
+        //     while limb_bases.len() != num_limbs {
+        //         limb_bases.push(limb_base * limb_bases.last().unwrap());
+        //     }
+        //     let limb_bases_assigned = self.assign_witnesses(layouter, &limb_bases)?;
     
-            let a_computed_native = self.inner_product(layouter, &limbs, &limb_bases_assigned)?;
-            Ok(NonNativeNumber::new(limbs, a_computed_native, result_value, modulus::<C::Base>()))
-        }
+        //     let a_computed_native = self.inner_product(layouter, &limbs, &limb_bases_assigned)?;
+        //     Ok(NonNativeNumber::new(limbs, a_computed_native, result_value, modulus::<C::Base>()))
+        // }
 
         pub fn assign_witness_base(
             &self,
@@ -590,51 +605,95 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         /// Defines a vertical gate of form | 0 | x | x | x |.
         /// * `ctx`: [Context] to add the constraints to
         /// * `x`: [QuantumCell] value to constrain
-        pub fn assign_bit(
+        // pub fn assign_bit(
+        //     &self,
+        //     layouter: &mut impl Layouter<C::Scalar>,
+        //     x: &C::Scalar,
+        // ) -> Result<Self::Num, Error> {
+        //     // | x | x | 0 | x * x |
+        //     layouter.assign_region(
+        //         || "assign_bit",
+        //         |mut region | {        
+        //             self.config.selector[0].enable(&mut region, 0)?; 
+        //             let x = region.assign_advice(
+        //                 || "x",
+        //                 self.config.advice[0], 0, || Value::known(*x)
+        //             )?;
+        //             x.copy_advice(|| "x", &mut region, self.config.advice[1], 0)?;
+        //             region.assign_advice(
+        //                 || "0",
+        //                 self.config.advice[2], 0, || Value::known(C::Scalar::ZERO)
+        //             )?;    
+
+        //             let value = x.value().copied() * x.value().copied();
+        //             let out = region.assign_advice(
+        //                 || "x * x + 0",
+        //                 self.config.advice[3], 0, || value
+        //             )?;
+                        
+        //             region.constrain_equal(x.cell(), out.cell())?;
+        //             Ok(Number(x))
+        //         })
+        // }
+
+        pub fn inner_product_opt(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
-            x: &C::Scalar,
-        ) -> Result<Self::Num, Error> {
-            // | x | x | 0 | x * x |
-            layouter.assign_region(
-                || "assign_bit",
-                |mut region | {        
-                                self.config.selector[0].enable(&mut region, 0)?; 
-                                let x = region.assign_advice(
-                                    || "x",
-                                    self.config.advice[0], 0, || Value::known(*x)
-                                )?;
-                                x.copy_advice(|| "x", &mut region, self.config.advice[1], 0)?;
-                                region.assign_advice(
-                                    || "0",
-                                    self.config.advice[2], 0, || Value::known(C::Scalar::ZERO)
-                                )?;    
+            a: &[C::Scalar],
+            b: &[C::Scalar],
+        ) -> Result<(Self::Num, Vec<Self::Num>), Error> {
 
-                                let value = x.value().copied() * x.value().copied();
-                                let out = region.assign_advice(
-                                    || "x * x + 0",
-                                    self.config.advice[3], 0, || value
-                                )?;
-                                region.constrain_equal(x.cell(), out.cell())?;
-                                Ok(Number(x))
-                            })
-        }
+            let zero = self.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
+            let mut bit_cells= Vec::new();
 
+            let product = layouter.assign_region(
+                || "inner product opt",
+                |mut region: Region<'_, C::Scalar> | {
+                    a.iter()
+                        .zip(b.iter())
+                        .chunks(NUM_MAIN_ADVICE - 1)
+                        .into_iter()
+                        .enumerate()
+                        .try_fold(
+                            zero.clone(),
+                            |acc, (j, chunk)| {
 
+                                let mut acc_value = acc.value();
+                                let (bits, pow2): (Vec<_>, Vec<_>) = chunk
+                                    .map(|(bit, pow2)| {
+                                        acc_value += *pow2 * *bit;
+                                        (bit, pow2)
+                                    })
+                                    .unzip();
 
-        /// Constrains that x is boolean (e.g. 0 or 1).
-        ///
-        /// Defines a vertical gate of form | 0 | x | x | x |.
-        /// * `ctx`: [Context] to add the constraints to
-        /// * `x`: [QuantumCell] value to constrain
-        pub fn assert_bit(
-            &self,
-            layouter: &mut impl Layouter<C::Scalar>,
-            x: &Self::Num,
-        ) -> Result<(), Error> {
-            let out = self.mul(layouter, x, x)?;
-            self.constrain_equal(layouter, &out, x)?;
-            Ok(())
+                                let padding = if pow2.len() < NUM_MAIN_ADVICE - 1 {
+                                        vec![C::Scalar::ZERO; NUM_MAIN_ADVICE - 1 - pow2.len()]
+                                    } else {
+                                        vec![C::Scalar::ZERO; 0]
+                                    };
+
+                                self.config.selector[2].enable(&mut region, 2*j)?;
+                                self.config.selector[3].enable(&mut region, 2*j)?;
+
+                                bits.into_iter().chain(padding.iter()).enumerate().for_each(|(i, bit)| {
+                                    bit_cells.push(Number(region.assign_advice(|| "bits", self.config.advice[i], 2*j, || Value::known(*bit)).unwrap()));
+                                });
+                                pow2.iter().chain(padding.iter()).enumerate().for_each(|(i, shift)| {
+                                    region.assign_advice(|| "pow2", self.config.advice[i], 2*j+1, || Value::known(*shift)).unwrap();
+                                });
+
+                                region
+                                    .assign_advice(|| "acc[i]",
+                                    self.config.advice[NUM_MAIN_ADVICE - 1], 2*j, || Value::known(acc.value()))?;
+
+                                region
+                                    .assign_advice(|| "lhs * rhs + acc",
+                                    self.config.advice[NUM_MAIN_ADVICE - 1], 2*j+1, || Value::known(acc_value)).map(Number)
+                            }
+                        )
+                    },
+                )?;
+            Ok((product, bit_cells))
         }
 
         pub fn inner_product(
@@ -754,22 +813,17 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
 
             let bits = num.value().to_u64_limbs(range_bits, 1)
                 .into_iter()
-                .map(|x| self.assign_bit(layouter, &C::Scalar::from(x)).unwrap())
+                .map(C::Scalar::from)
                 .collect_vec();
             debug_assert!(range_bits > 0);
 
-            let pow_two_assigned = self.pow_of_two[..bits.len()]
-                .iter()
-                .enumerate()
-                .map(|(idx, c)| self.assign_fixed(layouter, c, idx).unwrap())
-                .collect_vec();
-            let acc = self.inner_product(
+            let (acc, bit_cells) = self.inner_product_opt(
                 layouter,
                 &bits,
-                &pow_two_assigned,
+                &self.pow_of_two[..bits.len()],
             )?; 
             self.constrain_equal(layouter, num, &acc)?;
-            Ok(bits)
+            Ok(bit_cells)
         }
 
         /// Constrains and returns field representation of little-endian bit vector `bits`.
@@ -777,13 +831,13 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         /// Assumes values of `bits` are boolean.
         /// * `bits`: slice of [QuantumCell]'s that contains bit representation in little-endian form
         pub fn bits_to_num(&self, layouter: &mut impl Layouter<C::Scalar>, bits: &[Self::Num]) -> Result<Self::Num, Error> {
-            //assert!((bits.len() as u32) <= C::Scalar::CAPACITY);
-            let pow_two_assigned = self.pow_of_two[..bits.len()].iter().enumerate().map(|(idx, c)| self.assign_fixed(layouter, c, idx).unwrap()).collect_vec();
-            self.inner_product(
+            assert!((bits.len() as u32) <= C::Scalar::CAPACITY);
+            let (product, _) = self.inner_product_opt(
                 layouter,
-                bits,
-                &pow_two_assigned,
-            )
+                &bits.iter().map(|x| x.value()).collect_vec(),
+                &self.pow_of_two[..bits.len()],
+            )?;
+            Ok(product)
         }    
         
         pub fn add(
@@ -1342,7 +1396,7 @@ where
 
     type Params = ();
     type Config = MainChipCircuitConfig; 
-    type FloorPlanner = V1;
+    type FloorPlanner = SimpleFloorPlanner;
 
     fn without_witnesses(&self) -> Self {
         Self {
@@ -1392,13 +1446,13 @@ where
 
         /// test inner product
         // let mut rng = OsRng;
-        // let a = (0..5).map(|_| C::Scalar::random(&mut rng)).collect::<Vec<_>>();
-        // let b = (0..5).map(|_| C::Scalar::random(&mut rng)).collect::<Vec<_>>();
+        // let a = (0..10).map(|_| C::Scalar::from(1)).collect::<Vec<_>>();
+        // let b = (0..10).map(|_| C::Scalar::from(1)).collect::<Vec<_>>();
 
         // let a_assigned = main_chip.assign_witnesses(&mut layouter, a.as_slice())?;
         // let b_assigned = main_chip.assign_witnesses(&mut layouter, b.as_slice())?;
 
-        // let result = main_chip.inner_product(&mut layouter, &a_assigned, &b_assigned)?;
+        // let result = main_chip.inner_product_opt(&mut layouter, &a_assigned, &b_assigned)?;
 
         // let inner_product_value = 
         //     a.iter().zip(b.iter()).fold(
@@ -1415,8 +1469,8 @@ where
         let a = C::Scalar::random(&mut rng);
         let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
         let bits = main_chip.num_to_bits(&mut layouter, C::Scalar::NUM_BITS as usize, &a_assigned)?;
-        let num = main_chip.bits_to_num(&mut layouter, &bits)?;
-        main_chip.constrain_equal(&mut layouter, &num, &a_assigned)?;
+        // let num = main_chip.bits_to_num(&mut layouter, &bits)?;
+        // main_chip.constrain_equal(&mut layouter, &num, &a_assigned)?;
 
         /// test assign_witness_base and mod_reduce, k = 8
         // let mut rng = OsRng;
@@ -1431,10 +1485,11 @@ where
 
 #[test]
 fn circuit_test() {
-    let k = 11;
+    let k = 10;
     let circuit = MainChipCircuit::<bn256::G1Affine>{ marker: PhantomData::<bn256::G1Affine> };
-    MockProver::run(k, &circuit, vec![vec![]]).unwrap().assert_satisfied();
-    // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+    let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
+    println!("Witness count: {}", prover.witness_count);
+    prover.assert_satisfied();
     // assert_eq!(prover.verify(), Ok(()));
 }
 

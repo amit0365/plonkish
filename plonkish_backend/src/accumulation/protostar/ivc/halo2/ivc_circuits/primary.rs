@@ -698,7 +698,7 @@ where
 #[test]
 fn primary_chip() {
 
-    let k = 14;
+    let k = 13;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,
@@ -718,8 +718,9 @@ fn primary_chip() {
     );
 
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
-    MockProver::run(k, &circuit, vec![vec![]]).unwrap().assert_satisfied();
-    // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+    let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
+    println!("Witness count: {}", prover.witness_count);
+    prover.assert_satisfied();
     // assert_eq!(prover.verify(), Ok(()));
 
 }
@@ -735,7 +736,7 @@ fn primary_chip_layout() {
         .titled("Primary Chip Layout", ("sans-serif", 60))
         .unwrap();
 
-    let k = 14;
+    let k = 13;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,
@@ -755,7 +756,6 @@ fn primary_chip_layout() {
     );
 
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
-    //let config = PrimaryCircuitConfig::configure(ConstraintSystem::<bn256::G1Affine>::default());
     let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
     println!("Witness count: {}", prover.witness_count);
     prover.assert_satisfied();
@@ -767,7 +767,7 @@ fn primary_chip_layout() {
         view_width: Some(0..24),
         view_height: Some(0..(1<<k)),
     };
-    // let circuit_layout = CircuitLayout::default();
+
     circuit_layout.render(k, &circuit, &root)
     .unwrap();
 }

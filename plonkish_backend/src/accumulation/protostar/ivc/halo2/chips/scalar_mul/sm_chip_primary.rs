@@ -471,13 +471,19 @@ where
             // | 128 |    1      |     x     |    y      |   sm.x    |   sm.y    |    sm.z   |    1      | 
             // | 129 |    -      |   acc.x   |   acc.y   |   r.x/z   |   r.y/z   |    -      |    -      |
 
+            let ptx = region.assign_advice(|| "ptx_vec",self.config.witness[1], 1, || inputs.ptx_vec[0])?;
+            let pty = region.assign_advice(|| "pty_vec",self.config.witness[2], 1, || inputs.pty_vec[0])?;
+
                 for row in 0..NUM_CHALLENGE_BITS + 2 { 
                     if row != NUM_CHALLENGE_BITS + 1 {
                         if row != 0 {
                             region.assign_advice(|| "r_vec",self.config.witness[0], row, || inputs.rbits_vec[row - 1])?;
-                            region.assign_advice(|| "ptx_vec",self.config.witness[1], row, || inputs.ptx_vec[row - 1])?;
-                            region.assign_advice(|| "pty_vec",self.config.witness[2], row, || inputs.pty_vec[row - 1])?;
                             region.assign_advice(|| "lambda_vec",self.config.witness[6], row, || inputs.lambda_vec[row - 1])?;
+
+                            if row != 1 {
+                                ptx.copy_advice(|| "ptx_vec", &mut region, self.config.witness[1], row)?;
+                                pty.copy_advice(|| "pty_vec", &mut region, self.config.witness[2], row)?;
+                            }
                         }
                         
                         region.assign_advice(|| "acc_x_vec",self.config.witness[3], row, || inputs.acc_x_vec[row])?;

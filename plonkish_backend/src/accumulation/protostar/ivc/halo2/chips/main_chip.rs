@@ -158,7 +158,8 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
     {
         pub config: MainChipConfig,
-        pow_of_two: Vec<C::Scalar>,
+        pub pow_of_two: Vec<C::Scalar>,
+        pub pow_of_two_assigned: Vec<Number<C::Scalar>>,
         range_check_chip: RangeCheckChip<C>,
     }
 
@@ -181,7 +182,13 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             for _ in 2..C::Scalar::NUM_BITS {
                 pow_of_two.push(two * pow_of_two.last().unwrap());
             }
-            Self { config, pow_of_two, range_check_chip }
+
+            Self { config, pow_of_two, pow_of_two_assigned: Vec::new(), range_check_chip }
+        }
+
+        pub fn initialize(&mut self, layouter: &mut impl Layouter<C::Scalar>) -> Result<(), Error> {
+            self.pow_of_two_assigned = self.assign_witnesses(layouter, &self.pow_of_two)?;
+            Ok(())
         }
     
         pub fn configure(
@@ -640,7 +647,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
             a: &[C::Scalar],
-            b: &[C::Scalar],
+            b: &[Self::Num],
         ) -> Result<(Self::Num, Vec<Self::Num>), Error> {
 
             let zero = self.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
@@ -661,25 +668,31 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                                 let mut acc_value = acc.value();
                                 let (bits, pow2): (Vec<_>, Vec<_>) = chunk
                                     .map(|(bit, pow2)| {
-                                        acc_value += *pow2 * *bit;
+                                        acc_value += pow2.value() * *bit;
                                         (bit, pow2)
                                     })
                                     .unzip();
 
-                                let padding = if pow2.len() < NUM_MAIN_ADVICE - 1 {
+                                let padding_bits = if pow2.len() < NUM_MAIN_ADVICE - 1 {
                                         vec![C::Scalar::ZERO; NUM_MAIN_ADVICE - 1 - pow2.len()]
                                     } else {
                                         vec![C::Scalar::ZERO; 0]
                                     };
 
+                                let padding_pow2 = if pow2.len() < NUM_MAIN_ADVICE - 1 {
+                                        vec![zero.clone(); NUM_MAIN_ADVICE - 1 - pow2.len()]
+                                    } else {
+                                        vec![zero.clone(); 0]
+                                    };
+
                                 self.config.selector[2].enable(&mut region, 2*j)?;
                                 self.config.selector[3].enable(&mut region, 2*j)?;
 
-                                bits.into_iter().chain(padding.iter()).enumerate().for_each(|(i, bit)| {
+                                bits.into_iter().chain(padding_bits.iter()).enumerate().for_each(|(i, bit)| {
                                     bit_cells.push(Number(region.assign_advice(|| "bits", self.config.advice[i], 2*j, || Value::known(*bit)).unwrap()));
                                 });
-                                pow2.iter().chain(padding.iter()).enumerate().for_each(|(i, shift)| {
-                                    region.assign_advice(|| "pow2", self.config.advice[i], 2*j+1, || Value::known(*shift)).unwrap();
+                                pow2.into_iter().chain(padding_pow2.iter()).enumerate().for_each(|(i, pow2)| {
+                                    pow2.0.copy_advice(|| "pow2", &mut region, self.config.advice[i], 2*j+1).unwrap();
                                 });
 
                                 region
@@ -739,6 +752,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             )?.last().cloned().ok_or(Error::Synthesis)
         }
 
+        // todo check this
         pub fn inner_product_base(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
@@ -820,7 +834,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let (acc, bit_cells) = self.inner_product_opt(
                 layouter,
                 &bits,
-                &self.pow_of_two[..bits.len()],
+                &self.pow_of_two_assigned[..bits.len()],
             )?; 
             self.constrain_equal(layouter, num, &acc)?;
             Ok(bit_cells)
@@ -835,7 +849,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let (product, _) = self.inner_product_opt(
                 layouter,
                 &bits.iter().map(|x| x.value()).collect_vec(),
-                &self.pow_of_two[..bits.len()],
+                &self.pow_of_two_assigned[..bits.len()],
             )?;
             Ok(product)
         }    
@@ -1382,7 +1396,6 @@ pub struct MainChipCircuitConfig {
     pub main_config: MainChipConfig,
     pub range_check_config: RangeCheckConfig,
 }
-
 pub struct MainChipCircuit<C> {
     marker: PhantomData<C>,
 }
@@ -1464,20 +1477,27 @@ where
         // let inner_product_assigned = main_chip.assign_witness(&mut layouter, &inner_product_value, 0)?;
         // main_chip.constrain_equal(&mut layouter, &result, &inner_product_assigned)?;
 
-        /// test num_to_bits, k = 11
-        let mut rng = OsRng;
-        let a = C::Scalar::random(&mut rng);
-        let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
-        let bits = main_chip.num_to_bits(&mut layouter, C::Scalar::NUM_BITS as usize, &a_assigned)?;
-        // let num = main_chip.bits_to_num(&mut layouter, &bits)?;
-        // main_chip.constrain_equal(&mut layouter, &num, &a_assigned)?;
+        /// test num_to_bits, Witness count: 594
+        // let mut rng = OsRng;
+        // let a = C::Scalar::random(&mut rng);
+        // let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
+        // let bits = main_chip.num_to_bits(&mut layouter, C::Scalar::NUM_BITS as usize, &a_assigned)?;
 
-        /// test assign_witness_base and mod_reduce, k = 8
+        /// test assign_witness_base and mod_reduce, Witness count: 349
         // let mut rng = OsRng;
         // let a = C::Base::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap();
         // let a_assigned = main_chip.assign_witness_base(&mut layouter, a)?;
         // let power_no_mod = main_chip.mul_base(&mut layouter, &a_assigned, &a_assigned)?;
         // let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
+
+        /// test inner_product_base: vec.len = 10, Witness count: 1200
+        // let mut rng = OsRng;
+        // let a = (0..10).map(|_| C::Base::random(&mut rng)).collect::<Vec<_>>();
+        // let b = (0..10).map(|_| C::Base::random(&mut rng)).collect::<Vec<_>>();
+        // let a_assigned = a.iter().map(|x| main_chip.assign_witness_base(&mut layouter, *x).unwrap()).collect_vec();
+        // let b_assigned = b.iter().map(|x| main_chip.assign_witness_base(&mut layouter, *x).unwrap()).collect_vec();
+        // let result_no_mod = main_chip.inner_product_base(&mut layouter, &a_assigned, &b_assigned)?;
+        // let result_no_mod_reduced = main_chip.mod_reduce(&mut layouter, result_no_mod)?;
 
         Ok(())
     }

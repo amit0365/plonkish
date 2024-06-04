@@ -533,13 +533,25 @@ where
         let mut challenges = Vec::with_capacity(3);
         
         // write comm only for test
-        //witness_comms.push(transcript_chip.write_commitment(layouter, &C::identity())?);
-        witness_comms.push(transcript_chip.read_commitment(layouter)?);
+        // 0x2a6148ae85b8df7365f051126ccac4df868497e62758daff76cb89aeea12bdb6,
+        // 0x2390bb5e606ac7db700236a04d8da435940d1332e2a66332f0f87329fd47398c,
+        let hex_str_x = "0x2a6148ae85b8df7365f051126ccac4df868497e62758daff76cb89aeea12bdb6";
+        let decimal_value_x = U256::from_str_radix(&hex_str_x[2..], 16).unwrap();
+        let hex_str_y = "0x2390bb5e606ac7db700236a04d8da435940d1332e2a66332f0f87329fd47398c";
+        let decimal_value_y = U256::from_str_radix(&hex_str_y[2..], 16).unwrap();
+        let bn254_random = C::from_xy(
+            C::Base::from_str_vartime(&decimal_value_x.to_string()).unwrap(),
+            C::Base::from_str_vartime(&decimal_value_y.to_string()).unwrap(),
+        ).unwrap();
+
+        // write comm only for test
+        witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
+        //witness_comms.push(transcript_chip.read_commitment(layouter)?);
         //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
         //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
-        //witness_comms.push(transcript_chip.write_commitment(layouter, &C::identity())?);
-        witness_comms.push(transcript_chip.read_commitment(layouter)?);
+        witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
+        //witness_comms.push(transcript_chip.read_commitment(layouter)?);
         let challenge3 = transcript_chip.squeeze_challenge(layouter)?.challenge;
         challenges.extend(main_chip.powers(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
@@ -553,9 +565,12 @@ where
                 (cross_term_comms, None)
             }
             Compressing => {
-                let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
+                // let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
+                let zeta_cross_term_comm = vec![transcript_chip.write_commitment(layouter, &bn254_random)?];
+                // let compressed_cross_term_sums =
+                //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 let compressed_cross_term_sums =
-                    transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
+                    transcript_chip.write_field_elements(layouter, &vec![C::Scalar::ZERO; *num_cross_terms])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -786,10 +801,12 @@ where
                 (cross_term_comms, None)
             }
             Compressing => {
-                //let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
+                // let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
                 let zeta_cross_term_comm = vec![transcript_chip.write_commitment(layouter, &grumpkin_random)?];
+                // let compressed_cross_term_sums =
+                //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 let compressed_cross_term_sums =
-                    transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
+                    transcript_chip.write_field_elements(layouter, &vec![C::Base::ZERO; *num_cross_terms])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -973,6 +990,7 @@ where
                 }
                 e_comm
             };
+
             let compressed_e_sum = match strategy {
                 NoCompressing => None,
                 Compressing => {

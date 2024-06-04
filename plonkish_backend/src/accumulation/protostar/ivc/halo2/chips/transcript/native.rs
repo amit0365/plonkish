@@ -50,10 +50,9 @@ pub type Num = Number<C::Scalar>;
 pub fn new(layouter: &mut impl Layouter<C::Scalar>, pow5_chip: Pow5Chip<C::Scalar, T, RATE>, spec: PoseidonSpec,
     main_chip: MainChip<C>, proof: Value<Vec<u8>>) -> Self {
     let poseidon_chip = PoseidonSpongeChip::from_spec(pow5_chip, layouter.namespace(|| "poseidon_chip"), spec);
-    let chip = main_chip;
     PoseidonNativeTranscriptChip {
         poseidon_chip,
-        chip,
+        chip: main_chip,
         proof: proof.map(Cursor::new),
     }
 }
@@ -198,6 +197,15 @@ pub fn read_field_elements(
     n: usize,
 ) -> Result<Vec<Self::Num>, Error> {
     (0..n).map(|_| self.read_field_element(layouter)).collect()
+}
+
+// not used in verifier circuit, only for testing
+pub fn write_field_elements(
+    &mut self,
+    layouter: &mut impl Layouter<C::Scalar>,
+    fes: &[C::Scalar],
+) -> Result<Vec<Self::Num>, Error> {
+    fes.iter().map(|fe| self.write_field_element(layouter, fe)).collect()
 }
 
 pub fn common_commitments(

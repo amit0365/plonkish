@@ -554,7 +554,8 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             StepCircuit::synthesize(&self.step_circuit, config.main_config.clone(), layouter.namespace(|| ""))?;
 
         let range_chip = RangeCheckChip::<C>::construct(config.range_check_config);
-        let main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
+        let mut main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
+        main_chip.initialize(&mut layouter)?;
         main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
         let pow5_chip = Pow5Chip::construct(config.poseidon_config.clone());
         let sm_chip = ScalarMulChip::<C>::new(config.sm_chip_config.clone());
@@ -616,6 +617,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             acc_verifier.select_accumulator(&mut layouter, &is_base_case, &acc_default, &acc_prime)?
         };
 
+        // Witness count: 14563 - 7762 = 6801
         // check if nark.instances[0][0] = Hash(inputs, acc)
         self.check_state_hash::<PRIMARY_HASH_LENGTH>(
             &mut layouter,
@@ -645,6 +647,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &acc_prime,
         )?;
 
+        // Witness count: 27974 - 13411 = 14563
         let acc_verifier_ec = ProtostarAccumulationVerifier::new(cyclefold_avp.clone(), main_chip.clone(), sm_chip.clone());
         let acc_ec = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_ec.as_ref())?;
         let acc_ec_prime_result = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_prime_ec.as_ref())?;
@@ -720,6 +723,7 @@ fn primary_chip() {
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
     let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
     println!("Witness count: {}", prover.witness_count);
+    println!("Copy count: {}", prover.copy_count);
     prover.assert_satisfied();
     // assert_eq!(prover.verify(), Ok(()));
 
@@ -730,7 +734,7 @@ fn primary_chip_layout() {
     use plotters::prelude::*;
     use halo2_base::halo2_proofs::dev::CircuitLayout;
 
-    let root = BitMapBackend::new("PrimaryChip.png", (10240, 7680)).into_drawing_area();
+    let root = BitMapBackend::new("PrimaryChip.png", (30240, 30680)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let root = root
         .titled("Primary Chip Layout", ("sans-serif", 60))

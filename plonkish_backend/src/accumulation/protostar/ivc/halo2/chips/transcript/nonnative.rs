@@ -195,6 +195,15 @@ where
         (0..n).map(|_| self.read_field_element(layouter)).collect()
     }
 
+    // not used in verifier circuit, only for testing
+    pub fn write_field_elements(
+        &mut self,
+        layouter: &mut impl Layouter<C::Scalar>,
+        fes: &[C::Base],
+    ) -> Result<Vec<NonNativeNumber<C::Scalar>>, Error> {
+        fes.iter().map(|fe| self.write_field_element(layouter, fe)).collect()
+    }
+
     pub fn common_commitments(
         &mut self,
         comms: &[EcPointNative<C>],

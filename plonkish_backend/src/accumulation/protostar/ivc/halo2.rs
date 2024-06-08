@@ -570,7 +570,7 @@ where
                 // let compressed_cross_term_sums =
                 //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 let compressed_cross_term_sums =
-                    transcript_chip.write_field_elements(layouter, &vec![C::Scalar::ZERO; *num_cross_terms])?;
+                    transcript_chip.write_field_elements(layouter, &[C::Scalar::ZERO; 9])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -806,7 +806,7 @@ where
                 // let compressed_cross_term_sums =
                 //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 let compressed_cross_term_sums =
-                    transcript_chip.write_field_elements(layouter, &vec![C::Base::ZERO; *num_cross_terms])?;
+                    transcript_chip.write_field_elements(layouter, &[C::Base::ZERO; 9])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };

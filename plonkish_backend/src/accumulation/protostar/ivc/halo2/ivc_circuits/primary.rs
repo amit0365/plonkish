@@ -13,8 +13,8 @@ use crate::{
     util::arithmetic::{powers, TwoChainCurve}
 };
 
-pub const T: usize = 7;
-pub const RATE: usize = 6;
+pub const T: usize = 10;
+pub const RATE: usize = 9;
 pub const NUM_RANGE_COLS: usize = (T + 1) / 2;
 
 pub const PRIMARY_HASH_LENGTH: usize = 29;
@@ -79,7 +79,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         }  
 
         let main_config = MainChip::<C>::configure(meta, main_advice.clone().try_into().unwrap(), main_fixed.try_into().unwrap());
-        let sm_advice = main_advice.iter().skip(1).cloned().collect_vec();
+        let sm_advice = main_advice.iter().skip(4).cloned().collect_vec();
         for col in sm_advice.iter() {
             meta.enable_equality(*col);
         }
@@ -281,9 +281,12 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
 
             let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
             let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
-            // change to strict
-            let hash_le_bits = main_chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?;
-            main_chip.bits_to_num(layouter, &hash_le_bits[..NUM_HASH_BITS])
+            // change to strict - Witness count: 29272
+            // let hash_le_bits = main_chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?;
+            // main_chip.bits_to_num(layouter, &hash_le_bits[..NUM_HASH_BITS])
+            // Witness count: 28170
+            let (_product, bits_to_num, _bit_cells) = main_chip.bits_and_num(layouter, RANGE_BITS, NUM_HASH_BITS, 10, &Number(hash))?;
+            Ok(bits_to_num)
         }
 
     pub fn update_from_cyclefold<

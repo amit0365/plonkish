@@ -5,13 +5,13 @@ use halo2_base::{halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::{bn256::{self, Fq as Fp}, grumpkin}, plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed}
 }, utils::FromUniformBytes};
 use halo2_base::halo2_proofs::arithmetic::Field;
-use crate::util::arithmetic::{TwoChainCurve, PrimeFieldBits};
+use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::{T, RATE}, util::arithmetic::{PrimeFieldBits, TwoChainCurve}};
 use halo2_base::utils::BigPrimeField;
 use rand::rngs::OsRng;
 use super::spec::{PoseidonSpecFp, PoseidonSpec};
 use std::marker::PhantomData;
 
-const L: usize = 23;
+const L: usize = 1;
 
 #[derive(Debug, Clone)]
 pub struct PoseidonConfig<C, const WIDTH: usize, const RATE: usize, const L: usize> 
@@ -101,7 +101,7 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    type Config = (PoseidonConfig<C, 3, 2, L>, [Column<Advice>; 4]);
+    type Config = (PoseidonConfig<C, T, RATE, L>, [Column<Advice>; T + 1]);
     type FloorPlanner = SimpleFloorPlanner;
     type Params = ();
 
@@ -110,17 +110,17 @@ where
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        let advices = [0; 4].map(|_| meta.advice_column());
-        let constants = [0; 6].map(|_| meta.fixed_column());
-        meta.enable_constant(constants[3]);
+        let advices = [0; T + 1].map(|_| meta.advice_column());
+        let constants = [0; 2*T].map(|_| meta.fixed_column());
+        meta.enable_constant(constants[T]);
 
 
-        let poseidon_config = PoseidonChip::<C, PoseidonSpec, 3, 2, L>::configure(
+        let poseidon_config = PoseidonChip::<C, PoseidonSpec, T, RATE, L>::configure(
             meta,
-            advices[..3].try_into().unwrap(),
-            advices[3],
-            constants[..3].try_into().unwrap(), 
-            constants[3..].try_into().unwrap(), 
+            advices[..T].try_into().unwrap(),
+            advices[T],
+            constants[..T].try_into().unwrap(), 
+            constants[T..].try_into().unwrap(), 
         );
 
         (poseidon_config, advices)
@@ -132,7 +132,7 @@ where
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
 
-        let chip = PoseidonChip::<C, PoseidonSpec, 3, 2, L>::construct(
+        let chip = PoseidonChip::<C, PoseidonSpec, T, RATE, L>::construct(
             config.0,
         ); 
 
@@ -178,6 +178,29 @@ where
     }
 }
 
+
+/// L = 1, T = 3
+// prover.witness_count: 151
+// prover.copy_count: 11
+// T = 7
+// prover.witness_count: 315
+// prover.copy_count: 27
+
+/// L = 10, T = 3
+// prover.witness_count: 748
+// prover.copy_count: 43
+// T = 7
+// prover.witness_count: 631
+// prover.copy_count: 47
+
+/// L = 10
+// T = 3
+// prover.witness_count: 2238
+// prover.copy_count: 123
+// T = 7
+// prover.witness_count: 1572
+// prover.copy_count: 107
+
 #[test]
 fn poseidon_hash_longer_input_custom() {
 
@@ -189,15 +212,17 @@ fn poseidon_hash_longer_input_custom() {
 
     let message = [0; L].map(|_| Fp::random(rng));
     let output =
-        inlineHash::<_, PoseidonSpec, ConstantLength<L>, 3, 2>::init().hash(message);
+        inlineHash::<_, PoseidonSpec, ConstantLength<L>, T, RATE>::init().hash(message);
     println!("output: {:?}", output);
 
-    let k = 9;
+    let k = 10;
     let circuit = PoseidonHashCircuit::<grumpkin::G1Affine> {
         message,
     };
 
     let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+    println!("prover.witness_count: {:?}", prover.witness_count);
+    println!("prover.copy_count: {:?}", prover.copy_count);
     assert_eq!(prover.verify(), Ok(()));
 
     halo2_base::halo2_proofs::dev::CircuitLayout::default()

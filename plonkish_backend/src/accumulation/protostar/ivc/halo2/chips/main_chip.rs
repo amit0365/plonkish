@@ -16,6 +16,7 @@ use num_integer::Integer;
 use num_traits::sign::Signed;
 use rand::rngs::OsRng;
 use super::range_check::{RangeCheckChip, RangeCheckConfig};
+use super::transcript::{NUM_CHALLENGE_BITS, NUM_HASH_BITS, RANGE_BITS};
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
 pub const LOOKUP_BITS: usize = 8;
@@ -643,6 +644,124 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         //         })
         // }
 
+        pub fn inner_product(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            a: &[Self::Num],
+            b: &[Self::Num],
+        ) -> Result<Self::Num, Error> {
+
+            let mut acc_vec = vec![Value::known(C::Scalar::ZERO)];
+            a.iter().zip(b.iter()).fold(
+                C::Scalar::ZERO,
+                |acc, (a, b)| {
+                    acc_vec.push(Value::known(acc + a.value() * b.value()));
+                    acc + a.value() * b.value()
+            });
+            acc_vec.pop();
+
+            layouter.assign_region(
+                || "inner product",
+                |mut region: Region<'_, C::Scalar> | {
+                    a.iter()
+                        .zip(b.iter())
+                        .enumerate()
+                        .map(|(i, (a, b))| {
+
+                            self.config.selector[1].enable(&mut region, i)?;
+
+                            a.0.copy_advice(|| "lhs", &mut region, self.config.advice[0], i)?;
+                            b.0.copy_advice(|| "rhs", &mut region, self.config.advice[1], i)?;
+                            let acc = region
+                                .assign_advice(|| "acc[i]",
+                                self.config.advice[2], i, || acc_vec[i])?;
+
+                            let value = a.0.value().copied() * b.0.value().copied() + acc.value().copied();
+
+                            region
+                                .assign_advice(|| "lhs * rhs + acc",
+                                self.config.advice[3], i, || value).map(Number)
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                },
+            )?.last().cloned().ok_or(Error::Synthesis)
+        }
+
+        pub fn inner_product_combined(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            num_bits: usize,
+            chunk_size: usize,
+            a: &[C::Scalar],
+            b: &[Self::Num],
+        ) -> Result<(Self::Num, Self::Num, Vec<Self::Num>), Error> {
+
+            let zero = self.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
+            let mut bit_cells= Vec::new();
+            let mut num = zero.clone();
+            let mut bits_to_num = zero.clone();
+
+            let product = layouter.assign_region(
+                || "inner_product_combined",
+                |mut region: Region<'_, C::Scalar> | {
+                    a.iter()
+                        .zip(b.iter())
+                        .chunks(chunk_size)
+                        .into_iter()
+                        .enumerate()
+                        .try_fold(
+                            zero.clone(),
+                            |acc, (j, chunk)| {
+
+                                let mut acc_value = acc.value();
+                                let (bits, pow2): (Vec<_>, Vec<_>) = chunk
+                                    .map(|(bit, pow2)| {
+                                        acc_value += pow2.value() * *bit;
+                                        (bit, pow2)
+                                    })
+                                    .unzip();
+
+                                let padding_bits = if pow2.len() < NUM_MAIN_ADVICE - 1 {
+                                        vec![C::Scalar::ZERO; NUM_MAIN_ADVICE - 1 - pow2.len()]
+                                    } else {
+                                        vec![C::Scalar::ZERO; 0]
+                                    };
+
+                                let padding_pow2 = if pow2.len() < NUM_MAIN_ADVICE - 1 {
+                                        vec![zero.clone(); NUM_MAIN_ADVICE - 1 - pow2.len()]
+                                    } else {
+                                        vec![zero.clone(); 0]
+                                    };
+
+                                self.config.selector[2].enable(&mut region, 2*j)?;
+                                self.config.selector[3].enable(&mut region, 2*j)?;
+
+                                bits.into_iter().chain(padding_bits.iter()).enumerate().for_each(|(i, bit)| {
+                                    bit_cells.push(Number(region.assign_advice(|| "bits", self.config.advice[i], 2*j, || Value::known(*bit)).unwrap()));
+                                });
+                                pow2.into_iter().chain(padding_pow2.iter()).enumerate().for_each(|(i, pow2)| {
+                                    pow2.0.copy_advice(|| "pow2", &mut region, self.config.advice[i], 2*j+1).unwrap();
+                                });
+
+                                region
+                                    .assign_advice(|| "acc[i]",
+                                    self.config.advice[NUM_MAIN_ADVICE - 1], 2*j, || Value::known(acc.value()))?;
+
+                                num = region
+                                    .assign_advice(|| "lhs * rhs + acc",
+                                    self.config.advice[NUM_MAIN_ADVICE - 1], 2*j+1, || Value::known(acc_value)).map(Number)?;
+                                
+                                if j == num_bits/(NUM_MAIN_ADVICE - 1) - 1 {
+                                    bits_to_num = num.clone();
+                                }
+                                Ok(num.clone())
+                            }
+                        )
+                    },
+                )?;
+            Ok((product, bits_to_num, bit_cells))
+        }
+
         pub fn inner_product_opt(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
@@ -709,49 +828,6 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             Ok((product, bit_cells))
         }
 
-        pub fn inner_product(
-            &self,
-            layouter: &mut impl Layouter<C::Scalar>,
-            a: &[Self::Num],
-            b: &[Self::Num],
-        ) -> Result<Self::Num, Error> {
-
-            let mut acc_vec = vec![Value::known(C::Scalar::ZERO)];
-            a.iter().zip(b.iter()).fold(
-                C::Scalar::ZERO,
-                |acc, (a, b)| {
-                    acc_vec.push(Value::known(acc + a.value() * b.value()));
-                    acc + a.value() * b.value()
-            });
-            acc_vec.pop();
-
-            layouter.assign_region(
-                || "inner product",
-                |mut region: Region<'_, C::Scalar> | {
-                    a.iter()
-                        .zip(b.iter())
-                        .enumerate()
-                        .map(|(i, (a, b))| {
-
-                            self.config.selector[1].enable(&mut region, i)?;
-
-                            a.0.copy_advice(|| "lhs", &mut region, self.config.advice[0], i)?;
-                            b.0.copy_advice(|| "rhs", &mut region, self.config.advice[1], i)?;
-                            let acc = region
-                                .assign_advice(|| "acc[i]",
-                                self.config.advice[2], i, || acc_vec[i])?;
-
-                            let value = a.0.value().copied() * b.0.value().copied() + acc.value().copied();
-
-                            region
-                                .assign_advice(|| "lhs * rhs + acc",
-                                self.config.advice[3], i, || value).map(Number)
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                },
-            )?.last().cloned().ok_or(Error::Synthesis)
-        }
-
         // todo check this
         pub fn inner_product_base(
             &self,
@@ -811,6 +887,33 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let b_native_vec = b.iter().map(|x| x.native.clone()).collect_vec();
             let out_native = self.inner_product(layouter, &a_native_vec, &b_native_vec)?;
             Ok(NonNativeNumber::new(out_limbs, out_native, inner_product_value, modulus::<C::Base>()))
+        }
+
+        pub fn bits_and_num(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            range_bits: usize,
+            num_bits: usize,
+            chunk_size: usize,
+            num: &Self::Num,
+        ) -> Result<(Self::Num, Self::Num, Vec<Self::Num>), Error> {
+            let bits = num.value().to_u64_limbs(range_bits, 1)
+                .into_iter()
+                .map(C::Scalar::from)
+                .collect_vec();
+
+            debug_assert!(range_bits > 0);
+            assert!((num_bits as u32) <= C::Scalar::CAPACITY);
+
+            let (product, bits_to_num, bit_cells) = self.inner_product_combined(
+                layouter,
+                num_bits,
+                chunk_size,
+                &bits,
+                &self.pow_of_two_assigned[..bits.len()],
+            )?; 
+            self.constrain_equal(layouter, num, &product)?;
+            Ok((product, bits_to_num, bit_cells))
         }
 
         /// Constrains and returns little-endian bit vector representation of `a`.
@@ -1454,7 +1557,8 @@ where
     ) -> Result<(), Error> {
 
         let range_chip = RangeCheckChip::<C>::construct(config.range_check_config);
-        let main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
+        let mut main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
+        main_chip.initialize(&mut layouter)?;
         main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
 
         /// test inner product
@@ -1477,12 +1581,20 @@ where
         // let inner_product_assigned = main_chip.assign_witness(&mut layouter, &inner_product_value, 0)?;
         // main_chip.constrain_equal(&mut layouter, &result, &inner_product_assigned)?;
 
-        /// test num_to_bits, Witness count: 594
+        /// test num_to_bits + bits_to_num, Witness count: 594 + 577 + 254(pow2 copy) = 1425
         // let mut rng = OsRng;
         // let a = C::Scalar::random(&mut rng);
         // let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
-        // let bits = main_chip.num_to_bits(&mut layouter, C::Scalar::NUM_BITS as usize, &a_assigned)?;
+        // let bits = main_chip.num_to_bits(&mut layouter, RANGE_BITS, &a_assigned)?;
+        // let num = main_chip.bits_to_num(&mut layouter, &bits[..NUM_HASH_BITS])?;
 
+        /// test bits_and_num, Witness count: 594 + 254(pow2 copy) = 828
+        let mut rng = OsRng;
+        let a = C::Scalar::random(&mut rng);
+        let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
+        let bits = main_chip.bits_and_num(&mut layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 8, &a_assigned)?;
+        // let num = main_chip.bits_to_num(&mut layouter, &bits[..NUM_HASH_BITS])?;
+        
         /// test assign_witness_base and mod_reduce, Witness count: 349
         // let mut rng = OsRng;
         // let a = C::Base::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap();

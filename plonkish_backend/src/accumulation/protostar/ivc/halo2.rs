@@ -819,10 +819,10 @@ where
         binding.synthesize(config.clone(), layouter.namespace(|| ""));
 
         let copy_manager = binding.pool(0).copy_manager.lock().unwrap();
-        println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
-        println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
-        println!("copy_manager.assigned_constants {:?}", copy_manager.assigned_constants.len());
-        println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
+        // println!("copy_manager.advice_equalities {:?}", copy_manager.advice_equalities.len());
+        // println!("copy_manager.constant_equalities {:?}", copy_manager.constant_equalities.len());
+        // println!("copy_manager.assigned_constants {:?}", copy_manager.assigned_constants.len());
+        // println!("copy_manager.assigned_advices {:?}", copy_manager.assigned_advices.len());
         drop(copy_manager);
 
         binding.clear();
@@ -882,9 +882,7 @@ where
         self.synthesize_accumulation_verifier(layouter.namespace(|| ""),config.clone(),  &input, &output)?;
         let duration_synthesize_accumulation_verifier = synthesize_accumulation_verifier_time.elapsed();
         println!("Time for synthesize_accumulation_verifier: {:?}", duration_synthesize_accumulation_verifier);
-        // let mock = MockProver::run(4, &*binding, instances.clone()).unwrap(); //.assert_satisfied();
-        // let fixed = mock.fixed();
-        // println!("fixed {:?}", fixed);
+
         Ok(())
     }
 }

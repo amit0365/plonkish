@@ -1455,9 +1455,6 @@ pub mod strawman {
             &mut self,
             builder: &mut SinglePhaseCoreManager<C::Scalar>,
         ) -> Result<Challenge<C::Scalar>, Error> {
-            let ctx = builder.main();
-            println!("before_squeeze_ctx.advice_len {:?}", ctx.advice.len());
-            drop(ctx);
             let range_chip = &self.chip.range_chip;
             let (challenge_le_bits, challenge) = {
                 // let poseidon_chip_new = PoseidonSponge::new::<R_F, R_P, SECURE_MDS>(builder.main());
@@ -1474,9 +1471,7 @@ pub mod strawman {
             let scalar = self.chip.assign_witness_base(builder, fe_to_fe(challenge.value().clone()))?;
             let scalar_in_base = scalar.native();
             self.chip.constrain_equal(builder, &challenge, scalar_in_base).unwrap();                                       
-            let ctx = builder.main();
-            println!("after_squeeze_copy_manager.advice_equalities {:?}", ctx.advice.len());
-            drop(ctx);
+
             Ok(Challenge {
                 le_bits: challenge_le_bits,
                 scalar: scalar,

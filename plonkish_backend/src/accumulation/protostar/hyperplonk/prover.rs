@@ -248,10 +248,6 @@ where
         .chain(incoming.instance.challenges.iter().cloned())
         .chain(Some(incoming.instance.u))
         .collect_vec();
-    
-    println!("expressions_start");
-    println!("expressions: {:?}", expressions[0]);
-    println!("expressions_degree: {:?}", expressions[0].degree());
 
     let expressions = expressions
         .iter()

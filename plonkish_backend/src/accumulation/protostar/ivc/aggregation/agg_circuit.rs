@@ -154,153 +154,190 @@ impl CircuitExt<grumpkin::Fr> for SecondaryAggregationCircuit {
     }
 }
 
-// #[derive(Clone)]
-// struct PrimaryAggregationCircuit {
-//     vp_digest: bn256::Fr,
-//     vp: ProtostarVerifierParam<grumpkin::Fr, HyperPlonk<MultilinearIpa<grumpkin::G1Affine>>>,
-//     primary_arity: usize,
-//     secondary_arity: usize,
-//     instances: Vec<bn256::Fr>,
-//     num_steps: Value<usize>,
-//     initial_input: Value<Vec<bn256::Fr>>,
-//     output: Value<Vec<bn256::Fr>>,
-//     acc_before_last: Value<ProtostarAccumulatorInstance<grumpkin::Fr, grumpkin::G1Affine>>,
-//     last_instance: Value<[grumpkin::Fr; 2]>,
-//     proof: Value<Vec<u8>>,
-//     secondary_aggregation_vp: HyperPlonkVerifierParam<grumpkin::Fr, MultilinearHyrax<grumpkin::G1Affine>>,
-//     secondary_aggregation_instances: Value<Vec<grumpkin::Fr>>,
-//     secondary_aggregation_proof: Value<Vec<u8>>,
-// }
 
-// impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
-//     type Config = strawman::Config<bn256::Fr>;
-//     type FloorPlanner = SimpleFloorPlanner;
 
-//     fn without_witnesses(&self) -> Self {
-//         self.clone()
-//     }
 
-//     fn configure(meta: &mut ConstraintSystem<bn256::Fr>) -> Self::Config {
-//         strawman::Config::configure::<bn256::G1Affine>(meta)
-//     }
+
+
+#[derive(Clone)]
+struct PrimaryAggregationCircuit {
+    vp_digest: bn256::Fr,
+    vp: ProtostarVerifierParam<grumpkin::Fr, HyperPlonk<MultilinearIpa<grumpkin::G1Affine>>>,
+    primary_arity: usize,
+    secondary_arity: usize,
+    instances: Vec<bn256::Fr>,
+    num_steps: Value<usize>,
+    initial_input: Value<Vec<bn256::Fr>>,
+    output: Value<Vec<bn256::Fr>>,
+    acc_before_last: Value<ProtostarAccumulatorInstance<grumpkin::Fr, grumpkin::G1Affine>>,
+    last_instance: Value<[grumpkin::Fr; 2]>,
+    proof: Value<Vec<u8>>,
+    secondary_aggregation_vp: HyperPlonkVerifierParam<grumpkin::Fr, MultilinearHyrax<grumpkin::G1Affine>>,
+    secondary_aggregation_instances: Value<Vec<grumpkin::Fr>>,
+    secondary_aggregation_proof: Value<Vec<u8>>,
+}
+
+impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
     
-//     //todo fix this with other synthesizes
-//     fn synthesize(
-//         &self,
-//         config: Self::Config,
-//         mut layouter: impl Layouter<bn256::Fr>,
-//     ) -> Result<(), Error> {
+    type Config = strawman::Config<bn256::Fr>;
+    type FloorPlanner = SimpleFloorPlanner;
 
-//         let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
-//         .use_k(8)
-//         .use_lookup_bits(9);
+    fn without_witnesses(&self) -> Self {
+        self.clone()
+    }
 
-//         let range = builder.range_chip();
-//         let gate_chip = GateChip::<bn256::Fr>::new();
-//         let base_chip = FpChip::<bn256::Fr, bn256::Fq>::new(&range, NUM_LIMB_BITS, NUM_LIMBS);
-//         let native_chip = NativeFieldChip::new(&range);
-//         let ecc_chip = EccChip::new(&native_chip);
+    fn configure(meta: &mut ConstraintSystem<bn256::Fr>) -> Self::Config {
+        strawman::Config::configure::<bn256::G1Affine>(meta)
+    }
+    
+    //todo fix this with other synthesizes
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<bn256::Fr>,
+    ) -> Result<(), Error> {
 
-//         let mut pool = mem::take(builder.pool(0));
-//         let chip = strawman::Chip::<bn256::G1Affine>::create(gate_chip, &base_chip, &ecc_chip);
+        let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
+        .use_k(8)
+        .use_lookup_bits(9);
 
-//         // let chip =
-//         //     <strawman::Chip<bn256::G1Affine> as TwoChainCurveInstruction<bn256::G1Affine>>::new(chip,
-//         //         config,
-//         //     );
+        let range = builder.range_chip();
+        let gate_chip = GateChip::<bn256::Fr>::new();
+        let base_chip = FpChip::<bn256::Fr, bn256::Fq>::new(&range, NUM_LIMB_BITS, NUM_LIMBS);
+        let native_chip = NativeFieldChip::new(&range);
+        // Error Correcting Chip 
+        let ecc_chip = EccChip::new(&native_chip);
 
-//         let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
-//             .use_k(8)
-//             .use_lookup_bits(9);
+        let mut pool = mem::take(builder.pool(0));
+        
+        // Chip here is built with a combination of chips ß
+        
+        let chip = strawman::Chip::<bn256::G1Affine>::create(gate_chip, &base_chip, &ecc_chip);
 
-//         let mut pool = mem::take(builder.pool(0));
+        // let chip =
+        //     <strawman::Chip<bn256::G1Affine> as TwoChainCurveInstruction<bn256::G1Affine>>::new(chip,
+        //         config,
+        //     );
+
+        let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
+            .use_k(8)
+            .use_lookup_bits(9);
 
 
-//         let aggregator = ProtostarIvcAggregator::new(
-//             self.vp_digest,
-//             self.vp.clone(),
-//             self.primary_arity,
-//             chip.clone(),
-//             chip.clone(),
-//         );
+        // Why instantiate again?
+        // let mut pool = mem::take(builder.pool(0));
 
-//         let mut transcript = strawman::PoseidonTranscriptChip::new(
-//             builder.main(0),
-//             strawman::decider_transcript_param(),
-//             chip.clone(),
-//             self.proof.clone(),
-//         );
 
-//         let (primary_num_steps, primary_initial_input, primary_output, h_ohs_from_last_nark) =
-//             aggregator.verify_ipa_grumpkin_ivc_with_last_nark(
-//                 &mut pool,
-//                 self.num_steps,
-//                 self.initial_input.clone(),
-//                 self.output.clone(),
-//                 self.acc_before_last.clone(),
-//                 self.last_instance,
-//                 &mut transcript,
-//             )?;
+        let aggregator = ProtostarIvcAggregator::new(
+            self.vp_digest,
+            self.vp.clone(),
+            self.primary_arity,
+            chip.clone(),
+            chip.clone(),
+        );
 
-//         let (secondary_initial_input, secondary_output, pairing_acc) = {
-//             let mut transcript = strawman::PoseidonTranscriptChip::new(
-//                 builder.main(0),
-//                 strawman::decider_transcript_param(),
-//                 chip.clone(),
-//                 self.secondary_aggregation_proof.clone(),
-//             );
-//             let secondary_aggregation_instance = chip.verify_hyrax_hyperplonk(
-//                 &mut pool,
-//                 &self.secondary_aggregation_vp,
-//                 self.secondary_aggregation_instances
-//                     .as_ref()
-//                     .map(Vec::as_slice),
-//                 &mut transcript,
-//             )?;
+        let mut transcript = strawman::PoseidonTranscriptChip::new(
+            builder.main(0),
+            strawman::decider_transcript_param(),
+            chip.clone(),
+            self.proof.clone(),
+        );
 
-//             let secondary_num_steps =
-//                 chip.fit_base_in_scalar(&secondary_aggregation_instance[0])?;
-//             chip.constrain_equal(&mut pool, &primary_num_steps, &secondary_num_steps)?;
+        let (primary_num_steps, primary_initial_input, primary_output, h_ohs_from_last_nark) =
+            aggregator.verify_ipa_grumpkin_ivc_with_last_nark(
+                &mut pool,
+                self.num_steps,
+                self.initial_input.clone(),
+                self.output.clone(),
+                self.acc_before_last.clone(),
+                self.last_instance,
+                &mut transcript,
+            )?;
 
-//             let h = chip.fit_base_in_scalar(
-//                 &secondary_aggregation_instance[1 + 2 * self.secondary_arity],
-//             )?;
-//             chip.constrain_equal(&mut pool, &h_ohs_from_last_nark, &h)?;
 
-//             let iter = &mut secondary_aggregation_instance.iter();
-//             let mut instances = |skip: usize, take: usize| {
-//                 iter.skip(skip)
-//                     .take(take)
-//                     .map(|base| chip.to_repr_base(base))
-//                     .try_collect::<_, Vec<_>, _>()
-//             };
-//             (
-//                 instances(1, self.secondary_arity)?,
-//                 instances(0, self.secondary_arity)?,
-//                 instances(1, 4 * strawman::NUM_LIMBS)?,
-//             )
-//         };
+        /*
+           Question:
+            1. Can we use the same circuit aggregator and transcript for the secondary aggregation?
+            2. How do we handle the instance column for the secondary aggregation?
+            3. Can we not just include it in the function parameters?
+         */    
 
-//         // let cell_map = chip.layout_and_clear(&mut layouter)?;
-//         // for (idx, witness) in chain![
-//         //     [primary_num_steps],
-//         //     primary_initial_input,
-//         //     primary_output,
-//         //     secondary_initial_input.into_iter().flatten(),
-//         //     secondary_output.into_iter().flatten(),
-//         //     pairing_acc.into_iter().flatten(),
-//         // ]
-//         // .enumerate()
-//         // {
-//         //     layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
-//         // }
+        let (secondary_initial_input, secondary_output, pairing_acc) = {
+            let mut transcript = strawman::PoseidonTranscriptChip::new(
+                builder.main(0),
+                strawman::decider_transcript_param(),
+                chip.clone(),
+                self.secondary_aggregation_proof.clone(),
+            );
 
-//         Ok(())
-//     }
-// }
+            let secondary_aggregation_instance = chip.verify_hyrax_hyperplonk(
+                &mut pool,
+                &self.secondary_aggregation_vp,
+                self.secondary_aggregation_instances
+                    .as_ref()
+                    .map(Vec::as_slice),
+                &mut transcript,
+            )?;
 
-// impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
-//     fn instances(&self) -> Vec<Vec<bn256::Fr>> {
-//         vec![self.instances.clone()]
-//     }
-// }
+            /*
+
+                ERROR: error[E0061]: this method takes 2 arguments but 1 argument was supplied
+                --> plonkish_backend/src/accumulation/protostar/ivc/aggregation/agg_circuit.rs:278:26
+                |
+                278 | ...et h = chip.fit_base_in_scalar(
+                |                ^^^^^^^^^^^^^^^^^^
+                279 | ...   &secondary_aggregation_instance[1 + 2 * self.secondary_arity],
+                |       ------------------------------------------------------------- an argument of type &mut SinglePhaseCoreManager<halo2_base::halo2_proofs::halo2curves::bn256::Fr> is missing
+                |
+                note: method defined here
+
+            */   
+
+            /*
+                Called Twice: fit_base_in_scalar 
+             */
+            
+            let secondary_num_steps = chip.fit_base_in_scalar(&mut pool, &secondary_aggregation_instance[0])?;
+            chip.constrain_equal(&mut pool, &primary_num_steps, &secondary_num_steps)?;
+
+            let h = chip.fit_base_in_scalar(&mut pool, &secondary_aggregation_instance[1 + 2 * self.secondary_arity],
+            )?;
+            chip.constrain_equal(&mut pool, &h_ohs_from_last_nark, &h)?;
+
+            let iter = &mut secondary_aggregation_instance.iter();
+            let mut instances = |skip: usize, take: usize| {
+                iter.skip(skip)
+                    .take(take)
+                    .map(|base| chip.to_repr_base(base))
+                    .try_collect::<_, Vec<_>, _>()
+            };
+            (
+                instances(1, self.secondary_arity)?,
+                instances(0, self.secondary_arity)?,
+                instances(1, 4 * strawman::NUM_LIMBS)?,
+            )
+        };
+
+        // let cell_map = chip.layout_and_clear(&mut layouter)?;
+        // for (idx, witness) in chain![
+        //     [primary_num_steps],
+        //     primary_initial_input,
+        //     primary_output,
+        //     secondary_initial_input.into_iter().flatten(),
+        //     secondary_output.into_iter().flatten(),
+        //     pairing_acc.into_iter().flatten(),
+        // ]
+        // .enumerate()
+        // {
+        //     layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
+        // }
+
+        Ok(())
+    }
+}
+
+impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
+    fn instances(&self) -> Vec<Vec<bn256::Fr>> {
+        vec![self.instances.clone()]
+    }
+}

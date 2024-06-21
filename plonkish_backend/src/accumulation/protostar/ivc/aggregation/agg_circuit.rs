@@ -367,6 +367,9 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
 }
 
 impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
+    fn rand(k: usize, _: impl RngCore) -> Self {
+        unimplemented!()
+    }
     fn instances(&self) -> Vec<Vec<bn256::Fr>> {
         vec![self.instances.clone()]
     }

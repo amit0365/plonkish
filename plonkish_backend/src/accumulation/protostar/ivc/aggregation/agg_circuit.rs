@@ -176,11 +176,41 @@ struct PrimaryAggregationCircuit {
     secondary_aggregation_instances: Value<Vec<grumpkin::Fr>>,
     secondary_aggregation_proof: Value<Vec<u8>>,
 }
+/*
+    error[E0046]: not all trait items implemented, missing: Params
+    --> plonkish_backend/src/accumulation/protostar/ivc/aggregation/agg_circuit.rs:180:1
+    |
+    180 | impl Circuitbn256::Fr for PrimaryAggregationCircuit {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing Params in implementation
+    |
+    = help: implement the missing item: type Params = /* Type */;
 
+*/
+
+/*
+
+    error[E0433]: failed to resolve: could not find `Config` in `strawman`
+    --> plonkish_backend/src/accumulation/protostar/ivc/aggregation/agg_circuit.rs:189:19
+    |
+    189 |         strawman::Config::configure::[bn256::G1Affine](bn256::G1Affine)(meta)
+    |                   ^^^^^^ could not find `Config` in `strawman`
+    |
+    help: consider importing this struct
+    |
+    1   + use bincode::Config;
+    |
+    help: if you import `Config`, refer to it directly
+    |
+    189 -         strawman::Config::configure::[bn256::G1Affine](bn256::G1Affine)(meta)
+    189 +         Config::configure::[bn256::G1Affine](bn256::G1Affine)(meta)
+    |
+*/
 impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
     
     type Config = strawman::Config<bn256::Fr>;
     type FloorPlanner = SimpleFloorPlanner;
+    type Params = BaseCircuitParams;
+
 
     fn without_witnesses(&self) -> Self {
         self.clone()

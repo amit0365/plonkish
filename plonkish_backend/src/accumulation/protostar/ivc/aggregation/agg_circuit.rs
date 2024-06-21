@@ -155,10 +155,6 @@ impl CircuitExt<grumpkin::Fr> for SecondaryAggregationCircuit {
 }
 
 
-
-
-
-
 #[derive(Clone)]
 struct PrimaryAggregationCircuit {
     vp_digest: bn256::Fr,
@@ -241,8 +237,12 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         let mut pool = mem::take(builder.pool(0));
         
         // Chip here is built with a combination of chips ß
+        /*
         
-        let chip = strawman::Chip::<bn256::G1Affine>::create(gate_chip, &base_chip, &ecc_chip);
+            Initially passing three arguments, but requires only a range chip. 
+            let range passed
+         */
+        let chip = strawman::Chip::<bn256::G1Affine>::create(range);
 
         // let chip =
         //     <strawman::Chip<bn256::G1Affine> as TwoChainCurveInstruction<bn256::G1Affine>>::new(chip,

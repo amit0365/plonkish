@@ -62,7 +62,6 @@ struct SecondaryAggregationCircuit {
 }
 
 impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
-
     type Config = BaseConfig<grumpkin::Fr>;
     type FloorPlanner = SimpleFloorPlanner;
     type Params = BaseCircuitParams;
@@ -88,10 +87,8 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
         let mut circuit_builder = BaseCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Mock).use_params(self.circuit_params.clone());
         let range_chip = circuit_builder.range_chip();
         let chip = Chip::<grumpkin::G1Affine>::create(range_chip);
-
         let builder = circuit_builder.pool(0);
         let ctx = builder.main();
-
 
         let aggregator = ProtostarIvcAggregator::new(
             self.vp_digest,
@@ -173,42 +170,11 @@ struct PrimaryAggregationCircuit {
     secondary_aggregation_instances: Value<Vec<grumpkin::Fr>>,
     secondary_aggregation_proof: Value<Vec<u8>>,
 }
-/*
-    error[E0046]: not all trait items implemented, missing: Params
-    --> plonkish_backend/src/accumulation/protostar/ivc/aggregation/agg_circuit.rs:180:1
-    |
-    180 | impl Circuitbn256::Fr for PrimaryAggregationCircuit {
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing Params in implementation
-    |
-    = help: implement the missing item: type Params = /* Type */;
 
-*/
-
-/*
-
-    error[E0433]: failed to resolve: could not find `Config` in `strawman`
-    --> plonkish_backend/src/accumulation/protostar/ivc/aggregation/agg_circuit.rs:189:19
-    |
-    189 |         strawman::Config::configure::[bn256::G1Affine](bn256::G1Affine)(meta)
-    |                   ^^^^^^ could not find `Config` in `strawman`
-    |
-    help: consider importing this struct
-    |
-    1   + use bincode::Config;
-    |
-    help: if you import `Config`, refer to it directly
-    |
-    189 -         strawman::Config::configure::[bn256::G1Affine](bn256::G1Affine)(meta)
-    189 +         Config::configure::[bn256::G1Affine](bn256::G1Affine)(meta)
-    |
-*/
 impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
-    
     type Config = BaseConfig<bn256::Fr>;
     type FloorPlanner = SimpleFloorPlanner;
     type Params = BaseCircuitParams;
-
-
 
     fn without_witnesses(&self) -> Self {
         self.clone()
@@ -225,41 +191,14 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         mut layouter: impl Layouter<bn256::Fr>,
     ) -> Result<(), Error> {
 
-        let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
-        .use_k(8)
-        .use_lookup_bits(9);
-
+        let mut builder = BaseCircuitBuilder::<bn256::Fr>::from_stage(CircuitBuilderStage::Keygen);
         let range = builder.range_chip();
         let gate_chip = GateChip::<bn256::Fr>::new();
         let base_chip = FpChip::<bn256::Fr, bn256::Fq>::new(&range, NUM_LIMB_BITS, NUM_LIMBS);
         let native_chip = NativeFieldChip::new(&range);
-        // Error Correcting Chip 
         let ecc_chip = EccChip::new(&native_chip);
-
         let mut pool = mem::take(builder.pool(0));
-        
-        // Chip here is built with a combination of chips ß
-        /*
-        
-            Initially passing three arguments, but requires only a range chip. 
-            let range passed
-         */
         let chip = strawman::Chip::<bn256::G1Affine>::create(range);
-
-        // let chip =
-        //     <strawman::Chip<bn256::G1Affine> as TwoChainCurveInstruction<bn256::G1Affine>>::new(chip,
-        //         config,
-        //     );
-
-        let mut builder = RangeCircuitBuilder::from_stage(CircuitBuilderStage::Keygen)
-            .use_k(8)
-            .use_lookup_bits(9);
-
-
-        // Why instantiate again?
-        // let mut pool = mem::take(builder.pool(0));
-
-
         let aggregator = ProtostarIvcAggregator::new(
             self.vp_digest,
             self.vp.clone(),
@@ -286,14 +225,6 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
                 &mut transcript,
             )?;
 
-
-        /*
-           Question:
-            1. Can we use the same circuit aggregator and transcript for the secondary aggregation?
-            2. How do we handle the instance column for the secondary aggregation?
-            3. Can we not just include it in the function parameters?
-         */    
-
         let (secondary_initial_input, secondary_output, pairing_acc) = {
             let mut transcript = strawman::PoseidonTranscriptChip::new(
                 builder.main(0),
@@ -309,26 +240,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
                     .as_ref()
                     .map(Vec::as_slice),
                 &mut transcript,
-            )?;
-
-            /*
-
-                ERROR: error[E0061]: this method takes 2 arguments but 1 argument was supplied
-                --> plonkish_backend/src/accumulation/protostar/ivc/aggregation/agg_circuit.rs:278:26
-                |
-                278 | ...et h = chip.fit_base_in_scalar(
-                |                ^^^^^^^^^^^^^^^^^^
-                279 | ...   &secondary_aggregation_instance[1 + 2 * self.secondary_arity],
-                |       ------------------------------------------------------------- an argument of type &mut SinglePhaseCoreManager<halo2_base::halo2_proofs::halo2curves::bn256::Fr> is missing
-                |
-                note: method defined here
-
-            */   
-
-            /*
-                Called Twice: fit_base_in_scalar 
-             */
-            
+            )?;        
             let secondary_num_steps = chip.fit_base_in_scalar(&mut pool, &secondary_aggregation_instance[0])?;
             chip.constrain_equal(&mut pool, &primary_num_steps, &secondary_num_steps)?;
 

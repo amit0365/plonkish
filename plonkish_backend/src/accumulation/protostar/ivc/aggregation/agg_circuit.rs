@@ -198,7 +198,8 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         let native_chip = NativeFieldChip::new(&range);
         let ecc_chip = EccChip::new(&native_chip);
         let mut pool = mem::take(builder.pool(0));
-        let chip = strawman::Chip::<bn256::G1Affine>::create(range);
+        let chip = Chip::<bn256::G1Affine>::create(range);
+        //let chip = strawman::Chip::<bn256::G1Affine>::create(range);
         let aggregator = ProtostarIvcAggregator::new(
             self.vp_digest,
             self.vp.clone(),
@@ -226,6 +227,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
             )?;
 
         let (secondary_initial_input, secondary_output, pairing_acc) = {
+            
             let mut transcript = strawman::PoseidonTranscriptChip::new(
                 builder.main(0),
                 strawman::decider_transcript_param(),
@@ -261,20 +263,21 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
                 instances(1, 4 * strawman::NUM_LIMBS)?,
             )
         };
-
-        // let cell_map = chip.layout_and_clear(&mut layouter)?;
-        // for (idx, witness) in chain![
-        //     [primary_num_steps],
-        //     primary_initial_input,
-        //     primary_output,
-        //     secondary_initial_input.into_iter().flatten(),
-        //     secondary_output.into_iter().flatten(),
-        //     pairing_acc.into_iter().flatten(),
-        // ]
-        // .enumerate()
-        // {
-        //     layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
-        // }
+        
+       
+        let cell_map = chip.layout_and_clear(&mut layouter)?;
+        for (idx, witness) in chain![
+            [primary_num_steps],
+            primary_initial_input,
+            primary_output,
+            secondary_initial_input.into_iter().flatten(),
+            secondary_output.into_iter().flatten(),
+            pairing_acc.into_iter().flatten(),
+        ]
+        .enumerate()
+        {
+            layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
+        }
 
         Ok(())
     }
@@ -288,3 +291,38 @@ impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
         vec![self.instances.clone()]
     }
 }
+
+
+
+// MockProver
+#[cfg(test)]
+mod tests{
+    use super::*;
+    use halo2_proofs::{
+        dev::{MockProver, VerifyFailure},
+        halo2curves::bn256::Bn256 as Bn256Fr,
+        halo2curves::grumpkin::Fr as GrumpkinFr,
+    };
+    use rand::rngs::OsRng;
+
+    #[test]
+    fn test_mock_prover(){
+        // Let Circuit Size Parameter
+        let k = 4;
+        
+        // Random Instance of Circuits 
+
+        let primary_circuit = PrimaryAggregationCircuit::rand(km OsRng);
+        let secondary_circuit = SecondaryAggregationCircuit::rand(k, OsRng);
+        let secondary_prover = MockProver::run(k, &secondary_circuit, vec![secondary_circuit.instances()])
+            .expect("Secondary circuit mock proving failed");
+        assert!(secondary_prover.verify().is_ok(), "Secondary circuit verification failed");
+
+        // Run mock prover for primary circuit
+        let primary_prover = MockProver::run(k, &primary_circuit, vec![primary_circuit.instances()])
+            .expect("Primary circuit mock proving failed");
+        assert!(primary_prover.verify().is_ok(), "Primary circuit verification failed");
+
+    }
+}
+

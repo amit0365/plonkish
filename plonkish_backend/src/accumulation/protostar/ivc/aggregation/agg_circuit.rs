@@ -142,16 +142,6 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
     }
 }
 
-impl CircuitExt<grumpkin::Fr> for SecondaryAggregationCircuit {
-    fn instances(&self) -> Vec<Vec<grumpkin::Fr>> {
-        vec![self.instances.clone()]
-    }
-
-    fn rand(k: usize, _: impl RngCore) -> Self {
-        unimplemented!()
-    }
-}
-
 
 #[derive(Clone)]
 struct PrimaryAggregationCircuit {
@@ -284,10 +274,47 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
 }
 
 impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
-    fn rand(k: usize, _: impl RngCore) -> Self {
-        unimplemented!()
+    fn rand(k: usize, rng: impl RngCore) -> Self {
+        PrimaryAggregationCircuit {
+            vp_digest: bn256::Fr::random(rng),
+            vp: ProtostarVerifierParam::default(),
+            primary_arity: 2,
+            secondary_arity: 2,
+            instances: vec![bn256::Fr::random(rng); k],
+            num_steps: Value::known(1),
+            initial_input: Value::known(vec![bn256::Fr::random(rng); k]),
+            output: Value::known(vec![bn256::Fr::random(rng); k]),
+            acc_before_last: Value::known(ProtostarAccumulatorInstance::default()),
+            last_instance: Value::known([grumpkin::Fr::random(rng), grumpkin::Fr::random(rng)]),
+            proof: Value::known(vec![]),
+            secondary_aggregation_vp: HyperPlonkVerifierParam::default(),
+            secondary_aggregation_instances: Value::known(vec![grumpkin::Fr::random(rng); k]),
+            secondary_aggregation_proof: Value::known(vec![]),
+        }
     }
+
     fn instances(&self) -> Vec<Vec<bn256::Fr>> {
+        vec![self.instances.clone()]
+    }
+}
+
+impl CircuitExt<grumpkin::Fr> for SecondaryAggregationCircuit {
+    fn rand(k: usize, rng: impl RngCore) -> Self {
+        SecondaryAggregationCircuit {
+            circuit_params: BaseCircuitParams::default(),
+            vp_digest: grumpkin::Fr::random(rng),
+            vp: ProtostarVerifierParam::default(),
+            arity: 2,
+            instances: vec![grumpkin::Fr::random(rng); k],
+            num_steps: Value::known(1),
+            initial_input: Value::known(vec![grumpkin::Fr::random(rng); k]),
+            output: Value::known(vec![grumpkin::Fr::random(rng); k]),
+            acc: Value::known(ProtostarAccumulatorInstance::default()),
+            proof: Value::known(vec![]),
+        }
+    }
+
+    fn instances(&self) -> Vec<Vec<grumpkin::Fr>> {
         vec![self.instances.clone()]
     }
 }

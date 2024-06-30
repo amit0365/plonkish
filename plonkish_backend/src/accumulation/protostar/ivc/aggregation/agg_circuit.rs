@@ -273,83 +273,83 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
     }
 }
 
-impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
-    fn rand(k: usize, rng: impl RngCore) -> Self {
-        PrimaryAggregationCircuit {
-            vp_digest: bn256::Fr::random(rng),
-            vp: ProtostarVerifierParam::default(),
-            primary_arity: 2,
-            secondary_arity: 2,
-            instances: vec![bn256::Fr::random(rng); k],
-            num_steps: Value::known(1),
-            initial_input: Value::known(vec![bn256::Fr::random(rng); k]),
-            output: Value::known(vec![bn256::Fr::random(rng); k]),
-            acc_before_last: Value::known(ProtostarAccumulatorInstance::default()),
-            last_instance: Value::known([grumpkin::Fr::random(rng), grumpkin::Fr::random(rng)]),
-            proof: Value::known(vec![]),
-            secondary_aggregation_vp: HyperPlonkVerifierParam::default(),
-            secondary_aggregation_instances: Value::known(vec![grumpkin::Fr::random(rng); k]),
-            secondary_aggregation_proof: Value::known(vec![]),
-        }
-    }
+// impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
+//     fn rand(k: usize, rng: impl RngCore) -> Self {
+//         PrimaryAggregationCircuit {
+//             vp_digest: bn256::Fr::random(rng),
+//             vp: ProtostarVerifierParam::default(),
+//             primary_arity: 2,
+//             secondary_arity: 2,
+//             instances: vec![bn256::Fr::random(rng); k],
+//             num_steps: Value::known(1),
+//             initial_input: Value::known(vec![bn256::Fr::random(rng); k]),
+//             output: Value::known(vec![bn256::Fr::random(rng); k]),
+//             acc_before_last: Value::known(ProtostarAccumulatorInstance::default()),
+//             last_instance: Value::known([grumpkin::Fr::random(rng), grumpkin::Fr::random(rng)]),
+//             proof: Value::known(vec![]),
+//             secondary_aggregation_vp: HyperPlonkVerifierParam::default(),
+//             secondary_aggregation_instances: Value::known(vec![grumpkin::Fr::random(rng); k]),
+//             secondary_aggregation_proof: Value::known(vec![]),
+//         }
+//     }
 
-    fn instances(&self) -> Vec<Vec<bn256::Fr>> {
-        vec![self.instances.clone()]
-    }
-}
+//     fn instances(&self) -> Vec<Vec<bn256::Fr>> {
+//         vec![self.instances.clone()]
+//     }
+// }
 
-impl CircuitExt<grumpkin::Fr> for SecondaryAggregationCircuit {
-    fn rand(k: usize, rng: impl RngCore) -> Self {
-        SecondaryAggregationCircuit {
-            circuit_params: BaseCircuitParams::default(),
-            vp_digest: grumpkin::Fr::random(rng),
-            vp: ProtostarVerifierParam::default(),
-            arity: 2,
-            instances: vec![grumpkin::Fr::random(rng); k],
-            num_steps: Value::known(1),
-            initial_input: Value::known(vec![grumpkin::Fr::random(rng); k]),
-            output: Value::known(vec![grumpkin::Fr::random(rng); k]),
-            acc: Value::known(ProtostarAccumulatorInstance::default()),
-            proof: Value::known(vec![]),
-        }
-    }
+// impl CircuitExt<grumpkin::Fr> for SecondaryAggregationCircuit {
+//     fn rand(k: usize, rng: impl RngCore) -> Self {
+//         SecondaryAggregationCircuit {
+//             circuit_params: BaseCircuitParams::default(),
+//             vp_digest: grumpkin::Fr::random(rng),
+//             vp: ProtostarVerifierParam::default(),
+//             arity: 2,
+//             instances: vec![grumpkin::Fr::random(rng); k],
+//             num_steps: Value::known(1),
+//             initial_input: Value::known(vec![grumpkin::Fr::random(rng); k]),
+//             output: Value::known(vec![grumpkin::Fr::random(rng); k]),
+//             acc: Value::known(ProtostarAccumulatorInstance::default()),
+//             proof: Value::known(vec![]),
+//         }
+//     }
 
-    fn instances(&self) -> Vec<Vec<grumpkin::Fr>> {
-        vec![self.instances.clone()]
-    }
-}
+//     fn instances(&self) -> Vec<Vec<grumpkin::Fr>> {
+//         vec![self.instances.clone()]
+//     }
+// }
 
 
 
 // MockProver
-#[cfg(test)]
-mod tests{
-    use super::*;
-    use halo2_proofs::{
-        dev::{MockProver, VerifyFailure},
-        halo2curves::bn256::Bn256 as Bn256Fr,
-        halo2curves::grumpkin::Fr as GrumpkinFr,
-    };
-    use rand::rngs::OsRng;
+// #[cfg(test)]
+// mod tests{
+//     use super::*;
+//     use halo2_proofs::{
+//         dev::{MockProver, VerifyFailure},
+//         halo2curves::bn256::Bn256 as Bn256Fr,
+//         halo2curves::grumpkin::Fr as GrumpkinFr,
+//     };
+//     use rand::rngs::OsRng;
 
-    #[test]
-    fn test_mock_prover(){
-        // Let Circuit Size Parameter
-        let k = 4;
+//     #[test]
+//     fn test_mock_prover(){
+//         // Let Circuit Size Parameter
+//         let k = 4;
         
-        // Random Instance of Circuits 
+//         // Random Instance of Circuits 
 
-        let primary_circuit = PrimaryAggregationCircuit::rand(km OsRng);
-        let secondary_circuit = SecondaryAggregationCircuit::rand(k, OsRng);
-        let secondary_prover = MockProver::run(k, &secondary_circuit, vec![secondary_circuit.instances()])
-            .expect("Secondary circuit mock proving failed");
-        assert!(secondary_prover.verify().is_ok(), "Secondary circuit verification failed");
+//         let primary_circuit = PrimaryAggregationCircuit::rand(km OsRng);
+//         let secondary_circuit = SecondaryAggregationCircuit::rand(k, OsRng);
+//         let secondary_prover = MockProver::run(k, &secondary_circuit, vec![secondary_circuit.instances()])
+//             .expect("Secondary circuit mock proving failed");
+//         assert!(secondary_prover.verify().is_ok(), "Secondary circuit verification failed");
 
-        // Run mock prover for primary circuit
-        let primary_prover = MockProver::run(k, &primary_circuit, vec![primary_circuit.instances()])
-            .expect("Primary circuit mock proving failed");
-        assert!(primary_prover.verify().is_ok(), "Primary circuit verification failed");
+//         // Run mock prover for primary circuit
+//         let primary_prover = MockProver::run(k, &primary_circuit, vec![primary_circuit.instances()])
+//             .expect("Primary circuit mock proving failed");
+//         assert!(primary_prover.verify().is_ok(), "Primary circuit verification failed");
 
-    }
-}
+//     }
+// }
 

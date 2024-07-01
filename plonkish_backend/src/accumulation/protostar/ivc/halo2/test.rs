@@ -320,7 +320,7 @@ where
 //     // Halo2Circuit::new::<HyperPlonk<Gemini<UnivariateKzg<Bn256>>>>(4, primary_circuit, circuit_params.clone());
 //     // let primary_circuit  = RecursiveCircuit::<bn256::G1Affine, StepCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), None, circuit_params.clone());
 
-//     MockProver::run(18, &primary_circuit, vec![]).unwrap().assert_satisfied();
+//     ::run(18, &primary_circuit, vec![]).unwrap().assert_satisfied();
 // }
 
 

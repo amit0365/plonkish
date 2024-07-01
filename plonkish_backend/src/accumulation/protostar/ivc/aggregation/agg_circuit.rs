@@ -300,24 +300,37 @@ impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
 mod tests{
     use super::*;
     use halo2_proofs::dev::MockProver;
-    use rand_core::OsRng;
+    use rand::rngs::OsRng;
     use halo2_proofs::arithmetic::Field;
-    use halo2_proofs::plonk::Circuit;
-
+    use crate::accumulation::protostar::ProtostarStrategy::{Compressing};
+    // use halo2_proofs::plonk::Circuit;
     #[test]
     fn test_secondary_circuit(){
+        pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);
+        // Define Struct
+        let verifier_param = ProtostarVerifierParam {
+            vp: PlonkishBackend<grumpkin::Fq>,
+            strategy: Compressing,
+            num_theta_primes: 4,
+            num_alpha_primes: 4,
+            num_folding_witness_polys: 4,
+            num_folding_challenges: 4,
+            num_cross_terms: 4,
+            
+        };
         let circuit = SecondaryAggregationCircuit{
             circuit_params: BaseCircuitParams::default(),
             vp_digest: grumpkin::Fr::random(&mut OsRng),
-            vp: ProtostarVerifierParam::random(4, &mut OsRng),
+            vp: verifier_param, 
             arity: 4,
             instances: vec![grumpkin::Fr::random(&mut OsRng); 4],
-            num_steps: Value::new(4),
+            num_steps: num_steps_value,
             initial_input: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
             output: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
             acc: Value::new(ProtostarAccumulatorInstance::random(4, &mut OsRng)),
             proof: vec![0u8; 128],
         };
+        let test_instances = vec![grumpkin::Fr::random(OsRng); 4];
         let public_inputs = vec![test_instances];
         // MockProver
         let k = 14;

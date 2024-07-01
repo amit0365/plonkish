@@ -1,2 +1,16 @@
 # MOCK PROVER -> USE EXAMPLES OF MULTI CIRCUITS USED 
 
+pub struct ProtostarVerifierParam<F, Pb>
+where
+    F: Field,
+    Pb: PlonkishBackend<F>,
+{
+    vp: Pb::VerifierParam,
+    
+    strategy: ProtostarStrategy,
+    num_theta_primes: usize,
+    num_alpha_primes: usize,
+    num_folding_witness_polys: usize,
+    num_folding_challenges: usize,
+    num_cross_terms: usize,
+}

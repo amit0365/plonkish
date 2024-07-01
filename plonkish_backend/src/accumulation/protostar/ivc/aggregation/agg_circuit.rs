@@ -292,9 +292,37 @@ impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
     }
 }
 /*
-
     1. Run MockProver for Secondary Circuit
     2. Run MockProver for Primary Circuit 
-
-
 */
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+    use halo2_proofs::dev::MockProver;
+    use rand_core::OsRng;
+    use halo2_proofs::arithmetic::Field;
+    use halo2_proofs::plonk::Circuit;
+
+    #[test]
+    fn test_secondary_circuit(){
+        let circuit = SecondaryAggregationCircuit{
+            circuit_params: BaseCircuitParams::default(),
+            vp_digest: grumpkin::Fr::random(&mut OsRng),
+            vp: ProtostarVerifierParam::random(3, &mut OsRng),
+            arity: 3,
+            instances: vec![grumpkin::Fr::random(&mut OsRng); 3],
+            num_steps: Value::new(3),
+            initial_input: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 3]),
+            output: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 3]),
+            acc: Value::new(ProtostarAccumulatorInstance::random(3, &mut OsRng)),
+            proof: Value::new(vec![0u8; 32]),
+        };
+        
+        // let prover = MockProver::<_, _, SecondaryAggregationCircuit>::run(1, &circuit, vec![]).unwrap();
+        // assert!(prover.verify_proof().is_ok());
+    }
+
+
+}
+

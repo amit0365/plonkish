@@ -24,7 +24,6 @@ use crate::{
         }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
     },
 };
-use bincode::Config;
 use halo2_base::{halo2_proofs::{
     halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
 }, plonk::{Advice, Column}, poly::Rotation, dev::MockProver}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
@@ -255,7 +254,8 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         };
         
        
-        let cell_map = chip.layout_and_clear(&mut layouter)?;
+        // let cell_map = chip.clear(&mut layouter)?;
+        let mut assigned_instances = builder.assigned_instances;
         for (idx, witness) in chain![
             [primary_num_steps],
             primary_initial_input,
@@ -266,7 +266,8 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         ]
         .enumerate()
         {
-            layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
+            assigned_instances[0].push(witness);
+            //layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
         }
 
         Ok(())

@@ -309,18 +309,20 @@ mod tests{
         let circuit = SecondaryAggregationCircuit{
             circuit_params: BaseCircuitParams::default(),
             vp_digest: grumpkin::Fr::random(&mut OsRng),
-            vp: ProtostarVerifierParam::random(3, &mut OsRng),
-            arity: 3,
-            instances: vec![grumpkin::Fr::random(&mut OsRng); 3],
-            num_steps: Value::new(3),
-            initial_input: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 3]),
-            output: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 3]),
-            acc: Value::new(ProtostarAccumulatorInstance::random(3, &mut OsRng)),
-            proof: Value::new(vec![0u8; 32]),
+            vp: ProtostarVerifierParam::random(4, &mut OsRng),
+            arity: 4,
+            instances: vec![grumpkin::Fr::random(&mut OsRng); 4],
+            num_steps: Value::new(4),
+            initial_input: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
+            output: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
+            acc: Value::new(ProtostarAccumulatorInstance::random(4, &mut OsRng)),
+            proof: vec![0u8; 128],
         };
-        
-        // let prover = MockProver::<_, _, SecondaryAggregationCircuit>::run(1, &circuit, vec![]).unwrap();
-        // assert!(prover.verify_proof().is_ok());
+        let public_inputs = vec![test_instances];
+        // MockProver
+        let k = 14;
+        let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
+        prover.assert_satisfied();
     }
 
 

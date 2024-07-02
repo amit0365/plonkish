@@ -8,12 +8,9 @@ use crate::{
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
-
         hyperplonk::{HyperPlonk, HyperPlonkVerifierParam},
         PlonkishBackend, PlonkishCircuit,
-
     },
-    // use crate::util::arithmetic::vesta::Base
     frontend::halo2::{layouter::InstanceExtractor, CircuitExt, Halo2Circuit},
     pcs::{
         multilinear::{Gemini, MultilinearHyrax, MultilinearIpa},
@@ -24,7 +21,7 @@ use crate::{
     util::{
         arithmetic::{
             fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits, TwoChainCurve
-        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize, 
+        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
     },
 };
 use halo2_base::{halo2_proofs::{
@@ -42,7 +39,6 @@ use halo2_base::halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value, SimpleFloorPlanner},
     plonk::{Circuit, Selector, ConstraintSystem, Error},
 };
-use halo2_proofs::halo2curves::group::cofactor::CofactorCurveAffine;
 use rand::RngCore;
 
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant};
@@ -51,26 +47,7 @@ use std::{mem, rc::Rc};
 
 
 #[derive(Clone)]
-// struct SecondaryAggregationCircuit<C> {
-// circuit_params: BaseCircuitParams,
-//     vp_digest: grumpkin::Fr,
-//     vp: ProtostarVerifierParam<bn256::Fr, HyperPlonk<Gemini<UnivariateKzg<Bn256>>>>,
-//     arity: usize,
-//     instances: Vec<grumpkin::Fr>,
-//     num_steps: Value<usize>,
-//     initial_input: Value<Vec<grumpkin::Fr>>,
-//     output: Value<Vec<grumpkin::Fr>>,
-//     acc: Value<ProtostarAccumulatorInstance<bn256::Fr, bn256::G1Affine>>,
-//     proof: Value<Vec<u8>>,
-// }
-
-
-struct SecondaryAggregationCircuit<C> 
-where
-    C: TwoChainCurve,
-    C::Scalar: BigPrimeField + PrimeFieldBits,
-    C::Base: BigPrimeField + PrimeFieldBits,
-{
+struct SecondaryAggregationCircuit {
     circuit_params: BaseCircuitParams,
     vp_digest: grumpkin::Fr,
     vp: ProtostarVerifierParam<bn256::Fr, HyperPlonk<Gemini<UnivariateKzg<Bn256>>>>,
@@ -81,16 +58,9 @@ where
     output: Value<Vec<grumpkin::Fr>>,
     acc: Value<ProtostarAccumulatorInstance<bn256::Fr, bn256::G1Affine>>,
     proof: Value<Vec<u8>>,
-
 }
 
-
-impl<C> Circuit<grumpkin::Fr> for SecondaryAggregationCircuit<C>
-where
-    C: TwoChainCurve,
-    C::Scalar: BigPrimeField + PrimeFieldBits,
-    C::Base: BigPrimeField + PrimeFieldBits,
-{
+impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
     type Config = BaseConfig<grumpkin::Fr>;
     type FloorPlanner = SimpleFloorPlanner;
     type Params = BaseCircuitParams;
@@ -143,11 +113,11 @@ where
             &mut transcript,
         )?;
 
-        // let zero = chip.assign_constant(builder, grumpkin::Fr::ZERO)?;
-        let zero = chip.assign_constant_secondary(builder, C)?;
-        chip.constrain_equal_secondary(builder, &lhs, &zero)?;
-        chip.constrain_equal_secondary(builder, &rhs, &zero)?;
-      
+        let zero = chip.assign_constant(builder, grumpkin::Fr::ZERO)?;
+        // let lhs_is_identity = (lhs.x() & lhs.y()).into();
+        // chip.constrain_equal(builder, lhs.is_identity(), &zero)?;
+        // chip.constrain_equal(builder, rhs.is_identity(), &zero)?;
+
         let mut assigned_instances = circuit_builder.assigned_instances;
         assert_eq!(
             assigned_instances.len(),
@@ -226,6 +196,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         let ecc_chip = EccChip::new(&native_chip);
         let mut pool = mem::take(builder.pool(0));
         let chip = Chip::<bn256::G1Affine>::create(range);
+        //let chip = strawman::Chip::<bn256::G1Affine>::create(range);
         let aggregator = ProtostarIvcAggregator::new(
             self.vp_digest,
             self.vp.clone(),
@@ -291,6 +262,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         };
         
        
+        // let cell_map = chip.clear(&mut layouter)?;
         let mut assigned_instances = builder.assigned_instances;
         for (idx, witness) in chain![
             [primary_num_steps],
@@ -303,6 +275,7 @@ impl Circuit<bn256::Fr> for PrimaryAggregationCircuit {
         .enumerate()
         {
             assigned_instances[0].push(witness);
+            //layouter.constrain_instance(cell_map[&witness.id()].cell(), chip.instance, idx)?;
         }
 
         Ok(())
@@ -323,48 +296,47 @@ impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
     2. Run MockProver for Primary Circuit 
 */
 
-// #[cfg(test)]
-// mod tests{
-//     use super::*;
-//     use halo2_proofs::dev::MockProver;
-//     use rand::rngs::OsRng;
-//     use halo2_proofs::arithmetic::Field;
-//     use crate::accumulation::protostar::ProtostarStrategy::{Compressing};
-//     // use halo2_proofs::plonk::Circuit;
-//     #[test]
-//     fn test_secondary_circuit(){
-//         pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);
-//         // Define Struct
-//         let verifier_param = ProtostarVerifierParam {
-//             vp:, 
-//             strategy: Compressing,
-//             num_theta_primes: 4,
-//             num_alpha_primes: 4,
-//             num_folding_witness_polys: 4,
-//             num_folding_challenges: 4,
-//             num_cross_terms: 4,
+#[cfg(test)]
+mod tests{
+    use super::*;
+    use halo2_proofs::dev::MockProver;
+    use rand::rngs::OsRng;
+    use halo2_proofs::arithmetic::Field;
+    use crate::accumulation::protostar::ProtostarStrategy::{Compressing};
+    // use halo2_proofs::plonk::Circuit;
+    #[test]
+    fn test_secondary_circuit(){
+        pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);
+        // Define Struct
+        let verifier_param = ProtostarVerifierParam {
+            vp: PlonkishBackend<grumpkin::Fq>,
+            strategy: Compressing,
+            num_theta_primes: 4,
+            num_alpha_primes: 4,
+            num_folding_witness_polys: 4,
+            num_folding_challenges: 4,
+            num_cross_terms: 4,
             
-//         };
-//         let circuit = SecondaryAggregationCircuit{
-//             circuit_params: BaseCircuitParams::default(),
-//             vp_digest: grumpkin::Fr::random(&mut OsRng),
-//             vp: verifier_param, 
-//             arity: 4,
-//             instances: vec![grumpkin::Fr::random(&mut OsRng); 4],
-//             num_steps: Value<4>,
-//             initial_input: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
-//             output: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
-//             acc: Value::new(ProtostarAccumulatorInstance::random(4, &mut OsRng)),
-//             proof: vec![0u8; 128],
-//         };
-//         let test_instances = vec![grumpkin::Fr::random(OsRng); 4];
-//         let public_inputs = vec![test_instances];
-//         // MockProver
-//         let k = 14;
-//         let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
-//         prover.assert_satisfied();
-//     }
+        };
+        let circuit = SecondaryAggregationCircuit{
+            circuit_params: BaseCircuitParams::default(),
+            vp_digest: grumpkin::Fr::random(&mut OsRng),
+            vp: verifier_param, 
+            arity: 4,
+            instances: vec![grumpkin::Fr::random(&mut OsRng); 4],
+            num_steps: num_steps_value,
+            initial_input: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
+            output: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
+            acc: Value::new(ProtostarAccumulatorInstance::random(4, &mut OsRng)),
+            proof: vec![0u8; 128],
+        };
+        let test_instances = vec![grumpkin::Fr::random(OsRng); 4];
+        let public_inputs = vec![test_instances];
+        // MockProver
+        let k = 14;
+        let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
+        prover.assert_satisfied();
+    }
 
 
-// }
-
+}

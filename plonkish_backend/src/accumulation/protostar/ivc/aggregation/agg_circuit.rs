@@ -299,8 +299,6 @@ impl CircuitExt<grumpkin::Fr> for SecondaryAggregationCircuit {
 
 #[cfg(test)]
 mod tests{
-    use core::num;
-
     use super::*;
     use halo2_proofs::dev::MockProver;
     use rand::rngs::OsRng;
@@ -318,7 +316,7 @@ mod tests{
             num_fixed: 1, 
             lookup_bits: Some(13), 
             num_instance_columns: 1, 
-        }
+        };
         let (
             ivc_vp,
             num_steps,
@@ -338,7 +336,7 @@ mod tests{
         >(NUM_VARS, NUM_STEPS, circuit_params);
         let mut circuit = SecondaryAggregationCircuit {
             circuit_params,
-            vp_digest: grumpkin::Fr::random(&mut OsRng),
+            vp_digest: fe_to_fe(ivc_vp.vp_digest),
             vp: ivc_vp.primary_vp.clone(),
             arity: ivc_vp.primary_arity,
             instances: vec![grumpkin::Fr::random(&mut OsRng); 4],

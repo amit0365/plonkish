@@ -933,17 +933,17 @@ where
     HyperPlonk<P2>: PlonkishBackend<C::Base>,
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
-
 {
-    vp_digest: C::Scalar,
-    primary_vp: ProtostarVerifierParam<C::Scalar, HyperPlonk<P1>>,
-    primary_hp: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
-    primary_arity: usize,
-    secondary_vp: ProtostarVerifierParam<C::Base, HyperPlonk<P2>>,
-    secondary_hp: OptimizedPoseidonSpec<C::Base, T, RATE>,
-    secondary_arity: usize,
-    _marker: PhantomData<C>,
+    pub vp_digest: C::Scalar,
+    pub primary_vp: ProtostarVerifierParam<C::Scalar, HyperPlonk<P1>>,
+    pub primary_hp: OptimizedPoseidonSpec<C::Scalar, T, RATE>,
+    pub primary_arity: usize,
+    pub secondary_vp: ProtostarVerifierParam<C::Base, HyperPlonk<P2>>,
+    pub secondary_hp: OptimizedPoseidonSpec<C::Base, T, RATE>,
+    pub secondary_arity: usize,
+    pub _marker: PhantomData<C>,
 }
+
 
 impl<C, P1, P2> ProtostarIvcVerifierParam<C, P1, P2>
 where

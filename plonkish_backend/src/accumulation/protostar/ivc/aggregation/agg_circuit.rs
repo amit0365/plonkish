@@ -2,7 +2,8 @@ use crate::{
     accumulation::protostar::{
         ivc::halo2::{
             preprocess, prove_decider, prove_steps, 
-            test::strawman::{self, decider_transcript_param, Chip, PoseidonTranscriptChip, NUM_LIMBS, NUM_LIMB_BITS, RATE, R_F, R_P, SECURE_MDS, T}, 
+            test::strawman::{self, decider_transcript_param, Chip, PoseidonTranscriptChip, NUM_LIMBS, NUM_LIMB_BITS, RATE, R_F, R_P, SECURE_MDS, T},
+            test::run_protostar_hyperplonk_ivc, 
             verify_decider, ProtostarIvcVerifierParam, StepCircuit
         },
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
@@ -298,6 +299,8 @@ impl CircuitExt<grumpkin::Fr> for SecondaryAggregationCircuit {
 
 #[cfg(test)]
 mod tests{
+    use core::num;
+
     use super::*;
     use halo2_proofs::dev::MockProver;
     use rand::rngs::OsRng;
@@ -306,37 +309,90 @@ mod tests{
     // use halo2_proofs::plonk::Circuit;
     #[test]
     fn test_secondary_circuit(){
-        pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);
-        // Define Struct
-        let verifier_param = ProtostarVerifierParam {
-            vp: PlonkishBackend<grumpkin::Fq>,
-            strategy: Compressing,
-            num_theta_primes: 4,
-            num_alpha_primes: 4,
-            num_folding_witness_polys: 4,
-            num_folding_challenges: 4,
-            num_cross_terms: 4,
-            
-        };
-        let circuit = SecondaryAggregationCircuit{
-            circuit_params: BaseCircuitParams::default(),
+        const NUM_VARS: usize = 14;
+        const NUM_STEPS: usize = 3;
+        let circuit_params = BaseCircuitParams{
+            k: NUM_VARS, 
+            num_advice_per_phase: vec![1],
+            num_lookup_advice_per_phase: vec![1],
+            num_fixed: 1, 
+            lookup_bits: Some(13), 
+            num_instance_columns: 1, 
+        }
+        let (
+            ivc_vp,
+            num_steps,
+            primary_initial_input,
+            primary_output,
+            primary_acc,
+            primary_proof,
+            secondary_initial_input,
+            secondary_output,
+            secondary_acc_before_last,
+            secondary_last_instances,
+            secondary_proof,
+        ) = run_protostar_hyperplonk_ivc::<
+            bn256::G1Affine,
+            Gemini<UnivariateKzg<Bn256>>,
+            MultilinearIpa<grumpkin::G1Affine>,
+        >(NUM_VARS, NUM_STEPS, circuit_params);
+        let mut circuit = SecondaryAggregationCircuit {
+            circuit_params,
             vp_digest: grumpkin::Fr::random(&mut OsRng),
-            vp: verifier_param, 
-            arity: 4,
+            vp: ivc_vp.primary_vp.clone(),
+            arity: ivc_vp.primary_arity,
             instances: vec![grumpkin::Fr::random(&mut OsRng); 4],
-            num_steps: num_steps_value,
-            initial_input: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
-            output: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
-            acc: Value::new(ProtostarAccumulatorInstance::random(4, &mut OsRng)),
-            proof: vec![0u8; 128],
+            num_steps: Value::known(num_steps),
+            initial_input: Value::known(secondary_initial_input),
+            output: Value::known(secondary_output),
+            acc: Value::known(primary_acc.unwrap_comm()),
+            proof: Value::known(primary_proof),
         };
+
+        // Test Circuit 
         let test_instances = vec![grumpkin::Fr::random(OsRng); 4];
         let public_inputs = vec![test_instances];
-        // MockProver
         let k = 14;
         let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
         prover.assert_satisfied();
+
+
+
+
+
     }
+    // fn test_secondary_circuit(){
+    //     pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);
+    //     // Define Struct
+    //     let verifier_param = ProtostarVerifierParam {
+    //         vp: PlonkishBackend<grumpkin::Fq>,
+    //         strategy: Compressing,
+    //         num_theta_primes: 4,
+    //         num_alpha_primes: 4,
+    //         num_folding_witness_polys: 4,
+    //         num_folding_challenges: 4,
+    //         num_cross_terms: 4,
+            
+    //     };
+    //     let circuit = SecondaryAggregationCircuit{
+    //         circuit_params: BaseCircuitParams::default(),
+    //         vp_digest: grumpkin::Fr::random(&mut OsRng),
+    //         vp: verifier_param, 
+    //         arity: 4,
+    //         instances: vec![grumpkin::Fr::random(&mut OsRng); 4],
+    //         num_steps: num_steps_value,
+    //         initial_input: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
+    //         output: Value::new(vec![grumpkin::Fr::random(&mut OsRng); 4]),
+    //         acc: Value::new(ProtostarAccumulatorInstance::random(4, &mut OsRng)),
+    //         proof: vec![0u8; 128],
+    //     };
+    //     let test_instances = vec![grumpkin::Fr::random(OsRng); 4];
+    //     let public_inputs = vec![test_instances];
+    //     // MockProver
+    //     let k = 14;
+    //     let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
+    //     prover.assert_satisfied();
+    // }
 
 
 }

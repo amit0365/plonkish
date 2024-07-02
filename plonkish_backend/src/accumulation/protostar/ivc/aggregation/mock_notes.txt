@@ -14,3 +14,31 @@ where
     num_folding_challenges: usize,
     num_cross_terms: usize,
 }
+
+ pub fn constrain_equal_base(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            lhs: &ProperCrtUint<C::Scalar>,
+            rhs: &ProperCrtUint<C::Scalar>,
+        ) -> Result<(), Error> {
+            let base_chip = FpChip::<C::Scalar, C::Base>::new(&self.range_chip, NUM_LIMB_BITS, NUM_LIMBS);
+            base_chip.assert_equal(builder.main(),lhs,rhs);
+            Ok(())
+        }
+
+        pub fn constrain_equal_secondary(
+            &self,
+            builder: &mut SinglePhaseCoreManager<C::Scalar>,
+            lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+            rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
+        ) -> Result<(), Error> {
+
+
+
+            My builder is of the type: 
+            let builder: &mut SinglePhaseCoreManager<Fq>
+
+            However, my function requires: 
+pub fn constrain_equal_secondary(&self, builder: &mut SinglePhaseCoreManager<C::Scalar>, lhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>, rhs: &EcPoint<C::Scalar, AssignedValue<C::Scalar>>) -> Result<(), Error>
+
+Will this be okay?

@@ -1,0 +1,227 @@
+fn gemini_kzg_ipa_protostar_hyperplonk_ivc_with_aggregation() {
+    const NUM_VARS: usize = 14;
+    const NUM_STEPS: usize = 3;
+    let (
+        ivc_vp,
+        num_steps,
+        primary_initial_input,
+        primary_output,
+        primary_acc,
+        primary_proof,
+        secondary_initial_input,
+        secondary_output,
+        secondary_acc_before_last,
+        secondary_last_instances,
+        secondary_proof,
+    ) = run_protostar_hyperplonk_ivc::<
+        bn256::G1Affine,
+        Gemini<UnivariateKzg<Bn256>>,
+        MultilinearIpa<grumpkin::G1Affine>,
+    >(NUM_VARS, NUM_STEPS);
+
+    let (secondary_aggregation_vp, secondary_aggregation_instances, secondary_aggregation_proof) = {
+        let mut circuit = SecondaryAggregationCircuit {
+            vp_digest: fe_to_fe(ivc_vp.vp_digest),
+            vp: ivc_vp.primary_vp.clone(),
+            arity: ivc_vp.secondary_arity,
+            instances: Vec::new(),
+            num_steps: Value::known(num_steps),
+            initial_input: Value::known(secondary_initial_input),
+            output: Value::known(secondary_output),
+            acc: Value::known(primary_acc.unwrap_comm()),
+            proof: Value::known(primary_proof),
+        };
+        circuit.instances = InstanceExtractor::extract(&circuit)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        assert_eq!(
+            circuit.instances[1 + 2 * ivc_vp.secondary_arity],
+            secondary_last_instances[1]
+        );
+
+        type HyraxHyperPlonk = HyperPlonk<MultilinearHyrax<grumpkin::G1Affine>>;
+        let circuit = Halo2Circuit::new::<HyraxHyperPlonk>(17, circuit);
+        let circuit_info = circuit.circuit_info().unwrap();
+
+        let param = HyraxHyperPlonk::setup(&circuit_info, seeded_std_rng()).unwrap();
+        let (pp, vp) = HyraxHyperPlonk::preprocess(&param, &circuit_info).unwrap();
+        let dtp = strawman::decider_transcript_param();
+        let proof = {
+            let mut transcript = strawman::PoseidonTranscript::new(dtp.clone());
+            HyraxHyperPlonk::prove(&pp, &circuit, &mut transcript, seeded_std_rng()).unwrap();
+            transcript.into_proof()
+        };
+        let result = {
+            let mut transcript = strawman::PoseidonTranscript::from_proof(dtp, proof.as_slice());
+            HyraxHyperPlonk::verify(&vp, circuit.instances(), &mut transcript, seeded_std_rng())
+        };
+        assert_eq!(result, Ok(()));
+
+        (vp, circuit.instances().to_vec(), proof)
+    };
+
+    {
+        let mut circuit = PrimaryAggregationCircuit {
+            vp_digest: fe_to_fe(ivc_vp.vp_digest),
+            vp: ivc_vp.secondary_vp.clone(),
+            primary_arity: ivc_vp.primary_arity,
+            secondary_arity: ivc_vp.secondary_arity,
+            instances: Vec::new(),
+            num_steps: Value::known(num_steps),
+            initial_input: Value::known(primary_initial_input),
+            output: Value::known(primary_output),
+            acc_before_last: Value::known(secondary_acc_before_last.unwrap_comm()),
+            last_instance: Value::known([secondary_last_instances[0], secondary_last_instances[1]]),
+            proof: Value::known(secondary_proof),
+            secondary_aggregation_vp,
+            secondary_aggregation_instances: Value::known(
+            secondary_aggregation_instances[0].clone(),
+            ),
+            secondary_aggregation_proof: Value::known(secondary_aggregation_proof),
+        };
+        circuit.instances = InstanceExtractor::extract(&circuit)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+
+        type GeminiHyperPlonk = HyperPlonk<Gemini<UnivariateKzg<Bn256>>>;
+        let circuit = Halo2Circuit::new::<GeminiHyperPlonk>(21, circuit);
+        let circuit_info = circuit.circuit_info().unwrap();
+
+        let param = GeminiHyperPlonk::setup(&circuit_info, seeded_std_rng()).unwrap();
+        let (pp, vp) = GeminiHyperPlonk::preprocess(&param, &circuit_info).unwrap();
+        let dtp = strawman::decider_transcript_param();
+        let proof = {
+            let mut transcript = strawman::PoseidonTranscript::new(dtp.clone());
+            GeminiHyperPlonk::prove(&pp, &circuit, &mut transcript, seeded_std_rng()).unwrap();
+            transcript.into_proof()
+        };
+        let result = {
+            let mut transcript = strawman::PoseidonTranscript::from_proof(dtp, proof.as_slice());
+            GeminiHyperPlonk::verify(&vp, circuit.instances(), &mut transcript, seeded_std_rng())
+        };
+        assert_eq!(result, Ok(()));
+
+        let pairing_acc =
+            &circuit.instances()[0][circuit.instances()[0].len() - 4 * strawman::NUM_LIMBS..];
+        let [lhs_x, lhs_y, rhs_x, rhs_y] = [0, 1, 2, 3].map(|idx| {
+            let offset = idx * strawman::NUM_LIMBS;
+            strawman::fe_from_limbs(
+                &pairing_acc[offset..offset + strawman::NUM_LIMBS],
+                strawman::NUM_LIMB_BITS,
+            )
+        });
+        let lhs = bn256::G1Affine::from_xy(lhs_x, lhs_y).unwrap();
+        let rhs = bn256::G1Affine::from_xy(rhs_x, rhs_y).unwrap();
+        // assert!(Bn256::pairings_product_is_identity(&[
+        //     (&lhs, &(-ivc_vp.primary_vp.vp.pcs.g2()).into()),
+        //     (&rhs, &ivc_vp.primary_vp.vp.pcs.s_g2().into()),
+        // ]));
+    }
+}
+
+
+
+
+
+
+
+### THIS FUNCTION RUNS THE ACCUMULATION VERIFIER 
+
+
+fn synthesize_accumulation_verifier(
+        &self,
+        mut layouter: impl Layouter<C::Scalar>,
+        config: <RecursiveCircuit<C, Sc> as halo2_base::halo2_proofs::plonk::Circuit<C::Scalar>>::Config,
+        input: &[AssignedValue<C::Scalar>],
+        output: &[AssignedValue<C::Scalar>],
+    ) -> Result<(), Error> {
+        let Self {
+            tcc_chip,
+            transcript_config,
+            avp,
+            ..
+        } = &self;
+
+        let mut binding = self.inner.borrow_mut();
+        let builder = binding.pool(0);  
+        let acc_verifier = ProtostarAccumulationVerifier::new(avp.clone(), tcc_chip.clone());
+
+        let zero = builder.main().load_zero();
+        let one = builder.main().load_constant(C::Scalar::ONE);
+        let vp_digest = tcc_chip.assign_witness(builder, avp.vp_digest)?;
+        let step_idx = tcc_chip.assign_witness(
+            builder,
+            C::Scalar::from(self.step_circuit.step_idx() as u64),)?;
+        let step_idx_plus_one = tcc_chip.add(builder, &step_idx, &one)?;
+        let initial_input = self
+            .step_circuit
+            .initial_input()
+            .iter()
+            .map(|value| tcc_chip.assign_witness(builder, *value))
+            .try_collect::<_, Vec<_>, _>()?;
+
+        let is_base_case = tcc_chip.is_equal(builder, &step_idx, &zero)?;
+        let h_prime = tcc_chip.assign_witness(builder, self.h_prime.assign().unwrap())?;
+        self.check_initial_condition(builder, &is_base_case, &initial_input, input)?;
+
+        let acc = acc_verifier.assign_accumulator(builder, self.acc.as_ref())?;
+        let (nark, acc_r_nark, acc_prime) = {
+            let instances =
+                [&self.incoming_instances[0], &self.incoming_instances[1]].map(Value::as_ref);
+            let proof = self.incoming_proof.clone();
+            let transcript =
+                &mut PoseidonTranscriptChip::new(builder.main(), transcript_config.clone(), tcc_chip.clone(), proof);
+            acc_verifier.verify_accumulation_from_nark(builder, &acc, instances, transcript)?
+        };
+
+        let acc_prime = {
+            let acc_default = if self.is_primary {
+                acc_verifier.assign_default_accumulator(builder)?
+            } else {
+                acc_r_nark
+            };
+            acc_verifier.select_accumulator(builder, &is_base_case, &acc_default, &acc_prime)?
+        };
+        
+        let h_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][0])?;
+        let h_ohs_from_incoming = tcc_chip.fit_base_in_scalar(builder, &nark.instances[0][1])?;
+
+        self.check_state_hash(
+            builder,
+            Some(&is_base_case),
+            &h_from_incoming,
+            &vp_digest,
+            &step_idx,
+            &initial_input,
+            &input,
+            &acc,
+        )?;
+
+        self.check_state_hash(
+            builder,
+            None,
+            &h_prime,
+            &vp_digest,
+            &step_idx_plus_one,
+            &initial_input,
+            output,
+            &acc_prime,
+        )?;
+
+        let assigned_instances = &mut binding.assigned_instances;
+        assert_eq!(
+            assigned_instances.len(),
+            1,
+            "Circuit must have exactly 1 instance column"
+        );
+        assert!(assigned_instances[0].is_empty());
+        assigned_instances[0].push(h_ohs_from_incoming);
+        assigned_instances[0].push(h_prime);
+
+        // sanity check that the circuit is satisfied
+        // let instances = self.instances();
+        // MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();

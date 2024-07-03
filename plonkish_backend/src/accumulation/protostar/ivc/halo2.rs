@@ -814,7 +814,7 @@ where
 
         // sanity check that the circuit is satisfied
         //let instances = self.instances();
-        // MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
+        //MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
 
         binding.synthesize(config.clone(), layouter.namespace(|| ""));
 

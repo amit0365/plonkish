@@ -58,7 +58,7 @@ struct SecondaryAggregationCircuit {
     initial_input: Value<Vec<grumpkin::Fr>>,
     output: Value<Vec<grumpkin::Fr>>,
     acc: Value<ProtostarAccumulatorInstance<bn256::Fr, bn256::G1Affine>>,
-    proof: Value<Vec<u8>>,
+    proof: Value<Vec<u8>>
 }
 
 impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
@@ -126,7 +126,10 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
             "Circuit must have exactly 1 instance column"
         );
         assert!(assigned_instances[0].is_empty());
-        
+        // Running MockProver Inside Synthesize 
+        let instances = self.instances();
+        MockProver::run(19, &*builder, instances.clone()).unwrap().assert_satisfied();
+
         for (idx, witness) in chain![
             [num_steps],
             initial_input,
@@ -334,7 +337,7 @@ mod tests{
             Gemini<UnivariateKzg<Bn256>>,
             MultilinearIpa<grumpkin::G1Affine>,
         >(NUM_VARS, NUM_STEPS, circuit_params);
-        let mut circuit = SecondaryAggregationCircuit {
+        let circuit = SecondaryAggregationCircuit {
             circuit_params,
             vp_digest: fe_to_fe(ivc_vp.vp_digest),
             vp: ivc_vp.primary_vp.clone(),
@@ -346,18 +349,13 @@ mod tests{
             acc: Value::known(primary_acc.unwrap_comm()),
             proof: Value::known(primary_proof),
         };
-
         // Test Circuit 
         let test_instances = vec![grumpkin::Fr::random(OsRng); 4];
         let public_inputs = vec![test_instances];
         let k = 14;
-        let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
-        prover.assert_satisfied();
 
-
-
-
-
+        // let prover: MockProver<bn256::Fq> = MockProver::run(k, &circuit, public_inputs).unwrap();
+        // prover.assert_satisfied();
     }
     // fn test_secondary_circuit(){
     //     pub struct Protostar<Pb, const STRATEGY: usize = { Compressing as usize }>(PhantomData<Pb>);

@@ -813,7 +813,7 @@ where
         assigned_instances[0].push(h_prime);
 
         // sanity check that the circuit is satisfied
-        // let instances = self.instances();
+        //let instances = self.instances();
         // MockProver::run(19, &*binding, instances.clone()).unwrap().assert_satisfied();
 
         binding.synthesize(config.clone(), layouter.namespace(|| ""));

@@ -58,7 +58,6 @@ struct SecondaryAggregationCircuit {
     output: Value<Vec<grumpkin::Fr>>,
     acc: Value<ProtostarAccumulatorInstance<bn256::Fr, bn256::G1Affine>>,
     proof: Value<Vec<u8>>,
-    pub circuit_builder: BaseCircuitBuilder<grumpkin::Fr>
 }
 
 impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
@@ -83,10 +82,8 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
         config: Self::Config,
         mut layouter: impl Layouter<grumpkin::Fr>,
     ) -> Result<(), Error> {
-
-        let mut circuit_builder = BaseCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Mock)
-            .use_params(self.circuit_params.clone());
-        // let mut circuit_builder = BaseCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Mock).use_params(self.circuit_params.clone());
+ 
+        let mut circuit_builder = BaseCircuitBuilder::<grumpkin::Fr>::from_stage(CircuitBuilderStage::Mock).use_params(self.circuit_params.clone());
         let range_chip = circuit_builder.range_chip();
         let chip = Chip::<grumpkin::G1Affine>::create(range_chip);
         let builder = circuit_builder.pool(0);

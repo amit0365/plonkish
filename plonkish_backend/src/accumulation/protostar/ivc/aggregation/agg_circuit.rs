@@ -141,9 +141,9 @@ impl Circuit<grumpkin::Fr> for SecondaryAggregationCircuit {
             }
         }
         // Now that instances have been pushed
-        let circuit = circuit_builder.clone();
-        let instances = self.instances();
-        MockProver::run(19, &circuit, instances.clone()).unwrap().assert_satisfied();
+        // let circuit = circuit_builder.clone();
+        // let instances = self.instances();
+        // MockProver::run(19, &circuit, instances.clone()).unwrap().assert_satisfied();
 
         Ok(())
     }
@@ -297,5 +297,64 @@ impl CircuitExt<bn256::Fr> for PrimaryAggregationCircuit {
     }
     fn rand(k: usize, _: impl RngCore) -> Self {
         unimplemented!()
+    }
+}
+
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+    use halo2_proofs::dev::MockProver;
+    use rand::rngs::OsRng;
+    use halo2_proofs::arithmetic::Field;
+    // use crate::accumulation::protostar::ProtostarStrategy::{Compressing};
+    use halo2_proofs::plonk::Circuit;
+    #[test]
+    fn test_secondary_circuit(){
+        const NUM_VARS: usize = 14;
+        const NUM_STEPS: usize = 3;
+        let circuit_params = BaseCircuitParams{
+            k: NUM_VARS, 
+            num_advice_per_phase: vec![1],
+            num_lookup_advice_per_phase: vec![1],
+            num_fixed: 1, 
+            lookup_bits: Some(13), 
+            num_instance_columns: 1, 
+        };
+        let (
+            ivc_vp,
+            num_steps,
+            primary_initial_input,
+            primary_output,
+            primary_acc,
+            primary_proof,
+            secondary_initial_input,
+            secondary_output,
+            secondary_acc_before_last,
+            secondary_last_instances,
+            secondary_proof,
+        ) = run_protostar_hyperplonk_ivc::<
+            bn256::G1Affine,
+            Gemini<UnivariateKzg<Bn256>>,
+            MultilinearIpa<grumpkin::G1Affine>,
+        >(NUM_VARS, NUM_STEPS, circuit_params);
+        let circuit = SecondaryAggregationCircuit {
+            circuit_params,
+            vp_digest: fe_to_fe(ivc_vp.vp_digest),
+            vp: ivc_vp.primary_vp.clone(),
+            arity: ivc_vp.primary_arity,
+            instances: vec![grumpkin::Fr::random(&mut OsRng); 4],
+            num_steps: Value::known(num_steps),
+            initial_input: Value::known(secondary_initial_input),
+            output: Value::known(secondary_output),
+            acc: Value::known(primary_acc.unwrap_comm()),
+            proof: Value::known(primary_proof),
+        };
+        // Test Circuit 
+        let test_instances = vec![grumpkin::Fr::random(OsRng); 4];
+        let public_inputs = vec![test_instances];
+        let k = 14;
+
+        MockProver::run(k, &circuit, public_inputs).unwrap().assert_satisfied();
     }
 }

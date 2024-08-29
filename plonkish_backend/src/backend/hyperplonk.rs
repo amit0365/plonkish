@@ -105,7 +105,7 @@ where
         let num_vars = circuit_info.k;
         // todo change this
         // let poly_size = num_witness_polys.next_power_of_two().ilog2() as usize + circuit_info.k;
-        let poly_size = circuit_info.k + 3; 
+        let poly_size = circuit_info.k + 4; 
         let batch_size = batch_size(circuit_info);        
         let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << poly_size, batch_size)?;
 

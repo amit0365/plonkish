@@ -19,7 +19,7 @@ use crate::{
     },
     Error,
 };
-use std::{iter, marker::PhantomData};
+use std::{collections::HashMap, iter, marker::PhantomData};
 
 pub mod hyperplonk;
 pub mod ivc;
@@ -60,6 +60,8 @@ where
     cross_term_expressions: Vec<Expression<F>>,
     gate_expressions: Vec<plonk::Expression<F>>,
     lookup_expressions: Vec<Vec<(plonk::Expression<F>, plonk::Expression<F>)>>,
+    queried_selectors: HashMap<usize, usize>,
+    selector_map: HashMap<usize, Vec<usize>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

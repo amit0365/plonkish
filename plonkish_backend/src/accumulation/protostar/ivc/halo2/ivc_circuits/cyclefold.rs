@@ -1,17 +1,21 @@
 use halo2_base::{gates::{circuit::{builder::{self, BaseCircuitBuilder}, BaseCircuitParams, BaseConfig, CircuitBuilderStage}, flex_gate::threads::SinglePhaseCoreManager, GateInstructions}, halo2_proofs::
     {arithmetic::Field, circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::group::{prime::PrimeCurveAffine, Curve, Group}, plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector}, poly::Rotation}, poseidon::hasher::{spec::OptimizedPoseidonSpec, PoseidonHash, PoseidonSponge}, utils::{BigPrimeField, ScalarField}, AssignedValue};
-use halo2_ecc::{ecc::EcPoint, bigint::ProperCrtUint};
-use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash as inlineHash, Spec}, spec::PoseidonSpec};
+use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash as inlineHash, Spec}};
 use halo2_base::halo2_proofs::halo2curves::ff::BatchInvert;
 use itertools::Itertools;
 use core::{borrow::Borrow, marker::PhantomData};
-use std::{iter, time::Instant, cell::RefCell};
-use crate::accumulation::protostar::ivc::{halo2::chips::{poseidon::hash_chip::{PoseidonChip, PoseidonConfig}, scalar_mul::ecc_deg6_hash::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs, ScalarMulConfigInputs, NUM_ADVICE_SM, NUM_FIXED_SM, NUM_INSTANCE_SM}, transcript::NUM_CHALLENGE_BITS, L, NUM_ADVICE, NUM_CONSTANTS, R, T}, ProtostarAccumulationVerifierParam};
-use crate::{accumulation::protostar::ivc::halo2::chips::transcript::NUM_HASH_BITS, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates}};
+use std::{cell::RefCell, fs::File, iter, time::Instant};
+use crate::accumulation::protostar::ivc::halo2::chips::{poseidon::hash_chip::Poseidon2Chip, scalar_mul::ecc_deg6_hash::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs, ScalarMulConfigInputs, NUM_ADVICE_SM, NUM_FIXED_SM, NUM_INSTANCE_SM}};
+use crate::{accumulation::protostar::ivc::halo2::chips::transcript::{NUM_HASH_BITS, NUM_CHALLENGE_BITS}, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates}};
+use crate::accumulation::protostar::ivc::halo2::{ProtostarAccumulationVerifierParam, chips::{L, T, R as RATE, NUM_ADVICE, NUM_CONSTANTS}};
 use crate::{accumulation::{protostar::{ProtostarAccumulatorInstance, ProtostarStrategy::{Compressing, NoCompressing}}, PlonkishNarkInstance}, backend::PlonkishCircuit, frontend::halo2::CircuitExt, poly::multilinear::MultilinearPolynomial, util::{
     arithmetic::{add_proj, add_proj_comp, double_proj, double_proj_comp, fe_from_bits_le, fe_to_bits_le, fe_to_fe, fe_truncated, into_coordinate_proj, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, CurveAffine, PrimeFieldBits, ProjectivePoint, TwoChainCurve}, end_timer, izip_eq, start_timer, transcript::{TranscriptRead, TranscriptWrite}}};
 use rand::RngCore;
-
+use poseidon::{Spec as PoseidonSpec, Poseidon as PoseidonInlineHash};
+use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{R_F, R_P};
+use crate::accumulation::protostar::ivc::halo2::chips::poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec as PoseidonChipSpec};
+use poseidon2::circuit::spec::PoseidonSpec as Poseidon2ChipSpec;
+use crate::accumulation::protostar::ivc::halo2::chips::poseidon::hash_chip::Poseidon2Config;
 // public inputs length for the CycleFoldInputs for compressing 
 pub const CF_IO_LEN: usize = 1;
 pub const NUM_FIXED: usize = NUM_CONSTANTS + 1;
@@ -48,7 +52,8 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    poseidon: PoseidonConfig<C, T, R, L>,
+    //poseidon: PoseidonConfig<C, T, RATE, L>,
+    poseidon: Poseidon2Config<C, T, RATE, L>,
     scalar_mul: ScalarMulChipConfig<C>,
     instance: Column<Instance>,
 }
@@ -62,7 +67,7 @@ where
 {
     pub primary_avp: ProtostarAccumulationVerifierParam<C::Scalar>,
     // pub cyclefold_avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
-    pub hash_config: PoseidonSpec,
+    pub hash_config: PoseidonSpec<C::Scalar, T, RATE>,
     pub inputs: CycleFoldInputs<C::Scalar, C::Secondary>,
 }
 
@@ -80,7 +85,7 @@ where
     ) -> Self 
     {
         let primary_avp = primary_avp.unwrap_or_default();
-        let hash_config = PoseidonSpec;
+        let hash_config = PoseidonSpec::<C::Scalar, T, RATE>::new(R_F, R_P);
 
         let num_witness_comm = primary_avp.num_folding_witness_polys();
         let num_cross_comms = match primary_avp.strategy {
@@ -358,7 +363,10 @@ where
         };
         assert_eq!(L, message.len());
 
-        let hash = inlineHash::<C::Scalar, PoseidonSpec, ConstantLength<L>, T, R>::init().hash(message);
+        //let hash = inlineHash::<C::Scalar, Spec<C::Scalar, T, RATE>, ConstantLength<L>, T, RATE>::init().hash(message);
+        let mut poseidon = PoseidonInlineHash::<C::Scalar, T, RATE>::new(R_F, R_P);
+        poseidon.update(&message);
+        let hash = poseidon.squeeze();
         fe_truncated(hash, NUM_HASH_BITS)
     }
 }
@@ -385,7 +393,7 @@ where
             meta.enable_equality(*col);
         }
 
-        let advices = [0; NUM_ADVICE_SM].map(|_| meta.advice_column());
+        let advices = [0; NUM_ADVICE_SM + 1].map(|_| meta.advice_column());
         for col in &advices {
             meta.enable_equality(*col);
         }
@@ -398,8 +406,17 @@ where
 
         let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices[..NUM_ADVICE_SM].try_into().unwrap(), [constants[NUM_CONSTANTS]]);
         
+        //let poseidon = 
+            // PoseidonChip::<C, PoseidonChipSpec, T, RATE, L>::configure(
+            //     meta,
+            //     advices[..T].try_into().unwrap(),
+            //     advices[T],
+            //     constants[..T].try_into().unwrap(), 
+            //     constants[T..2*T].try_into().unwrap(), 
+            // );
+
         let poseidon = 
-            PoseidonChip::<C, PoseidonSpec, T, R, L>::configure(
+            Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L>::configure(
                 meta,
                 advices[..T].try_into().unwrap(),
                 advices[T],
@@ -434,7 +451,11 @@ where
             }
         }
         
-        let hash_chip = PoseidonChip::<C, PoseidonSpec, T, R, L>::construct(
+        // let hash_chip = PoseidonChip::<C, PoseidonChipSpec, T, RATE, L>::construct(
+        //     config.poseidon,
+        // );
+
+        let hash_chip = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L>::construct(
             config.poseidon,
         );
 
@@ -444,10 +465,12 @@ where
             Err(_) => panic!("Failed to convert Vec to Array"),
         };
 
+        let time = Instant::now();
         let hash = hash_chip.hash(
                 layouter.namespace(|| "perform poseidon hash"),
                 message.clone(),
         )?;
+        println!("hash: {:?}", time.elapsed());
 
         // println!("hash_circuit: {:?}", hash);
         // layouter.constrain_instance(hash.cell(), config.instance, 0)?;

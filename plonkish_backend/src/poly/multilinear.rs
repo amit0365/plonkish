@@ -670,7 +670,6 @@ mod test {
     };
     use halo2_base::{halo2_proofs::halo2curves::bn256::{Fr, Fq}, gates::circuit::{builder::BaseCircuitBuilder, CircuitBuilderStage}};
     use halo2_base::utils::PrimeField;
-    use halo2_ecc::{bn254, fields::{FieldChip, fp::FpChip}};
     use rand::{rngs::OsRng, RngCore};
     use std::iter;
 
@@ -749,39 +748,6 @@ mod test {
         // println!("f1: {:?}", f1);
         // println!("limbs: {:?}", limbs);
         assert_eq!(fe, f1);
-    }
-
-    #[test]
-    fn test_add_base() {
-        let f1 = Fr::from_raw([
-            0x3c208c16d87cfd46,
-            0x97816a916871ca8d,
-            0xb85045b68181585d,
-            0x30644e72e131a029,
-        ]);
-        let f2 = Fr::from_raw([
-            0x3c208c16d87cfd00,
-            0x97816a916871ca8d,
-            0xb85045b68181585d,
-            0x30644e72e131a029,
-        ]);
-        // let fe = fe_from_limbs::<Fr, Fr>(&limbs, NUM_LIMB_BITS);
-        let mut circuit_builder = BaseCircuitBuilder::<Fq>::from_stage(CircuitBuilderStage::Mock).use_k(10).use_lookup_bits(9);
-        let range_chip = circuit_builder.range_chip();
-        let fp_chip = FpChip::new(&range_chip, NUM_LIMB_BITS, NUM_LIMBS);
-        let ctx = circuit_builder.main(0);
-        let acc_fe = f1; // Fr::from(2);
-        let acc = fp_chip.load_private(ctx, acc_fe);
-        // let acc_native = acc.native();
-        let r_nark_fe = f2; // Fr::one();
-        let r_nark = fp_chip.load_private(ctx, r_nark_fe);
-        // let r_nark_native = r_nark.native();
-        let result = fp_chip.add_no_carry(ctx, acc.clone(), r_nark.clone());
-        println!("acc_native: {:?}", acc.native());
-        println!("r_nark_native: {:?}", r_nark.native());
-        //println!("result {:?}", result);
-        println!("result_native: {:?}", result.native());
-        // assert_eq!(fe, f1);
     }
 
 }

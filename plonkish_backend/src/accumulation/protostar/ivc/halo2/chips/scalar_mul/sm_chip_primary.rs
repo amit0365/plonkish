@@ -368,7 +368,7 @@ where
             acc_prev_xvec.push(acc_prev.x);
             acc_prev_yvec.push(acc_prev.y); 
             acc_prev_zvec.push(acc_prev.z);
-    
+
             for i in 0..scalar_bits {
                 let choice_proj = if rbits_rev[i] { 
                     ProjectivePoint::new(p_single_x, p_single_y, C::Scalar::ONE)

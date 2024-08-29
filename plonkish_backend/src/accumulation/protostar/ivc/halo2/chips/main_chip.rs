@@ -11,6 +11,7 @@ use halo2_base::utils::ScalarField;
 use halo2_base::{halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation}, utils::{bigint_to_fe, biguint_to_fe, decompose_bigint, decompose_biguint, fe_to_bigint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes}};
 use halo2_base::halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
 use num_bigint::{BigUint, BigInt};
+use halo2_base::utils::decompose;
 use itertools::Itertools;
 use num_integer::Integer;
 use num_traits::sign::Signed;
@@ -33,7 +34,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
     #[derive(Clone, Debug)]
     pub struct Number<F: Field>(pub AssignedCell<F, F>);
 
-    impl<F: Field> Number<F> {
+    impl<F: BigPrimeField> Number<F> {
         pub fn value(&self) -> F {
             let mut value = F::ZERO;
             self.0.value().map(|val| value = *val);
@@ -916,6 +917,80 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             Ok((product, bits_to_num, bit_cells))
         }
 
+        pub fn bits_and_num_limbs(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            range_bits: usize,
+            num_bits: usize,
+            chunk_size: usize,
+            num: &Self::Num,
+        ) -> Result<(Self::Num, Self::Num, Vec<Self::Num>), Error> {
+            let limbs = decompose::<C::Scalar>(&num.value(), NUM_LIMBS_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE);
+            let limbs_assigned = limbs.iter().map(|x| self.assign_witness(layouter, x, 0).unwrap()).collect_vec();
+            debug_assert!(range_bits > 0);
+            assert!((num_bits as u32) <= C::Scalar::CAPACITY);
+            let mut pow_of_two_vec = Vec::new();
+            let pow = C::Scalar::from(2).pow_vartime(&[NUM_LIMB_BITS_NON_NATIVE as u64]);
+            let mut shift = C::Scalar::ONE;
+            for _i in 0..NUM_LIMBS_NON_NATIVE {
+                pow_of_two_vec.push(self.assign_fixed(layouter, &shift, 0).unwrap());
+                shift *= pow;
+            }
+            
+            let limbs_to_num = self.inner_product(
+                layouter,
+                &limbs_assigned,
+                &pow_of_two_vec,
+            )?; 
+
+            self.constrain_equal(layouter, num, &limbs_to_num)?;
+            let challenge_limbs = self.inner_product(layouter, &limbs_assigned[..2], &pow_of_two_vec)?;
+            let challenge_limb_bits = self.limb_to_bits(layouter, NUM_LIMB_BITS_NON_NATIVE, &challenge_limbs, &limbs_assigned[..2])?.iter().take(NUM_CHALLENGE_BITS).cloned().collect_vec();
+
+            Ok((limbs_to_num, challenge_limbs, challenge_limb_bits))
+        }
+
+        pub fn bits_and_num_limbs_hash(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            range_bits: usize,
+            num_bits: usize,
+            num: &Self::Num,
+        ) -> Result<Self::Num, Error> {
+            let limbs = decompose::<C::Scalar>(&num.value(), NUM_LIMBS_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE);
+            let limbs_assigned = limbs.iter().map(|x| self.assign_witness(layouter, x, 0).unwrap()).collect_vec();
+            debug_assert!(range_bits > 0);
+            assert!((num_bits as u32) <= C::Scalar::CAPACITY);
+            let mut pow_of_two_vec = Vec::new();
+            let pow = C::Scalar::from(2).pow_vartime(&[NUM_LIMB_BITS_NON_NATIVE as u64]);
+            let mut shift = C::Scalar::ONE;
+            for _i in 0..NUM_LIMBS_NON_NATIVE {
+                pow_of_two_vec.push(self.assign_fixed(layouter, &shift, 0).unwrap());
+                shift *= pow;
+            }
+            
+            let limbs_to_num = self.inner_product(
+                layouter,
+                &limbs_assigned,
+                &pow_of_two_vec,
+            )?; 
+
+            self.constrain_equal(layouter, num, &limbs_to_num)?;
+            let hash_last_limb_bits = self.num_to_bits(layouter, NUM_LIMB_BITS_NON_NATIVE, &limbs_assigned.last().unwrap())?;
+            let hash_last_limb_bits_truncated = hash_last_limb_bits.iter().take(num_bits - (NUM_LIMBS_NON_NATIVE-1)*NUM_LIMB_BITS_NON_NATIVE).cloned().collect_vec();
+            let hash_last_limb = self.bits_to_num(layouter, &hash_last_limb_bits_truncated)?;
+            let mut hash_limbs = limbs_assigned[..NUM_LIMBS_NON_NATIVE-1].to_vec();
+            hash_limbs.push(hash_last_limb);
+
+            let limbs_to_num_hash = self.inner_product(
+                layouter,
+                &hash_limbs,
+                &pow_of_two_vec,
+            )?; 
+
+            Ok(limbs_to_num_hash)
+        }
+
         /// Constrains and returns little-endian bit vector representation of `a`.
         ///
         /// Assumes `range_bits >= number of bits in a`.
@@ -938,6 +1013,40 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 layouter,
                 &bits,
                 &self.pow_of_two_assigned[..bits.len()],
+            )?; 
+            self.constrain_equal(layouter, num, &acc)?;
+            Ok(bit_cells)
+        }
+
+        /// Constrains and returns little-endian bit vector representation of `a`.
+        ///
+        /// Assumes `range_bits >= number of bits in a`.
+        /// * `a`: [QuantumCell] of the value to convert
+        /// * `range_bits`: range of bits needed to represent `a`. Assumes `range_bits > 0`.
+        pub fn limb_to_bits(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            range_bits: usize,
+            num: &Self::Num,
+            limbs: &[Self::Num], //limbs from low to high
+        ) -> Result<Vec<Self::Num>, Error> {
+            let mut bits_vec = Vec::new();
+            for limb in limbs {
+                let bits = limb.value().to_u64_limbs(range_bits, 1)
+                    .into_iter()
+                    .map(C::Scalar::from)
+                    .collect_vec();
+                bits_vec.push(bits);
+            }
+            let flattened_bits_vec: Vec<_> = bits_vec.into_iter().flatten().collect();
+            debug_assert!(range_bits > 0);
+
+            let (acc, bits_to_num, bit_cells) = self.inner_product_combined(
+                layouter,
+                NUM_CHALLENGE_BITS,
+                9,
+                &flattened_bits_vec,
+                &self.pow_of_two_assigned[..flattened_bits_vec.len()],
             )?; 
             self.constrain_equal(layouter, num, &acc)?;
             Ok(bit_cells)
@@ -1588,13 +1697,20 @@ where
         // let bits = main_chip.num_to_bits(&mut layouter, RANGE_BITS, &a_assigned)?;
         // let num = main_chip.bits_to_num(&mut layouter, &bits[..NUM_HASH_BITS])?;
 
-        /// test bits_and_num, Witness count: 594 + 254(pow2 copy) = 828
+        // /// test bits_and_num, Witness count: 594 + 254(pow2 copy) = 828
+        // let mut rng = OsRng;
+        // let a = C::Scalar::random(&mut rng);
+        // let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
+        // let bits = main_chip.bits_and_num(&mut layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 10, &a_assigned)?;
+        // // let num = main_chip.bits_to_num(&mut layouter, &bits[..NUM_HASH_BITS])?;
+        
+        /// test bits_and_num_LIMBS, Witness count: 597 + 128(bits copy) = 597
         let mut rng = OsRng;
         let a = C::Scalar::random(&mut rng);
         let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
-        let bits = main_chip.bits_and_num(&mut layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 8, &a_assigned)?;
+        let bits = main_chip.bits_and_num_limbs(&mut layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 9, &a_assigned)?;
         // let num = main_chip.bits_to_num(&mut layouter, &bits[..NUM_HASH_BITS])?;
-        
+
         /// test assign_witness_base and mod_reduce, Witness count: 349
         // let mut rng = OsRng;
         // let a = C::Base::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap();

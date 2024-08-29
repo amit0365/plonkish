@@ -4,16 +4,12 @@ pub mod nonnative;
 use std::io::{self, Cursor};
 
 use halo2_base::utils::{PrimeField, ScalarField};
-use halo2_gadgets::poseidon::{spec::PoseidonSpec, PoseidonHash};
+//use halo2_gadgets::poseidon::{spec::PoseidonSpec, PoseidonHash};
+use poseidon::{Spec as PoseidonSpec, Poseidon as PoseidonHash};
 use halo2_proofs::arithmetic::CurveAffine;
 
-use crate::util::{arithmetic::{fe_from_le_bytes, fe_to_limbs, into_coordinates}, transcript::{FieldTranscript, FieldTranscriptRead, FieldTranscriptWrite, InMemoryTranscript, Transcript, TranscriptRead, TranscriptWrite}};
+use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::{R_F, R_P}, util::{arithmetic::{fe_from_le_bytes, fe_to_limbs, into_coordinates}, transcript::{FieldTranscript, FieldTranscriptRead, FieldTranscriptWrite, InMemoryTranscript, Transcript, TranscriptRead, TranscriptWrite}}};
 use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{T, RATE};
-
-pub const R_F: usize = 8;
-pub const R_P: usize = 60;
-pub const SECURE_MDS: usize = 0;
-
 pub const RANGE_BITS: usize = 254;
 pub const NUM_CHALLENGE_BITS: usize = 128;
 pub const NUM_CHALLENGE_BYTES: usize = NUM_CHALLENGE_BITS / 8;
@@ -22,12 +18,12 @@ pub const NUM_HASH_BITS: usize = 250;
 pub const NUM_LIMBS: usize = 3;
 pub const NUM_LIMB_BITS: usize = 88;
 
-    pub fn accumulation_transcript_param<F: ScalarField>() -> PoseidonSpec {
-        PoseidonSpec
+    pub fn accumulation_transcript_param<F: ScalarField>() -> PoseidonSpec<F, T, RATE> {
+        PoseidonSpec::<F, T, RATE>::new(R_F, R_P)
     }
 
-    pub fn decider_transcript_param<F: ScalarField>() -> PoseidonSpec {
-        PoseidonSpec
+    pub fn decider_transcript_param<F: ScalarField>() -> PoseidonSpec<F, T, RATE> {
+        PoseidonSpec::<F, T, RATE>::new(R_F, R_P)
     }
 
     pub struct PoseidonTranscript<F: ScalarField, S> {
@@ -36,11 +32,11 @@ pub const NUM_LIMB_BITS: usize = 88;
     }
 
     impl<F: ScalarField> InMemoryTranscript for PoseidonTranscript<F, Cursor<Vec<u8>>> {
-        type Param = PoseidonSpec;
+        type Param = PoseidonSpec<F, T, RATE>;
 
         fn new(spec: Self::Param) -> Self {
             Self {
-                state: PoseidonHash::from_spec(spec),
+                state: PoseidonHash::new_with_spec(spec),
                 stream: Default::default(),
             }
         }
@@ -51,7 +47,7 @@ pub const NUM_LIMB_BITS: usize = 88;
 
         fn from_proof(spec: Self::Param, proof: &[u8]) -> Self {
             Self {
-                state: PoseidonHash::from_spec(spec),
+                state: PoseidonHash::new_with_spec(spec),
                 stream: Cursor::new(proof.to_vec()),
             }
         }

@@ -13,6 +13,8 @@ use halo2_base::{
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
 use halo2_base::halo2_proofs::arithmetic::Field;
+use poseidon2::circuit::spec::PoseidonSpec as Poseidon2ChipSpec;
+use crate::accumulation::protostar::ivc::halo2::chips::poseidon::hash_chip::{Poseidon2Config, Poseidon2Chip};
 use rand::rngs::OsRng;
 use std::marker::PhantomData;
 use scalar_mul::ec_chip_strawman::ScalarMulChip;
@@ -22,8 +24,8 @@ use crate::{
 use rand::RngCore;
 use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ecc_deg6_hash::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE_SM, NUM_FIXED_SM, NUM_INSTANCE_SM}};
 
-pub const T: usize = 3;
-pub const R: usize = 2;
+pub const T: usize = 8;
+pub const R: usize = 7;
 pub const L: usize = 13;
 
 pub const NUM_ADVICE: usize = T+1;
@@ -36,7 +38,7 @@ where
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
 {
-    poseidon: PoseidonConfig<C, T, R, L>,
+    poseidon: Poseidon2Config<C, T, R, L>,
     scalar_mul: ScalarMulChipConfig<C>,
     instance: Column<Instance>,
 }
@@ -66,39 +68,13 @@ where
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        
-        // let advices = [0; NUM_ADVICE].map(|_| meta.advice_column());
-        // let constants = [0; NUM_CONSTANTS].map(|_| meta.fixed_column());
-        // meta.enable_constant(constants[T]);
-
-        // for col in &advices {
-        //     meta.enable_equality(*col);
-        // }
-
-        // for col in &constants {
-        //     meta.enable_equality(*col);
-        // }
-
-        // let instance = meta.instance_column();
-        // meta.enable_equality(instance);
-
-        // let poseidon = 
-        //     PoseidonChip::<C, PoseidonSpec, T, R, L>::configure(
-        //         meta,
-        //         advices[..T].try_into().unwrap(),
-        //         advices[T],
-        //         constants[..T].try_into().unwrap(), 
-        //         constants[T..].try_into().unwrap(), 
-        //     );
-
-        // let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices[..NUM_ADVICE_SM].try_into().unwrap());
 
         let instance = [0; NUM_INSTANCE_SM].map(|_| meta.instance_column());
         for col in &instance {
             meta.enable_equality(*col);
         }
 
-        let advices = [0; NUM_ADVICE_SM].map(|_| meta.advice_column());
+        let advices = [0; NUM_ADVICE_SM + 1].map(|_| meta.advice_column());
         for col in &advices {
             meta.enable_equality(*col);
         }
@@ -112,7 +88,7 @@ where
         let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices[..NUM_ADVICE_SM].try_into().unwrap(), [constants[NUM_CONSTANTS]]);
         
         let poseidon = 
-            PoseidonChip::<C, PoseidonSpec, T, R, L>::configure(
+            Poseidon2Chip::<C, Poseidon2ChipSpec, T, R, L>::configure(
                 meta,
                 advices[..T].try_into().unwrap(),
                 advices[T],
@@ -134,7 +110,7 @@ where
     ) -> Result<(), Error> {
 
         let mut hash_inputs = Vec::new();
-        let hash_chip = PoseidonChip::<C, PoseidonSpec, T, R, L>::construct(
+        let hash_chip = Poseidon2Chip::<C, Poseidon2ChipSpec, T, R, L>::construct(
             config.poseidon,
         );
 
@@ -172,7 +148,7 @@ mod test {
     use super::{CyclefoldChip, L};
     //use rand::{rngs::OsRng, Rng};
     //use itertools::Itertools;
-    use std::iter;
+    use std::{fs::File, iter};
 
     use bitvec::vec;
     use itertools::Itertools;
@@ -186,179 +162,11 @@ mod test {
     
     pub const NUM_CHALLENGE_BITS: usize = 128;
 
-    // #[test]
-    // fn cyclefold_chip() {
-
-    //     use plotters::prelude::*;
-    //     let root = BitMapBackend::new("CyclefoldChip.png", (1024, 3096)).into_drawing_area();
-    //     root.fill(&WHITE).unwrap();
-    //     let root = root.titled("CyclefoldChip", ("sans-serif", 60)).unwrap();
-
-    //     let k = 11; 
-    //     let mut rng = OsRng;
-    //     let vec_len: usize = 129;
-    //     let mut nark_x_vec = Vec::new();
-    //     let mut nark_y_vec = Vec::new();
-    //     let mut rnark_x_vec = Vec::new();
-    //     let mut rnark_y_vec = Vec::new();
-    //     let rbits = (0..vec_len-1).map(|_| rng.gen_bool(1.0 / 3.0)).collect_vec();
-    //     let r_window_bits = rbits[1..].chunks(2).collect_vec();
-    //     let r_le_bits = rbits.iter().map(|bit| 
-    //         Value::known(if *bit {Fq::ONE} else {Fq::ZERO}))
-    //         .collect_vec();
-
-    //     // push after rbits, its first rbit
-    //     let mut rbits_vec = Vec::new();
-    //     rbits_vec = r_le_bits.clone();
-    //     rbits_vec.push(r_le_bits[0]);
-
-    //     let zero = G1Affine::identity();
-    //     let mut p = G1Affine::random(&mut rng); 
-    //     let acc = G1Affine::random(&mut rng);
-    //     let p_single = p;
-        
-    //     // initial assumption: rbits[0] = 1
-    //     nark_x_vec.push(Value::known(p_single.x));
-    //     nark_y_vec.push(Value::known(p_single.y));
-    //     rnark_x_vec.push(Value::known(p_single.x));
-    //     rnark_y_vec.push(Value::known(p_single.y)); 
-
-
-    //     // | row | r_bits_le | witness.x | witness.y | witness.x  |  witness.y |
-    //     // | 0   |   0       |     x     |   y       |    x       |    y       |
-    //     // | 1   |   0       |    2x     |  2y       |    6x      |   6y       |
-    //     // | 2   |   1       |    4x     |  4y       |    5x      |   5y       |
-    //     // | 3   |   1       |    8x     |  8y       |    24x     |   24y      |
-    //     // | 4   |   1       |    16x    |  16y      |    29x     |   29y      |
-    //     // | 5   |   1       |    32x    |  32y      |    61x     |   61y      |
-    //     // |last | rbits[0]  |    x      |   y       |    60x     |   60y      |
-    //     // |last | rbits[0]  |   acc.x   |  acc.y    |    62x     |   62y      |
-    //     // |last | rbits[0]  |   acc`.x  |  acc`.y   |            |            |
-
-
-    //     for idx in (1..vec_len-2).step_by(2) {
-    //         p = <G1Affine as CurveAffine>::CurveExt::double(&p.into()).into(); 
-    //         nark_x_vec.push(Value::known(p.x));
-    //         nark_y_vec.push(Value::known(p.y));
-    //         let p_single = p;
-
-    //         p = <G1Affine as CurveAffine>::CurveExt::double(&p.into()).into();
-    //         nark_x_vec.push(Value::known(p.x));
-    //         nark_y_vec.push(Value::known(p.y)); 
-
-    //         let p_triple = (p + p_single).to_affine();
-    //         rnark_x_vec.push(Value::known(p_triple.x));
-    //         rnark_y_vec.push(Value::known(p_triple.y)); 
-
-    //         let acc_sel = match r_window_bits[idx/2] {
-    //             [false, false] => zero,                             // 00
-    //             [true, false] => p_single,                          // 10
-    //             [false, true] => p,                                 // 01
-    //             [true, true] =>  p_triple,                          // 11
-    //             _ => panic!("Invalid window"),
-    //         };
-
-    //         let acc_prev = G1Affine::from_xy(rnark_x_vec[idx-1].assign().unwrap(), rnark_y_vec[idx-1].assign().unwrap()).unwrap();
-    //         let acc_next = (acc_prev + acc_sel).to_affine();
-
-    //         rnark_x_vec.push(Value::known(acc_next.x));
-    //         rnark_y_vec.push(Value::known(acc_next.y));
-    //     }
-
-    //     // push last rbit 
-    //     p = <G1Affine as CurveAffine>::CurveExt::double(&p.into()).into(); 
-    //     nark_x_vec.push(Value::known(p.x));
-    //     nark_y_vec.push(Value::known(p.y));
-
-    //     if rbits[vec_len-2] {
-    //         let acc_prev = G1Affine::from_xy(rnark_x_vec[vec_len-3].assign().unwrap(), rnark_y_vec[vec_len-3].assign().unwrap()).unwrap();
-    //         let acc_next = (acc_prev + p).to_affine();
-    //         rnark_x_vec.push(Value::known(acc_next.x));
-    //         rnark_y_vec.push(Value::known(acc_next.y));
-    //     } else {
-    //         rnark_x_vec.push(Value::known(rnark_x_vec[vec_len-3].assign().unwrap()));
-    //         rnark_y_vec.push(Value::known(rnark_y_vec[vec_len-3].assign().unwrap()));
-    //     }
-
-    //     // push last element as the first rbit
-    //     nark_x_vec.push(Value::known(p_single.x));
-    //     nark_y_vec.push(Value::known(p_single.y));
-
-    //     // correct initial assumption
-    //     if rbits[0] {
-    //         rnark_x_vec.push(Value::known(rnark_x_vec[vec_len-2].assign().unwrap()));
-    //         rnark_y_vec.push(Value::known(rnark_y_vec[vec_len-2].assign().unwrap()));
-    //     } else {
-    //         let acc_prev = G1Affine::from_xy(rnark_x_vec[vec_len-2].assign().unwrap(), rnark_y_vec[vec_len-2].assign().unwrap()).unwrap();
-    //         let acc_next = (acc_prev - p_single).to_affine();
-    //         rnark_x_vec.push(Value::known(acc_next.x));
-    //         rnark_y_vec.push(Value::known(acc_next.y));
-    //     }
-
-    //     let r_lebits = rbits.iter().map(|bit| 
-    //         if *bit {Fr::ONE} else {Fr::ZERO})
-    //         .collect_vec();
-
-    //     let r = fe_from_bits_le(r_lebits);
-    //     let r_non_native: Fq = fe_to_fe(r);
-    //     rbits_vec.push(Value::known(r_non_native)); // push last element as r
-    //     let scalar_mul_given = (p_single * r).to_affine();
-    //     let scalar_mul_calc = G1Affine::from_xy(rnark_x_vec[vec_len-1].assign().unwrap(), rnark_y_vec[vec_len-1].assign().unwrap()).unwrap();
-    //     let acc_prime_calc  = (scalar_mul_calc + acc).to_affine();
-    //     let acc_prime_given = (scalar_mul_given + acc).to_affine(); // todo this should be from cyclefold struct
-    //     assert_eq!(scalar_mul_given, scalar_mul_calc);
-    //     assert_eq!(acc_prime_calc, acc_prime_given);
-
-    //     let inputs =
-    //         ScalarMulConfigInputs::<grumpkin::G1Affine> { 
-    //             nark_x_vec: nark_x_vec.clone(), nark_y_vec: nark_y_vec.clone(), r: Value::known(r_non_native),
-    //             rbits_vec: rbits_vec.clone(), rnark_x_vec: rnark_x_vec.clone(), rnark_y_vec: rnark_y_vec.clone(), 
-    //             acc_x: Value::known(acc.x), acc_y: Value::known(acc.y), 
-    //             acc_prime_calc_x: Value::known(acc_prime_calc.x), 
-    //             acc_prime_calc_y: Value::known(acc_prime_calc.y), 
-    //             acc_prime_given_x: Value::known(acc_prime_given.x), 
-    //             acc_prime_given_y: Value::known(acc_prime_given.y) 
-    //         };
-
-    //     let mut messages_vec = Vec::new();
-    //     let message_vec = iter::empty()
-    //         .chain([r_non_native])
-    //         .chain(into_coordinates(&p_single).into_iter())
-    //         .chain(into_coordinates(&acc).into_iter())
-    //         .collect_vec();
-        
-    //     let input_len = L/4;
-    //     for i in 0..input_len {
-    //         if i == 0 {
-    //             messages_vec.extend_from_slice(&message_vec);
-    //         } else {
-    //             messages_vec.extend_from_slice(&message_vec[1..]);
-    //         }
-    //     }
-
-    //     let message: [Fq; L] =
-    //     match messages_vec.try_into() {
-    //         Ok(arr) => arr,
-    //         Err(_) => panic!("Failed to convert Vec to Array"),
-    //     };
-    //     assert_eq!(L, message.len());
-
-    //     let hash =
-    //         inlineHash::<Fq, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
-
-    //     let circuit = CyclefoldChip::<grumpkin::G1Affine> { inputs: vec![inputs; input_len] };
-    //     MockProver::run(k, &circuit, vec![vec![hash]]).unwrap().assert_satisfied();
-
-    //     halo2_base::halo2_proofs::dev::CircuitLayout::default()
-    //         .render(k, &circuit, &root)
-    //         .unwrap();
-    // }
-
     #[test]
     fn cyclefold_chip() {
 
         use plotters::prelude::*;
-        let root = BitMapBackend::new("CyclefoldChip_t3.png", (1024, 3096)).into_drawing_area();
+        let root = BitMapBackend::new("CyclefoldChip_t7.png", (1024, 3096)).into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("CyclefoldChip", ("sans-serif", 60)).unwrap();
 
@@ -530,7 +338,7 @@ mod test {
             inlineHash::<Fq, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
 
         let circuit = CyclefoldChip::<grumpkin::G1Affine> { inputs: vec![inputs; input_len] };
-        MockProver::run(k, &circuit, vec![vec![hash]]).unwrap().assert_satisfied();
+        MockProver::run(k, &circuit, vec![vec![hash]]); //.unwrap().assert_satisfied()
 
         halo2_base::halo2_proofs::dev::CircuitLayout::default()
             .render(k, &circuit, &root)

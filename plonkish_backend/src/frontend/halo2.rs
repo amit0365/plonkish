@@ -6,17 +6,16 @@ use crate::{
         Itertools,
     },
 };
-use bincode::config;
-use halo2_base::{gates::circuit::BaseCircuitParams, halo2_proofs::{
+use ark_std::iterable::Iterable;
+use halo2_base::halo2_proofs::{
     circuit::Value,
     plonk::{
         self, Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem, Error, Fixed, FloorPlanner, Instance, Selector
     },
-}};
-use halo2_gadgets::ecc::chip::constants;
+};
 use rand::RngCore;
 use std::{
-    collections::{HashMap, HashSet}, convert, iter, mem
+    collections::{HashMap, HashSet}, iter, mem
 };
 
 pub mod layouter;
@@ -130,11 +129,17 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         .gates()
         .iter()
         .flat_map(|gate| {
-            gate.polynomials().iter().map(|expression| {
-                expression.clone()
-            })
+            gate.polynomials().iter().cloned()
+            // gate.polynomials().iter().map(|expression| {
+            //     expression.clone()
+            // })
         })
     .collect_vec();
+    //todo assuming each gate has only one selector
+    let queried_selectors: HashMap<usize, usize> = cs.gates().iter().map(|gate| {
+        let selector_index = gate.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
+        (selector_index, gate.polynomials().len())
+    }).collect();
 
     let lookups = cs
         .lookups()
@@ -171,7 +176,7 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .collect_vec()
         })
         .collect_vec();
-
+    println!("done gate and lookup exp");
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
         vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];
@@ -219,6 +224,8 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         max_degree: Some(cs.degree()),
         fixed_permutation_idx_for_preprocess_poly,
         fixed_permutation_idx_for_permutation_constraints,
+        queried_selectors,
+        selector_map: HashMap::new(),
     })
 }
 
@@ -248,14 +255,14 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         .collect();
     let mut preprocess_collector = PreprocessCollector {
         k: *k,
-        num_instances: num_instances,        
+        num_instances,        
         fixeds: vec![vec![F::ZERO.into(); 1 << k]; cs.num_fixed_columns()],
         permutation: Permutation::new(permutation_column_idx),
         selectors: vec![vec![false; 1 << k]; cs.num_selectors()],
         row_mapping,
         selector_map: HashMap::new(),
     };
-    
+    let queried_selectors = &circuit_info.queried_selectors;
     C::FloorPlanner::synthesize(
         &mut preprocess_collector,
         circuit,
@@ -274,6 +281,12 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         }))
         .collect();
     circuit_info.permutations = preprocess_collector.permutation.into_cycles();
+    circuit_info.selector_map = preprocess_collector.selector_map.clone();
+
+    // let selector_map = preprocess_collector.selector_map.iter().map(|(selector, rows)| (*selector, *queried_selectors.get(selector).unwrap(), rows.len())).collect_vec();
+    // // let selector_map: HashMap<usize, (usize, usize)> = preprocess_collector.selector_map.iter()
+    // // .map(|(selector, rows)| (*selector, (*queried_selectors.get(selector).unwrap(), rows.len())))
+    // // .collect();
     Ok(circuit_info)
 }
 
@@ -342,7 +355,7 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         A: FnOnce() -> AR,
         AR: Into<String>,
     {   
-        self.selector_map.entry(selector.index()).or_insert_with(Vec::new).push(row);
+        self.selector_map.entry(selector.index()).or_default().push(row);
         let Some(row) = self.row_mapping.get(row).copied() else {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k});
         };
@@ -764,7 +777,7 @@ fn batch_invert_assigned<F: Field>(assigneds: Vec<Vec<Assigned<F>>>) -> Vec<Vec<
 
     assigneds
         .iter()
-        .zip(denoms.into_iter())
+        .zip(denoms)
         .map(|(assigneds, denoms)| {
             assigneds
                 .iter()

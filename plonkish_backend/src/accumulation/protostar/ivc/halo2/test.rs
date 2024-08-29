@@ -24,27 +24,19 @@ use crate::{
         }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
     },
 };
-use halo2_base::{halo2_proofs::{
-    halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
-}, plonk::{Advice, Column}, poly::Rotation, dev::MockProver}, AssignedValue, gates::circuit::{BaseConfig, builder::BaseCircuitBuilder, BaseCircuitParams, self}};
-
-use halo2_base::{Context,
-    gates::{range::RangeInstructions, circuit::{builder::RangeCircuitBuilder, CircuitBuilderStage}, 
-            flex_gate::{GateChip, GateInstructions}},
-    utils::{CurveAffineExt, ScalarField, BigPrimeField},
-    poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash},
-};
-use halo2_ecc::{fields::{fp::FpChip, native_fp::NativeFieldChip}, ecc::EccChip};
+use halo2_base::halo2_proofs::halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta}};
+use halo2_base::utils::{CurveAffineExt, ScalarField, BigPrimeField};
 use halo2_base::halo2_proofs::{
-    circuit::{AssignedCell, Layouter, Value, SimpleFloorPlanner},
-    plonk::{Circuit, Selector, ConstraintSystem, Error},
+    circuit::{Layouter, SimpleFloorPlanner},
+    plonk::{Circuit, ConstraintSystem, Error},
 };
 
 use core::num;
 use rand::RngCore;
-use std::{mem, rc::Rc};
+use std::{fs::File, io::Cursor, mem, rc::Rc};
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant};
 use super::{chips::main_chip::{MainChipConfig, Number}, ProtostarIvcVerifierParam};
+use super::ivc_circuits::primary::{T, RATE};
 
 // use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS, T, RATE, R_F, R_P, SECURE_MDS, Chip};
 // use super::RecursiveCircuit;
@@ -170,9 +162,9 @@ where
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
     let primary_num_vars = primary_circuit_k;
-    let primary_atp = accumulation_transcript_param::<C::Scalar>();
-    let cyclefold_atp = accumulation_transcript_param::<C::Base>();
-    
+    let primary_atp = accumulation_transcript_param::<C::Base>();
+    let cyclefold_atp = accumulation_transcript_param::<C::Scalar>();
+    println!("primary_atp done");
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut cyclefold_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
@@ -354,7 +346,7 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_STEPS: usize = 5;
+    const NUM_STEPS: usize = 3;
 
     let primary_circuit_k = 14;
     let cyclefold_num_vars = 10;

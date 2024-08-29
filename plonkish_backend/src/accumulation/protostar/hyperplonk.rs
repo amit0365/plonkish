@@ -35,7 +35,7 @@ use crate::{
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use rand::RngCore;
 use core::time;
-use std::{borrow::{BorrowMut, Borrow}, hash::Hash, iter::{self, once}};
+use std::{borrow::{Borrow, BorrowMut}, collections::HashMap, hash::Hash, iter::{self, once}};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use rayon::iter::IndexedParallelIterator;
@@ -276,7 +276,7 @@ where
             num_alpha_primes,
             ..
         } = pp;
-
+        let timer = start_timer(|| "instances");
         let instances = circuit.instances();
         for (num_instances, instances) in pp.num_instances.iter().zip_eq(instances) {
             assert_eq!(instances.len(), *num_instances);
@@ -379,15 +379,9 @@ where
             }
         };
 
-
         let phase2_poly = [lookup_h_poly_vec.clone(), powers_of_zeta_poly.clone()].concat();
         let phase2_poly_concat =  concat_polys(phase2_poly);
         let phase2_comm = Pcs::commit_and_write(&pp.pcs, &phase2_poly_concat, transcript)?;
-        
-        println!("lookup_h_polys_len {:?}", lookup_h_poly_vec.len());
-        println!("powers_of_zeta_poly_len {:?}", powers_of_zeta_poly.len());
-        println!("phase2_poly_concat_num_vars {:?}", phase2_poly_concat.num_vars());
-
 
         // Round 2
         let alpha_primes = powers(transcript.squeeze_challenge())
@@ -395,7 +389,7 @@ where
             .take(*num_alpha_primes)
             .collect_vec();
 
-            Ok(PlonkishNark::new(
+        Ok(PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
                 .chain(challenges)
@@ -518,7 +512,6 @@ where
                 transcript.write_field_elements(&compressed_cross_term_sums)?;
 
                 // Round 0
-
                 let r = transcript.squeeze_challenge();
                 let r_le_bits = fe_to_bits_le(r.clone()).iter().copied().take(NUM_CHALLENGE_BITS).collect_vec();
                 assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
@@ -675,6 +668,8 @@ where
             cross_term_expressions,
             gate_expressions,
             lookup_expressions,
+            queried_selectors,
+            selector_map,
             ..
         } = pp;
         let accumulator = accumulator.borrow_mut();
@@ -759,25 +754,57 @@ where
                 let r = transcript.squeeze_challenge();
 
                 let paired_data = Paired::<'_, F>::new_data(pp.num_vars, num_fixed, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes, &pp.preprocess_polys, beta_refs, &incoming, &accumulator);
-                //let full_constraint = paired_data.full_constraint(gate_expressions.to_vec(), lookup_expressions.to_vec());
                 let ys_paired_vec = paired_data.ys_paired_vec();
                 let gate_constraint_vec = paired_data.full_constraint_vec(gate_expressions.to_vec(), lookup_expressions.to_vec());
 
+                let mut constraint_idx = 0;
+                let mut total_constraints_vec = HashMap::new();
+                let mut sorted_selectors: Vec<_> = queried_selectors.iter().collect();
+                sorted_selectors.sort_by_key(|&(idx, _)| idx);
+                println!("sorted_selectors: {:?}", sorted_selectors.len());
+
+                for (selector_idx, num_constraints) in sorted_selectors {
+                    let selector_constraints_vec: Vec<_> = gate_constraint_vec
+                        .iter()
+                        .skip(constraint_idx)
+                        .take(*num_constraints)
+                        .cloned()
+                        .collect();
+                    total_constraints_vec.insert(*selector_idx, selector_constraints_vec.clone());
+                    constraint_idx += *num_constraints;
+                }
+
                 let num_vars = pp.num_vars;
                 let rows = 1 << num_vars;
-                let last_row: usize = 685;
+                let last_row: usize = 529;
                 let usable_rows = 0..rows;
                 let sm_rows = 0..129;
                 let add_rows = 129..130;
 
                 let timer = start_timer(|| "evaluate_compressed_polynomial");
-                // let error_poly = Paired::<'_, F>::evaluate_compressed_polynomial(
-                //     full_constraint.clone(),
-                //     0..1<<pp.num_vars, 
-                //     pp.num_vars,
-                // );
-                // println!("error_poly_combined: {:?}", error_poly);
+                let ys_poly_gatewise: Vec<Vec<F>> = ys_paired_vec.into_par_iter().map(|constraint| 
+                    Paired::<'_, F>::evaluate_ys_polynomial(
+                    constraint.clone(),
+                    0..last_row, 
+                    num_vars,
+                )).collect();
+                let mut ys_poly_gatewise_full = vec![vec![F::ONE, F::ONE]];
+                ys_poly_gatewise_full.extend(ys_poly_gatewise);
+                end_timer(timer);
 
+                let timer = start_timer(|| "evaluate_compressed_polynomial_allrows");
+                let error_poly_selectorwise: Vec<Vec<Vec<F>>> = total_constraints_vec.into_par_iter().map(|(selector_idx, selector_constraints)| {
+                    selector_constraints.into_par_iter().map(|constraint| 
+                        Paired::<'_, F>::evaluate_compressed_polynomial_allrows(
+                            constraint.clone(),
+                            selector_map.get(&selector_idx).unwrap().clone(), 
+                            num_vars,
+                        )
+                    ).collect::<Vec<Vec<F>>>()
+                }).collect();
+                end_timer(timer);
+
+                // let timer = start_timer(|| "evaluate_compressed_polynomial");
                 // let error_poly_sm: Vec<Vec<F>> = gate_constraint_vec[..3].into_par_iter().map(|constraint| 
                 //     Paired::<'_, F>::evaluate_compressed_polynomial(
                 //     constraint.clone(),
@@ -785,7 +812,7 @@ where
                 //     num_vars,
                 // )).collect();
 
-                //let error_poly_add: Vec<Vec<F>> = gate_constraint_vec[3..5].into_par_iter().map(|constraint| 
+                // let error_poly_add: Vec<Vec<F>> = gate_constraint_vec[3..5].into_par_iter().map(|constraint| 
                 //     Paired::<'_, F>::evaluate_compressed_polynomial(
                 //     constraint.clone(),
                 //     129..130, 
@@ -812,50 +839,79 @@ where
                 //     390..last_row, 
                 //     num_vars,
                 // )).collect();
-
-                // let timer = start_timer(|| "error_poly_gatewise_par");
-                // let error_poly_gatewise: Vec<Vec<F>> = gate_constraint_vec.into_par_iter().map(|constraint| 
-                //     Paired::<'_, F>::evaluate_compressed_polynomial(
-                //     constraint.clone(),
-                //     0..rows, 
-                //     num_vars,
-                // )).collect();
                 // end_timer(timer);
-                // println!("error_poly_gatewise: {:?}", error_poly_gatewise.len());
 
-                // let error_poly_gatewise = [&error_poly_sm[..], &error_poly_add[..], &error_poly_aff[..], &error_poly_num[..], &error_poly_poseidon[..] ].concat();
-                // let ys_poly_gatewise: Vec<Vec<F>> = ys_paired_vec.into_par_iter().map(|constraint| 
-                //     Paired::<'_, F>::evaluate_ys_polynomial(
-                //     constraint.clone(),
-                //     0..last_row, 
-                //     num_vars,
-                // )).collect();
-
-                // let error_poly_vec: Vec<Vec<F>> = error_poly_gatewise.clone().into_iter().skip(1)
-                //     .zip(ys_poly_gatewise.into_iter()) // Pair up corresponding inner vectors
-                //     .map(|(inner_vec1, inner_vec2)| {
-                //         let mut r = vec![F::ZERO; inner_vec1.len() + inner_vec2.len() - 1];
-                //             for (k, value) in r.iter_mut().enumerate() {
-                //                 for (i, &pi) in inner_vec1.iter().enumerate() {
-                //                     if let Some(&qj) = inner_vec2.get(k - i) {
-                //                         *value += pi * qj;
-                //                     }
-                //                 }
-                //             }
-                //         r
-                //     }).collect_vec();
-                
-                // let error_poly_vec_corrected = [&vec![error_poly_gatewise[0].clone()], &error_poly_vec[..]].concat();
-                // let inner_len = error_poly_vec_corrected.par_iter().map(|v| v.len()).max().unwrap_or(0);
-                // let error_poly_sum: Vec<F> = (0..inner_len).into_par_iter().map(|i| {
-                //     error_poly_vec_corrected.par_iter()
-                //         .map(|inner_vec| inner_vec.get(i).unwrap_or(&F::ZERO).clone())
-                //         .reduce(|| F::ZERO, |a, b| a + b) // Use reduce with a starting value for parallel sum.
-                // }).collect();
+                let timer = start_timer(|| "error_poly_poseidon_combined");
+                let mut error_poly_poseidon_combined: Vec<Vec<Vec<F>>> = vec![];
+                for error_poly in error_poly_selectorwise[4..].iter() {
+                    let error_poly_combined = error_poly.iter()
+                        .zip(ys_poly_gatewise_full.clone()) // Pair up corresponding inner vectors
+                        .map(|(inner_vec1, inner_vec2)| {
+                            let mut r = vec![F::ZERO; inner_vec1.len() + inner_vec2.len() - 1];
+                                for (k, value) in r.iter_mut().enumerate() {
+                                    for (i, &pi) in inner_vec1.iter().enumerate() {
+                                        if let Some(j) = k.checked_sub(i) {
+                                            if let Some(&qj) = inner_vec2.get(j) {
+                                                *value += pi * qj;
+                                            }
+                                        }
+                                    }
+                                }
+                            r
+                        }).collect_vec();
+                    error_poly_poseidon_combined.push(error_poly_combined);
+                }
                 end_timer(timer);
-                // println!("error_poly_sum: {:?}", error_poly_sum);
-                let error_poly_sum = vec![F::ZERO; 2];
-                // transcript.write_field_elements(&error_poly)?;
+
+                let timer = start_timer(|| "error_poly_sm_num");
+                let error_poly_sm_num = [error_poly_selectorwise[0].clone(), error_poly_selectorwise[3].clone()].concat();
+                let error_poly_sm_num_vec: Vec<Vec<F>> = error_poly_sm_num.clone().into_iter()
+                    .zip(ys_poly_gatewise_full.clone()) // Pair up corresponding inner vectors
+                    .map(|(inner_vec1, inner_vec2)| {
+                        let mut r = vec![F::ZERO; inner_vec1.len() + inner_vec2.len() - 1];
+                            for (k, value) in r.iter_mut().enumerate() {
+                                for (i, &pi) in inner_vec1.iter().enumerate() {
+                                    if let Some(j) = k.checked_sub(i) {
+                                        if let Some(&qj) = inner_vec2.get(j) {
+                                            *value += pi * qj;
+                                        }
+                                    }
+                                }
+                            }
+                        r
+                    }).collect_vec();
+                end_timer(timer);
+
+                let timer = start_timer(|| "error_poly_add_aff");
+                let error_poly_add_aff = [error_poly_selectorwise[1].clone(), error_poly_selectorwise[2].clone()].concat();
+                let error_poly_add_aff_vec: Vec<Vec<F>> = error_poly_add_aff.clone().into_iter()
+                    .zip(ys_poly_gatewise_full) // Pair up corresponding inner vectors
+                    .map(|(inner_vec1, inner_vec2)| {
+                        let mut r = vec![F::ZERO; inner_vec1.len() + inner_vec2.len() - 1];
+                            for (k, value) in r.iter_mut().enumerate() {
+                                for (i, &pi) in inner_vec1.iter().enumerate() {
+                                    if let Some(j) = k.checked_sub(i) {
+                                        if let Some(&qj) = inner_vec2.get(j) {
+                                            *value += pi * qj;
+                                        }
+                                    }
+                                }
+                            }
+                        r
+                    }).collect_vec();
+                end_timer(timer);
+
+                let timer = start_timer(|| "error_poly_combined");
+                // let error_poly_gatewise_combined = [&error_poly_sm_num_vec[..], &error_poly_add_aff_vec[..], &error_poly_poseidon_combined.iter().flatten().cloned().collect::<Vec<_>>()].concat();                
+                let error_poly_gatewise_combined = [&error_poly_sm_num_vec[..], &error_poly_add_aff_vec[..], &error_poly_poseidon_combined[0], &error_poly_poseidon_combined[1], &error_poly_poseidon_combined[2]].concat();                
+                let inner_len = error_poly_gatewise_combined.par_iter().map(|v| v.len()).max().unwrap_or(0);
+                let error_poly_sum: Vec<F> = (0..inner_len).into_par_iter().map(|i| {
+                    error_poly_gatewise_combined.par_iter()
+                        .map(|inner_vec| *inner_vec.get(i).unwrap_or(&F::ZERO))
+                        .reduce(|| F::ZERO, |a, b| a + b) // Use reduce with a starting value for parallel sum.
+                }).collect();
+                end_timer(timer);
+
                 transcript.write_field_elements(&error_poly_sum)?;
 
                 let timer = start_timer(|| "fold_compressed");

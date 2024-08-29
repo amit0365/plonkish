@@ -10,7 +10,7 @@ use crate::{
 };
 use halo2_base::halo2_proofs::plonk;
 use rand::RngCore;
-use std::{collections::BTreeSet, fmt::Debug, iter};
+use std::{collections::{BTreeSet, HashMap}, fmt::Debug, iter};
 
 pub mod hyperplonk;
 
@@ -79,6 +79,10 @@ pub struct PlonkishCircuitInfo<F> {
     pub fixed_permutation_idx_for_preprocess_poly: Vec<usize>,
     // used in decider permutation constraints
     pub fixed_permutation_idx_for_permutation_constraints: Vec<usize>,
+    // tuple of selector_index and constraints_len
+    pub queried_selectors: HashMap<usize, usize>,
+    // map of selector index to the rows it is applied to
+    pub selector_map: HashMap<usize, Vec<usize>>,
 }
 
 impl<F: Clone> PlonkishCircuitInfo<F> {

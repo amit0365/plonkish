@@ -43,6 +43,9 @@ use crate::{
     },
 };
 
+use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{T, RATE};
+use crate::accumulation::protostar::ivc::halo2::chips::{T as T2, R as R2};
+
 use std::{
     borrow::{Borrow, BorrowMut, Cow},
     collections::{btree_map::Entry, BTreeMap, HashMap, BTreeSet},
@@ -72,12 +75,6 @@ use halo2_base::{
     AssignedValue,
     poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, 
     halo2_proofs::dev::MockProver, virtual_region::copy_constraints::SharedCopyConstraintManager,
-};
-
-use halo2_ecc::{
-    fields::native_fp::NativeFieldChip,
-    fields::fp::FpChip,
-    ecc::{EccChip, EcPoint}, bigint::{ProperCrtUint, ProperUint},
 };
 
 use halo2_base::halo2_proofs::{
@@ -1188,10 +1185,10 @@ where
 {
     vp_digest: C::Scalar,
     primary_vp: ProtostarVerifierParam<C::Scalar, HyperPlonk<P1>>,
-    primary_hp: PoseidonSpec,
+    primary_hp: PoseidonSpec,//<C::Scalar, T, RATE>,
     primary_arity: usize,
     cyclefold_vp: ProtostarVerifierParam<C::Base, HyperPlonk<P2>>,
-    cyclefold_hp: PoseidonSpec,
+    cyclefold_hp: Spec<C::Base, T2, R2>,
     cyclefold_arity: usize,
     _marker: PhantomData<C>,
 }
@@ -1257,9 +1254,9 @@ where
     AT2: InMemoryTranscript,
 {
     // assert_eq!(Chip::<C>::NUM_HASH_BITS, Chip::<C::Secondary>::NUM_HASH_BITS);
-    let primary_param = P1::setup(1 << (primary_num_vars + 3), 0, &mut rng).unwrap();
-    let cyclefold_param = P2::setup(1 << (cyclefold_num_vars + 3), 0, &mut rng).unwrap(); // todo change this
-    
+    let primary_param = P1::setup(1 << (primary_num_vars + 4), 0, &mut rng).unwrap();
+    let cyclefold_param = P2::setup(1 << (cyclefold_num_vars + 4), 0, &mut rng).unwrap(); // todo change this
+
     let primary_circuit = PrimaryCircuit::new(true, primary_step_circuit, None, None);
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, ());
@@ -1308,10 +1305,10 @@ where
         ProtostarIvcVerifierParam {
             vp_digest,
             primary_vp: *primary_vp,
-            primary_hp: *primary_circuit.circuit().hash_config.borrow(),
+            primary_hp: primary_circuit.circuit().hash_config.clone(),
             primary_arity: S1::arity(),
             cyclefold_vp: *cyclefold_vp,
-            cyclefold_hp: *cyclefold_circuit.circuit().hash_config.borrow(),
+            cyclefold_hp: cyclefold_circuit.circuit().hash_config.clone(),
             // TODO CHECK THIS
             cyclefold_arity: CF_IO_LEN,
             _marker: PhantomData,
@@ -1390,7 +1387,7 @@ where
 
         let primary_instances = primary_circuit.instances()[0].clone().try_into().unwrap();
 
-            primary_circuit.update_witness(|circuit| {
+        primary_circuit.update_witness(|circuit| {
                 circuit.update_both_running_instances(
                     r_le_bits.clone(), 
                     primary_nark_x.witness_comms.clone(), 
@@ -1435,7 +1432,7 @@ where
                     cyclefold_transcript.into_proof()
                 };
 
-            end_timer(timer);
+
 
             primary_circuit.update_witness(|circuit| {
                 circuit.update_from_cyclefold(

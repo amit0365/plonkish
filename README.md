@@ -1,5 +1,10 @@
 # Plonkish
 
+halo2_gadgets = { git = "https://github.com/amit0365/halo2", package="halo2_gadgets", branch = "protostar"}
+
+halo2_gadgets = { path = "/Users/ak36/Desktop/protostar/halo2/halo2_gadgets" , default-features = true}
+
+
 Research focused repository on plonkish arithmetization.
 
 ## Benchmark

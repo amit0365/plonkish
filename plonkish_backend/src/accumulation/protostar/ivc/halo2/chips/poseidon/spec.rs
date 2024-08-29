@@ -6,6 +6,8 @@ pub const R_F: usize = 8;
 pub const R_P: usize = 56;
 pub const SECURE_MDS: usize = 0;
 
+use crate::util::{end_timer, start_timer};
+
 use super::params as poseidon_params;
 use halo2_base::utils::{FromUniformBytes, PrimeField};
 use halo2_gadgets::poseidon::primitives::*;
@@ -37,11 +39,12 @@ impl Spec<Fp, 5, 4> for PoseidonSpecFp {
         unimplemented!()
     }
 
-    fn constants() -> (Vec<[Fp; 5]>, MdsFp<Fp, 5>, MdsFp<Fp, 5>) {
+    fn constants() -> (Vec<[Fp; 5]>, MdsFp<Fp, 5>, MdsFp<Fp, 5>, [Fp; 5]) {
         (
             poseidon_params::ROUND_CONSTANTS[..].to_vec(),
             poseidon_params::MDS,
             poseidon_params::MDS_INV,
+            poseidon_params::MDS_INV[0],
         )
     }
 }
@@ -66,7 +69,10 @@ F: FromUniformBytes<64> + Ord,
         SECURE_MDS
     }
 
-    fn constants() -> (Vec<[F; T]>, Mds<F, T>, Mds<F, T>) {
-        generate_constants::<F, PoseidonSpec, T, R>()
+    fn constants() -> (Vec<[F; T]>, Mds<F, T>, Mds<F, T>, [F; T]) {
+        let timer = start_timer(|| "generate_constants");
+        let constants = generate_constants::<F, PoseidonSpec, T, R>();
+        end_timer(timer);
+        constants
     }
 }

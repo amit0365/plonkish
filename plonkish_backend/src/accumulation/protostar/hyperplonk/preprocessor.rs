@@ -92,9 +92,9 @@ where
         circuit_info.num_instances.len() + circuit_info.preprocess_polys.len();
     let num_witness_polys = circuit_info.num_witness_polys.iter().sum::<usize>();
     // let poly_setup = num_witness_polys.next_power_of_two().ilog2() as usize + circuit_info.k;
-    let poly_setup = circuit_info.k + 3;
+    let poly_setup = circuit_info.k + 4;
     let num_permutation_z_polys = div_ceil(circuit_info.permutation_polys().len(), max_degree - 1);
-
+    println!("hyperplonk preprocess strategy start");
     let (
         num_builtin_witness_polys,
         alpha_prime_offset,
@@ -200,47 +200,51 @@ where
                     .chain((builtin_witness_poly_offset..).take(num_builtin_witness_polys))
                     .collect(),
             };
+            println!("poly_set done");
             let powers_of_zeta = builtin_witness_poly_offset + circuit_info.lookups.len() * 3;
-            let compressed_products = {
-                let lookup_constraints_vec = lookup_constraints.unwrap_or_else(Vec::new);
-                let mut constraints = iter::empty()
-                    .chain(circuit_info.constraints.iter())
-                    .chain(lookup_constraints_vec.iter())
-                    .collect_vec();
-                let folding_degrees = constraints
-                    .iter()
-                    .map(|constraint| folding_degree(&poly_set.preprocess, constraint))
-                    .enumerate()
-                    .sorted_by(|a, b| b.1.cmp(&a.1))
-                    .collect_vec();
-                if let &[a, b, ..] = &folding_degrees[..] {
-                    if a.1 != b.1 {
-                        constraints.swap(0, a.0);
-                    }
-                }
-                let powers_of_zeta =
-                    Expression::<F>::Polynomial(Query::new(powers_of_zeta, Rotation::cur()));
-                let compressed_constraint = iter::empty()
-                    .chain(constraints.first().cloned().cloned())
-                    .chain(
-                        constraints
-                            .into_iter()
-                            .skip(1)
-                            .zip((alpha_prime_offset..).map(Expression::Challenge))
-                            .map(|(constraint, challenge)| constraint * challenge),
-                    )
-                    .sum::<Expression<_>>() * powers_of_zeta.clone(); 
-                    products(&poly_set.preprocess, &compressed_constraint)
-                };
-
+            // let compressed_products = {
+            //     let lookup_constraints_vec = lookup_constraints.unwrap_or_else(Vec::new);
+            //     let mut constraints = iter::empty()
+            //         .chain(circuit_info.constraints.iter())
+            //         .chain(lookup_constraints_vec.iter())
+            //         .collect_vec();
+            //     let folding_degrees = constraints
+            //         .iter()
+            //         .map(|constraint| folding_degree(&poly_set.preprocess, constraint))
+            //         .enumerate()
+            //         .sorted_by(|a, b| b.1.cmp(&a.1))
+            //         .collect_vec();
+            //     if let &[a, b, ..] = &folding_degrees[..] {
+            //         if a.1 != b.1 {
+            //             constraints.swap(0, a.0);
+            //         }
+            //     }
+            //     let powers_of_zeta =
+            //         Expression::<F>::Polynomial(Query::new(powers_of_zeta, Rotation::cur()));
+            //     println!("start compressed cnostraint");
+            //     let compressed_constraint = iter::empty()
+            //         .chain(constraints.first().cloned().cloned())
+            //         .chain(
+            //             constraints
+            //                 .into_iter()
+            //                 .skip(1)
+            //                 .zip((alpha_prime_offset..).map(Expression::Challenge))
+            //                 .map(|(constraint, challenge)| constraint * challenge),
+            //         )
+            //         .sum::<Expression<_>>() * powers_of_zeta.clone(); 
+            //         products(&poly_set.preprocess, &compressed_constraint)
+            //     };
+            println!("product done");
             let powers_of_zeta_constraint = powers_of_zeta_constraint(zeta, powers_of_zeta);
             let zeta_products = products(&poly_set.preprocess, &powers_of_zeta_constraint);
+            println!("zeta_products done");
             let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
             let cross_term_expression = vec![Expression::zero(); num_folding_challenges - 1]; // todo change this 
             // let cross_term_expression =
             //     cross_term_expressions_par(&poly_set, &compressed_products, num_folding_challenges);
             let u = num_folding_challenges;
-            let relaxed_compressed_constraint = relaxed_expression(&compressed_products, u);
+            let relaxed_compressed_constraint = Expression::<F>::zero();
+            //let relaxed_compressed_constraint = relaxed_expression(&compressed_products, u);
 
             let relaxed_zeta_constraint = {
                 let e = powers_of_zeta + num_permutation_z_polys + 1;
@@ -257,7 +261,7 @@ where
             )
         }
     };
-
+    println!("hyperplonk preprocess strategy done");
     let num_folding_witness_polys = num_witness_polys + num_builtin_witness_polys;
     let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
     let u = num_folding_challenges;
@@ -318,8 +322,10 @@ where
         num_folding_witness_polys,
         num_folding_challenges,
         cross_term_expressions,
-        gate_expressions: Default::default(),
-        lookup_expressions: Default::default(),
+        gate_expressions: gate_expressions.clone(),
+        lookup_expressions: lookup_expressions.clone(),
+        queried_selectors: circuit_info.queried_selectors.clone(),
+        selector_map: circuit_info.selector_map.clone(),
     };
 
     let verifier_param = ProtostarVerifierParam {

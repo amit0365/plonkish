@@ -7,9 +7,11 @@ use itertools::Itertools;
 use crate::{accumulation::protostar::ivc::{halo2::{chips::main_chip::{EcPointNative, EcPointNonNative, MainChip, MainChipConfig, NonNativeNumber, Number}}, ProtostarAccumulationVerifierParam}, util::arithmetic::{fe_to_fe, TwoChainCurve}};
 use crate::accumulation::protostar::ProtostarStrategy::{Compressing, NoCompressing};
 use std::io::Write;
+use poseidon2::circuit::pow5::{Pow5Chip as Poseidon2Pow5Chip};
+use poseidon2::circuit::spec::PoseidonSpec as Poseidon2ChipSpec;
+//use poseidon2::circuit::hash_chip::{Poseidon2SpongeChip};
 use super::native::AssignedProtostarAccumulatorInstance;
 use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{T, RATE};
-
 pub const RANGE_BITS: usize = 254;
 pub const NUM_CHALLENGE_BITS: usize = 128;
 
@@ -31,7 +33,7 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
-    poseidon_chip: PoseidonSpongeChip<C::Scalar, T, RATE>,
+    poseidon_chip: Poseidon2SpongeChip<C::Scalar, T, RATE>,
     chip: MainChip<C>,
     proof: Value<Cursor<Vec<u8>>>,
 }
@@ -45,9 +47,9 @@ where
 
     type Num = Number<C::Scalar>;
 
-    pub fn new(layouter: &mut impl Layouter<C::Scalar>, pow5_chip: Pow5Chip<C::Scalar, T, RATE>, spec: PoseidonSpec,
+    pub fn new(layouter: &mut impl Layouter<C::Scalar>, pow5_chip: Poseidon2Pow5Chip<C::Scalar, T, RATE>, spec: Poseidon2ChipSpec,
         main_chip: MainChip<C>, proof: Value<Vec<u8>>) -> Self {
-        let poseidon_chip = PoseidonSpongeChip::from_spec(pow5_chip, layouter.namespace(|| "poseidon_chip_nonnative"), spec);
+        let poseidon_chip = Poseidon2SpongeChip::from_spec(pow5_chip, layouter.namespace(|| "poseidon_chip_nonnative"), spec);
         PoseidonTranscriptChip {
             poseidon_chip,
             chip: main_chip,
@@ -254,7 +256,7 @@ where
             // let challenge_le_bits = self.chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?.into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
             // let challenge = self.chip.bits_to_num(layouter, &challenge_le_bits)?;     
             
-            let (_product, challenge, challenge_le_bits) = self.chip.bits_and_num(layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 8,  &Number(hash))?;
+            let (_product, challenge, challenge_le_bits) = self.chip.bits_and_num_limbs(layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 10,  &Number(hash))?;
             (challenge_le_bits, challenge)
         };
 

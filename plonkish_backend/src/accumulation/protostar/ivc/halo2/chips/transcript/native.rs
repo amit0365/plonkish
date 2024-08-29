@@ -256,7 +256,7 @@ pub fn squeeze_challenge(
     // let challenge_le_bits = self.chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?.into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
     // let challenge = self.chip.bits_to_num(layouter, &challenge_le_bits)?;  
     // saves 500 cells, 3 squeeze challenge                                 
-    let (_product, challenge, challenge_le_bits) = self.chip.bits_and_num(layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 8, &Number(hash))?;
+    let (_product, challenge, challenge_le_bits) = self.chip.bits_and_num_limbs(layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 10, &Number(hash))?;
 
     Ok(NativeChallenge {
         challenge_le_bits,

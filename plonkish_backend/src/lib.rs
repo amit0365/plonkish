@@ -2,6 +2,7 @@
 #![feature(anonymous_lifetime_in_impl_trait)]
 #![feature(associated_type_defaults)]
 #![feature(inherent_associated_types)]
+#![feature(new_range_api)]
 #![feature(iterator_try_collect)]
 
 pub mod accumulation;
@@ -12,7 +13,7 @@ pub mod piop;
 pub mod poly;
 pub mod util;
 
-pub use halo2_base::halo2_proofs::halo2curves;
+pub use halo2_proofs::halo2curves;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Error {

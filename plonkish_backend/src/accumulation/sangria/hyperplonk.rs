@@ -16,7 +16,7 @@
 //             Itertools,
 //         },
 //     };
-//     use halo2_base::halo2_proofs::halo2curves::{bn256::Bn256, grumpkin};
+//     use halo2_proofs::halo2curves::{bn256::Bn256, grumpkin};
 //     use std::iter;
 
 //     macro_rules! tests {

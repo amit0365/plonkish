@@ -52,8 +52,8 @@ fn lookup_h_poly<F: PrimeField + Hash>(
     beta: &F,
 ) -> [MultilinearPolynomial<F>; 2] {
     let [input, table] = compressed_polys;
-    let mut h_input = vec![F::ZERO; 1 << input.num_vars()];
-    let mut h_table = vec![F::ZERO; 1 << input.num_vars()];
+    let mut h_input = vec![F::ZERO; input.evals().len()];
+    let mut h_table = vec![F::ZERO; table.evals().len()];
 
     parallelize(&mut h_input, |(h_input, start)| {
         for (h_input, input) in h_input.iter_mut().zip(input[start..].iter()) {
@@ -97,7 +97,18 @@ pub fn powers_of_zeta_poly<F: PrimeField>(
     zeta: F,
 ) -> MultilinearPolynomial<F> {
     let powers_of_zeta = powers(zeta).take(1 << num_vars).collect_vec();
-    let nth_map = BooleanHypercube::new(num_vars).nth_map();
+    //let nth_map = BooleanHypercube::new(num_vars).nth_map();
+    let nth_map = (0..1 << num_vars).collect_vec();
+    MultilinearPolynomial::new(par_map_collect(&nth_map, |b| powers_of_zeta[*b]))
+}
+
+pub fn powers_of_zeta_sqrt_poly<F: PrimeField>(
+    num_vars: usize,
+    zeta: F,
+) -> MultilinearPolynomial<F> {
+    let powers_of_zeta = powers(zeta).take(1 << (num_vars/2 + 1)).collect_vec();
+    //let nth_map = BooleanHypercube::new(num_vars/2 + 1).nth_map();
+    let nth_map = (0..1 << (num_vars/2 + 1)).collect_vec();
     MultilinearPolynomial::new(par_map_collect(&nth_map, |b| powers_of_zeta[*b]))
 }
 
@@ -196,6 +207,53 @@ where
 }
 
 pub(crate) fn evaluate_zeta_cross_term_poly<F, Pcs>(
+    num_vars: usize,
+    zeta_nth_back: usize,
+    accumulator: &ProtostarAccumulator<F, Pcs>,
+    incoming: &ProtostarAccumulator<F, Pcs>,
+) -> MultilinearPolynomial<F>
+where
+    F: PrimeField,
+    Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
+{
+    let [(acc_pow, acc_zeta, acc_u), (incoming_pow, incoming_zeta, incoming_u)] =
+        [accumulator, incoming].map(|witness| {
+            let pow = witness.witness_polys.last().unwrap();
+            let zeta = witness
+                .instance
+                .challenges
+                .iter()
+                .nth_back(zeta_nth_back)
+                .unwrap();
+            (pow, zeta, witness.instance.u)
+        });
+    assert_eq!(incoming_u, F::ONE);
+
+    let size = 1 << num_vars;
+    let mut cross_term = vec![F::ZERO; size];
+
+    let bh = BooleanHypercube::new(num_vars);
+    let next_map = bh.rotation_map(Rotation::next());
+    parallelize(&mut cross_term, |(cross_term, start)| {
+        cross_term
+            .iter_mut()
+            .zip(start..)
+            .for_each(|(cross_term, b)| {
+                *cross_term = acc_pow[next_map[b]] + acc_u * incoming_pow[next_map[b]]
+                    - (acc_pow[b] * incoming_zeta + incoming_pow[b] * acc_zeta);
+            })
+    });
+    let b_0 = 0;
+    let b_last = bh.rotate(1, Rotation::prev());
+    cross_term[b_0] += acc_pow[b_0] * incoming_zeta + incoming_pow[b_0] * acc_zeta - acc_u.double();
+    cross_term[b_last] += acc_pow[b_last] * incoming_zeta + incoming_pow[b_last] * acc_zeta
+        - acc_u * incoming_zeta
+        - acc_zeta;
+
+    MultilinearPolynomial::new(cross_term)
+}
+
+pub(crate) fn evaluate_zeta_sqrt_cross_term_poly<F, Pcs>(
     num_vars: usize,
     zeta_nth_back: usize,
     accumulator: &ProtostarAccumulator<F, Pcs>,

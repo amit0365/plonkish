@@ -1,10 +1,6 @@
 use crate::{
     accumulation::protostar::{
-        ivc::{halo2::cyclefold::{self, CycleFoldCircuit}, halo2::{
-            // preprocess, prove_steps, prove_decider, verify_decider, 
-            // ProtostarIvcVerifierParam,
-            chips::transcript::{accumulation_transcript_param, PoseidonTranscript}, preprocess, prove_steps, CircuitExt, StepCircuit
-        }},
+        ivc::halo2::{chips::transcript::{accumulation_transcript_param, PoseidonTranscript}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -13,8 +9,8 @@ use crate::{
     },
     frontend::halo2::{layouter::InstanceExtractor, Halo2Circuit},
     pcs::{
-        multilinear::{Gemini, MultilinearHyrax, MultilinearIpa},
-        univariate::UnivariateKzg,
+        multilinear::{Gemini, MultilinearHyrax, MultilinearIpa, MultilinearIpaParams},
+        univariate::{UnivariateKzg, UnivariateKzgParam},
         AdditiveCommitment, PolynomialCommitmentScheme,
     },
     poly::multilinear::MultilinearPolynomial,
@@ -24,9 +20,9 @@ use crate::{
         }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
     },
 };
-use halo2_base::halo2_proofs::halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta}};
+use halo2_proofs::halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta}};
 use halo2_base::utils::{CurveAffineExt, ScalarField, BigPrimeField};
-use halo2_base::halo2_proofs::{
+use halo2_proofs::{
     circuit::{Layouter, SimpleFloorPlanner},
     plonk::{Circuit, ConstraintSystem, Error},
 };
@@ -134,7 +130,9 @@ where
 pub fn run_protostar_hyperplonk_ivc<C, P1, P2>(
     num_steps: usize,
     primary_circuit_k: usize,
+    primary_param: P1::Param,
     cyclefold_num_vars: usize,
+    cyclefold_param: P2::Param,
 ) -> (
     // ProtostarIvcVerifierParam<
     //     C,
@@ -175,9 +173,11 @@ where
         PoseidonTranscript<_, _>,
     >(  
         primary_num_vars,
+        primary_param,
         primary_atp,
         TrivialCircuit::default(),
         cyclefold_num_vars,
+        cyclefold_param,
         cyclefold_atp,
         seeded_std_rng(),
     )
@@ -348,12 +348,21 @@ where
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     const NUM_STEPS: usize = 3;
 
-    let primary_circuit_k = 14;
+    let primary_circuit_k = 13;
     let cyclefold_num_vars = 10;
-    
+    let time = Instant::now();
+    let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();
+    println!("primary_params done: {:?}", time.elapsed());
+    //primary_params.save_to_file("kzg_param.bin").unwrap();
+    //let primary_params = UnivariateKzgParam::load_from_file("kzg_param.bin").unwrap();
+    let time = Instant::now();
+    let cyclefold_params = MultilinearIpa::setup(1 << (cyclefold_num_vars + 4), 0, &mut seeded_std_rng()).unwrap();
+    println!("cyclefold_params done: {:?}", time.elapsed());
+    //cyclefold_params.save_to_file("ipa_param.bin").unwrap();
+    //let cyclefold_params = MultilinearIpaParam::load_from_file("ipa_param.bin").unwrap();
     run_protostar_hyperplonk_ivc::<
         bn256::G1Affine,
         Gemini<UnivariateKzg<Bn256>>,
         MultilinearIpa<grumpkin::G1Affine>,
-    >(NUM_STEPS, primary_circuit_k, cyclefold_num_vars);
+    >(NUM_STEPS, primary_circuit_k, primary_params, cyclefold_num_vars, cyclefold_params);
 }

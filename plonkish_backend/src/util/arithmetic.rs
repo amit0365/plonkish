@@ -9,7 +9,7 @@ mod msm;
 pub use bh::BooleanHypercube;
 pub use bitvec::field::BitField;
 
-pub use halo2_base::halo2_proofs::halo2curves::{
+pub use halo2_proofs::halo2curves::{
     group::{
         ff::{BatchInvert, Field, FromUniformBytes, PrimeField, PrimeFieldBits},
         prime::PrimeCurveAffine,

@@ -23,11 +23,17 @@ use std::{
     iter,
 };
 
+/// Return the index in the polynomial of size `isize` after rotation `rot`.
+fn get_rotation_idx(idx: usize, rot: Rotation, isize: i32) -> usize {
+    (((idx as i32) + rot.0).rem_euclid(isize)) as usize
+}
+
 pub(crate) fn instance_polys<'a, F: PrimeField>(
     num_vars: usize,
     instances: impl IntoIterator<Item = impl IntoIterator<Item = &'a F>>,
 ) -> Vec<MultilinearPolynomial<F>> {
-    let row_mapping = HyperPlonk::<()>::row_mapping(num_vars);
+    //let row_mapping = HyperPlonk::<()>::row_mapping(num_vars);
+    let row_mapping = (0..1 << num_vars).collect_vec(); //linear rotation
     instances
         .into_iter()
         .map(|instances| {
@@ -45,28 +51,31 @@ pub(crate) fn lookup_uncompressed_polys<F: PrimeField>(
     lookups: &[Vec<(Expression<F>, Expression<F>)>],
     polys: &[&MultilinearPolynomial<F>],
     challenges: &[F],
+    last_rows: &[usize],
 ) -> Vec<Vec<[MultilinearPolynomial<F>; 2]>> {
     if lookups.is_empty() {
         return Default::default();
     }
 
-    let num_vars = polys[0].num_vars();
+    let last_row_max = last_rows.iter().max().unwrap().clone();
+    //let num_vars = polys[0].num_vars();
     let expression = lookups
         .iter()
         .flat_map(|lookup| lookup.iter().map(|(input, table)| (input + table)))
         .sum::<Expression<_>>();
     let lagranges = {
-        let bh = BooleanHypercube::new(num_vars).iter().collect_vec();
+        //let bh = BooleanHypercube::new(num_vars).iter().collect_vec();
+        let bh = (0..last_row_max).collect_vec(); //linear rotation
         expression
             .used_langrange()
             .into_iter()
-            .map(|i| (i, bh[i.rem_euclid(1 << num_vars) as usize]))
+            .map(|i| (i, bh[i.rem_euclid(last_row_max as i32) as usize]))
             .collect::<HashSet<_>>()
     };
 
     lookups
         .iter()
-        .map(|lookup| lookup_uncompressed_poly(lookup, &lagranges, polys, challenges))
+        .map(|lookup| lookup_uncompressed_poly(lookup, &lagranges, polys, challenges, last_rows))
         .collect()
 }
 
@@ -75,12 +84,15 @@ pub(super) fn lookup_uncompressed_poly<F: PrimeField>(
     lagranges: &HashSet<(i32, usize)>,
     polys: &[&MultilinearPolynomial<F>],
     challenges: &[F],
+    last_rows: &[usize],
 ) -> Vec<[MultilinearPolynomial<F>; 2]> {
     let num_vars = polys[0].num_vars();
-    let bh = BooleanHypercube::new(num_vars);
+    let last_row_max = last_rows.last().unwrap().clone();
+    //let bh = BooleanHypercube::new(num_vars);
+    let bh = (0..last_row_max).collect_vec(); //linear rotation
         let convert_to_poly = |expressions: &[&Expression<F>]| {
             expressions.iter().map(|expression| {
-                let mut compressed = vec![F::ZERO; 1 << num_vars];
+                let mut compressed = vec![F::ZERO; last_row_max];
                 parallelize(&mut compressed, |(compressed, start)| {
                     for (b, compressed) in (start..).zip(compressed) {
                         *compressed = expression.evaluate(
@@ -96,7 +108,10 @@ pub(super) fn lookup_uncompressed_poly<F: PrimeField>(
                                 }
                                 CommonPolynomial::EqXY(_) => unreachable!(),
                             },
-                            &|query| polys[query.poly()][bh.rotate(b, query.rotation())],
+                            //&|query| polys[query.poly()][bh.rotate(b, query.rotation())], //linear rotation
+                            &|query| {
+                                polys[query.poly()][get_rotation_idx(b, query.rotation(), *last_rows.last().unwrap() as i32)]
+                            },
                             &|challenge| challenges[challenge],
                             &|value| -value,
                             &|lhs, rhs| lhs + &rhs,
@@ -133,6 +148,7 @@ pub(crate) fn lookup_compressed_polys<F: PrimeField>(
     polys: &[&MultilinearPolynomial<F>],
     challenges: &[F],
     betas: &[F],
+    last_rows: &[usize],
 ) -> Vec<[MultilinearPolynomial<F>; 2]> {
     if lookups.is_empty() {
         return Default::default();
@@ -144,7 +160,8 @@ pub(crate) fn lookup_compressed_polys<F: PrimeField>(
         .flat_map(|lookup| lookup.iter().map(|(input, table)| (input + table)))
         .sum::<Expression<_>>();
     let lagranges = {
-        let bh = BooleanHypercube::new(num_vars).iter().collect_vec();
+        //let bh = BooleanHypercube::new(num_vars).iter().collect_vec();
+        let bh = (0..1 << num_vars).collect_vec(); //linear rotation
         expression
             .used_langrange()
             .into_iter()
@@ -153,7 +170,7 @@ pub(crate) fn lookup_compressed_polys<F: PrimeField>(
     };
     lookups
         .iter()
-        .map(|lookup| lookup_compressed_poly(lookup, &lagranges, polys, challenges, betas))
+        .map(|lookup| lookup_compressed_poly(lookup, &lagranges, polys, challenges, betas, last_rows))
         .collect()
 }
 
@@ -163,15 +180,18 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
     polys: &[&MultilinearPolynomial<F>],
     challenges: &[F],
     betas: &[F],
+    last_rows: &[usize],
 ) -> [MultilinearPolynomial<F>; 2] {
     let num_vars = polys[0].num_vars();
-    let bh = BooleanHypercube::new(num_vars);
+    //let bh = BooleanHypercube::new(num_vars);
+    let last_row_max = last_rows.last().unwrap().clone();
+    let bh = (0..last_row_max).collect_vec(); //linear rotation
     let compress = |expressions: &[&Expression<F>]| {
         betas
             .iter()
             .copied()
             .zip(expressions.iter().map(|expression| {
-                let mut compressed = vec![F::ZERO; 1 << num_vars];
+                let mut compressed = vec![F::ZERO; last_row_max];
                 parallelize(&mut compressed, |(compressed, start)| {
                     for (b, compressed) in (start..).zip(compressed) {
                         *compressed = expression.evaluate(
@@ -187,7 +207,8 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
                                 }
                                 CommonPolynomial::EqXY(_) => unreachable!(),
                             },
-                            &|query| polys[query.poly()][bh.rotate(b, query.rotation())],
+                            //&|query| polys[query.poly()][bh.rotate(b, query.rotation())], //linear rotation
+                            &|query| polys[query.poly()][get_rotation_idx(b, query.rotation(), *last_rows.last().unwrap() as i32)],
                             &|challenge| challenges[challenge],
                             &|value| -value,
                             &|lhs, rhs| lhs + &rhs,
@@ -219,19 +240,21 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
 
 pub(crate) fn lookup_m_polys_uncompressed<F: PrimeField + Hash>(
     uncompressed_polys: &[Vec<[MultilinearPolynomial<F>; 2]>],
+    last_rows: &[usize],
 ) -> Result<Vec<MultilinearPolynomial<F>>, Error> {
-    uncompressed_polys.iter().map(lookup_m_poly_uncompressed).try_collect()
+    uncompressed_polys.iter().map(|uncompressed_poly| lookup_m_poly_uncompressed(uncompressed_poly, last_rows)).try_collect()
 }
 
 pub(super) fn lookup_m_poly_uncompressed<F: PrimeField + Hash>(
     uncompressed_polys: &Vec<[MultilinearPolynomial<F>; 2]>,
+    last_rows: &[usize],
 ) -> Result<MultilinearPolynomial<F>, Error> {
     let (inputs, tables): (Vec<_>, Vec<_>) = uncompressed_polys
                             .into_iter()
                             .map(|array| (array[0].clone(), array[1].clone()))
                             .unzip();
     
-    let num_vars = inputs[0].num_vars();
+    //let num_vars = inputs[0].num_vars();
 
         let mut count_vec = Vec::new();
             for (input, table) in izip_eq!(inputs, tables) {
@@ -275,7 +298,8 @@ pub(super) fn lookup_m_poly_uncompressed<F: PrimeField + Hash>(
         }
     }
 
-    let mut m = vec![0; 1 << num_vars];
+    //let mut m = vec![0; 1 << num_vars];
+    let mut m = vec![0; last_rows.last().unwrap().clone()];
 
     for (idx, &count) in aggregated_counts.iter() {
         m[*idx] += count;
@@ -291,12 +315,14 @@ pub(super) fn lookup_m_poly_uncompressed<F: PrimeField + Hash>(
 
 pub(crate) fn lookup_m_polys<F: PrimeField + Hash>(
     compressed_polys: &[[MultilinearPolynomial<F>; 2]],
+    last_rows: &[usize],
 ) -> Result<Vec<MultilinearPolynomial<F>>, Error> {
-    compressed_polys.iter().map(lookup_m_poly).try_collect()
+    compressed_polys.iter().map(|compressed_poly| lookup_m_poly(compressed_poly, last_rows)).try_collect()
 }
 
 pub(super) fn lookup_m_poly<F: PrimeField + Hash>(
     compressed_polys: &[MultilinearPolynomial<F>; 2],
+    last_rows: &[usize],
 ) -> Result<MultilinearPolynomial<F>, Error> {
     let [input, table] = compressed_polys;
 
@@ -332,7 +358,8 @@ pub(super) fn lookup_m_poly<F: PrimeField + Hash>(
         counts
     };
 
-    let mut m = vec![0; 1 << input.num_vars()];
+    //let mut m = vec![0; 1 << input.num_vars()];
+    let mut m = vec![0; last_rows.last().unwrap().clone()];
     for (idx, count) in counts.into_iter().flatten() {
         m[idx] += count;
     }
@@ -362,8 +389,8 @@ pub(super) fn lookup_h_poly<F: PrimeField + Hash>(
     gamma: &F,
 ) -> MultilinearPolynomial<F> {
     let [input, table] = compressed_polys;
-    let mut h_input = vec![F::ZERO; 1 << input.num_vars()];
-    let mut h_table = vec![F::ZERO; 1 << input.num_vars()];
+    let mut h_input = vec![F::ZERO; input.evals().len()];
+    let mut h_table = vec![F::ZERO; table.evals().len()];
 
     parallelize(&mut h_input, |(h_input, start)| {
         for (h_input, input) in h_input.iter_mut().zip(input[start..].iter()) {
@@ -464,6 +491,7 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
         .chain(Some(F::ONE))
         .chain(
             BooleanHypercube::new(num_vars)
+            //(0..1 << num_vars as usize).collect_vec()
                 .iter()
                 .skip(1)
                 .flat_map(|b| iter::repeat(b).take(num_chunks))
@@ -489,8 +517,9 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
     end_timer(timer);
 
     let _timer = start_timer(|| "into_bh_order");
-    let nth_map = BooleanHypercube::new(num_vars)
-        .nth_map()
+    let nth_map = //BooleanHypercube::new(num_vars)
+        //.nth_map()
+        (0..1 << num_vars as usize).collect_vec()
         .into_iter()
         .map(|b| num_chunks * b)
         .collect_vec();

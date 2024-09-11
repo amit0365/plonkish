@@ -15,8 +15,10 @@ use crate::{
     },
     Error,
 };
-use halo2_base::halo2_proofs::halo2curves::group::ff::BatchInvert;
+use halo2_proofs::halo2curves::group::ff::BatchInvert;
 use rand::RngCore;
+use std::fs::File;
+use std::io::Write;
 use std::{iter, marker::PhantomData, slice};
 
 #[derive(Clone, Debug)]
@@ -41,6 +43,21 @@ impl<C: CurveAffine> MultilinearIpaParams<C> {
     pub fn h(&self) -> &C {
         &self.h
     }
+
+    // pub fn save_to_file(&self, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+    //     let encoded: Vec<u8> = bincode::serialize(&self)?;
+    //     let mut file = File::create(filename)?;
+    //     file.write_all(&encoded)?;
+    //     Ok(())
+    // }
+
+    // pub fn load_from_file(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    //     let mut file = File::open(filename)?;
+    //     let mut encoded = Vec::new();
+    //     file.read_to_end(&mut encoded)?;
+    //     let param: Self = bincode::deserialize(&encoded)?;
+    //     Ok(param)
+    // }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -360,7 +377,7 @@ fn h_eval<F: Field>(point: &[F], xis: &[F]) -> F {
 //         },
 //         util::transcript::Keccak256Transcript,
 //     };
-//     use halo2_base::halo2_proofs::halo2curves::pasta::pallas::Affine;
+//     use halo2_proofs::halo2curves::pasta::pallas::Affine;
 
 //     type Pcs = MultilinearIpa<Affine>;
 

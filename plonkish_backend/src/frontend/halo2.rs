@@ -1,29 +1,32 @@
 use crate::{
-    backend::{PlonkishCircuit, PlonkishCircuitInfo, WitnessEncoding},
-    util::{
+    backend::{hyperplonk::prover::{instance_polys, lookup_compressed_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys}, PlonkishCircuit, PlonkishCircuitInfo, WitnessEncoding}, poly::multilinear::MultilinearPolynomial, util::{
         arithmetic::{BatchInvert, Field},
         expression::{Expression, Query, Rotation},
         Itertools,
-    },
+    }
 };
 use ark_std::iterable::Iterable;
-use halo2_base::halo2_proofs::{
+use halo2_proofs::{
     circuit::Value,
     plonk::{
         self, Advice, Any, Assigned, Assignment, Challenge, Circuit, Column, ConstraintSystem, Error, Fixed, FloorPlanner, Instance, Selector
     },
 };
 use rand::RngCore;
+use core::ops::RangeInclusive;
 use std::{
-    collections::{HashMap, HashSet}, iter, mem
+    cell::RefCell, collections::{HashMap, HashSet}, iter, mem, time::Instant
 };
-
+use halo2_proofs::{
+    circuit::{
+        floor_planner::{folding::strategy, FloorPlannerData, FoldingPass, Folding, MeasurementPass, FoldingPlan},
+        Layouter,
+    },
+};
+use crate::util::arithmetic::PrimeField;
+use crate::poly::Polynomial;
 pub mod layouter;
-
-#[cfg(test)]
-// #[cfg(any(test, feature = "benchmark"))]
 pub mod circuit;
-#[cfg(test)]
 mod test;
 
 pub trait CircuitExt<F: Field>: Circuit<F> {
@@ -56,6 +59,7 @@ pub struct Halo2Circuit<F: Field, C: Circuit<F>> {
     advice_idx_in_phase: Vec<usize>,
     challenge_idx: Vec<usize>,
     row_mapping: Vec<usize>,
+    floor_planner_data: Option<FloorPlannerData>,
 }
 
 impl<F: Field, C: CircuitExt<F>> Halo2Circuit<F, C> {
@@ -83,6 +87,7 @@ impl<F: Field, C: CircuitExt<F>> Halo2Circuit<F, C> {
             advice_idx_in_phase,
             challenge_idx,
             row_mapping,
+            floor_planner_data: None,
         }
     }
 
@@ -103,7 +108,7 @@ impl<F: Field, C: Circuit<F>> AsRef<C> for Halo2Circuit<F, C> {
     }
 }
 
-impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
+impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
     fn circuit_info_without_preprocess(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     let Self {
         k,
@@ -130,9 +135,6 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         .iter()
         .flat_map(|gate| {
             gate.polynomials().iter().cloned()
-            // gate.polynomials().iter().map(|expression| {
-            //     expression.clone()
-            // })
         })
     .collect_vec();
     //todo assuming each gate has only one selector
@@ -157,8 +159,7 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 })
                 .collect_vec()
         })
-        .collect();
-
+        .collect_vec();
     let lookup_expressions: Vec<Vec<(plonk::Expression<F>, plonk::Expression<F>)>> = cs
         .lookups()
         .iter()
@@ -176,7 +177,7 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .collect_vec()
         })
         .collect_vec();
-    println!("done gate and lookup exp");
+
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
         vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];
@@ -215,6 +216,7 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         num_instances,
         preprocess_polys,
         num_witness_polys: num_by_phase(&cs.advice_column_phase()),
+        num_fixed_columns: cs.num_fixed_columns(),
         num_challenges: num_by_phase(&cs.challenge_phase()),
         constraints,
         gate_expressions,
@@ -226,9 +228,12 @@ impl<F: Field, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         fixed_permutation_idx_for_permutation_constraints,
         queried_selectors,
         selector_map: HashMap::new(),
+        row_map_selector: HashMap::new(),
+        selector_groups: vec![],
+        floor_planner_data: None,
+        last_rows: vec![],
     })
 }
-
 
 fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     let Self {
@@ -261,13 +266,51 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         selectors: vec![vec![false; 1 << k]; cs.num_selectors()],
         row_mapping,
         selector_map: HashMap::new(),
+        row_map_selector: HashMap::new(),
     };
+
     let queried_selectors = &circuit_info.queried_selectors;
+
+        // let timer = Instant::now();
+        let mut plan = FoldingPlan::new(&mut preprocess_collector).unwrap();
+        // First pass: measure the regions within the circuit.
+        let mut measure = MeasurementPass::new();
+        {
+            let pass = &mut measure;
+            circuit
+                .without_witnesses()
+                .synthesize(config.clone(), FoldingPass::<_, PreprocessCollector<F>>::measure(pass)).unwrap();
+        }
+        //println!("first pass synthesize: {:?}", timer.elapsed());
+
+        let timer = Instant::now();
+        // Planning:
+        // - Position the regions.
+        let (regions, column_allocations) = strategy::slot_in_biggest_advice_first(measure.regions);
+        plan.regions = regions.clone();
+
+        //- Determine how many rows our planned circuit will require.
+        let first_unassigned_row = column_allocations
+            .values()
+            .map(|a| a.unbounded_interval_start())
+            .max()
+            .unwrap_or(0);
+        // println!("first pass measure: {:?}", timer.elapsed());
+
+        let data = FloorPlannerData {
+            regions,
+            column_allocations,
+            first_unassigned_row,
+        };
+
+    circuit_info.floor_planner_data = Some(data.clone());
+
     C::FloorPlanner::synthesize(
         &mut preprocess_collector,
         circuit,
         config.clone(),
         constants.clone(),
+        Some(data.clone()),
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
@@ -282,14 +325,42 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         .collect();
     circuit_info.permutations = preprocess_collector.permutation.into_cycles();
     circuit_info.selector_map = preprocess_collector.selector_map.clone();
+    circuit_info.row_map_selector = preprocess_collector.row_map_selector.clone();
+    let selector_groups = merge_sets(&circuit_info.row_map_selector);
+    circuit_info.selector_groups = selector_groups;
 
-    // let selector_map = preprocess_collector.selector_map.iter().map(|(selector, rows)| (*selector, *queried_selectors.get(selector).unwrap(), rows.len())).collect_vec();
-    // // let selector_map: HashMap<usize, (usize, usize)> = preprocess_collector.selector_map.iter()
-    // // .map(|(selector, rows)| (*selector, (*queried_selectors.get(selector).unwrap(), rows.len())))
-    // // .collect();
+    let instances = self.instances.iter().map(Vec::as_slice).collect_vec();
+    let challenges = vec![F::ZERO; circuit_info.num_challenges.iter().sum::<usize>()];
+    let phase = 0;
+    let mut dummy_witness_collector = DummyWitnessCollector {
+        k: self.k,
+        phase: phase as u8,
+        advice_idx_in_phase: &self.advice_idx_in_phase,
+        challenge_idx: &self.challenge_idx,
+        instances: instances.as_slice(),
+        advices: vec![vec![F::ZERO.into(); 1 << self.k]; self.num_witness_polys[phase]],
+        last_rows: vec![0; self.num_witness_polys[phase]],
+        challenges: &challenges,
+        row_mapping: &self.row_mapping,
+        witness_count: 0,
+    };
+    let constants = self.constants.clone();
+    C::FloorPlanner::synthesize(
+        &mut dummy_witness_collector,
+        &self.circuit,
+        self.config.clone(),
+        constants,
+        Some(data),
+    )
+    .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
+    circuit_info.last_rows = dummy_witness_collector.last_rows.clone();
     Ok(circuit_info)
 }
 
+    fn floor_planner_data(&mut self) {
+        let data = self.circuit_info().unwrap().floor_planner_data;
+        self.floor_planner_data = data;
+    }
 
     fn instances(&self) -> &[Vec<F>] {
         &self.instances
@@ -304,22 +375,50 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             challenge_idx: &self.challenge_idx,
             instances: instances.as_slice(),
             advices: vec![vec![F::ZERO.into(); 1 << self.k]; self.num_witness_polys[phase]],
+            last_rows: vec![0; self.num_witness_polys[phase]],
             challenges,
             row_mapping: &self.row_mapping,
             witness_count: 0,
         };
         let constants = self.constants.clone();
-
+        let floor_planner_data = self.floor_planner_data.clone();
         C::FloorPlanner::synthesize(
             &mut witness_collector,
             &self.circuit,
             self.config.clone(),
             constants,
+            floor_planner_data,
         )
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
         println!("witness_count: {}", witness_collector.witness_count);
+        println!("last_rows: {:?}", witness_collector.last_rows);
         Ok(batch_invert_assigned(witness_collector.advices))
     }
+}
+
+fn merge_sets(map: &HashMap<usize, Vec<usize>>) -> Vec<Vec<usize>> {
+    let mut sets: Vec<HashSet<usize>> = Vec::new();
+
+    for values in map.values() {
+        let mut new_set: HashSet<_> = values.iter().cloned().collect();
+        let mut to_merge = Vec::new();
+
+        for (i, set) in sets.iter().enumerate() {
+            if !new_set.is_disjoint(set) {
+                to_merge.push(i);
+            }
+        }
+
+        for &i in to_merge.iter().rev() {
+            new_set.extend(sets.swap_remove(i));
+        }
+
+        sets.push(new_set);
+    }
+
+    sets.into_iter()
+        .map(|set| set.into_iter().collect())
+        .collect()
 }
 
 #[derive(Debug)]
@@ -331,6 +430,7 @@ struct PreprocessCollector<'a, F: Field> {
     selectors: Vec<Vec<bool>>,
     row_mapping: &'a [usize],
     selector_map: HashMap<usize, Vec<usize>>,
+    row_map_selector: HashMap<usize, Vec<usize>>,
 }
 
 impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
@@ -356,9 +456,16 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         AR: Into<String>,
     {   
         self.selector_map.entry(selector.index()).or_default().push(row);
-        let Some(row) = self.row_mapping.get(row).copied() else {
-            return Err(Error::NotEnoughRowsAvailable { current_k: self.k});
-        };
+        //if selector.index() != 10 { // hardcoded to 10 for now -- range_check constraint
+        self.row_map_selector.entry(row).or_default().push(selector.index());
+        //}
+        // let Some(row) = self.row_mapping.get(row).copied() else {
+        //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k});
+        // };
+
+        if row > 1 << self.k {
+            return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
+        }
 
         self.selectors[selector.index()][row] = true;
 
@@ -401,9 +508,13 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
-        let Some(row) = self.row_mapping.get(row).copied() else {
+        // let Some(row) = self.row_mapping.get(row).copied() else {
+        //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
+        // };
+
+        if row > 1 << self.k {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
-        };
+        }
 
         *self
             .fixeds
@@ -421,12 +532,18 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         rhs_column: Column<Any>,
         rhs_row: usize,
     ) -> Result<(), Error> {
-        let Some(lhs_row) = self.row_mapping.get(lhs_row).copied() else {
+        // let Some(lhs_row) = self.row_mapping.get(lhs_row).copied() else {
+        //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
+        // };
+        if lhs_row > 1 << self.k {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
-        };
-        let Some(rhs_row) = self.row_mapping.get(rhs_row).copied() else {
+        }
+        // let Some(rhs_row) = self.row_mapping.get(rhs_row).copied() else {
+        //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
+        // };
+        if rhs_row > 1 << self.k {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
-        };
+        }
         self.permutation
             .copy(lhs_column, lhs_row, rhs_column, rhs_row)
     }
@@ -440,6 +557,10 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         let Some(_) = self.row_mapping.get(from_row) else {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
         };
+
+        // if !self.usable_rows.contains(&from_row) {
+        //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
+        // }
 
         let col = self
             .fixeds
@@ -548,6 +669,7 @@ struct WitnessCollector<'a, F: Field> {
     challenge_idx: &'a [usize],
     instances: &'a [&'a [F]],
     advices: Vec<Vec<Assigned<F>>>,
+    last_rows: Vec<usize>,
     challenges: &'a [F],
     row_mapping: &'a [usize],
     witness_count: usize,
@@ -603,16 +725,157 @@ impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
             return Ok(());
         }
 
-        let Some(row) = self.row_mapping.get(row).copied() else {
+        if self.last_rows[column.index()] < row {
+            self.last_rows[column.index()] = row;
+        }
+
+        // let Some(row) = self.row_mapping.get(row).copied() else {
+        //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
+        // };
+
+        if row > 1 << self.k {
             return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
-        };
+        }
 
         *self
             .advices
             .get_mut(self.advice_idx_in_phase[column.index()])
             .and_then(|v| v.get_mut(row))
             .ok_or(Error::BoundsFailure)? = to().into_field().assign()?;
-        
+
+        self.witness_count += 1;
+        Ok(())
+    }
+
+    fn assign_fixed<V, VR, A, AR>(
+        &mut self,
+        _: A,
+        _: Column<Fixed>,
+        _: usize,
+        _: V,
+    ) -> Result<(), Error>
+    where
+        V: FnOnce() -> Value<VR>,
+        VR: Into<Assigned<F>>,
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+        Ok(())
+    }
+
+    fn copy(&mut self, _: Column<Any>, _: usize, _: Column<Any>, _: usize) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn fill_from_row(
+        &mut self,
+        _: Column<Fixed>,
+        _: usize,
+        _: Value<Assigned<F>>,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn get_challenge(&self, challenge: Challenge) -> Value<F> {
+        self.challenges
+            .get(self.challenge_idx[challenge.index()])
+            .copied()
+            .map(Value::known)
+            .unwrap_or_else(Value::unknown)
+    }
+
+    fn push_namespace<NR, N>(&mut self, _: N)
+    where
+        NR: Into<String>,
+        N: FnOnce() -> NR,
+    {
+    }
+
+    fn pop_namespace(&mut self, _: Option<String>) {}
+}
+
+#[derive(Debug)]
+struct DummyWitnessCollector<'a, F: Field> {
+    k: u32,
+    phase: u8,
+    advice_idx_in_phase: &'a [usize],
+    challenge_idx: &'a [usize],
+    instances: &'a [&'a [F]],
+    advices: Vec<Vec<Assigned<F>>>,
+    last_rows: Vec<usize>,
+    challenges: &'a [F],
+    row_mapping: &'a [usize],
+    witness_count: usize,
+}
+
+impl<'a, F: Field> Assignment<F> for DummyWitnessCollector<'a, F> {
+    fn enter_region<NR, N>(&mut self, _: N)
+    where
+        NR: Into<String>,
+        N: FnOnce() -> NR,
+    {
+    }
+
+    fn exit_region(&mut self) {}
+
+    fn annotate_column<A, AR>(&mut self, _: A, _: Column<Any>)
+    where
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+    }
+
+    fn enable_selector<A, AR>(&mut self, _: A, _: &Selector, _: usize) -> Result<(), Error>
+    where
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+        Ok(())
+    }
+
+    fn query_instance(&self, column: Column<Instance>, row: usize) -> Result<Value<F>, Error> {
+        self.instances
+            .get(column.index())
+            .and_then(|column| column.get(row))
+            .map(|v| Value::known(*v))
+            .ok_or(Error::BoundsFailure)
+    }
+
+    fn assign_advice<V, VR, A, AR>(
+        &mut self,
+        _: A,
+        column: Column<Advice>,
+        row: usize,
+        to: V,
+    ) -> Result<(), Error>
+    where
+        V: FnOnce() -> Value<VR>,
+        VR: Into<Assigned<F>>,
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+        if self.phase != column.column_type().phase() {
+            return Ok(());
+        }
+
+        if self.last_rows[column.index()] < row {
+            self.last_rows[column.index()] = row;
+        }
+
+        // let Some(row) = self.row_mapping.get(row).copied() else {
+        //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
+        // };
+
+        if row > 1 << self.k {
+            return Err(Error::NotEnoughRowsAvailable { current_k: self.k });
+        }
+
+        // *self
+        //     .advices
+        //     .get_mut(self.advice_idx_in_phase[column.index()])
+        //     .and_then(|v| v.get_mut(row))
+        //     .ok_or(Error::BoundsFailure)? = to().into_field().assign()?;
+
         self.witness_count += 1;
         Ok(())
     }

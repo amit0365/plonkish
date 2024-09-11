@@ -172,7 +172,8 @@ where
 
 impl<Pcs> WitnessEncoding for HyperPlonk<Pcs> {
     fn row_mapping(k: usize) -> Vec<usize> {
-        BooleanHypercube::new(k).iter().skip(1).chain([0]).collect()
+        //BooleanHypercube::new(k).iter().skip(1).chain([0]).collect()
+        (0..1 << k).collect()
     }
 }
 
@@ -402,7 +403,7 @@ impl<Pcs> WitnessEncoding for HyperPlonk<Pcs> {
 //             transcript::Keccak256Transcript,
 //         },
 //     };
-//     use halo2_base::halo2_proofs::halo2curves::{
+//     use halo2_proofs::halo2curves::{
 //         bn256::{self, Bn256},
 //         grumpkin,
 //     };

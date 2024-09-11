@@ -1,7 +1,7 @@
 use halo2_base::{gates::{circuit::{builder::{self, BaseCircuitBuilder}, BaseCircuitParams, BaseConfig, CircuitBuilderStage}, flex_gate::threads::SinglePhaseCoreManager, GateInstructions}, halo2_proofs::
     {arithmetic::Field, circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::group::{prime::PrimeCurveAffine, Curve, Group}, plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector}, poly::Rotation}, poseidon::hasher::{spec::OptimizedPoseidonSpec, PoseidonHash, PoseidonSponge}, utils::{BigPrimeField, ScalarField}, AssignedValue};
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash as inlineHash, Spec}};
-use halo2_base::halo2_proofs::halo2curves::ff::BatchInvert;
+use halo2_proofs::{circuit::floor_planner::Folding, halo2curves::ff::BatchInvert};
 use itertools::Itertools;
 use core::{borrow::Borrow, marker::PhantomData};
 use std::{cell::RefCell, fs::File, iter, time::Instant};
@@ -14,7 +14,7 @@ use rand::RngCore;
 use poseidon::{Spec as PoseidonSpec, Poseidon as PoseidonInlineHash};
 use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{R_F, R_P};
 use crate::accumulation::protostar::ivc::halo2::chips::poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec as PoseidonChipSpec};
-use poseidon2::circuit::spec::PoseidonSpec as Poseidon2ChipSpec;
+use poseidon2::circuit::{hash_chip::NUM_PARTIAL_SBOX, spec::PoseidonSpec as Poseidon2ChipSpec};
 use crate::accumulation::protostar::ivc::halo2::chips::poseidon::hash_chip::Poseidon2Config;
 // public inputs length for the CycleFoldInputs for compressing 
 pub const CF_IO_LEN: usize = 1;
@@ -67,7 +67,7 @@ where
 {
     pub primary_avp: ProtostarAccumulationVerifierParam<C::Scalar>,
     // pub cyclefold_avp: Option<ProtostarAccumulationVerifierParam<C::Scalar>>,
-    pub hash_config: PoseidonSpec<C::Scalar, T, RATE>,
+    pub hash_config: Poseidon2ChipSpec,
     pub inputs: CycleFoldInputs<C::Scalar, C::Secondary>,
 }
 
@@ -85,7 +85,7 @@ where
     ) -> Self 
     {
         let primary_avp = primary_avp.unwrap_or_default();
-        let hash_config = PoseidonSpec::<C::Scalar, T, RATE>::new(R_F, R_P);
+        let hash_config = Poseidon2ChipSpec;
 
         let num_witness_comm = primary_avp.num_folding_witness_polys();
         let num_cross_comms = match primary_avp.strategy {
@@ -380,10 +380,14 @@ where
 {
     type Params = ();
     type Config = CycleFoldConfig<C>; 
-    type FloorPlanner = SimpleFloorPlanner;
+    type FloorPlanner = Folding;
 
-    fn without_witnesses(&self) -> Self {
-        unimplemented!()
+    fn without_witnesses(&self) ->  Self {
+        Self { 
+            hash_config: self.hash_config,
+            primary_avp: self.primary_avp.clone(),
+            inputs: self.inputs.clone(),
+         }
     }
 
     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
@@ -393,7 +397,7 @@ where
             meta.enable_equality(*col);
         }
 
-        let advices = [0; NUM_ADVICE_SM + 1].map(|_| meta.advice_column());
+        let advices = [0; NUM_ADVICE_SM].map(|_| meta.advice_column());
         for col in &advices {
             meta.enable_equality(*col);
         }
@@ -404,7 +408,7 @@ where
             meta.enable_equality(*col);
         }
 
-        let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices[..NUM_ADVICE_SM].try_into().unwrap(), [constants[NUM_CONSTANTS]]);
+        let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices, [constants[NUM_CONSTANTS]]);
         
         //let poseidon = 
             // PoseidonChip::<C, PoseidonChipSpec, T, RATE, L>::configure(
@@ -419,9 +423,10 @@ where
             Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L>::configure(
                 meta,
                 advices[..T].try_into().unwrap(),
-                advices[T],
+                advices[T..2*T].try_into().unwrap(),
                 constants[..T].try_into().unwrap(), 
-                constants[T..2*T].try_into().unwrap(), 
+                constants[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(), 
+                constants[T+ NUM_PARTIAL_SBOX..2*T + NUM_PARTIAL_SBOX].try_into().unwrap(), 
             );
 
         Self::Config {

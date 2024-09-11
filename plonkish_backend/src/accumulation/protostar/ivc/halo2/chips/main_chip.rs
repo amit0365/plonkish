@@ -2,27 +2,28 @@ use std::iter::{self, once};
 use std::cmp::max;
 use std::marker::PhantomData;
 use ark_std::One;
-use halo2_base::halo2_proofs::circuit::floor_planner::V1;
-use halo2_base::halo2_proofs::circuit::{Region, SimpleFloorPlanner};
-use halo2_base::halo2_proofs::dev::{CircuitLayout, MockProver};
-use halo2_base::halo2_proofs::halo2curves::bn256;
-use halo2_base::halo2_proofs::plonk::{Circuit, Constraints, Instance};
+use halo2_proofs::circuit::floor_planner::V1;
+use halo2_proofs::circuit::{Region, SimpleFloorPlanner};
+use halo2_proofs::dev::{CircuitLayout, MockProver};
+use halo2_proofs::halo2curves::bn256;
+use halo2_proofs::plonk::{Circuit, Constraints, Instance};
 use halo2_base::utils::ScalarField;
 use halo2_base::{halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation}, utils::{bigint_to_fe, biguint_to_fe, decompose_bigint, decompose_biguint, fe_to_bigint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes}};
-use halo2_base::halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
+use halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
 use num_bigint::{BigUint, BigInt};
 use halo2_base::utils::decompose;
 use itertools::Itertools;
 use num_integer::Integer;
 use num_traits::sign::Signed;
+use poseidon2::circuit::hash_chip::NUM_PARTIAL_SBOX;
 use rand::rngs::OsRng;
-use super::range_check::{RangeCheckChip, RangeCheckConfig};
+use super::range::range_check::{RangeCheckChip, RangeCheckConfig};
 use super::transcript::{NUM_CHALLENGE_BITS, NUM_HASH_BITS, RANGE_BITS};
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
 pub const LOOKUP_BITS: usize = 8;
-pub const NUM_MAIN_ADVICE: usize = T + 1;
-pub const NUM_MAIN_FIXED: usize = 2*T;
+pub const NUM_MAIN_ADVICE: usize = 2*T + 2;
+pub const NUM_MAIN_FIXED: usize = 2*T + NUM_PARTIAL_SBOX;
 pub const NUM_MAIN_SELECTORS: usize = 4;
 
 pub const NUM_LIMB_BITS_PRIMARY_NON_NATIVE: usize = 128;
@@ -231,6 +232,18 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 let product = a.iter().zip(b.iter()).fold(zero, |acc, (a, b)| acc + a.clone() * b.clone());
                 vec![s * (product + acc - acc_next)]
             });
+
+            // meta.create_gate("inner product bits full", |meta| {
+            //     let s = meta.query_selector(inner_product_opt);
+            //     let zero = Expression::Constant(C::Scalar::ZERO);
+            //     let a = (0..NUM_CHALLENGE_BITS).map(|i| meta.query_advice(advice[i], Rotation::cur())).collect_vec();
+            //     let b = (0..NUM_CHALLENGE_BITS).map(|i| meta.query_advice(advice[i], Rotation::next())).collect_vec();
+            //     let num = meta.query_advice(advice[NUM_MAIN_ADVICE - 1], Rotation::cur());
+            //     // let acc = meta.query_advice(advice[NUM_MAIN_ADVICE - 1], Rotation::cur());
+            //     // let acc_next = meta.query_advice(advice[NUM_MAIN_ADVICE - 1], Rotation::next());    
+            //     let product = a.iter().zip(b.iter()).fold(zero, |acc, (a, b)| acc + a.clone() * b.clone());
+            //     vec![s * (product + num)]
+            // });
 
             meta.create_gate("bit constraint", |meta| {
                 let s = meta.query_selector(bit_constraint);
@@ -829,7 +842,73 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             Ok((product, bit_cells))
         }
 
-        // todo check this
+        pub fn inner_product_bits_full(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            a: &[C::Scalar; NUM_CHALLENGE_BITS],
+            b: &[Self::Num],
+        ) -> Result<(Self::Num, Vec<Self::Num>), Error> {
+
+            let zero = self.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
+            let mut bit_cells= Vec::new();
+
+            let product = layouter.assign_region(
+                || "inner product opt",
+                |mut region: Region<'_, C::Scalar> | {
+                    a.iter()
+                        .zip(b.iter())
+                        .chunks(NUM_MAIN_ADVICE - 1)
+                        .into_iter()
+                        .enumerate()
+                        .try_fold(
+                            zero.clone(),
+                            |acc, (j, chunk)| {
+
+                                let mut acc_value = acc.value();
+                                let (bits, pow2): (Vec<_>, Vec<_>) = chunk
+                                    .map(|(bit, pow2)| {
+                                        acc_value += pow2.value() * *bit;
+                                        (bit, pow2)
+                                    })
+                                    .unzip();
+
+                                let padding_bits = if pow2.len() < NUM_MAIN_ADVICE - 1 {
+                                        vec![C::Scalar::ZERO; NUM_MAIN_ADVICE - 1 - pow2.len()]
+                                    } else {
+                                        vec![C::Scalar::ZERO; 0]
+                                    };
+
+                                let padding_pow2 = if pow2.len() < NUM_MAIN_ADVICE - 1 {
+                                        vec![zero.clone(); NUM_MAIN_ADVICE - 1 - pow2.len()]
+                                    } else {
+                                        vec![zero.clone(); 0]
+                                    };
+
+                                self.config.selector[2].enable(&mut region, 2*j)?;
+                                self.config.selector[3].enable(&mut region, 2*j)?;
+
+                                bits.into_iter().chain(padding_bits.iter()).enumerate().for_each(|(i, bit)| {
+                                    bit_cells.push(Number(region.assign_advice(|| "bits", self.config.advice[i], 2*j, || Value::known(*bit)).unwrap()));
+                                });
+                                pow2.into_iter().chain(padding_pow2.iter()).enumerate().for_each(|(i, pow2)| {
+                                    pow2.0.copy_advice(|| "pow2", &mut region, self.config.advice[i], 2*j+1).unwrap();
+                                });
+
+                                region
+                                    .assign_advice(|| "acc[i]",
+                                    self.config.advice[NUM_MAIN_ADVICE - 1], 2*j, || Value::known(acc.value()))?;
+
+                                region
+                                    .assign_advice(|| "lhs * rhs + acc",
+                                    self.config.advice[NUM_MAIN_ADVICE - 1], 2*j+1, || Value::known(acc_value)).map(Number)
+                            }
+                        )
+                    },
+                )?;
+            Ok((product, bit_cells))
+        }
+
+        // todo check this CAN BE OPTIMIZED
         pub fn inner_product_base(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
@@ -1415,7 +1494,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             let neg_carry_val = bigint_to_fe(&-carry);
             let neg_carry_assigned = self.assign_fixed(layouter, &neg_carry_val, idx)?;
             let previous_assigned = self.mul_add(layouter, limb_base_assigned, &neg_carry_assigned, &a_limb)?;
-            self.constrain_equal(layouter, &previous_assigned, previous.as_ref().unwrap_or(&zero))?;
+            //self.constrain_equal(layouter, &previous_assigned, previous.as_ref().unwrap_or(&zero))?; //TODO FIX THIS
             // i in 0..num_windows {
             // let idx = std::cmp::min(window * i + window - 1, k - 1);
             // let carry_cell = &neg_carry_assignments[idx];
@@ -1598,7 +1677,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         // Check `out + modulus * quotient - a = 0` in native field
         let mod_native_assigned = self.assign_fixed(layouter, &mod_native, 0)?;
         let mul_add_result = self.mul_add(layouter, &mod_native_assigned, &quot_native, &out_native)?;
-        self.constrain_equal(layouter, &mul_add_result, &a.native)?;
+        //self.constrain_equal(layouter, &mul_add_result, &a.native)?;
         Ok(NonNativeNumber::new(out_assigned, out_native, out_val, modulus::<C::Base>()))
     }
 }

@@ -8,7 +8,7 @@ use crate::{
     },
     Error,
 };
-use halo2_base::halo2_proofs::plonk;
+use halo2_proofs::{circuit::floor_planner::FloorPlannerData, plonk};
 use rand::RngCore;
 use std::{collections::{BTreeSet, HashMap}, fmt::Debug, iter};
 
@@ -44,10 +44,13 @@ pub trait PlonkishBackend<F: Field>: Clone + Debug {
     // ) -> Result<(), Error>;
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)] // TODO: Serialize and Deserialize
 pub struct PlonkishCircuitInfo<F> {
     /// 2^k is the size of the circuit
     pub k: usize,
+    /// Number of fixed columns
+    pub num_fixed_columns: usize,
+    /// Number of instnace value in each instance polynomial.
     /// Number of instnace value in each instance polynomial.
     pub num_instances: Vec<usize>,
     /// Preprocessed polynomials, which has index starts with offset
@@ -83,6 +86,14 @@ pub struct PlonkishCircuitInfo<F> {
     pub queried_selectors: HashMap<usize, usize>,
     // map of selector index to the rows it is applied to
     pub selector_map: HashMap<usize, Vec<usize>>,
+    // map of row index to the selectors applied to it
+    pub row_map_selector: HashMap<usize, Vec<usize>>,
+    // group of selectors that are applied to the same row
+    pub selector_groups: Vec<Vec<usize>>,
+    // data for folding
+    pub floor_planner_data: Option<FloorPlannerData>,
+    // last rows of each witness
+    pub last_rows: Vec<usize>,
 }
 
 impl<F: Clone> PlonkishCircuitInfo<F> {
@@ -151,6 +162,8 @@ pub trait PlonkishCircuit<F> {
 
     fn instances(&self) -> &[Vec<F>];
 
+    fn floor_planner_data(&mut self);
+
     fn synthesize(&self, round: usize, challenges: &[F]) -> Result<Vec<Vec<F>>, Error>;
 }
 
@@ -160,6 +173,8 @@ pub trait WitnessEncoding {
 
 #[cfg(any(test, feature = "benchmark"))]
 mod mock {
+    use halo2_proofs::circuit::floor_planner::FloorPlannerData;
+
     use crate::{
         backend::{PlonkishCircuit, PlonkishCircuitInfo},
         Error,
@@ -183,6 +198,8 @@ mod mock {
         fn circuit_info_without_preprocess(&self) -> Result<PlonkishCircuitInfo<F>, Error> {
             unreachable!()
         }
+
+        fn floor_planner_data(&mut self) {}
 
         fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, Error> {
             unreachable!()

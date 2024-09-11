@@ -12,7 +12,7 @@ use halo2_base::{
     utils::bit_length,
     AssignedValue, Context,
 };
-use halo2_base::halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
+use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use itertools::Itertools;
 use std::{
     iter,
@@ -271,7 +271,7 @@ where
 mod test {
     use std::marker::PhantomData;
 
-    use halo2_base::halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fr, Fq, G1Affine, G1}, grumpkin}};
+    use halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fr, Fq, G1Affine, G1}, grumpkin}};
     use halo2_proofs::{halo2curves::{Coordinates, group::{Group, Curve, cofactor::CofactorCurveAffine}, CurveAffine}, arithmetic::Field};
     use itertools::Itertools;
     use crate::{accumulation::protostar::ivc::halo2::chips::scalar_mul::ec_chip_strawman::ScalarMulConfigInputs, util::arithmetic::{fe_to_fe, fe_from_bits_le}};

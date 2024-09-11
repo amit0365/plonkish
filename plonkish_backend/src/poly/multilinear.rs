@@ -36,7 +36,7 @@ impl<F> MultilinearPolynomial<F> {
             0
         } else {
             let num_vars = evals.len().ilog2() as usize;
-            assert_eq!(evals.len(), 1 << num_vars);
+            //assert_eq!(evals.len(), 1 << num_vars);
             num_vars
         };
 
@@ -52,6 +52,10 @@ impl<F> MultilinearPolynomial<F> {
 
     pub fn is_zero(&self) -> bool {
         self.num_vars == 0
+    }
+
+    pub fn evals(&self) -> &[F] {
+        self.evals.as_slice()
     }
 
     pub fn num_vars(&self) -> usize {
@@ -636,6 +640,14 @@ pub fn concat_polys<F>(polys: Vec<MultilinearPolynomial<F>>
                 .collect_vec();
 
             concat_polys(reduced)
+}
+
+pub fn concat_polys_raw<F>(polys: Vec<MultilinearPolynomial<F>>
+) -> MultilinearPolynomial<F> 
+where F: Field {
+    MultilinearPolynomial::new(polys.iter()
+        .flat_map(|poly| poly.evals().iter().cloned())
+        .collect())
 }
 
 macro_rules! zip_self {

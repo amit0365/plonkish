@@ -333,7 +333,7 @@ mod test {
         },
         util::transcript::Keccak256Transcript,
     };
-    use halo2_base::halo2_proofs::halo2curves::pasta::pallas::Affine;
+    use halo2_proofs::halo2curves::pasta::pallas::Affine;
 
     type Pcs = MultilinearHyrax<Affine>;
 

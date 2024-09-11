@@ -7,11 +7,11 @@ use halo2_base::{
     utils::bit_length,
     AssignedValue, Context,
 };
-use halo2_base::halo2_proofs::arithmetic::CurveExt;
-use halo2_base::halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
-use halo2_base::halo2_proofs::halo2curves::ff::BatchInvert;
-use halo2_base::halo2_proofs::halo2curves::group::Curve;
-use halo2_base::halo2_proofs::halo2curves::group::prime::PrimeCurveAffine;
+use halo2_proofs::arithmetic::CurveExt;
+use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
+use halo2_proofs::halo2curves::ff::BatchInvert;
+use halo2_proofs::halo2curves::group::Curve;
+use halo2_proofs::halo2curves::group::prime::PrimeCurveAffine;
 use halo2_proofs::halo2curves::pasta::pallas::Scalar;
 use crate::{accumulation::protostar::{hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::chips::main_chip::{EcPointNative, Number}}, util::arithmetic::{add_aff_unequal, add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinate_proj, into_coordinates, into_proj_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, OverridenCurveAffine, ProjectivePoint}};
 use itertools::Itertools;

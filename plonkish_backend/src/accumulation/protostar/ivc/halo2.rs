@@ -60,6 +60,7 @@ use std::{
 use halo2_gadgets::poseidon::spec::PoseidonSpec;
 use halo2_proofs::halo2curves::group::prime::{PrimeCurve, PrimeGroup};
 use poseidon::Spec;
+use poseidon2::circuit::spec::PoseidonSpec as Poseidon2ChipSpec;
 use rand::{rngs::OsRng, RngCore};
 use std::cell::RefCell;
 
@@ -77,12 +78,12 @@ use halo2_base::{
     halo2_proofs::dev::MockProver, virtual_region::copy_constraints::SharedCopyConstraintManager,
 };
 
-use halo2_base::halo2_proofs::{
+use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value},
     plonk::{Circuit, Selector, Error, ConstraintSystem},
 };
 
-use halo2_base::halo2_proofs::halo2curves::{
+use halo2_proofs::halo2curves::{
     bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta},
     group::{
         ff::{FromUniformBytes, PrimeFieldBits},
@@ -496,6 +497,7 @@ where
             num_witness_polys,
             num_challenges,
             num_cross_terms,
+            //num_alpha_primes,
             ..
         } = &self.avp;
         let instances = instances
@@ -550,7 +552,7 @@ where
         witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
         //witness_comms.push(transcript_chip.read_commitment(layouter)?);
         let challenge3 = transcript_chip.squeeze_challenge(layouter)?.challenge;
-        challenges.extend(main_chip.powers(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
+        challenges.extend(main_chip.powers(layouter, &challenge3, 40)?.into_iter().skip(1).take(39).collect::<Vec<_>>());
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
         let nark = PlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(layouter.namespace(|| "absorb_accumulator"), acc)?;
@@ -567,7 +569,7 @@ where
                 // let compressed_cross_term_sums =
                 //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 let compressed_cross_term_sums =
-                    transcript_chip.write_field_elements(layouter, &[C::Scalar::ZERO; 9])?;
+                    transcript_chip.write_field_elements(layouter, &[C::Scalar::ONE; 10])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -735,6 +737,7 @@ where
             num_witness_polys,
             num_challenges,
             num_cross_terms,
+            //num_alpha_primes,
             ..
         } = &self.avp;
         // assert!(instances.len() == CF_IO_LEN);
@@ -787,7 +790,7 @@ where
         // witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
         let challenge3 = transcript_chip.squeeze_challenge(layouter)?.scalar;
-        challenges.extend(main_chip.powers_base(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
+        challenges.extend(main_chip.powers_base(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>()); // num_alpha_primes
 
         let nark = AssignedPlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(acc)?;
@@ -803,7 +806,7 @@ where
                 // let compressed_cross_term_sums =
                 //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 let compressed_cross_term_sums =
-                    transcript_chip.write_field_elements(layouter, &[C::Base::ZERO; 9])?;
+                    transcript_chip.write_field_elements(layouter, &[C::Base::ONE; 9])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -1185,10 +1188,10 @@ where
 {
     vp_digest: C::Scalar,
     primary_vp: ProtostarVerifierParam<C::Scalar, HyperPlonk<P1>>,
-    primary_hp: PoseidonSpec,//<C::Scalar, T, RATE>,
+    primary_hp: Poseidon2ChipSpec,
     primary_arity: usize,
     cyclefold_vp: ProtostarVerifierParam<C::Base, HyperPlonk<P2>>,
-    cyclefold_hp: Spec<C::Base, T2, R2>,
+    cyclefold_hp: Poseidon2ChipSpec,
     cyclefold_arity: usize,
     _marker: PhantomData<C>,
 }
@@ -1215,9 +1218,11 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn preprocess<C, P1, P2, S1, AT1, AT2>(
     primary_num_vars: usize,
+    primary_param: P1::Param,
     primary_atp: AT1::Param,
     primary_step_circuit: S1,
     cyclefold_num_vars: usize,
+    cyclefold_param: P2::Param,
     cyclefold_atp: AT2::Param,
     mut rng: impl RngCore,
 ) -> Result<
@@ -1254,9 +1259,8 @@ where
     AT2: InMemoryTranscript,
 {
     // assert_eq!(Chip::<C>::NUM_HASH_BITS, Chip::<C::Secondary>::NUM_HASH_BITS);
-    let primary_param = P1::setup(1 << (primary_num_vars + 4), 0, &mut rng).unwrap();
-    let cyclefold_param = P2::setup(1 << (cyclefold_num_vars + 4), 0, &mut rng).unwrap(); // todo change this
-
+    // let primary_param = P1::setup(1 << (primary_num_vars + 4), 0, &mut rng).unwrap();
+    // let cyclefold_param = P2::setup(1 << (cyclefold_num_vars + 4), 0, &mut rng).unwrap(); // todo change this
     let primary_circuit = PrimaryCircuit::new(true, primary_step_circuit, None, None);
     let mut primary_circuit =
         Halo2Circuit::new::<HyperPlonk<P1>>(primary_num_vars, primary_circuit, ());
@@ -1272,7 +1276,10 @@ where
             Halo2Circuit::new::<HyperPlonk<P2>>(cyclefold_num_vars, cyclefold_circuit, ());
         
     let (cyclefold_pp, cyclefold_vp) = {
+            let timer = start_timer(|| "preprocess cyclefold circuit_info");
             let cyclefold_circuit_info = cyclefold_circuit.circuit_info().unwrap();
+            cyclefold_circuit.floor_planner_data();
+            end_timer(timer);
             Protostar::<HyperPlonk<P2>>::preprocess(&cyclefold_param, &cyclefold_circuit_info).unwrap()
     };
 
@@ -1282,7 +1289,10 @@ where
             circuit.update_acc();
     });
 
+    let timer = start_timer(|| "preprocess primary circuit_info twice");
     let primary_circuit_info = primary_circuit.circuit_info().unwrap();
+    primary_circuit.floor_planner_data();
+    end_timer(timer);
     let (primary_pp, primary_vp) =
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
 
@@ -1319,7 +1329,7 @@ where
 }
 
 #[allow(clippy::type_complexity)]
-pub fn prove_steps<'a, C, P1, P2, S1, AT1, AT2>(
+pub fn prove_steps<C, P1, P2, S1, AT1, AT2>(
     ivc_pp: &ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
     primary_circuit: &mut Halo2Circuit<C::Scalar, PrimaryCircuit<C, S1>>,
     cyclefold_circuit: &mut Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,

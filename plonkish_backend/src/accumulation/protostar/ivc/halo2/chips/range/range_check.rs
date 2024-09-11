@@ -1,10 +1,10 @@
-use halo2_base::halo2_proofs::arithmetic::Field;
-use halo2_base::halo2_proofs::circuit::{AssignedCell, Layouter, Value};
-use halo2_base::halo2_proofs::halo2curves::bn256::Fr as Fp;
-use halo2_base::halo2_proofs::plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector};
-use halo2_base::halo2_proofs::poly::Rotation;
+use halo2_proofs::arithmetic::Field;
+use halo2_proofs::circuit::{AssignedCell, Layouter, Value};
+use halo2_proofs::halo2curves::bn256::Fr as Fp;
+use halo2_proofs::plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector};
+use halo2_proofs::poly::Rotation;
 use halo2_base::utils::{FromUniformBytes, PrimeField, BigPrimeField};
-use halo2_base::halo2_proofs::halo2curves::ff::PrimeFieldBits;
+use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use num_bigint::BigUint;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::NUM_RANGE_COLS;
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
-use super::main_chip::{Number, LOOKUP_BITS};
+use super::super::main_chip::{Number, LOOKUP_BITS};
 
 /// Converts a BigUint to a Field Element
 pub fn big_uint_to_fp<F: BigPrimeField>(big_uint: &BigUint) -> F {
@@ -175,7 +175,7 @@ where
                 let mut zs: Vec<Self::Num> = vec![Number(z_0.clone())];
                 let mut z = z_0;
 
-                // Assign running sum `z_{i+1}` = (z_i - k_i) / (2^LOOKUP_BITS) for i = 0..=N_BYTES - 1.
+                // Assign running sum `z_{i+1}` = (z_i - k_i) / (2^LOOKUP_BITS) for i = 0..= N_BYTES - 1.
                 let two_pow_k_inv = Value::known(C::Scalar::from(1 << LOOKUP_BITS).invert().unwrap());
 
                 for (i, byte) in bytes.iter().enumerate() {
@@ -200,6 +200,26 @@ where
                 // Constrain the final running sum output to be zero.
                 region.constrain_constant(zs[N_BYTES].0.cell(), C::Scalar::from(0))?;
 
+                Ok(())
+            },
+        )
+    }
+
+    /// Loads the lookup table with values from `0` to `2^LOOKUP_BITS - 1`
+    pub fn load_range_check_table(&self, layouter: &mut impl Layouter<C::Scalar>, column: Column<Fixed>) -> Result<(), Error> {
+        let range = 1 << LOOKUP_BITS;
+    
+        layouter.assign_region(
+            || format!("load range check table of {} bits", LOOKUP_BITS),
+            |mut region| {
+                for i in 0..range {
+                    region.assign_fixed(
+                            || "assign cell in fixed column",
+                            column,
+                            i,
+                            || Value::known(C::Scalar::from(i as u64)),
+                        )?;
+                    }
                 Ok(())
             },
         )

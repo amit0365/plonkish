@@ -7,7 +7,7 @@ use halo2_base::{
     utils::bit_length,
     AssignedValue, Context,
 };
-use halo2_base::halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
+use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use crate::accumulation::protostar::hyperplonk::NUM_CHALLENGE_BITS;
 use itertools::Itertools;
 use std::{
@@ -380,7 +380,7 @@ mod test {
     use bitvec::vec;
     use itertools::Itertools;
     use std::{marker::PhantomData, time::Instant};
-    use halo2_base::halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fq, Fr, G1Affine, G1}, grumpkin}, plonk::Assigned};
+    use halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fq, Fr, G1Affine, G1}, grumpkin}, plonk::Assigned};
     use halo2_proofs::{arithmetic::Field, halo2curves::{ff::BatchInvert, group::{cofactor::CofactorCurveAffine, Curve, Group}, Coordinates, CurveAffine}};
     use crate::util::{arithmetic::{add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, is_identity_proj, is_scaled_identity_proj, powers, sub_proj, sub_proj_comp, ProjectivePoint}, izip_eq};
     use super::{ScalarMulChip, ScalarMulConfigInputs};

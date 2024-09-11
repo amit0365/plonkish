@@ -14,7 +14,7 @@
 //! of the field, 5 is the Poseidon width (rate + 1), 8 is the number of full
 //! rounds, 60 is the number of partial rounds.
 //! More info here => https://hackmd.io/@letargicus/SJOvx48Nn
-use halo2_base::halo2_proofs::halo2curves::bn256::Fq as Fp;
+use halo2_proofs::halo2curves::bn256::Fq as Fp;
 pub(crate) const ROUND_CONSTANTS: [[Fp; 5]; 68] = [
     [
         Fp::from_raw([

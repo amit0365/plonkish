@@ -24,9 +24,8 @@ poseidon = { git = "https://github.com/han0110/poseidon", branch = "feature/with
 poseidon2 = { path = "/Users/ak36/Desktop/protostar/poseidon2/poseidon2"}
 plotters = { version = "0.3.0", optional = true }
 tabbycat = { version = "0.1", features = ["attributes"], optional = true }
-# Use halo2-base as non-optional dependency because it re-exports halo2_proofs, halo2curves, and poseidon, using different repos based on feature flag "halo2-axiom" or "halo2-pse"
-halo2-base = { path = "/Users/ak36/Desktop/protostar/axiom/halo2-lib/halo2-base" }
-halo2_gadgets = { git = "https://github.com/amit0365/halo2", package="halo2_gadgets", branch = "protostar"}
+halo2-base = { git = "https://github.com/amit0365/halo2-lib", branch = "protostar" }
+halo2_gadgets = { git = "https://github.com/amit0365/halo2", branch = "protostar" }
 pprof = { version = "0.13.0", features = ["criterion", "flamegraph"] , optional = true}
 
 # timer
@@ -36,18 +35,17 @@ ark-std = { version = "^0.4.0", default-features = false, optional = true }
 rayon = { version = "1.5.3", optional = true }
 
 # frontend-halo2
-halo2_proofs = { git = "https://github.com/han0110/halo2.git", branch = "feature/for-benchmark", optional = true }
+halo2_proofs = { git = "https://github.com/amit0365/halo2", branch = "protostar" , optional = true }
 
 [dev-dependencies]
 paste = "1.0.11"
 criterion = "0.4.0"
 
 [features]
-default = ["parallel", "frontend-halo2", "halo2-pse", "timer", "dev-graph"]
+default = ["parallel", "timer", "frontend-halo2", "dev-graph"]
 dev-graph=["halo2_proofs?/dev-graph", "plotters"]
-halo2-pse = ["halo2-base/halo2-pse"]
 test_special = []
-timer = ["dep:ark-std", "ark-std?/print-trace", "halo2_proofs?/print-trace"]
+timer = ["dep:ark-std", "ark-std?/print-trace"] 
 parallel = ["dep:rayon"]
 frontend-halo2 = ["dep:halo2_proofs"]
 pprof = ["dep:pprof"]

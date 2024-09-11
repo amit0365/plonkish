@@ -11,8 +11,8 @@ use crate::util::{end_timer, start_timer};
 use super::params as poseidon_params;
 use halo2_base::utils::{FromUniformBytes, PrimeField};
 use halo2_gadgets::poseidon::primitives::*;
-use halo2_base::halo2_proofs::arithmetic::Field;
-use halo2_base::halo2_proofs::halo2curves::bn256::Fq as Fp;
+use halo2_proofs::arithmetic::Field;
+use halo2_proofs::halo2curves::bn256::Fq as Fp;
 
 #[derive(Debug, Clone, Copy)]
 pub struct PoseidonSpecFp;

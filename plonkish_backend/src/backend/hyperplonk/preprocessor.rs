@@ -174,7 +174,8 @@ pub(crate) fn permutation_constraints<F: PrimeField>(
                 .zip(ids.chunks(chunk_size))
                 .zip(permutations.chunks(chunk_size))
                 .zip(zs.iter())
-                .zip(zs.iter().skip(1).chain(Some(&z_0_next)))
+                //.zip(zs.iter().skip(1).chain(Some(&z_0_next)))
+                .zip(zs.iter().chain(Some(&z_0_next)))
                 .map(|((((polys, ids), permutations), z_lhs), z_rhs)| {
                     z_lhs
                         * polys
@@ -216,8 +217,9 @@ pub(super) fn permutation_polys<F: PrimeField>(
     for cycle in cycles.iter() {
         let (i0, j0) = cycle[0];
         let mut last = permutations[poly_index[i0]][j0];
-        for &(i, j) in cycle.iter().cycle().skip(1).take(cycle.len()) {
-            assert_ne!(j, 0);
+        //for &(i, j) in cycle.iter().cycle().skip(1).take(cycle.len()) {
+        for &(i, j) in cycle.iter().cycle().take(cycle.len()) {
+            //assert_ne!(j, 0); //todo check this do we include 0 in linear rotation
             mem::swap(&mut permutations[poly_index[i]][j], &mut last);
         }
     }
@@ -235,7 +237,7 @@ pub(super) fn permutation_polys<F: PrimeField>(
 //         },
 //         util::expression::{Expression, Query, Rotation},
 //     };
-//     use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+//     use halo2_proofs::halo2curves::bn256::Fr;
 //     use std::array;
 
 //     #[test]

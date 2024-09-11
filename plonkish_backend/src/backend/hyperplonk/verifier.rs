@@ -112,7 +112,8 @@ fn instance_evals<F: PrimeField>(
         lagranges
     };
 
-    let bh = BooleanHypercube::new(num_vars).iter().collect_vec();
+    //let bh = BooleanHypercube::new(num_vars).iter().collect_vec(); //bh rotation
+    let bh = (0..1 << num_vars).collect_vec(); //linear rotation
     let lagrange_evals = lagranges
         .filter_map(|i| {
             (i != 0).then(|| {

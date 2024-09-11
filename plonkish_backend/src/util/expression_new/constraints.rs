@@ -1,7 +1,7 @@
 use std::{iter::zip, marker::PhantomData};
 
 use crate::util::{arithmetic::Field, expression::Rotation, izip, Deserialize, Itertools, Serialize};
-use halo2_base::halo2_proofs::plonk;
+use halo2_proofs::plonk;
 
 //use halo2curves::CurveAffine;
 // use crate::{
@@ -31,6 +31,15 @@ pub struct LookupData<T: QueryType> {
     pub h: T::Witness,
     pub thetas: Vec<T::Challenge>,
     pub r: T::Challenge,
+}
+
+impl<T: QueryType> LookupData<T> {
+    pub fn new(lookups_polys: Vec<T::Witness>, thetas: Vec<T::Challenge>, r: T::Challenge) -> Self {
+        let m = lookups_polys[0];
+        let g = lookups_polys[1];
+        let h = lookups_polys[2];
+        LookupData { m, g, h, thetas, r }
+    }
 }
 
 impl<T: QueryType> Data<T> {
@@ -146,5 +155,13 @@ impl<T: QueryType> Data<T> {
 
     pub fn ys_paired_vec(&self) -> Vec<QueriedExpression<T>> {
         self.ys.iter().map(|y| T::new_challenge(*y)).collect_vec()
+    }
+
+    pub fn linear_combination_constraints_ys(
+        &self,
+        constraints: &[QueriedExpression<T>],
+        ys: &[QueriedExpression<T>],
+    ) -> QueriedExpression<T> {
+        T::linear_combination_constraints(constraints, ys)
     }
 }

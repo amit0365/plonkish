@@ -1,4 +1,4 @@
-use halo2_base::halo2_proofs::plonk::{self, lookup};
+use halo2_proofs::plonk::{self, lookup};
 
 use crate::{
     accumulation::protostar::{
@@ -66,7 +66,7 @@ where
 {
     let challenge_offset = circuit_info.num_challenges.iter().sum::<usize>();
     let max_lookup_width = circuit_info.lookups.iter().map(Vec::len).max().unwrap_or(0);
-    let num_theta_primes = max_lookup_width.checked_sub(1).unwrap_or_default(); // todo check why han needed this .checked_sub(1).unwrap_or_default()
+    let num_theta_primes = max_lookup_width.checked_sub(1).unwrap_or_default(); // only vector valued lookups need theta_primes
 
     let theta_primes = (challenge_offset..)
         .take(num_theta_primes)
@@ -86,7 +86,12 @@ where
     
     let max_degree = max_degree(circuit_info, Some(&lookup_constraints.clone().unwrap_or_else(Vec::new)));
     let num_constraints = circuit_info.constraints.len() + lookup_constraints.clone().unwrap_or_else(Vec::new).len();
-    let num_alpha_primes = 5; //num_constraints.checked_sub(1).unwrap_or_default();
+    let num_alpha_primes;
+    if circuit_info.lookups.is_empty() {
+        num_alpha_primes = 5; //num_constraints.checked_sub(1).unwrap_or_default();
+    } else {
+        num_alpha_primes = 39; //num_constraints.checked_sub(1).unwrap_or_default();
+    }
 
     let witness_poly_offset =
         circuit_info.num_instances.len() + circuit_info.preprocess_polys.len();
@@ -94,7 +99,7 @@ where
     // let poly_setup = num_witness_polys.next_power_of_two().ilog2() as usize + circuit_info.k;
     let poly_setup = circuit_info.k + 4;
     let num_permutation_z_polys = div_ceil(circuit_info.permutation_polys().len(), max_degree - 1);
-    println!("hyperplonk preprocess strategy start");
+   
     let (
         num_builtin_witness_polys,
         alpha_prime_offset,
@@ -200,7 +205,7 @@ where
                     .chain((builtin_witness_poly_offset..).take(num_builtin_witness_polys))
                     .collect(),
             };
-            println!("poly_set done");
+
             let powers_of_zeta = builtin_witness_poly_offset + circuit_info.lookups.len() * 3;
             // let compressed_products = {
             //     let lookup_constraints_vec = lookup_constraints.unwrap_or_else(Vec::new);
@@ -234,12 +239,17 @@ where
             //         .sum::<Expression<_>>() * powers_of_zeta.clone(); 
             //         products(&poly_set.preprocess, &compressed_constraint)
             //     };
-            println!("product done");
+
             let powers_of_zeta_constraint = powers_of_zeta_constraint(zeta, powers_of_zeta);
             let zeta_products = products(&poly_set.preprocess, &powers_of_zeta_constraint);
-            println!("zeta_products done");
             let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
-            let cross_term_expression = vec![Expression::zero(); num_folding_challenges - 1]; // todo change this 
+            //println!("num_folding_challenges: {:?}", num_folding_challenges);
+            let cross_term_expression;
+            if circuit_info.lookups.is_empty() { // todo change this 
+                cross_term_expression = vec![Expression::zero(); 9]; // todo change this 
+            } else {
+                cross_term_expression = vec![Expression::zero(); 10];
+            }
             // let cross_term_expression =
             //     cross_term_expressions_par(&poly_set, &compressed_products, num_folding_challenges);
             let u = num_folding_challenges;
@@ -261,7 +271,7 @@ where
             )
         }
     };
-    println!("hyperplonk preprocess strategy done");
+
     let num_folding_witness_polys = num_witness_polys + num_builtin_witness_polys;
     let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
     let u = num_folding_challenges;
@@ -319,6 +329,7 @@ where
         strategy,
         num_theta_primes,
         num_alpha_primes,
+        num_fixed_columns: circuit_info.num_fixed_columns,
         num_folding_witness_polys,
         num_folding_challenges,
         cross_term_expressions,
@@ -326,6 +337,9 @@ where
         lookup_expressions: lookup_expressions.clone(),
         queried_selectors: circuit_info.queried_selectors.clone(),
         selector_map: circuit_info.selector_map.clone(),
+        row_map_selector: circuit_info.row_map_selector.clone(),
+        selector_groups: circuit_info.selector_groups.clone(),
+        last_rows: circuit_info.last_rows.clone(),
     };
 
     let verifier_param = ProtostarVerifierParam {
@@ -333,6 +347,7 @@ where
         strategy,
         num_theta_primes,
         num_alpha_primes,
+        num_fixed_columns: circuit_info.num_fixed_columns,
         num_folding_witness_polys,
         num_folding_challenges,
         num_cross_terms,
@@ -427,7 +442,7 @@ pub(crate) fn lookup_constraints<F: PrimeField>(
                     .chain(
                         exprs
                             .into_iter()
-                            .skip(1)
+                            //.skip(1) linear rotation
                             .zip(theta_primes)
                             .map(|(expr, theta_prime)| expr * theta_prime),
                     )

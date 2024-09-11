@@ -13,10 +13,15 @@ use crate::{
     },
     Error,
 };
-use halo2_base::halo2_proofs::
+use halo2_proofs::
     halo2curves::{bn256, grumpkin, pasta::{pallas, vesta},
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::IntoParallelRefIterator;
 use rand::RngCore;
+use std::{fs::File, time::Instant};
+use std::io::{Write, Read};
+use halo2_proofs::halo2curves::group::GroupEncoding;
 use std::{collections::BTreeSet, marker::PhantomData, ops::Neg, slice};
 
 #[derive(Clone, Debug)]
@@ -59,9 +64,112 @@ impl<M: MultiMillerLoop> UnivariateKzgParam<M> {
         self.powers_of_s_g2[0]
     }
 
+    pub fn new(powers_of_s_g1: Vec<M::G1Affine>, powers_of_s_g2: Vec<M::G2Affine>) -> Self {
+        Self {
+            powers_of_s_g1,
+            powers_of_s_g2,
+        }
+    }
+
     pub fn powers_of_s_g2(&self) -> &[M::G2Affine] {
         &self.powers_of_s_g2
     }
+
+    pub fn save_to_file(&self, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let powers_of_s_g1_bytes: Vec<Vec<u8>> = self.powers_of_s_g1.iter()
+            .map(|p| {
+                p.to_bytes().as_ref().to_vec()
+            })
+            .collect();
+        
+        let powers_of_s_g2_bytes: Vec<Vec<u8>> = self.powers_of_s_g2.iter().map(|p| {
+            p.to_bytes().as_ref().to_vec()
+        }).collect();
+        
+        let encoded: Vec<u8> = bincode::serialize(&(powers_of_s_g1_bytes, powers_of_s_g2_bytes))?;
+        let mut file = File::create(filename)?;
+        file.write_all(&encoded)?;
+        Ok(())
+    }
+
+    pub fn load_from_file(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut file = File::open(filename)?;
+        let mut encoded = Vec::new();
+        file.read_to_end(&mut encoded)?;
+        let (powers_of_s_g1_bytes, powers_of_s_g2_bytes): (Vec<Vec<u8>>, Vec<Vec<u8>>) = bincode::deserialize(&encoded)?;
+        let time = Instant::now();
+        let (powers_of_s_g1, powers_of_s_g2) = rayon::join(
+            || {
+                let mut result = Vec::with_capacity(powers_of_s_g1_bytes.len());
+                result.extend(powers_of_s_g1_bytes.par_iter().map(|bytes| {
+                    let mut encoding_g1 = <M::G1Affine as GroupEncoding>::Repr::default();
+                    encoding_g1.as_mut().copy_from_slice(bytes.as_slice());
+                    M::G1Affine::from_bytes(&encoding_g1).expect("Failed to convert G1 bytes")
+                }).collect::<Vec<_>>());
+                result
+            },
+            || {
+                let mut result = Vec::with_capacity(powers_of_s_g2_bytes.len());
+                result.extend(powers_of_s_g2_bytes.par_iter().map(|bytes| {
+                    let mut encoding_g2 = <M::G2Affine as GroupEncoding>::Repr::default();
+                    encoding_g2.as_mut().copy_from_slice(bytes.as_slice());
+                    M::G2Affine::from_bytes(&encoding_g2).expect("Failed to convert G2 bytes")
+                }).collect::<Vec<_>>());
+                result
+            }
+        );
+        println!("time: {:?}", time.elapsed());
+        Ok(Self::new(powers_of_s_g1, powers_of_s_g2))
+    }
+
+    // pub fn new(powers_of_s_g1: Vec<M::G1Affine>, powers_of_s_g2: Vec<M::G2Affine>) -> Self {
+    //     let powers_of_s_g1_bytes = powers_of_s_g1.iter().map(|p| p.to_bytes().as_ref().to_vec()).collect();
+    //     let powers_of_s_g2_bytes = powers_of_s_g2.iter().map(|p| p.to_bytes().as_ref().to_vec()).collect();
+    //     Self {
+    //         powers_of_s_g1,
+    //         powers_of_s_g2,
+    //         powers_of_s_g1_bytes,
+    //         powers_of_s_g2_bytes,
+    //     }
+    // }
+
+    // pub fn powers_of_s_g1_from_bytes(&self) -> Vec<M::G1Affine> {
+    //     let mut encoding = <M::G1Affine as GroupEncoding>::Repr::default();
+    //     self.powers_of_s_g1_bytes
+    //         .iter()
+    //         .map(|bytes| {
+    //             encoding.as_mut().copy_from_slice(bytes.as_slice().as_ref());
+    //             M::G1Affine::from_bytes(&encoding).unwrap()
+    //         })
+    //         .collect()
+    // }
+
+    // pub fn powers_of_s_g2_from_bytes(&self) -> Vec<M::G2Affine> {
+    //     let mut encoding = <M::G2Affine as GroupEncoding>::Repr::default();
+    //     self.powers_of_s_g2_bytes
+    //         .iter()
+    //         .map(|bytes| {
+    //             encoding.as_mut().copy_from_slice(bytes.as_slice().as_ref());
+    //             M::G2Affine::from_bytes(&encoding).unwrap()
+    //         })
+    //         .collect()
+    // }
+
+    // pub fn save_to_file(&self, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+    //     let encoded: Vec<u8> = bincode::serialize(&self.powers_of_s_g1_bytes)?;
+    //     let mut file = std::fs::File::create(filename)?;
+    //     file.write_all(&encoded)?;
+    //     Ok(())
+    // }
+
+    // pub fn load_from_file(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    //     let mut file = std::fs::File::open(filename)?;
+    //     let mut encoded = Vec::new();
+    //     file.read_to_end(&mut encoded)?;
+    //     println!("encoded type: {:?}", std::any::type_name::<decltype(encoded)>());
+    //     let param: Self = bincode::deserialize(&encoded)?;
+    //     Ok(param)
+    // }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -571,7 +679,7 @@ mod test {
             Itertools,
         },
     };
-    use halo2_base::halo2_proofs::halo2curves::bn256::{Bn256, Fr};
+    use halo2_proofs::halo2curves::bn256::{Bn256, Fr};
     use rand::{rngs::OsRng, Rng};
     use std::iter;
 

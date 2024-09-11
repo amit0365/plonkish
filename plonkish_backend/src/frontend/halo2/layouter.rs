@@ -1,5 +1,5 @@
 use crate::util::arithmetic::Field;
-use halo2_base::halo2_proofs::{
+use halo2_proofs::{
     circuit::{
         layouter::{RegionLayouter, TableLayouter},
         Cell, Layouter, Region, Table, Value,

@@ -2,7 +2,7 @@ pub mod poseidon;
 pub mod scalar_mul;
 pub mod main_chip;
 pub mod transcript;
-pub mod range_check;
+pub mod range;
 
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
 use halo2_base::{
@@ -12,24 +12,22 @@ use halo2_base::{
     plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance}, dev::MockProver},
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
-use halo2_base::halo2_proofs::arithmetic::Field;
-use poseidon2::circuit::spec::PoseidonSpec as Poseidon2ChipSpec;
+use halo2_proofs::arithmetic::Field;
+use poseidon2::circuit::{hash_chip::NUM_PARTIAL_SBOX, spec::PoseidonSpec as Poseidon2ChipSpec};
 use crate::accumulation::protostar::ivc::halo2::chips::poseidon::hash_chip::{Poseidon2Config, Poseidon2Chip};
 use rand::rngs::OsRng;
 use std::marker::PhantomData;
 use scalar_mul::ec_chip_strawman::ScalarMulChip;
-use crate::{   
-    util::arithmetic::{PrimeFieldBits, CurveAffine, TwoChainCurve, fe_to_fe, fe_from_bits_le, fe_to_bits_le, fe_truncated}, 
-};
+use crate::util::arithmetic::{PrimeFieldBits, CurveAffine, TwoChainCurve, fe_to_fe, fe_from_bits_le, fe_to_bits_le, fe_truncated};
 use rand::RngCore;
 use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonSpec}, scalar_mul::ecc_deg6_hash::{ScalarMulChipConfig, ScalarMulConfigInputs, NUM_ADVICE_SM, NUM_FIXED_SM, NUM_INSTANCE_SM}};
 
-pub const T: usize = 8;
-pub const R: usize = 7;
+pub const T: usize = 4;
+pub const R: usize = 3;
 pub const L: usize = 13;
 
 pub const NUM_ADVICE: usize = T+1;
-pub const NUM_CONSTANTS: usize = 2*T;
+pub const NUM_CONSTANTS: usize = 2*T + NUM_PARTIAL_SBOX;
 
 #[derive(Clone)]
 pub struct CycleFoldChipConfig<C> 
@@ -91,9 +89,10 @@ where
             Poseidon2Chip::<C, Poseidon2ChipSpec, T, R, L>::configure(
                 meta,
                 advices[..T].try_into().unwrap(),
-                advices[T],
+                advices[T..2*T].try_into().unwrap(),
                 constants[..T].try_into().unwrap(), 
-                constants[T..2*T].try_into().unwrap(), 
+                constants[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(), 
+                constants[T+ NUM_PARTIAL_SBOX..2*T + NUM_PARTIAL_SBOX].try_into().unwrap(), 
             );
 
         Self::Config {
@@ -141,7 +140,7 @@ where
 
 #[cfg(test)]
 mod test {
-    //use halo2_base::halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fr, Fq, G1Affine, G1}, grumpkin}};
+    //use halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fr, Fq, G1Affine, G1}, grumpkin}};
     use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
     //use halo2_proofs::{arithmetic::Field, halo2curves::{ff::BatchInvert, group::{cofactor::CofactorCurveAffine, Curve, Group}, Coordinates, CurveAffine}};
     //use crate::{accumulation::protostar::ivc::halo2::{chips::{poseidon::spec::{PoseidonSpec, PoseidonSpecFp}, scalar_mul::ecc_deg6_hash::ScalarMulConfigInputs}, test::strawman::into_coordinates}, util::arithmetic::{fe_to_fe, fe_from_bits_le}};
@@ -153,7 +152,7 @@ mod test {
     use bitvec::vec;
     use itertools::Itertools;
     use std::{marker::PhantomData, time::Instant};
-    use halo2_base::halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fq, Fr, G1Affine, G1}, grumpkin}, plonk::Assigned};
+    use halo2_proofs::{circuit::Value, dev::MockProver, halo2curves::{bn256::{Fq, Fr, G1Affine, G1}, grumpkin}, plonk::Assigned};
     use halo2_proofs::{arithmetic::Field, halo2curves::{ff::BatchInvert, group::{cofactor::CofactorCurveAffine, Curve, Group}, Coordinates, CurveAffine}};
     use crate::util::{arithmetic::{add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj, sub_proj_comp, ProjectivePoint}, izip_eq};
     use crate::accumulation::protostar::ivc::halo2::chips::poseidon::spec::{PoseidonSpec, PoseidonSpecFp};
@@ -338,7 +337,9 @@ mod test {
             inlineHash::<Fq, PoseidonSpec, ConstantLength<L>, 5, 4>::init().hash(message);
 
         let circuit = CyclefoldChip::<grumpkin::G1Affine> { inputs: vec![inputs; input_len] };
-        MockProver::run(k, &circuit, vec![vec![hash]]); //.unwrap().assert_satisfied()
+        let prover = MockProver::run(k, &circuit, vec![vec![hash]]).unwrap(); //.unwrap().assert_satisfied()
+        println!("Witness count: {}", prover.witness_count);
+        println!("Copy count: {}", prover.copy_count);
 
         halo2_base::halo2_proofs::dev::CircuitLayout::default()
             .render(k, &circuit, &root)

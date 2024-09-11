@@ -1,10 +1,10 @@
-use halo2_base::halo2_proofs::arithmetic::Field;
-use halo2_base::halo2_proofs::circuit::{AssignedCell, Layouter, Value};
-use halo2_base::halo2_proofs::halo2curves::bn256::Fr as Fp;
-use halo2_base::halo2_proofs::plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector};
-use halo2_base::halo2_proofs::poly::Rotation;
+use halo2_proofs::arithmetic::Field;
+use halo2_proofs::circuit::{AssignedCell, Layouter, Value};
+use halo2_proofs::halo2curves::bn256::Fr as Fp;
+use halo2_proofs::plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector};
+use halo2_proofs::poly::Rotation;
 use halo2_base::utils::{FromUniformBytes, PrimeField, BigPrimeField};
-use halo2_base::halo2_proofs::halo2curves::ff::PrimeFieldBits;
+use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use num_bigint::BigUint;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::NUM_RANGE_COLS;
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
-use super::main_chip::{Number, LOOKUP_BITS};
+use super::super::main_chip::{Number, LOOKUP_BITS};
 
 /// Converts a BigUint to a Field Element
 pub fn big_uint_to_fp<F: BigPrimeField>(big_uint: &BigUint) -> F {
@@ -118,18 +118,20 @@ where
         meta.lookup_any(
             "range u8 check for difference between each interstitial running sum output",
             |meta| {
-                let z_cur0 = meta.query_advice(z[0], Rotation::cur());
-                let z_next0 = meta.query_advice(z[1], Rotation::cur());
-                let z_cur1 = meta.query_advice(z[2], Rotation::cur());
-                let z_next1 = meta.query_advice(z[3], Rotation::cur());
+                let z0 = meta.query_advice(z[0], Rotation::cur());
+                let z1 = meta.query_advice(z[1], Rotation::cur());
+                //let z2 = meta.query_advice(z[2], Rotation::cur());
+                //let z3 = meta.query_advice(z[3], Rotation::cur());
 
                 let lookup_enable_selector = meta.query_selector(lookup_enable_selector);
                 let u8_range = meta.query_fixed(lookup_u8_table, Rotation::cur());
 
-                let diff0 = z_cur0 - z_next0 * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
-                let diff1 = z_cur1 - z_next1 * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
+                let diff0 = z0 - z1.clone() * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
+                //let diff1 = z1 - z2.clone() * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
+                //let diff2 = z2 - z3 * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
 
-                vec![(lookup_enable_selector.clone() * diff0, u8_range.clone()), (lookup_enable_selector * diff1, u8_range)]
+                //vec![(lookup_enable_selector.clone() * diff0, u8_range.clone()), (lookup_enable_selector * diff1, u8_range)]
+                vec![(lookup_enable_selector.clone() * diff0, u8_range.clone())] //, (lookup_enable_selector.clone() * diff1, u8_range.clone()), (lookup_enable_selector* diff2, u8_range)
             },
         );
 
@@ -151,9 +153,10 @@ where
             || "range check value",
             |mut region| {
                 // enable the lookup at offset [0, N_BYTES - 1]
-                for i in 0..N_BYTES {
-                    self.config.lookup_enable_selector.enable(&mut region, i)?;
-                }
+                // for i in 0..N_BYTES {
+                //     self.config.lookup_enable_selector.enable(&mut region, i)?;
+                // }
+                self.config.lookup_enable_selector.enable(&mut region, 0)?;
 
                 // copy `value` to `z_0` at offset 0
                 let z_0 = value.0.copy_advice(
@@ -178,7 +181,9 @@ where
                 let two_pow_k_inv = Value::known(C::Scalar::from(1 << LOOKUP_BITS).invert().unwrap());
 
                 for (i, byte) in bytes.iter().enumerate() {
-                    let idx = i % NUM_RANGE_COLS;
+                    println!("i: {}", i);
+                    let idx = if i < NUM_RANGE_COLS { i + 1 } else { (i % NUM_RANGE_COLS) + 1};
+                    println!("idx: {}", idx);
                     // z_next = (z_cur - byte) / (2^K)
                     let z_next = {
                         let z_cur_val = z.value().copied();
@@ -187,7 +192,7 @@ where
                         region.assign_advice(
                             || format!("z_{:?}", i + 1),
                             self.config.z[idx],
-                            i + 1,
+                            0,
                             || z_next_val,
                         )?
                     };
@@ -204,4 +209,24 @@ where
             },
         )
     }
+
+        /// Loads the lookup table with values from `0` to `2^LOOKUP_BITS - 1`
+        pub fn load_range_check_table(&self, layouter: &mut impl Layouter<C::Scalar>, column: Column<Fixed>) -> Result<(), Error> {
+            let range = 1 << LOOKUP_BITS;
+        
+            layouter.assign_region(
+                || format!("load range check table of {} bits", LOOKUP_BITS),
+                |mut region| {
+                    for i in 0..range {
+                        region.assign_fixed(
+                                || "assign cell in fixed column",
+                                column,
+                                i,
+                                || Value::known(C::Scalar::from(i as u64)),
+                            )?;
+                        }
+                    Ok(())
+                },
+            )
+        }
 }

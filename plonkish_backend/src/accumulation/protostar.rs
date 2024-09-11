@@ -1,5 +1,5 @@
-use ark_std::iterable::Iterable;
-use halo2_base::halo2_proofs::plonk;
+//use ark_std::iterable::Iterable;
+use halo2_proofs::plonk;
 
 use crate::{
     accumulation::{
@@ -10,17 +10,13 @@ use crate::{
     pcs::{AdditiveCommitment, PolynomialCommitmentScheme},
     poly::Polynomial,
     util::{
-        arithmetic::{inner_product, powers, CurveAffine, Field},
-        chain,
-        expression::Expression,
-        izip, izip_eq,
-        transcript::Transcript,
-        Deserialize, Itertools, Serialize,
+        arithmetic::{inner_product, powers, CurveAffine, Field}, chain, expression::Expression, izip, izip_eq, parallel::parallelize_iter, transcript::Transcript, Deserialize, Itertools, Serialize
     },
     Error,
 };
 use std::{collections::HashMap, iter, marker::PhantomData};
-
+use rayon::prelude::*;
+use rayon::iter::ParallelBridge;
 pub mod hyperplonk;
 pub mod ivc;
 
@@ -55,6 +51,7 @@ where
     strategy: ProtostarStrategy,
     num_theta_primes: usize,
     num_alpha_primes: usize,
+    num_fixed_columns: usize,
     num_folding_witness_polys: usize,
     num_folding_challenges: usize,
     cross_term_expressions: Vec<Expression<F>>,
@@ -62,6 +59,9 @@ where
     lookup_expressions: Vec<Vec<(plonk::Expression<F>, plonk::Expression<F>)>>,
     queried_selectors: HashMap<usize, usize>,
     selector_map: HashMap<usize, Vec<usize>>,
+    row_map_selector: HashMap<usize, Vec<usize>>,
+    selector_groups: Vec<Vec<usize>>,
+    last_rows: Vec<usize>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -74,6 +74,7 @@ where
     strategy: ProtostarStrategy,
     num_theta_primes: usize,
     num_alpha_primes: usize,
+    num_fixed_columns: usize,
     num_folding_witness_polys: usize,
     num_folding_challenges: usize,
     num_cross_terms: usize,
@@ -112,22 +113,34 @@ where
     fn init(
         strategy: ProtostarStrategy,
         k: usize,
+        last_rows: Vec<usize>,
         num_instances: &[usize],
         num_witness_polys: usize,
         num_challenges: usize,
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
+        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (k/2 + 1)]);
+
         Self {
             instance: ProtostarAccumulatorInstance::init(
                 strategy,
                 num_instances,
-                num_witness_polys,
+                num_witness_polys - 1, // todo not used
                 num_challenges,
             ),
-            witness_polys: iter::repeat_with(|| zero_poly.clone())
-                .take(num_witness_polys)
-                .collect(),
-            e_poly: zero_poly.clone(),
+            witness_polys: (0..num_witness_polys - 4) // starts from 0 // 3 lookup polys // last advice is lookup column assign
+                .map(|i| Pcs::Polynomial::from_evals(vec![F::ZERO; last_rows[i]]).clone())
+                .collect_vec()
+                .iter()
+                .cloned()
+                .chain(iter::repeat(Pcs::Polynomial::from_evals(vec![F::ZERO; *last_rows.last().unwrap()]).clone()).take(3))
+                .chain(iter::once(zero_poly_sqrt.clone()))
+                .collect_vec(),
+            // witness_polys: iter::repeat_with(|| zero_poly.clone())
+            //     .take(num_witness_polys - 1)
+            //     .chain(iter::once(zero_poly_sqrt.clone()))
+            //     .collect(),
+            e_poly: zero_poly_sqrt.clone(),
             instance_polys: iter::repeat_with(|| zero_poly.clone())
                 .take(num_instances.iter().sum())
                 .collect(),
@@ -138,11 +151,14 @@ where
     fn init_ec(
         strategy: ProtostarStrategy,
         k: usize,
+        last_rows: Vec<usize>,
         num_instances: &[usize],
         num_witness_polys: usize,
         num_challenges: usize,
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
+        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (k/2 + 1)]);
+
         Self {
             instance: ProtostarAccumulatorInstance::init_ec(
                 strategy,
@@ -150,10 +166,18 @@ where
                 num_witness_polys,
                 num_challenges,
             ),
-            witness_polys: iter::repeat_with(|| zero_poly.clone())
-                .take(num_witness_polys)
-                .collect(),
-            e_poly: zero_poly.clone(),
+            witness_polys: (0..num_witness_polys - 1) // starts from 0 // no lookup polys
+                .map(|i| Pcs::Polynomial::from_evals(vec![F::ZERO; last_rows[i]]).clone())
+                .collect_vec()
+                .iter()
+                .cloned()
+                .chain(iter::once(zero_poly_sqrt.clone()))
+                .collect_vec(),
+            // witness_polys: iter::repeat_with(|| zero_poly.clone())
+            //     .take(num_witness_polys - 1)
+            //     .chain(iter::once(zero_poly_sqrt.clone()))
+            //     .collect(),
+            e_poly: zero_poly_sqrt.clone(),
             instance_polys: iter::repeat_with(|| zero_poly.clone())
                 .take(num_instances.iter().sum())
                 .collect(),
@@ -167,7 +191,7 @@ where
         Self {
             instance: ProtostarAccumulatorInstance::from_nark(strategy, nark.instance),
             witness_polys,
-            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]),
+            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (k/2 + 1)]),
             instance_polys,
             _marker: PhantomData,
         }

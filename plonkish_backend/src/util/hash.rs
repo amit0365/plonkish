@@ -7,7 +7,7 @@ pub use sha3::{
     Keccak256,
 };
 
-pub use poseidon::{self, Poseidon};
+pub use poseidon2::{self};
 
 pub trait Hash:
     'static + Sized + Clone + Debug + FixedOutputReset + Default + Update + HashMarker

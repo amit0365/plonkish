@@ -4,7 +4,7 @@ pub mod polynomial;
 
 use std::{fmt::Debug, ops::{Add, Mul, Neg, Sub}};
 
-use halo2_base::halo2_proofs::plonk;
+use halo2_proofs::plonk;
 
 use crate::util::{arithmetic::Field, expression::Rotation, izip, Deserialize, Itertools, Serialize};
 
@@ -150,6 +150,15 @@ impl<T> ColumnQuery<T> {
         let idx = self.rotation + idx as i32;
         let num_rows = 1 << num_vars;
         idx.rem_euclid(num_rows as i32) as usize
+        
+        // let bh = BooleanHypercube::new(num_vars);
+        // dont need to mod by num_rows, as bh.rotate already does that
+        // bh.rotate(idx, Rotation(self.rotation)) 
+    }
+
+    pub fn row_idx_last_row(&self, idx: usize, last_row: usize) -> usize {
+        let idx = self.rotation + idx as i32;
+        idx.rem_euclid(last_row as i32) as usize
         
         // let bh = BooleanHypercube::new(num_vars);
         // dont need to mod by num_rows, as bh.rotate already does that

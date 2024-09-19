@@ -86,11 +86,11 @@ where
     
     let max_degree = max_degree(circuit_info, Some(&lookup_constraints.clone().unwrap_or_else(Vec::new)));
     let num_constraints = circuit_info.constraints.len() + lookup_constraints.clone().unwrap_or_else(Vec::new).len();
-    let num_alpha_primes;
+    let num_alpha_primes ;
     if circuit_info.lookups.is_empty() {
-        num_alpha_primes = 5; //num_constraints.checked_sub(1).unwrap_or_default();
+        num_alpha_primes = 0; //num_constraints.checked_sub(1).unwrap_or_default();
     } else {
-        num_alpha_primes = 39; //num_constraints.checked_sub(1).unwrap_or_default();
+        num_alpha_primes = 1; //num_constraints.checked_sub(1).unwrap_or_default();
     }
 
     let witness_poly_offset =
@@ -227,16 +227,16 @@ where
             //     let powers_of_zeta =
             //         Expression::<F>::Polynomial(Query::new(powers_of_zeta, Rotation::cur()));
             //     println!("start compressed cnostraint");
-            //     let compressed_constraint = iter::empty()
-            //         .chain(constraints.first().cloned().cloned())
-            //         .chain(
-            //             constraints
-            //                 .into_iter()
-            //                 .skip(1)
-            //                 .zip((alpha_prime_offset..).map(Expression::Challenge))
-            //                 .map(|(constraint, challenge)| constraint * challenge),
-            //         )
-            //         .sum::<Expression<_>>() * powers_of_zeta.clone(); 
+                // let compressed_constraint = iter::empty()
+                //     .chain(constraints.first().cloned().cloned())
+                //     .chain(
+                //         constraints
+                //             .into_iter()
+                //             .skip(1)
+                //             .zip((alpha_prime_offset..).map(Expression::Challenge))
+                //             .map(|(constraint, challenge)| constraint * challenge),
+                //     )
+                //     .sum::<Expression<_>>() * powers_of_zeta.clone(); 
             //         products(&poly_set.preprocess, &compressed_constraint)
             //     };
 
@@ -246,9 +246,9 @@ where
             //println!("num_folding_challenges: {:?}", num_folding_challenges);
             let cross_term_expression;
             if circuit_info.lookups.is_empty() { // todo change this 
-                cross_term_expression = vec![Expression::zero(); 9]; // todo change this 
+                cross_term_expression = vec![Expression::zero(); 5]; // todo change this 
             } else {
-                cross_term_expression = vec![Expression::zero(); 10];
+                cross_term_expression = vec![Expression::zero(); 5];
             }
             // let cross_term_expression =
             //     cross_term_expressions_par(&poly_set, &compressed_products, num_folding_challenges);
@@ -314,6 +314,7 @@ where
         let (mut pp, mut vp) = HyperPlonk::preprocess(param, circuit_info)?;
         let batch_size = batch_size(circuit_info, strategy);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << poly_setup, batch_size)?;
+        // let reduced_bases = Pcs::reduce_bases(&pcs_pp, &circuit_info.advice_copies)?;
         pp.pcs = pcs_pp;
         vp.pcs = pcs_vp;
         pp.num_permutation_z_polys = num_permutation_z_polys;
@@ -340,6 +341,8 @@ where
         row_map_selector: circuit_info.row_map_selector.clone(),
         selector_groups: circuit_info.selector_groups.clone(),
         last_rows: circuit_info.last_rows.clone(),
+        advice_copies: circuit_info.advice_copies.clone(),
+        //reduced_bases: reduced_bases.clone(),
     };
 
     let verifier_param = ProtostarVerifierParam {

@@ -494,8 +494,6 @@ where
         let main_chip = &self.main_chip;
         let ProtostarAccumulationVerifierParam {
             strategy,
-            num_witness_polys,
-            num_challenges,
             num_cross_terms,
             //num_alpha_primes,
             ..
@@ -514,22 +512,8 @@ where
             transcript_chip.common_field_element(instance)?;
         }
 
-        // let mut witness_comms = Vec::with_capacity(self.avp.num_folding_witness_polys());
-        // let mut challenges = Vec::with_capacity(self.avp.num_folding_challenges());
-        // for (num_witness_polys, num_powers_of_challenge) in
-        //     num_witness_polys.iter().zip_eq(num_challenges.iter())
-        // {
-        //     witness_comms.extend(transcript.read_commitments(builder, *num_witness_polys)?);
-        //     for num_powers in num_powers_of_challenge.iter() {
-        //         let challenge = transcript.squeeze_challenge(builder)?;
-        //         let powers_of_challenges =
-        //             main_chip.powers(builder, challenge.as_ref(), *num_powers + 1)?;
-        //         challenges.extend(powers_of_challenges.into_iter().skip(1));
-        //     }
-        // }
-
         let mut witness_comms = Vec::with_capacity(2);
-        let mut challenges = Vec::with_capacity(3);
+        let mut challenges = Vec::with_capacity(2);
         
         // write comm only for test
         // 0x2a6148ae85b8df7365f051126ccac4df868497e62758daff76cb89aeea12bdb6,
@@ -549,10 +533,11 @@ where
         //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
         //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
+        challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
         //witness_comms.push(transcript_chip.read_commitment(layouter)?);
-        let challenge3 = transcript_chip.squeeze_challenge(layouter)?.challenge;
-        challenges.extend(main_chip.powers(layouter, &challenge3, 40)?.into_iter().skip(1).take(39).collect::<Vec<_>>());
+        // let challenge3 = transcript_chip.squeeze_challenge(layouter)?.challenge;
+        // challenges.extend(main_chip.powers(layouter, &challenge3, 2)?.into_iter().skip(1).take(1).collect::<Vec<_>>());
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
         let nark = PlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(layouter.namespace(|| "absorb_accumulator"), acc)?;
@@ -569,7 +554,7 @@ where
                 // let compressed_cross_term_sums =
                 //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 let compressed_cross_term_sums =
-                    transcript_chip.write_field_elements(layouter, &[C::Scalar::ONE; 10])?;
+                    transcript_chip.write_field_elements(layouter, &vec![C::Scalar::ONE; *num_cross_terms])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -581,6 +566,7 @@ where
         // let assigned_cyclefold_instances = self.assign_cyclefold_instances(builder, cyclefold_instances)?;
         // self.check_assigned_cyclefold_instances(builder, r.as_ref(), &nark, &cross_term_comms, &acc, &assigned_cyclefold_instances);
 
+        //let acc_prime = acc.clone();
         let acc_prime = self.fold_accumulator_from_nark(
             layouter,
             acc,
@@ -740,7 +726,9 @@ where
             //num_alpha_primes,
             ..
         } = &self.avp;
-        // assert!(instances.len() == CF_IO_LEN);
+        // Witness count: 14642 - 10773 = 3869
+        // Copy count: 2802 - 2081 = 721
+        assert!(instances.len() == CF_IO_LEN);
         let instances = instances
             .into_iter()
             .map(|instance| 
@@ -781,16 +769,18 @@ where
             C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
         ).unwrap();
 
+        // Witness count: 10817 - 10773 = 44
+        // Copy count: 2085 - 2081 = 4
         witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
-        // let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar;
         // witness_comms.push(transcript_chip.read_commitment(layouter)?);
-        // challenges.extend(main_chip.powers(layouter.namespace(|| "main_chip"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
+        // Witness count 11748 - 10817 = 931 (bits_and_num - 594 (256 copy) + 254 (pow2 copy) = 828)
+        // Copy count 2373 - 2085 = 288
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.scalar);
         witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
         // witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
-        let challenge3 = transcript_chip.squeeze_challenge(layouter)?.scalar;
-        challenges.extend(main_chip.powers_base(layouter, &challenge3, 6)?.into_iter().skip(1).take(5).collect::<Vec<_>>()); // num_alpha_primes
+        //let challenge3 = transcript_chip.squeeze_challenge(layouter)?.scalar;
+        // challenges.extend(main_chip.powers_base(layouter, &challenge3, 2)?.into_iter().skip(1).take(1).collect::<Vec<_>>()); // num_alpha_primes
 
         let nark = AssignedPlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(acc)?;
@@ -806,14 +796,18 @@ where
                 // let compressed_cross_term_sums =
                 //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
                 let compressed_cross_term_sums =
-                    transcript_chip.write_field_elements(layouter, &[C::Base::ONE; 9])?;
+                    transcript_chip.write_field_elements(layouter, &vec![C::Base::ONE; *num_cross_terms])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
 
+        // Witness count: 14642 - 11748 = 2894 (38 FE, poseidon = 2109, bits_and_num - 594 (256 copy))
+        // Copy count: 2802 - 2373 = 429
         let r = transcript_chip.squeeze_challenge(layouter)?;
         let r_le_bits = r.le_bits.clone();
 
+        // Witness count: 22203 - 15491 = 6712 (SM - 910 * 3 = 2730)
+        // Copy count: 5594 - 2887 = 2707 (SM - 130 * 2 = 260)
         let acc_prime = self.fold_accumulator_from_nark_ec(
             layouter,
             acc,
@@ -956,7 +950,11 @@ where
             ..
         } = self.avp;
 
+        // Witness count: 16638 - 15491 = 1147
+        // Copy count: 3437 - 2887 = 550
         let powers_of_r = main_chip.powers_base(layouter, r, num_cross_terms + 1)?;
+        // Witness count: 20331 - 17871 = 2460 (2SM = 910*2 = 1820)
+        // Copy count: 4870 - 4034 = 836
         let acc_prime = {
             let instances = izip_eq!(&acc.instances, &nark.instances)
                 .map(|(lhs, rhs)| {
@@ -979,8 +977,11 @@ where
                     main_chip.mod_reduce(layouter, no_mod)
                 })
                 .try_collect::<_, Vec<_>, _>()?;
-            let no_mod_u = main_chip.add_base(layouter, &acc.u, r)?;
-            let u = main_chip.mod_reduce(layouter, no_mod_u)?;
+
+            // No need to mod reduce u
+            let u = main_chip.add_base(layouter, &acc.u, r)?;
+            // Witness count = 21505 - 20331 = 906
+            // Copy count: 5252 - 4870 = 254
             let e_comm = if cross_term_comms.is_empty() {
                 acc.e_comm.clone()
             } else {
@@ -991,15 +992,22 @@ where
                 e_comm
             };
 
+            // Witness count = 22203 - 21505 = 698
+            // Copy count: 5594 - 5252 = 342
             let compressed_e_sum = match strategy {
                 NoCompressing => None,
                 Compressing => {
-                    let rhs_no_mod = main_chip.inner_product_base(
+                    // let rhs_no_mod = main_chip.inner_product_base(
+                    //     layouter,
+                    //     &powers_of_r[1..],
+                    //     compressed_cross_term_sums.unwrap(),
+                    // )?;
+                    // let rhs = main_chip.mod_reduce(layouter, rhs_no_mod)?;
+                    let rhs = main_chip.inner_product_base_full(
                         layouter,
                         &powers_of_r[1..],
                         compressed_cross_term_sums.unwrap(),
                     )?;
-                    let rhs = main_chip.mod_reduce(layouter, rhs_no_mod)?;
                     let compressed_e_sum_no_mod = main_chip.add_base(
                         layouter,
                         acc.compressed_e_sum.as_ref().unwrap(),

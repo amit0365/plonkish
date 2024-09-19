@@ -54,6 +54,7 @@ where
     pub(crate) preprocess_comms: Vec<Pcs::Commitment>,
     pub(crate) permutation_polys: Vec<(usize, MultilinearPolynomial<F>)>,
     pub(crate) permutation_comms: Vec<Pcs::Commitment>,
+    pub(crate) reduced_bases: Vec<Pcs::CommitmentChunk>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -83,6 +84,7 @@ where
     type Pcs = Pcs;
     type ProverParam = HyperPlonkProverParam<F, Pcs>;
     type VerifierParam = HyperPlonkVerifierParam<F, Pcs>;
+    type CommitmentChunk = Pcs::CommitmentChunk;
 
     fn setup(
         circuit_info: &PlonkishCircuitInfo<F>,
@@ -106,7 +108,7 @@ where
         // todo change this
         // let poly_size = num_witness_polys.next_power_of_two().ilog2() as usize + circuit_info.k;
         let poly_size = circuit_info.k + 4; 
-        let batch_size = batch_size(circuit_info);        
+        let batch_size = batch_size(circuit_info);  
         let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << poly_size, batch_size)?;
 
         // Compute preprocesses comms
@@ -128,7 +130,10 @@ where
 
         // Compose `VirtualPolynomialInfo`
         let (num_permutation_z_polys, expression) = compose(circuit_info);
-
+        let timer = start_timer(|| "reduce_bases");
+        let reduced_bases = Pcs::reduce_bases(&pcs_pp, &circuit_info.advice_copies)?;
+        end_timer(timer);
+        println!("reduced_bases: {:?}", reduced_bases.len());
         let vp = HyperPlonkVerifierParam {
             pcs: pcs_vp,
             num_instances: circuit_info.num_instances.clone(),
@@ -164,6 +169,7 @@ where
                 .zip(permutation_polys)
                 .collect(),
             permutation_comms,
+            reduced_bases,
         };
         Ok((pp, vp))
     }

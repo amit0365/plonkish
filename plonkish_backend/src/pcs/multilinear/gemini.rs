@@ -13,10 +13,7 @@ use crate::{
         Polynomial,
     },
     util::{
-        arithmetic::{squares, Field, MultiMillerLoop},
-        chain,
-        transcript::{TranscriptRead, TranscriptWrite},
-        DeserializeOwned, Itertools, Serialize,
+        arithmetic::{squares, Field, MultiMillerLoop}, chain, reduce_scalars, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
@@ -63,6 +60,14 @@ where
         }
 
         Ok(UnivariateKzg::commit_coeffs(pp, poly.evals()))
+    }
+
+    fn commit_dedup_witness(reduced_bases: &[Self::CommitmentChunk], poly: &Self::Polynomial, advice_copies: &[Vec<usize>]) -> Result<Self::Commitment, Error> {
+        Ok(UnivariateKzg::<M>::commit_dedup_coeffs(poly.evals(), advice_copies, reduced_bases))
+    }
+
+    fn reduce_bases(pp: &Self::ProverParam, advice_copies: &[Vec<usize>]) -> Result<Vec<Self::CommitmentChunk>, Error> {
+        Ok(UnivariateKzg::<M>::reduce_bases(pp, advice_copies))
     }
 
     fn batch_commit<'a>(
@@ -216,7 +221,7 @@ mod test {
         pcs::{
             multilinear::{
                 gemini::Gemini,
-                test::{run_batch_commit_open_verify, run_commit_open_verify},
+                test::{run_batch_commit_open_verify, run_commit_open_verify, dummy_commit},
             },
             univariate::UnivariateKzg,
         },
@@ -225,6 +230,11 @@ mod test {
     use halo2_proofs::halo2curves::bn256::Bn256;
 
     type Pcs = Gemini<UnivariateKzg<Bn256>>;
+
+    #[test]
+    fn run_dummy_commit() {
+        dummy_commit::<_, Pcs, Keccak256Transcript<_>>();
+    }
 
     #[test]
     fn commit_open_verify() {

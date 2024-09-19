@@ -4,6 +4,7 @@ use crate::{
         arithmetic::{variable_base_msm, Curve, CurveAffine, Field},
         transcript::{TranscriptRead, TranscriptWrite},
         DeserializeOwned, Itertools, Serialize,
+        reduce_scalars, sum_and_reduce_bases
     },
     Error,
 };
@@ -30,7 +31,7 @@ pub trait PolynomialCommitmentScheme<F: Field>: Clone + Debug {
         + AsRef<[Self::CommitmentChunk]>
         + Serialize
         + DeserializeOwned;
-    type CommitmentChunk: Clone + Debug + Default;
+    type CommitmentChunk: Clone + Debug + Default + Serialize + DeserializeOwned;
 
     fn setup(poly_size: usize, batch_size: usize, rng: impl RngCore) -> Result<Self::Param, Error>;
 
@@ -42,12 +43,27 @@ pub trait PolynomialCommitmentScheme<F: Field>: Clone + Debug {
 
     fn commit(pp: &Self::ProverParam, poly: &Self::Polynomial) -> Result<Self::Commitment, Error>;
 
+    fn commit_dedup_witness(reduced_bases: &[Self::CommitmentChunk], poly: &Self::Polynomial, advice_copies: &[Vec<usize>]) -> Result<Self::Commitment, Error>;  
+
+    fn reduce_bases(pp: &Self::ProverParam, advice_copies: &[Vec<usize>]) -> Result<Vec<Self::CommitmentChunk>, Error>;
+
     fn commit_and_write(
         pp: &Self::ProverParam,
         poly: &Self::Polynomial,
         transcript: &mut impl TranscriptWrite<Self::CommitmentChunk, F>,
     ) -> Result<Self::Commitment, Error> {
         let comm = Self::commit(pp, poly)?;
+        transcript.write_commitments(comm.as_ref())?;
+        Ok(comm)
+    }
+
+    fn commit_dedup_and_write(
+        poly: &Self::Polynomial,
+        advice_copies: &[Vec<usize>],
+        reduced_bases: &[Self::CommitmentChunk],
+        transcript: &mut impl TranscriptWrite<Self::CommitmentChunk, F>,
+    ) -> Result<Self::Commitment, Error> {
+        let comm = Self::commit_dedup_witness(reduced_bases, poly, advice_copies)?;
         transcript.write_commitments(comm.as_ref())?;
         Ok(comm)
     }

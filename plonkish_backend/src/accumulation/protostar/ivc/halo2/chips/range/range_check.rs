@@ -147,7 +147,7 @@ where
         value: &Self::Num,
         range_bits: usize,
     ) -> Result<(), Error> {
-        let N_BYTES: usize = range_bits.div_ceil(8);
+        let N_BYTES: usize = range_bits.div_ceil(LOOKUP_BITS);
         layouter.assign_region(
             || "range check value",
             |mut region| {

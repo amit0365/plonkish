@@ -23,9 +23,9 @@ use crate::accumulation::protostar::ivc::halo2::chips::{T as T2, R as R2};
 
 pub const T: usize = 4;
 pub const RATE: usize = 3;
-pub const NUM_RANGE_COLS: usize = (T + 1) / 2;
+pub const NUM_RANGE_COLS: usize = 1; //(T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 63; //num_challenges 10 from 5 so 29 + 5; //34 - 4limbs
+pub const PRIMARY_HASH_LENGTH: usize = 25; //num_challenges 10 from 5 so 29 + 5; //34 - 4limbs
 pub const CF_HASH_LENGTH: usize = 13;
 
 pub const N_BYTES: usize = 16;
@@ -57,7 +57,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
 {
     pub fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self {
 
-        let main_advice = (0..NUM_MAIN_ADVICE).map(|_| meta.advice_column()).collect::<Vec<_>>();
+        let mut main_advice = (0..NUM_MAIN_ADVICE).map(|_| meta.advice_column()).collect::<Vec<_>>();
         //let state = (0..T).map(|_| meta.advice_column()).collect::<Vec<_>>();
         //let partial_sbox = meta.advice_column();
 
@@ -70,7 +70,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         let poseidon_config = Poseidon2Pow5Chip::configure::<Poseidon2ChipSpec>(
             meta,
             main_advice[..T].try_into().unwrap(),//state.clone().try_into().unwrap(),
-            main_advice[T..2*T].try_into().unwrap(),//partial_sbox,
+            main_advice[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(),//partial_sbox,
             rc_full_rounds.clone().try_into().unwrap(),
             rc_partial_rounds.clone().try_into().unwrap(),
             pad_fixed.clone().try_into().unwrap(),
@@ -104,9 +104,9 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
 
         let range_check_fixed = meta.fixed_column();
         let enable_lookup_selector = meta.complex_selector();
-        // let range_advice = meta.advice_column();
-        // meta.enable_equality(range_advice);
-        // main_advice.push(range_advice);
+        let range_advice = meta.advice_column();
+        meta.enable_equality(range_advice);
+        main_advice.push(range_advice);
         let range_check_config = RangeCheckChip::<C>::configure(
             meta,
             *main_advice.last().unwrap(),
@@ -308,7 +308,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             // change to strict - Witness count: 29272
             // let hash_le_bits = main_chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?;
             // main_chip.bits_to_num(layouter, &hash_le_bits[..NUM_HASH_BITS])
-            // Witness count: 28170
+            // Witness count: 28170 // TODO CHECK THIS
             let bits_to_num = main_chip.bits_and_num_limbs_hash(layouter, RANGE_BITS, NUM_HASH_BITS, &Number(hash))?;
             Ok(bits_to_num)
         }
@@ -581,7 +581,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
 
         let range_chip = RangeCheckChip::<C>::construct(config.range_check_config);
         let mut main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
-        main_chip.initialize(&mut layouter)?;
+        main_chip.initialize_pow2(&mut layouter)?;
         main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
         let pow5_chip = Poseidon2Pow5Chip::construct(config.poseidon_config.clone());
         let sm_chip = ScalarMulChip::<C>::new(config.sm_chip_config.clone());
@@ -623,10 +623,16 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         let mut cyclefold_inputs_hash_from_instances_val = C::Base::ZERO;
         self.cyclefold_instances[0].map(|val| cyclefold_inputs_hash_from_instances_val = val);
         let cyclefold_inputs_hash_from_instances = main_chip.assign_witness_base(&mut layouter, cyclefold_inputs_hash_from_instances_val)?;
+        // Witness count: 426 - 392 = 34
+        // Copy count: 71 - 42 = 29   
         let cyclefold_inputs_hash_from_instances_select = main_chip.select_base(&mut layouter, &is_base_case, &cyclefold_inputs_hash, &cyclefold_inputs_hash_from_instances)?;
         main_chip.constrain_equal_base(&mut layouter, &cyclefold_inputs_hash, &cyclefold_inputs_hash_from_instances_select)?;
 
+        // Witness count: 743 - 426 = 317
+        // Copy count: 125 - 71 = 54
         let acc = acc_verifier.assign_accumulator(&mut layouter, self.acc.as_ref())?;
+        // Witness count: 1059 - 743 = 316
+        // Copy count: 183 - 125 = 58
         let assigned_acc_prime_comms_checked = acc_verifier.assign_comm_outputs_from_accumulator(&mut layouter, self.acc_prime.as_ref())?;
         let (nark, acc_prime) = {
             let instances =
@@ -634,17 +640,23 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             let proof = self.primary_proof.clone();
             let native_transcript_chip = 
                 &mut PoseidonNativeTranscriptChip::<C>::new(&mut layouter, pow5_chip.clone(), self.hash_config.clone(), main_chip.clone(), proof);
-
+            // Witness count: 6401 - 1059 = 5342
+            // Copy count: 1317 - 183 = 1134
             acc_verifier.verify_accumulation_from_nark(&mut layouter, &acc, instances, native_transcript_chip, assigned_acc_prime_comms_checked)? 
         };
 
+
         let acc_prime = {
+            // Witness count: 6718 - 6401 = 317
+            // Copy count: 1376 - 1317 = 59
             let acc_default = acc_verifier.assign_default_accumulator(&mut layouter)?;
+            // Witness count: 6967 - 6718 = 249
+            // Copy count: 1567 - 1376 = 191
             acc_verifier.select_accumulator(&mut layouter, &is_base_case, &acc_default, &acc_prime)?
         };
 
-        // Witness count: 17722 - 10023 = 7699
-        // Copy count: 5901 - 2395 = 3506
+        // Witness count: 10726 - 6967 = 3759
+        // Copy count: 2200 - 1567 = 633
         // check if nark.instances[0][0] = Hash(inputs, acc)
         self.check_state_hash::<PRIMARY_HASH_LENGTH>(
             &mut layouter,
@@ -674,8 +686,8 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &acc_prime,
         )?;
 
-        // Witness count: 35320 - 17598 = 17722
-        // Copy count: 9293 - 3292 = 5901
+        // Witness count: 23069 - 10726 = 12343
+        // Copy count: 6149 - 2200 = 3949
         let acc_verifier_ec = ProtostarAccumulationVerifier::new(cyclefold_avp.clone(), main_chip.clone(), sm_chip.clone());
         let acc_ec = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_ec.as_ref())?;
         let acc_ec_prime_result = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_prime_ec.as_ref())?;
@@ -687,15 +699,20 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             acc_verifier_ec.verify_accumulation_from_nark_ec(&mut layouter, &acc_ec, cyclefold_instances.try_into().unwrap(), transcript_chip)?
         };
 
+
         let (acc_ec_prime, acc_ec_prime_result) = {
+            // Witness count: 22225 - 22203 = 22
+            // Copy count: 5606 - 5594 = 12
             let acc_ec_default = acc_verifier_ec.assign_default_accumulator_ec(&mut layouter)?;
+            // Witness count: 22605 - 22225 = 380
+            // Copy count: 5898 - 5606 = 292
             let acc_ec_prime = acc_verifier_ec.select_accumulator_ec(&mut layouter, &is_base_case, &acc_ec_default, &acc_ec_prime)?;
             let acc_ec_prime_result = acc_verifier_ec.select_accumulator_ec(&mut layouter, &is_base_case, &acc_ec_default, &acc_ec_prime_result)?;
             (acc_ec_prime, acc_ec_prime_result)
         };
 
-        // Witness count: 35320
-        // Copy count: 9293
+        // Witness count: 22609 - 22605 = 4
+        // Copy count: 5919 - 5898 = 21
         self.check_folding_ec(
             &mut layouter,
             &main_chip,
@@ -703,8 +720,8 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &acc_ec_prime_result,
         )?; 
 
-        // Witness count: 35324
-        // Copy count: 9329
+        // Witness count: 22609
+        // Copy count: 5919
         // assign public instances
         // main_chip.expose_public(layouter, &h_prime, 0)?;
 
@@ -733,14 +750,14 @@ where
 #[test]
 fn primary_chip() {
 
-    let k = 13;
+    let k = 12;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,
         vec![NUM_INSTANCES],
         vec![1usize, 1usize],
-        vec![vec![1usize], vec![39usize]],
-        10,
+        vec![vec![1usize], vec![1usize]],
+        5,
     );
 
     let cyclefold_avp = ProtostarAccumulationVerifierParam::new(
@@ -748,8 +765,8 @@ fn primary_chip() {
         Compressing,
         vec![CF_IO_LEN],
         vec![1usize, 1usize],
-        vec![vec![1usize], vec![5usize]],
-        9,
+        vec![vec![1usize], vec![0usize]],
+        5,
     );
 
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
@@ -772,14 +789,14 @@ fn primary_chip_layout() {
         .titled("Primary Chip Layout", ("sans-serif", 60))
         .unwrap();
 
-    let k = 13;
+    let k = 12;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,
         vec![NUM_INSTANCES],
         vec![1usize, 1usize],
-        vec![vec![1usize], vec![39usize]],
-        10,
+        vec![vec![1usize], vec![1usize]],
+        5,
     );
 
     let cyclefold_avp = ProtostarAccumulationVerifierParam::new(
@@ -787,8 +804,8 @@ fn primary_chip_layout() {
         Compressing,
         vec![CF_IO_LEN],
         vec![1usize, 1usize],
-        vec![vec![1usize], vec![5usize]],
-        9,
+        vec![vec![1usize], vec![0usize]],
+        5,
     );
 
     let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));

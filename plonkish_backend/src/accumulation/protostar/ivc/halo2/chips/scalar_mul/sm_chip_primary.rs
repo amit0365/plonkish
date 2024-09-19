@@ -13,7 +13,9 @@ use halo2_proofs::halo2curves::ff::BatchInvert;
 use halo2_proofs::halo2curves::group::Curve;
 use halo2_proofs::halo2curves::group::prime::PrimeCurveAffine;
 use halo2_proofs::halo2curves::pasta::pallas::Scalar;
-use crate::{accumulation::protostar::{hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::chips::main_chip::{EcPointNative, Number}}, util::arithmetic::{add_aff_unequal, add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinate_proj, into_coordinates, into_proj_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, OverridenCurveAffine, ProjectivePoint}};
+use rayon::iter::ParallelIterator;
+use rayon::iter::IntoParallelRefIterator;
+use crate::{accumulation::protostar::{hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::chips::main_chip::{EcPointNative, Number}}, util::{arithmetic::{add_aff_unequal, add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinate_proj, into_coordinates, into_proj_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, OverridenCurveAffine, ProjectivePoint}, end_timer, start_timer}};
 use itertools::Itertools;
 use std::{
     iter,
@@ -319,7 +321,6 @@ where
 
         // println!("nark_comm {:?}", nark_comm);
         // println!("acc_comm {:?}", acc_comm);
-
         let mut rbits_fe = Vec::new();
         r_le_bits.iter().for_each(|fe| {
             rbits_fe.push(fe.value());
@@ -353,7 +354,6 @@ where
             let comm_is_zero_bool = acc_comm_x == C::Scalar::ZERO && acc_comm_y == C::Scalar::ZERO;
             let comm_is_zero = if comm_is_zero_bool { C::Scalar::ONE } else { C::Scalar::ZERO };
 
-            let acc_com_proj = ProjectivePoint::new(acc_comm_x, acc_comm_y, C::Scalar::ONE);
             let mut acc_prev = ProjectivePoint::identity();
             let mut acc_prev_xvec = Vec::new();
             let mut acc_prev_yvec = Vec::new();
@@ -385,7 +385,7 @@ where
                 lhs_double_yvec.push(lhs.y);
                 lhs_double_zvec.push(lhs.z);
             }
-    
+
             for i in 0..scalar_bits {
                 let acc_prev_proj = ProjectivePoint::new(acc_prev_xvec[i+1], acc_prev_yvec[i+1], acc_prev_zvec[i+1]);
                 let lhs_double_proj = ProjectivePoint::new(lhs_double_xvec[i], lhs_double_yvec[i], lhs_double_zvec[i]);
@@ -408,9 +408,9 @@ where
                     rhs_zvec.push(rhs.z);
                 }
             }
-    
+
             lhs_zvec.batch_invert();            
-            let lambda_vec = lhs_zvec.iter().zip(rhs_zvec).map(|(lhs, rhs)| Value::known(*lhs*rhs)).collect_vec();        
+            let lambda_vec = lhs_zvec.iter().zip(rhs_zvec).map(|(lhs, rhs)| Value::known(*lhs*rhs)).collect();        
             let scalar_mul_calc = ProjectivePoint::<C::Scalar>::new(*acc_prev_xvec.last().unwrap(), *acc_prev_yvec.last().unwrap(), *acc_prev_zvec.last().unwrap());
             let scalar_mul_calc_affine = scalar_mul_calc.to_affine();
 
@@ -420,9 +420,9 @@ where
                 add_aff_unequal(scalar_mul_calc_affine, (acc_comm_x, acc_comm_y))
             };
             
-            let acc_x_vec = acc_prev_xvec.iter().map(|fe| Value::known(*fe)).collect_vec();
-            let acc_y_vec = acc_prev_yvec.iter().map(|fe| Value::known(*fe)).collect_vec();
-            let acc_z_vec = acc_prev_zvec.iter().map(|fe| Value::known(*fe)).collect_vec();
+            let acc_x_vec = acc_prev_xvec.iter().map(|fe| Value::known(*fe)).collect();
+            let acc_y_vec = acc_prev_yvec.iter().map(|fe| Value::known(*fe)).collect();
+            let acc_z_vec = acc_prev_zvec.iter().map(|fe| Value::known(*fe)).collect();
 
             let inputs =
                 ScalarMulConfigInputs::<C> { 

@@ -7,10 +7,102 @@ mod timer;
 pub mod transcript;
 pub mod expression_new;
 
+use halo2_proofs::halo2curves::group::{Curve, Group};
 pub use itertools::{chain, izip, Itertools};
 pub use num_bigint::BigUint;
 pub use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize, Serializer};
 pub use timer::{end_timer, start_timer, start_unit_timer};
+
+pub fn sum_and_reduce_bases<T: Clone + std::ops::Add<Output = T> + Default + PartialEq>(vec: &[T], index_groups: &[Vec<usize>]) -> Vec<T> {
+    let mut result: Vec<Option<T>> = vec.iter().map(|_| None).collect();
+    let mut summed_indices = vec![false; vec.len()];
+
+    for group in index_groups {
+        if let Some(&min_index) = group.iter().min() {
+            let sum: T = group.iter().fold(T::default(), |acc, &idx| {
+                if idx < vec.len() { acc + vec[idx].clone() } else { acc }
+            });
+
+            result[min_index] = Some(sum);
+
+            for &idx in group {
+                if idx < vec.len() {
+                    summed_indices[idx] = true;
+                }
+            }
+        }
+    }
+
+    // Fill in the unsummed elements.
+    for (idx, val) in vec.iter().enumerate() {
+        if !summed_indices[idx] {
+            result[idx] = Some(val.clone());
+        }
+    }
+
+    // Remove None values and unwrap the Some values.
+    result.into_iter().filter_map(|x| x).collect()
+}
+
+pub fn reduce_scalars<F: Clone + Default + std::cmp::PartialEq>(scalars: &[F], index_groups: &[Vec<usize>]) -> Vec<F> {
+    let mut result: Vec<Option<F>> = scalars.iter().map(|_| None).collect();
+    let mut used_indices = vec![false; scalars.len()];
+
+    // Process index groups
+    for group in index_groups {
+        if let Some(&first_idx) = group.first() {
+            if first_idx < scalars.len() {
+                result[first_idx] = Some(scalars[first_idx].clone());
+                for &idx in group {
+                    if idx < scalars.len() {
+                        used_indices[idx] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // Fill in unused scalars
+    for (idx, scalar) in scalars.iter().enumerate() {
+        if !used_indices[idx] {
+            result[idx] = Some(scalar.clone());
+        }
+    }
+
+    // Remove default values and reorder
+    result.into_iter().filter_map(|x| x).collect()
+}
+
+#[test]
+fn test_reduce_scalars() {
+    use crate::util::arithmetic::Field;
+    use halo2_proofs::halo2curves::bn256::Fr as F;
+
+    let scalars: Vec<F> = (0..10).map(|i| F::from(i as u64)).collect();
+    let index_groups = vec![
+        vec![2, 7, 8],
+        vec![4, 6],
+        vec![3, 5],
+    ];
+
+    let result = reduce_scalars(&scalars, &index_groups);
+    
+    let expected: Vec<F> = vec![0, 1, 2, 3, 4, 9].into_iter().map(F::from).collect();
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn sum_bases() {
+    let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let index_groups = vec![
+        vec![2, 7, 8],
+        vec![4, 6],
+        vec![3, 5],
+    ];
+
+    let result = sum_and_reduce_bases(&vec, &index_groups);
+    println!("{:?}", result);
+}  
 
 macro_rules! izip_eq {
     (@closure $p:pat => $tup:expr) => {
@@ -110,3 +202,5 @@ pub mod test {
         iter::repeat_with(|| F::random(&mut rng)).take(n).collect()
     }
 }
+
+

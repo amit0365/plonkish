@@ -7,11 +7,7 @@ use crate::{
     util::{
         arithmetic::{
             inner_product, product, variable_base_msm, Curve, CurveAffine, CurveExt, Field, Group,
-        },
-        chain, izip_eq,
-        parallel::parallelize,
-        transcript::{TranscriptRead, TranscriptWrite},
-        Deserialize, DeserializeOwned, Itertools, Serialize,
+        }, chain, izip_eq, parallel::parallelize, reduce_scalars, transcript::{TranscriptRead, TranscriptWrite}, Deserialize, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
@@ -168,6 +164,44 @@ where
         //validate_input("commit", pp.num_vars(), [poly], None)?;
 
         Ok(variable_base_msm(poly.evals(), &pp.g()[..poly.evals().len()]).into()).map(MultilinearIpaCommitment)
+    }
+
+    fn commit_dedup_witness(reduced_bases: &[Self::CommitmentChunk], poly: &Self::Polynomial, advice_copies: &[Vec<usize>]) -> Result<Self::Commitment, Error> {
+        let deduped_coeffs = reduce_scalars(poly.evals(), advice_copies);
+        let comm = variable_base_msm(&deduped_coeffs, &reduced_bases[..deduped_coeffs.len()]).into();
+        Ok(MultilinearIpaCommitment(comm))
+    }
+
+    fn reduce_bases(pp: &Self::ProverParam, advice_copies: &[Vec<usize>]) -> Result<Vec<Self::CommitmentChunk>, Error> {
+        let bases = pp.g();
+        let mut result: Vec<Option<C>> = bases.iter().map(|_| None).collect();
+        let mut summed_indices = vec![false; bases.len()];
+    
+        for group in advice_copies {
+            if let Some(&min_index) = group.iter().min() {
+                let sum: C::CurveExt = group.iter().fold(C::identity().into(), |acc, &idx| {
+                    if idx < bases.len() { acc + bases[idx] } else { acc }
+                });
+    
+                result[min_index] = Some(sum.to_affine());
+    
+                for &idx in group {
+                    if idx < bases.len() {
+                        summed_indices[idx] = true;
+                    }
+                }
+            }
+        }
+    
+        // Fill in the unsummed elements.
+        for (idx, val) in bases.iter().enumerate() {
+            if !summed_indices[idx] {
+                result[idx] = Some(val.clone());
+            }
+        }
+        
+        // Remove None values and unwrap the Some values.
+        Ok(result.into_iter().filter_map(|x| x).collect_vec())
     }
 
     fn batch_commit<'a>(

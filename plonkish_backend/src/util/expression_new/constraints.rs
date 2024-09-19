@@ -153,6 +153,15 @@ impl<T: QueryType> Data<T> {
         constraints.iter().map(|constraint| beta.clone() * constraint.clone()).collect_vec()
     }
 
+    pub fn full_constraint_no_beta_vec(
+        &self,
+        gate_expressions: Vec<plonk::Expression<T::F>>,
+        lookup_expressions: Vec<Vec<(plonk::Expression<T::F>, plonk::Expression<T::F>)>>,
+    ) -> Vec<QueriedExpression<T>> {
+        let constraints = self.all_constraints(gate_expressions, lookup_expressions);
+        constraints
+    }
+
     pub fn ys_paired_vec(&self) -> Vec<QueriedExpression<T>> {
         self.ys.iter().map(|y| T::new_challenge(*y)).collect_vec()
     }

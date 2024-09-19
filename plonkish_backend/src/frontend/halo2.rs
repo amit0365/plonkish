@@ -138,9 +138,10 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         })
     .collect_vec();
     //todo assuming each gate has only one selector
-    let queried_selectors: HashMap<usize, usize> = cs.gates().iter().map(|gate| {
+    let queried_selectors: HashMap<usize, (usize, Vec<usize>)> = cs.gates().iter().map(|gate| {
         let selector_index = gate.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
-        (selector_index, gate.polynomials().len())
+        let degree_vec = gate.polynomials().iter().map(|poly| poly.degree()).collect_vec();
+        (selector_index, (gate.polynomials().len(), degree_vec))
     }).collect();
 
     let lookups = cs
@@ -223,6 +224,7 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         lookups,
         lookup_expressions,
         permutations,
+        advice_copies: vec![],
         max_degree: Some(cs.degree()),
         fixed_permutation_idx_for_preprocess_poly,
         fixed_permutation_idx_for_permutation_constraints,
@@ -323,8 +325,21 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
                 .collect()
         }))
         .collect();
-    circuit_info.permutations = preprocess_collector.permutation.into_cycles();
+    circuit_info.permutations = preprocess_collector.permutation.into_cycles().clone();
+    
+    let selector_map = preprocess_collector.selector_map.clone();
     circuit_info.selector_map = preprocess_collector.selector_map.clone();
+    let beta_selector_map: HashMap<usize, (usize, Vec<(usize, usize)>)> = circuit_info.selector_map.clone().into_iter().map(|(k, v)| {
+        let (num_constraint, degree_vec) = queried_selectors.get(&k).map(|&(n, ref d)| (n, d.clone())).unwrap_or((0, vec![]));
+        let total_rows = selector_map.get(&k).unwrap_or(&vec![]).len() * num_constraint; // selector_rows * num_constraints
+        let degree_row_vec = degree_vec.iter().map(|&d| (d, v.len())).collect_vec();
+        (k, (total_rows, degree_row_vec))
+    }).collect();
+    let mut num_betas = 0;
+    for (key, values) in &circuit_info.selector_map {
+        num_betas += values.len() * queried_selectors.get(key).unwrap_or(&(0, vec![])).0;
+    }
+    println!("num_betas: {}", num_betas);
     circuit_info.row_map_selector = preprocess_collector.row_map_selector.clone();
     let selector_groups = merge_sets(&circuit_info.row_map_selector);
     circuit_info.selector_groups = selector_groups;
@@ -354,6 +369,33 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
     circuit_info.last_rows = dummy_witness_collector.last_rows.clone();
+    
+    let last_row_offset: Vec<usize> = circuit_info.last_rows.iter().map(|&row| row + 1).collect();
+    let mut acc_last_row = Vec::new();
+    let mut sum = 0;
+    for &row in &last_row_offset {
+        sum += row;
+        acc_last_row.push(sum);
+    }
+    
+    let advice_idx_offset = cs.num_instance_columns() + cs.num_fixed_columns() + cs.num_selectors();
+    let mut total_advice_cycles = vec![];
+    let mut advice_cycles = vec![];
+    let mut total_advice_copies = vec![];
+    let mut advice_copies = vec![];
+    for cycle in &circuit_info.permutations {
+        for (i, j) in cycle {
+            if advice_idx(cs).contains(i) {
+                advice_cycles.push((*i, *j));
+                advice_copies.push(acc_last_row[*i - advice_idx_offset] + *j);
+            }
+        }
+        total_advice_cycles.push(advice_cycles.clone());
+        total_advice_copies.push(advice_copies.clone());
+        advice_cycles = vec![];
+        advice_copies = vec![];
+    }
+    circuit_info.advice_copies = total_advice_copies;
     Ok(circuit_info)
 }
 
@@ -379,6 +421,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             challenges,
             row_mapping: &self.row_mapping,
             witness_count: 0,
+            copy_count: 0,
         };
         let constants = self.constants.clone();
         let floor_planner_data = self.floor_planner_data.clone();
@@ -391,6 +434,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         )
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
         println!("witness_count: {}", witness_collector.witness_count);
+        println!("copy_count: {}", witness_collector.copy_count);
         println!("last_rows: {:?}", witness_collector.last_rows);
         Ok(batch_invert_assigned(witness_collector.advices))
     }
@@ -456,8 +500,8 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         AR: Into<String>,
     {   
         self.selector_map.entry(selector.index()).or_default().push(row);
-        //if selector.index() != 10 { // hardcoded to 10 for now -- range_check constraint
-        self.row_map_selector.entry(row).or_default().push(selector.index());
+        //if selector.index() != 12 { //todo fix thishardcoded to 11 for now -- range_check constraint
+            self.row_map_selector.entry(row).or_default().push(selector.index());
         //}
         // let Some(row) = self.row_mapping.get(row).copied() else {
         //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k});
@@ -673,6 +717,7 @@ struct WitnessCollector<'a, F: Field> {
     challenges: &'a [F],
     row_mapping: &'a [usize],
     witness_count: usize,
+    copy_count: usize,
 }
 
 impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
@@ -763,7 +808,9 @@ impl<'a, F: Field> Assignment<F> for WitnessCollector<'a, F> {
         Ok(())
     }
 
+    //todo implement copy
     fn copy(&mut self, _: Column<Any>, _: usize, _: Column<Any>, _: usize) -> Result<(), Error> {
+        self.copy_count += 1;
         Ok(())
     }
 

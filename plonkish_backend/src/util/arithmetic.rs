@@ -533,6 +533,34 @@ pub fn double_proj_comp<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> Pro
     let y2 = (y_sq - nine_z_sq.scale(3))*(y_sq + nine_z_sq) + y_sq.scale(8)*nine_z_sq;
     let z2 = y_sq*y*z.scale(8);
 
+    // Step 1: Precompute squares
+    // let y_sq = y.square();       // y^2
+    // let z_sq = z.square();       // z^2
+
+    // // Step 2: Compute scaled squares
+    // let twenty_seven_z_sq = z_sq.scale(27);   // 27 * z^2
+    // let nine_z_sq = z_sq.scale(9);            // 9 * z^2
+
+    // // Step 3: Compute common expressions
+    // let s1 = y_sq - twenty_seven_z_sq;        // s1 = y^2 - 27 * z^2
+    // let s2 = y_sq + nine_z_sq;                // s2 = y^2 + 9 * z^2
+    // let s3 = y_sq * z_sq;                     // s3 = y^2 * z^2
+    // let y_cubed = y * y_sq;                   // y^3
+    // let z_scaled = z.scale(8);                // 8 * z
+
+    // // Step 4: Compute x2
+    // let x2 = x * y.scale(2) * s1;             // x2 = x * 2y * (y^2 - 27z^2)
+
+    // // Step 5: Compute y2
+    // let y_sq_sq = y_sq * y_sq;                // y^4
+    // let s4 = s3.scale(54);                    // 54 * y^2 * z^2
+    // let s5 = z_sq.square().scale(243);        // 243 * z^4
+    // let y2 = y_sq_sq + s4 - s5;               // y2 = y^4 + 54y^2z^2 - 243z^4
+
+    // // Step 6: Compute z2
+    // let z2 = y_cubed * z_scaled;              // z2 = 8 * y^3 * z
+
+
     ProjectivePoint::new(x2, y2, z2)
 }
 
@@ -590,6 +618,20 @@ pub fn sub_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: Pro
     let x3 = (x1 * -y2 + x2 * y1) * (y1 * -y2 - F::from(9) * z1 * z2) - (y1 * z2 - y2 * z1) * (F::from(9) * (x1 * z2 + x2 * z1));   
     let y3 = (F::from(3) * x1 * x2) * (F::from(9) * (x1 * z2 + x2 * z1)) + (y1 * -y2 + F::from(9) * z1 * z2) * (y1 * -y2 - F::from(9) * z1 * z2);   
     let z3 = (y1 * z2 - y2 * z1) * (y1 * -y2 + F::from(9) * z1 * z2) + (x1 * -y2 + x2 * y1) * (F::from(3) * x1 * x2);
+
+    // Precompute common subexpressions
+    // let s1 = x2 * y1 - x1 * y2;
+    // let s2 = (-y1 * y2) - (z1 * z2).scale(9);
+    // let s3 = y1 * z2 - y2 * z1;
+    // let s4 = x1 * z2 + x2 * z1;
+    // let s5 = (-y1 * y2) + (z1 * z2).scale(9);
+    // let s6 = x1 * x2.scale(3); // Alternatively, x1.scale(3) * x2
+
+    // // Compute x3, y3, and z3 using the precomputed subexpressions
+    // let x3 = s1 * s2 - s3 * s4.scale(9);
+    // let y3 = s6 * s4.scale(9) + s5 * s2;
+    // let z3 = s3 * s5 + s1 * s6;
+
     
     ProjectivePoint::<F> {
         x: x3,
@@ -662,3 +704,4 @@ pub fn into_proj_coordinates<C: CurveExt>(ec_point: &C) -> [C::Base; 3] {
     let coords = ec_point.jacobian_coordinates();
     [coords.0, coords.1, coords.2]
 }
+ 

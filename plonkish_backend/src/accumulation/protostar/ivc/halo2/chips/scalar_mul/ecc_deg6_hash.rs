@@ -223,6 +223,7 @@ where
         &self,
         mut layouter: impl Layouter<C::Scalar>,
         inputs: ScalarMulConfigInputs<C>,
+        //copy_r: Option<bool>,
     ) -> Result<[AssignedCell<C::Scalar, C::Scalar>; NUM_IO], Error> {
 
         layouter.assign_region(
@@ -241,6 +242,8 @@ where
         // | 129 |    -      |   2^128   |    r      |  comm_x   |  comm_y   |    sm.X   |    sm.Y   |     X3    |    Y3     |
 
                 let last_row = NUM_CHALLENGE_BITS + 1; // counting from 0
+                let ptx = region.assign_advice(|| "ptx_vec",self.witness[2], 1, || inputs.ptx_vec[0])?;
+                let pty = region.assign_advice(|| "pty_vec",self.witness[3], 1, || inputs.pty_vec[0])?;
 
                 for row in 0..(last_row + 1) { 
                     if row != last_row {
@@ -253,8 +256,8 @@ where
                             region.assign_fixed(|| "re2",self.fixed[0], row, || inputs.re2_vec[row - 1])?;
 
                             if row != 1 {
-                                region.assign_advice(|| "ptx_vec",self.witness[2], row, || inputs.ptx_vec[row - 1])?;
-                                region.assign_advice(|| "pty_vec",self.witness[3], row, || inputs.pty_vec[row - 1])?;
+                                ptx.copy_advice(|| "ptx_vec", &mut region, self.witness[2], row)?;
+                                pty.copy_advice(|| "pty_vec", &mut region, self.witness[3], row)?;
                             }
                         }
 

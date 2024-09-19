@@ -642,6 +642,31 @@ pub fn concat_polys<F>(polys: Vec<MultilinearPolynomial<F>>
             concat_polys(reduced)
 }
 
+pub fn concat_polys_phase2<F>(polys: Vec<MultilinearPolynomial<F>>
+) -> MultilinearPolynomial<F> 
+where F: Field {
+    let n = polys.len();
+    let num_vars = polys[0].num_vars;
+    if n & (n - 1) != 0 {
+        let next_power_of_two = n.next_power_of_two();
+        let mut padded = polys;
+        padded.extend(repeat(MultilinearPolynomial::new(vec![F::ZERO; 1 << num_vars])).take(next_power_of_two - n));
+        return concat_polys(padded);
+    }   
+
+    if n == 1 {
+        return polys[0].clone();
+    }
+        let reduced = polys.chunks(2)
+            .map(|chunk| {
+                    MultilinearPolynomial::new(chunk[0].evals().iter()
+                        .chain(chunk[1].evals().iter()).cloned().collect_vec())
+            })
+            .collect_vec();
+
+        concat_polys(reduced)
+}
+
 pub fn concat_polys_raw<F>(polys: Vec<MultilinearPolynomial<F>>
 ) -> MultilinearPolynomial<F> 
 where F: Field {

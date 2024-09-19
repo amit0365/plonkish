@@ -253,7 +253,6 @@ where
         let (challenge_le_bits, challenge) = {
 
             let hash = self.poseidon_chip.squeeze(layouter.namespace(|| "squeeze_poseidon"))?;
-            self.poseidon_chip.update(&[hash.clone()]);
             // todo change this to num_to_bits_strict and use as r_le_bits in the verifier
             // let challenge_le_bits = self.chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?.into_iter().take(NUM_CHALLENGE_BITS).collect_vec();
             // let challenge = self.chip.bits_to_num(layouter, &challenge_le_bits)?;     

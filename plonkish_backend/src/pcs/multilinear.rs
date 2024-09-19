@@ -295,14 +295,48 @@ mod test {
         pcs::{Evaluation, PolynomialCommitmentScheme},
         poly::multilinear::MultilinearPolynomial,
         util::{
-            arithmetic::PrimeField,
-            chain,
-            transcript::{InMemoryTranscript, TranscriptRead, TranscriptWrite},
-            Itertools,
+            arithmetic::PrimeField, chain, end_timer, start_timer, transcript::{InMemoryTranscript, TranscriptRead, TranscriptWrite}, Itertools
         },
     };
     use rand::{rngs::OsRng, Rng};
     use std::iter;
+
+    pub fn dummy_commit<F, Pcs, T>()
+    where
+        F: PrimeField,
+        Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
+        T: TranscriptRead<Pcs::CommitmentChunk, F>
+            + TranscriptWrite<Pcs::CommitmentChunk, F>
+            + InMemoryTranscript<Param = ()>,
+    {
+        for num_vars in 6..15 {
+            let batch_size = 8;
+            let num_points = batch_size >> 1;
+            let mut rng = OsRng;
+            // Setup
+            let (pp, vp) = {
+                let poly_size = 1 << num_vars;
+                let param = Pcs::setup(poly_size, batch_size, &mut rng).unwrap();
+                Pcs::trim(&param, poly_size, batch_size).unwrap()
+            };
+            let mut transcript = T::new(());
+            let timer = start_timer(|| "dummy_zero_commit");
+            let dummy_poly = MultilinearPolynomial::new(vec![F::ZERO; 1 << num_vars]);
+            let comm = Pcs::commit_and_write(&pp, &dummy_poly, &mut transcript).unwrap();
+            end_timer(timer);
+
+            let timer = start_timer(|| "dummy_one_commit");
+            let dummy_poly = MultilinearPolynomial::new(vec![F::ONE; 1 << num_vars]);
+            let comm = Pcs::commit_and_write(&pp, &dummy_poly, &mut transcript).unwrap();
+            end_timer(timer);
+
+            let timer = start_timer(|| "dummy_rand_commit");
+            let dummy_poly = MultilinearPolynomial::new(vec![F::random(OsRng); 1 << num_vars]);
+            let comm = Pcs::commit_and_write(&pp, &dummy_poly, &mut transcript).unwrap();
+            end_timer(timer);
+        }
+
+    }
 
     pub(super) fn run_commit_open_verify<F, Pcs, T>()
     where

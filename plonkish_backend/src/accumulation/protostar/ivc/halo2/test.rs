@@ -1,6 +1,6 @@
 use crate::{
     accumulation::protostar::{
-        ivc::halo2::{chips::transcript::{accumulation_transcript_param, PoseidonTranscript}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
+        ivc::halo2::{chips::transcript::{accumulation_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -160,7 +160,7 @@ where
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
 {
     let primary_num_vars = primary_circuit_k;
-    let primary_atp = accumulation_transcript_param::<C::Base>();
+    let primary_atp = accumulation_transcript_param::<C::Scalar>();
     let cyclefold_atp = accumulation_transcript_param::<C::Scalar>();
     println!("primary_atp done");
     let preprocess_time = Instant::now();
@@ -169,8 +169,8 @@ where
         P1,
         P2,
         _,
-        PoseidonTranscript<_, _>,
-        PoseidonTranscript<_, _>,
+        PoseidonNativeTranscript<C::Scalar, _>,
+        PoseidonTranscript<C::Scalar, _>,
     >(  
         primary_num_vars,
         primary_param,
@@ -346,9 +346,9 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_STEPS: usize = 3;
+    const NUM_STEPS: usize = 10;
 
-    let primary_circuit_k = 13;
+    let primary_circuit_k = 12;
     let cyclefold_num_vars = 10;
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();

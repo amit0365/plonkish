@@ -256,6 +256,14 @@ where
             .map(MultilinearKzgCommitment)
     }
 
+    fn commit_dedup_witness(reduced_bases: &[Self::CommitmentChunk], poly: &Self::Polynomial, advice_copies: &[Vec<usize>]) -> Result<Self::Commitment, Error> {
+        todo!()
+    }
+
+    fn reduce_bases(pp: &Self::ProverParam, advice_copies: &[Vec<usize>]) -> Result<Vec<Self::CommitmentChunk>, Error> {
+        todo!()
+    }
+
     fn batch_commit<'a>(
         pp: &Self::ProverParam,
         polys: impl IntoIterator<Item = &'a Self::Polynomial>,

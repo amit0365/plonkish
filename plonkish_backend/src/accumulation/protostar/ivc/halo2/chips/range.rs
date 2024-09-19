@@ -3,7 +3,7 @@ pub mod range_check;
 
 use std::marker::PhantomData;
 
-use crate::{accumulation::protostar::ivc::halo2::{chips::range::range_check_opt::{RangeCheckChip, RangeCheckConfig}, ivc_circuits::primary::NUM_RANGE_COLS}, util::arithmetic::TwoChainCurve,
+use crate::{accumulation::protostar::ivc::halo2::{chips::range::range_check::{RangeCheckChip, RangeCheckConfig}, ivc_circuits::primary::NUM_RANGE_COLS}, util::arithmetic::TwoChainCurve,
 };
 use halo2_base::utils::{BigPrimeField};
 use halo2_proofs::{
@@ -158,7 +158,7 @@ where
         let lookup_enable_selector = meta.complex_selector();
 
         let range_check_config =
-            RangeCheckChip::<C>::configure(meta, z, lookup_u8_table, lookup_enable_selector);
+            RangeCheckChip::<C>::configure(meta, z[0], lookup_u8_table, lookup_enable_selector);
 
         let addchip_config = AddChip::<C>::configure(meta, a, b, c, add_selector);
 
@@ -186,19 +186,36 @@ where
         range_chip.load_range_check_table(&mut layouter, config.lookup_u8_table)?;
 
         // check range on a, b and c
+        // range_chip.assign(
+        //     layouter.namespace(|| "range check a"),
+        //     &Number(a_cell),
+        //     8*N_BYTES,
+        // )?;
+        // range_chip.assign(
+        //     layouter.namespace(|| "range check b"),
+        //     &Number(b_cell),
+        //     8*N_BYTES,
+        // )?;
+        // println!("a and b assigned");
+        // range_chip.assign(
+        //     layouter.namespace(|| "range check c"),
+        //     &Number(c_cell),
+        //     8*N_BYTES,
+        // )?;
+
         range_chip.assign(
-            layouter.namespace(|| "range check a"),
+            &mut layouter,
             &Number(a_cell),
             8*N_BYTES,
         )?;
         range_chip.assign(
-            layouter.namespace(|| "range check b"),
+            &mut layouter.namespace(|| "range check b"),
             &Number(b_cell),
             8*N_BYTES,
         )?;
         println!("a and b assigned");
         range_chip.assign(
-            layouter.namespace(|| "range check c"),
+            &mut layouter.namespace(|| "range check c"),
             &Number(c_cell),
             8*N_BYTES,
         )?;

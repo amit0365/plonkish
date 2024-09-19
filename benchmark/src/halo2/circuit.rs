@@ -3,20 +3,18 @@ pub use sha256::Sha256Circuit;
 
 mod aggregation {
     use halo2_proofs::{
-        circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
-        plonk::{create_proof, keygen_pk, keygen_vk, Circuit, ConstraintSystem, Error},
-        poly::{
+        circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value}, plonk::{create_proof, keygen_pk, keygen_vk, Circuit, ConstraintSystem, Error}, poly::{
             commitment::{Params, ParamsProver},
             kzg::{
                 commitment::{KZGCommitmentScheme, ParamsKZG},
                 multiopen::ProverGWC,
             },
-        },
+        }
     };
     use itertools::Itertools;
     use plonkish_backend::{
         frontend::halo2::{circuit::VanillaPlonk, CircuitExt},
-        halo2_curves::{
+        halo2curves::{
             ff::PrimeField,
             ff::{FromUniformBytes, WithSmallOrderMulGroup},
             pairing::Engine,
@@ -390,11 +388,10 @@ mod aggregation {
 mod sha256 {
     use halo2_gadgets::sha256::{BlockWord, Sha256, Table16Chip, Table16Config};
     use halo2_proofs::{
-        circuit::{Layouter, SimpleFloorPlanner, Value},
-        plonk::{Circuit, ConstraintSystem, Error},
+        circuit::{Layouter, SimpleFloorPlanner, Value}, dev::MockProver, plonk::{Circuit, ConstraintSystem, Error}
     };
-    use plonkish_backend::{frontend::halo2::CircuitExt, halo2_curves::bn256::Fr};
-    use rand::RngCore;
+    use plonkish_backend::{frontend::halo2::CircuitExt, halo2curves::bn256::Fr};
+    use rand::{rngs::StdRng, RngCore};
 
     const INPUT_2: [BlockWord; 16 * 2] =
         [BlockWord(Value::known(0b01111000100000000000000000000000)); 16 * 2];
@@ -475,5 +472,13 @@ mod sha256 {
         fn instances(&self) -> Vec<Vec<Fr>> {
             Vec::new()
         }
+    }
+
+    #[test]
+    pub fn sha_test() {
+        let k = 17;
+        let circuit = Sha256Circuit::rand(k, StdRng::from_seed(Default::default()));
+        let prover = MockProver::<Sha256Circuit>::new(k).run(circuit, vec![]).unwrap();
+        prover.verify().unwrap();
     }
 }

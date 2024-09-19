@@ -45,6 +45,11 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         nark: PlonkishNark<F, Self::Pcs>,
     ) -> Result<Self::Accumulator, Error>;
 
+    fn init_accumulator_from_nark_ec(
+        pp: &Self::ProverParam,
+        nark: PlonkishNark<F, Self::Pcs>,
+    ) -> Result<Self::Accumulator, Error>;
+
     fn prove_nark(
         pp: &Self::ProverParam,
         circuit: &impl PlonkishCircuit<F>,
@@ -96,7 +101,7 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         mut rng: impl RngCore,
     ) -> Result<(), Error> {
         let nark = Self::prove_nark_ec(pp, circuit, transcript, &mut rng)?;
-        let incoming = Self::init_accumulator_from_nark(pp, nark)?;
+        let incoming = Self::init_accumulator_from_nark_ec(pp, nark)?;
         Self::prove_accumulation_ec::<true>(pp, accumulator, &incoming, transcript, &mut rng)?;
         Ok(())
     }

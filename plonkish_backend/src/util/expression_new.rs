@@ -322,7 +322,7 @@ pub struct IndexedExpression<T: QueryType> {
 }
 
 impl<T: QueryType> IndexedExpression<T> {
-    pub fn new(expr: QueriedExpression<T>) -> Self {
+    pub fn new(expr: &QueriedExpression<T>) -> Self {
         fn find_or_insert<T: PartialEq + Copy>(container: &mut Vec<T>, elem: &T) -> usize {
             if let Some(idx) = container.iter().position(|x| *x == *elem) {
                 idx

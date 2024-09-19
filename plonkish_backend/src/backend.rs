@@ -18,6 +18,7 @@ pub trait PlonkishBackend<F: Field>: Clone + Debug {
     type Pcs: PolynomialCommitmentScheme<F>;
     type ProverParam: Clone + Debug + Serialize + DeserializeOwned;
     type VerifierParam: Clone + Debug + Serialize + DeserializeOwned;
+    type CommitmentChunk: Clone + Debug;
 
     fn setup(
         circuit_info: &PlonkishCircuitInfo<F>,
@@ -83,7 +84,7 @@ pub struct PlonkishCircuitInfo<F> {
     // used in decider permutation constraints
     pub fixed_permutation_idx_for_permutation_constraints: Vec<usize>,
     // tuple of selector_index and constraints_len
-    pub queried_selectors: HashMap<usize, usize>,
+    pub queried_selectors: HashMap<usize, (usize, Vec<usize>)>,
     // map of selector index to the rows it is applied to
     pub selector_map: HashMap<usize, Vec<usize>>,
     // map of row index to the selectors applied to it
@@ -94,6 +95,8 @@ pub struct PlonkishCircuitInfo<F> {
     pub floor_planner_data: Option<FloorPlannerData>,
     // last rows of each witness
     pub last_rows: Vec<usize>,
+    // advice copies 
+    pub advice_copies: Vec<Vec<usize>>,
 }
 
 impl<F: Clone> PlonkishCircuitInfo<F> {

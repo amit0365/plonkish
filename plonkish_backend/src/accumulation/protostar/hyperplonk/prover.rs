@@ -3,7 +3,7 @@ use crossbeam::{scope, thread};
 use std::{borrow::Cow, hash::Hash, iter, sync::{Arc, Mutex}};
 
 use crate::{
-    accumulation::protostar::ProtostarAccumulator,
+    accumulation::protostar::{ivc::halo2::chips::main_chip::LOOKUP_BITS, ProtostarAccumulator},
     backend::hyperplonk::prover::instance_polys,
     pcs::PolynomialCommitmentScheme,
     poly::multilinear::MultilinearPolynomial,
@@ -22,9 +22,18 @@ pub struct PolynomialsHolder<F> {
 
 impl<F: PrimeField> PolynomialsHolder<F> {
     pub fn new(num_vars: usize, zeta_values: [F; 2]) -> Self {
+        //TODO: fix this
         let polys = [
-            powers_of_zeta_poly(num_vars, zeta_values[0]),
-            powers_of_zeta_poly(num_vars, zeta_values[1]),
+            powers_of_zeta_poly(num_vars - 4, zeta_values[0]),
+            powers_of_zeta_poly(num_vars - 4, zeta_values[1]),
+        ];
+        PolynomialsHolder { polys }
+    }
+
+    pub fn new_ec(num_vars: usize, zeta_values: [F; 2]) -> Self {
+        let polys = [
+            powers_of_zeta_poly(num_vars - 3, zeta_values[0]),
+            powers_of_zeta_poly(num_vars - 3, zeta_values[1]),
         ];
         PolynomialsHolder { polys }
     }
@@ -52,8 +61,8 @@ fn lookup_h_poly<F: PrimeField + Hash>(
     beta: &F,
 ) -> [MultilinearPolynomial<F>; 2] {
     let [input, table] = compressed_polys;
-    let mut h_input = vec![F::ZERO; input.evals().len()];
-    let mut h_table = vec![F::ZERO; table.evals().len()];
+    let mut h_input = vec![F::ZERO; 1 << input.num_vars()];
+    let mut h_table = vec![F::ZERO; 1 << LOOKUP_BITS];
 
     parallelize(&mut h_input, |(h_input, start)| {
         for (h_input, input) in h_input.iter_mut().zip(input[start..].iter()) {
@@ -102,7 +111,19 @@ pub fn powers_of_zeta_poly<F: PrimeField>(
     MultilinearPolynomial::new(par_map_collect(&nth_map, |b| powers_of_zeta[*b]))
 }
 
+//todo fix this, should be two separte and then concat
 pub fn powers_of_zeta_sqrt_poly<F: PrimeField>(
+    num_vars: usize,
+    zeta: F,
+) -> MultilinearPolynomial<F> {
+    let powers_of_zeta = powers(zeta).take(1 << ((num_vars + 2)/2 + 1)).collect_vec();
+    //let nth_map = BooleanHypercube::new(num_vars/2 + 1).nth_map();
+    let nth_map = (0..1 << ((num_vars + 2)/2 + 1)).collect_vec();
+    MultilinearPolynomial::new(par_map_collect(&nth_map, |b| powers_of_zeta[*b]))
+}
+
+//todo fix this, should be two separte and then concat
+pub fn powers_of_zeta_sqrt_poly_ec<F: PrimeField>(
     num_vars: usize,
     zeta: F,
 ) -> MultilinearPolynomial<F> {

@@ -1,21 +1,17 @@
 use crate::{
-    pcs::{AdditiveCommitment, Evaluation, Point, PolynomialCommitmentScheme},
+    pcs::{AdditiveCommitment, CommitmentChunk, Evaluation, Point, PolynomialCommitmentScheme},
     poly::univariate::{CoefficientBasis, UnivariatePolynomial},
     util::{
         arithmetic::{
-            barycentric_interpolate, barycentric_weights, fixed_base_msm, inner_product, powers, MultiMillerLoop,
-            variable_base_msm, window_size, window_table, Curve, CurveAffine, Field, PrimeCurveAffine,
-        },
-        chain, izip, izip_eq,
-        parallel::parallelize,
-        transcript::{TranscriptRead, TranscriptWrite},
-        Deserialize, DeserializeOwned, Itertools, Serialize,
+            barycentric_interpolate, barycentric_weights, fixed_base_msm, inner_product, powers, variable_base_msm, window_size, window_table, Curve, CurveAffine, Field, MultiMillerLoop, PrimeCurveAffine
+        }, chain, izip, izip_eq, parallel::parallelize, reduce_scalars, sum_and_reduce_bases, transcript::{TranscriptRead, TranscriptWrite}, Deserialize, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
 use halo2_proofs::
-    halo2curves::{bn256, grumpkin, pasta::{pallas, vesta},
+    halo2curves::{bn256, grumpkin, pairing::Engine, pasta::{pallas, vesta}
 };
+use halo2_proofs::halo2curves::group::Group;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rayon::iter::IntoParallelRefIterator;
 use rand::RngCore;
@@ -34,6 +30,51 @@ impl<M: MultiMillerLoop> UnivariateKzg<M> {
     ) -> UnivariateKzgCommitment<M::G1Affine> {
         let comm = variable_base_msm(coeffs, &pp.powers_of_s_g1[..coeffs.len()]).into();
         UnivariateKzgCommitment(comm)
+    }
+
+    pub(crate) fn commit_dedup_coeffs(
+        coeffs: &[M::Scalar],
+        advice_copies: &[Vec<usize>],
+        reduced_bases: &[M::G1Affine],
+    ) -> UnivariateKzgCommitment<M::G1Affine> {
+        let deduped_coeffs = reduce_scalars(coeffs, advice_copies);
+        let comm = variable_base_msm(&deduped_coeffs, &reduced_bases[..deduped_coeffs.len()]).into();
+        UnivariateKzgCommitment(comm)
+    }
+
+    pub(crate) fn reduce_bases(
+        pp: &UnivariateKzgProverParam<M>,
+        advice_copies: &[Vec<usize>],
+    ) -> Vec<M::G1Affine> {
+        let bases = pp.powers_of_s_g1();
+        let mut result: Vec<Option<M::G1Affine>> = bases.iter().map(|_| None).collect();
+        let mut summed_indices = vec![false; bases.len()];
+    
+        for group in advice_copies {
+            if let Some(&min_index) = group.iter().min() {
+                let sum: M::G1 = group.iter().fold(M::G1::identity(), |acc, &idx| {
+                    if idx < bases.len() { acc + bases[idx] } else { acc }
+                });
+    
+                result[min_index] = Some(sum.to_affine());
+    
+                for &idx in group {
+                    if idx < bases.len() {
+                        summed_indices[idx] = true;
+                    }
+                }
+            }
+        }
+    
+        // Fill in the unsummed elements.
+        for (idx, val) in bases.iter().enumerate() {
+            if !summed_indices[idx] {
+                result[idx] = Some(val.clone());
+            }
+        }
+    
+        // Remove None values and unwrap the Some values.
+        result.into_iter().filter_map(|x| x).collect()    
     }
 }
 
@@ -361,6 +402,14 @@ where
         Ok(Self::commit_coeffs(pp, poly.coeffs()))
     }
 
+    fn commit_dedup_witness(reduced_bases: &[Self::CommitmentChunk], poly: &Self::Polynomial, advice_copies: &[Vec<usize>]) -> Result<Self::Commitment, Error> {
+        Ok(Self::commit_dedup_coeffs(poly.coeffs(), advice_copies, reduced_bases))
+    }
+
+    fn reduce_bases(pp: &Self::ProverParam, advice_copies: &[Vec<usize>]) -> Result<Vec<Self::CommitmentChunk>, Error> {
+        Ok(Self::reduce_bases(pp, advice_copies))
+    }
+
     fn batch_commit<'a>(
         pp: &Self::ProverParam,
         polys: impl IntoIterator<Item = &'a Self::Polynomial>,
@@ -684,7 +733,7 @@ mod test {
     use std::iter;
 
     type Pcs = UnivariateKzg<Bn256>;
-    type Polynomial = <Pcs as PolynomialCommitmentScheme<Fr>>::Polynomial;
+    type Polynomial = <Pcs as PolynomialCommitmentScheme<Fr>>::Polynomial; 
 
     #[test]
     fn commit_open_verify() {

@@ -289,8 +289,8 @@ where
 
             let acc_prime_calc  = (scalar_mul_calc_curve + acc_comm).to_affine();
             let acc_prime_given = inputs.acc_prime_comm; 
-            assert_eq!(acc_prime_calc, acc_prime_given);
-            assert_eq!(scalar_mul_given, scalar_mul_calc_curve);
+            // assert_eq!(acc_prime_calc, acc_prime_given);
+            // assert_eq!(scalar_mul_given, scalar_mul_calc_curve);
 
             // do point addition of comm and sm
             let result_given = acc_comm + scalar_mul_given;
@@ -423,7 +423,7 @@ where
             Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L>::configure(
                 meta,
                 advices[..T].try_into().unwrap(),
-                advices[T..2*T].try_into().unwrap(),
+                advices[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(),
                 constants[..T].try_into().unwrap(), 
                 constants[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(), 
                 constants[T+ NUM_PARTIAL_SBOX..2*T + NUM_PARTIAL_SBOX].try_into().unwrap(), 

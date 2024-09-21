@@ -264,22 +264,23 @@ impl<F:PrimeField> Table16Chip<F> {
     }
 
     /// Configures a circuit to include this chip.
-    pub fn configure(meta: &mut ConstraintSystem<F>) -> <Self as Chip<F>>::Config {
+    pub fn configure(meta: &mut ConstraintSystem<F>, advice: [Column<Advice>; 10]) -> <Self as Chip<F>>::Config {
         // Columns required by this chip:
-        let message_schedule = meta.advice_column();
-        let extras = [
-            meta.advice_column(),
-            meta.advice_column(),
-            meta.advice_column(),
-            meta.advice_column(),
-            meta.advice_column(),
-            meta.advice_column(),
-        ];
+        let message_schedule = advice[0];//meta.advice_column();
+        let extras = [advice[1], advice[2], advice[3], advice[4], advice[5], advice[6]];
+        // let extras = [
+        //     meta.advice_column(),
+        //     meta.advice_column(),
+        //     meta.advice_column(),
+        //     meta.advice_column(),
+        //     meta.advice_column(),
+        //     meta.advice_column(),
+        // ];
 
         // - Three advice columns to interact with the lookup table.
-        let input_tag = meta.advice_column();
-        let input_dense = meta.advice_column();
-        let input_spread = meta.advice_column();
+        let input_tag = advice[7];
+        let input_dense = advice[8];
+        let input_spread = advice[9];
 
         let lookup = SpreadTableChip::<F>::configure(meta, input_tag, input_dense, input_spread);
         let lookup_inputs = lookup.input.clone();
@@ -291,7 +292,7 @@ impl<F:PrimeField> Table16Chip<F> {
         let a_3 = extras[0];
         let a_4 = extras[1];
         let a_5 = message_schedule;
-        let a_6 = extras[2];
+        let a_6 = advice[3];
         let a_7 = extras[3];
         let a_8 = extras[4];
         let _a_9 = extras[5];
@@ -470,7 +471,8 @@ mod tests {
             }
 
             fn configure(meta: &mut ConstraintSystem<Fr>) -> Self::Config {
-                Table16Chip::configure(meta)
+                let advice = [meta.advice_column(); 10];
+                Table16Chip::configure(meta, advice)
             }
 
             fn synthesize(

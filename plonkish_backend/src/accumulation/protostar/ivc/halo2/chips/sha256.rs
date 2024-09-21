@@ -170,7 +170,7 @@ impl<F: Field, Sha256Chip: Sha256Instructions<F>> Sha256<F, Sha256Chip> {
     }
 }
 
-    const INPUT_2: [BlockWord; 16] =
+    pub const INPUT_2: [BlockWord; 16] =
         [BlockWord(Value::known(0b01111000100000000000000000000000)); 16];
     const INPUT_3: [BlockWord; 16 * 3] =
         [BlockWord(Value::known(0b01111000100000000000000000000000)); 16 * 3];
@@ -208,7 +208,8 @@ impl<F: Field, Sha256Chip: Sha256Instructions<F>> Sha256<F, Sha256Chip> {
         }
 
         fn configure(meta: &mut ConstraintSystem<Fr>) -> Self::Config {
-            Table16Chip::configure(meta)
+            let advice = [meta.advice_column(); 10];
+            Table16Chip::configure(meta, advice)
         }
 
         fn synthesize(

@@ -1,5 +1,5 @@
 use crate::{
-    backend::{hyperplonk::prover::{instance_polys, lookup_compressed_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys}, PlonkishCircuit, PlonkishCircuitInfo, WitnessEncoding}, poly::multilinear::MultilinearPolynomial, util::{
+    accumulation::protostar::ivc::halo2::chips::main_chip::LOOKUP_BITS, backend::{hyperplonk::prover::{instance_polys, lookup_compressed_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys}, PlonkishCircuit, PlonkishCircuitInfo, WitnessEncoding}, poly::multilinear::MultilinearPolynomial, util::{
         arithmetic::{BatchInvert, Field},
         expression::{Expression, Query, Rotation},
         Itertools,
@@ -138,7 +138,7 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         })
     .collect_vec();
     //todo assuming each gate has only one selector
-    let queried_selectors: HashMap<usize, (usize, Vec<usize>)> = cs.gates().iter().map(|gate| {
+    let mut queried_selectors: HashMap<usize, (usize, Vec<usize>)> = cs.gates().iter().map(|gate| {
         let selector_index = gate.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
         let degree_vec = gate.polynomials().iter().map(|poly| poly.degree()).collect_vec();
         (selector_index, (gate.polynomials().len(), degree_vec))
@@ -178,6 +178,14 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .collect_vec()
         })
         .collect_vec();
+    println!("cs.num_fixed_columns() {:?}", cs.num_fixed_columns());
+    if !lookups.is_empty() {
+        cs.lookups().iter().map(|lookup| {
+            let selector_index = lookup.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
+            queried_selectors.insert(selector_index, (1, vec![3])); //todo hardcoded lookup degree and constraints
+        }).collect_vec();
+        queried_selectors.insert(queried_selectors.len(), (1, vec![3])); //todo hardcoded lookup degree and constraints
+    }
 
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
@@ -327,22 +335,17 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         .collect();
     circuit_info.permutations = preprocess_collector.permutation.into_cycles().clone();
     
-    let selector_map = preprocess_collector.selector_map.clone();
-    circuit_info.selector_map = preprocess_collector.selector_map.clone();
-    let beta_selector_map: HashMap<usize, (usize, Vec<(usize, usize)>)> = circuit_info.selector_map.clone().into_iter().map(|(k, v)| {
-        let (num_constraint, degree_vec) = queried_selectors.get(&k).map(|&(n, ref d)| (n, d.clone())).unwrap_or((0, vec![]));
-        let total_rows = selector_map.get(&k).unwrap_or(&vec![]).len() * num_constraint; // selector_rows * num_constraints
-        let degree_row_vec = degree_vec.iter().map(|&d| (d, v.len())).collect_vec();
-        (k, (total_rows, degree_row_vec))
-    }).collect();
+    let mut selector_map = preprocess_collector.selector_map.clone();
+    if !circuit_info.lookups.is_empty() {
+        println!("queried_selectors {:?}", queried_selectors.len());
+        selector_map.insert(queried_selectors.len(), (0..1<<LOOKUP_BITS).collect_vec()); //todo hardcoded to 0 for now
+    }
+    circuit_info.selector_map = selector_map.clone();
     let mut num_betas = 0;
     for (key, values) in &circuit_info.selector_map {
         num_betas += values.len() * queried_selectors.get(key).unwrap_or(&(0, vec![])).0;
     }
     println!("num_betas: {}", num_betas);
-    circuit_info.row_map_selector = preprocess_collector.row_map_selector.clone();
-    let selector_groups = merge_sets(&circuit_info.row_map_selector);
-    circuit_info.selector_groups = selector_groups;
 
     let instances = self.instances.iter().map(Vec::as_slice).collect_vec();
     let challenges = vec![F::ZERO; circuit_info.num_challenges.iter().sum::<usize>()];

@@ -962,7 +962,8 @@ mod tests {
             }
 
             fn configure(meta: &mut ConstraintSystem<Fr>) -> Self::Config {
-                Table16Chip::configure(meta)
+                let advice = [meta.advice_column(); 10];
+                Table16Chip::configure(meta, advice)
             }
 
             fn synthesize(

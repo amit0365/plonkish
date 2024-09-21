@@ -62,7 +62,7 @@ fn lookup_h_poly<F: PrimeField + Hash>(
 ) -> [MultilinearPolynomial<F>; 2] {
     let [input, table] = compressed_polys;
     let mut h_input = vec![F::ZERO; 1 << input.num_vars()];
-    let mut h_table = vec![F::ZERO; 1 << LOOKUP_BITS];
+    let mut h_table = vec![F::ZERO; 1 << table.num_vars()]; //LOOKUP_BITS
 
     parallelize(&mut h_input, |(h_input, start)| {
         for (h_input, input) in h_input.iter_mut().zip(input[start..].iter()) {

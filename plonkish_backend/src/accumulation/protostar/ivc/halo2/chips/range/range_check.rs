@@ -1,3 +1,4 @@
+use halo2_gadgets::utilities::lebs2ip;
 use halo2_proofs::arithmetic::Field;
 use halo2_proofs::circuit::{AssignedCell, Layouter, Value};
 use halo2_proofs::halo2curves::bn256::Fr as Fp;
@@ -43,6 +44,13 @@ pub fn decompose_fp_to_bytes<F: BigPrimeField>(value: F, n: usize) -> Vec<u8> {
     }
 
     bytes
+}
+
+pub fn lebs2ip_variable(bits: &[bool]) -> u64 {
+    assert!(bits.len() <= 64);
+    bits.iter()
+        .enumerate()
+        .fold(0u64, |acc, (i, b)| acc + if *b { 1 << i } else { 0 })
 }
 
 /// Configuration for the Range Check Chip
@@ -147,12 +155,12 @@ where
         value: &Self::Num,
         range_bits: usize,
     ) -> Result<(), Error> {
-        let N_BYTES: usize = range_bits.div_ceil(LOOKUP_BITS);
+        let word_size: usize = range_bits.div_ceil(LOOKUP_BITS);
         layouter.assign_region(
             || "range check value",
             |mut region| {
                 // enable the lookup at offset [0, N_BYTES - 1]
-                for i in 0..N_BYTES {
+                for i in 0..word_size {
                     self.config.lookup_enable_selector.enable(&mut region, i)?;
                 }
 
@@ -165,11 +173,38 @@ where
                 )?;
 
                 // Decompose the value in #N_BYTES bytes
-                let bytes = value.0
+                // let words = value.0
+                //     .value()
+                //     .copied()
+                //     .map(|x| decompose_fp_to_bytes(x, N_BYTES))
+                //     .transpose_vec(N_BYTES);
+
+                let words = value.0
                     .value()
                     .copied()
-                    .map(|x| decompose_fp_to_bytes(x, N_BYTES))
-                    .transpose_vec(N_BYTES);
+                    .map(|x| {
+                        let mut word_vec = x.to_le_bits()
+                            .chunks_exact(LOOKUP_BITS)
+                            .map(|word_bool| {
+                                let word: Vec<bool> = word_bool.iter().map(|b| *b).collect();
+                                C::Scalar::from(lebs2ip_variable(&word))
+                            })
+                            .collect::<Vec<_>>();
+                        
+                        // Pad with 0s at the most significant bytes if bytes length is less than n.
+                        while word_vec.len() < word_size {
+                            word_vec.push(C::Scalar::from(0));
+                        }
+
+                        //todo check this
+                        // If the bytes length exceeds n, print a warning and truncate the byte array at the most significant bytes.
+                        if word_vec.len() > word_size {
+                            word_vec.truncate(word_size);
+                        }
+
+                        word_vec
+                    })
+                    .transpose_vec(word_size);
 
                 // Initialize empty vector to store running sum values [z_0, ..., z_W].
                 let mut zs: Vec<Self::Num> = vec![Number(z_0.clone())];
@@ -178,12 +213,12 @@ where
                 // Assign running sum `z_{i+1}` = (z_i - k_i) / (2^LOOKUP_BITS) for i = 0..= N_BYTES - 1.
                 let two_pow_k_inv = Value::known(C::Scalar::from(1 << LOOKUP_BITS).invert().unwrap());
 
-                for (i, byte) in bytes.iter().enumerate() {
+                for (i, word) in words.iter().enumerate() {
                     // z_next = (z_cur - byte) / (2^K)
                     let z_next = {
                         let z_cur_val = z.value().copied();
-                        let byte = byte.map(|byte| C::Scalar::from(byte as u64));
-                        let z_next_val = (z_cur_val - byte) * two_pow_k_inv;
+                        //let word = word.map(|byte| C::Scalar::from(byte.load::<u64>()));
+                        let z_next_val = (z_cur_val - word) * two_pow_k_inv;
                         region.assign_advice(
                             || format!("z_{:?}", i + 1),
                             self.config.z,
@@ -198,7 +233,7 @@ where
                 }
 
                 // Constrain the final running sum output to be zero.
-                region.constrain_constant(zs[N_BYTES].0.cell(), C::Scalar::from(0))?;
+                region.constrain_constant(zs[word_size].0.cell(), C::Scalar::from(0))?;
 
                 Ok(())
             },

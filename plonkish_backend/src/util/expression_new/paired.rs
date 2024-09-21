@@ -70,7 +70,6 @@ impl<'a, F: PrimeField> Paired<'a, F> {
         let advice= total_advice.iter().take(num_witness_polys).cloned().collect_vec();
         let challenges = total_challenges.iter().take(num_challenges).cloned().collect_vec();
         let thetas = total_challenges.iter().skip(num_challenges).take(num_theta_primes).cloned().collect_vec();
-        println!("thetas: {:?}", thetas.len());
         let r = total_challenges.iter().skip(num_challenges + num_theta_primes).take(1).cloned().collect_vec()[0]; // beta_prime 
         let ys = total_challenges.iter().rev().take(num_alpha_primes).cloned().rev().collect_vec();
 

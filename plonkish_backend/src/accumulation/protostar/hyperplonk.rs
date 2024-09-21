@@ -593,6 +593,22 @@ where
                 }).collect();
                 end_timer(timer);
 
+                let timer = start_timer(|| "evaluate_lookup_error_poly_selectorwise");
+                let lookup_error_poly_selectorwise: Vec<Vec<F>> = total_constraints_vec.get(&(total_constraints_vec.len() - 1)).map(|selector_constraints| {
+                    println!("selector_constraints {:?}", selector_constraints.len());
+                    selector_constraints.iter().enumerate().map(|(constraint_idx, constraint)| {
+                        println!("constraint_idx {:?}", constraint_idx);
+                        Paired::<'_, F>::evaluate_compressed_polynomial_full(
+                            constraint,
+                            selector_map.get(&(total_constraints_vec.len() - 1)).unwrap_or(&vec![]),
+                            num_vars,
+                            beta_poly_selectorwise[total_constraints_vec.len() - 1][constraint_idx].as_slice(),
+                        )
+                    }).collect()
+                }).unwrap_or_default();
+                println!("lookup_error_poly_selectorwise {:?}", lookup_error_poly_selectorwise);
+                end_timer(timer);
+                
                 let timer = start_timer(|| "sum_error_polys");
                 let error_poly_flattened = error_poly_selectorwise.into_iter().flatten().collect_vec();
                 // Initialize the sum evaluations with zeros
@@ -828,6 +844,7 @@ where
                 let mut total_constraints_vec = HashMap::new();
                 let mut sorted_selectors: Vec<_> = queried_selectors.iter().collect();
                 sorted_selectors.sort_by_key(|&(idx, _)| idx);
+
                 for (selector_idx, (num_constraints, degree_vec)) in &sorted_selectors {
                     let selector_constraints_vec: Vec<_> = gate_constraint_vec
                         .iter()

@@ -498,6 +498,8 @@ where
             //num_alpha_primes,
             ..
         } = &self.avp;
+        // Witness count: 5752 - 920 = 4832
+        // Copy count: 1118 - 113 = 1005
         let instances = instances
             .into_iter()
             .enumerate()
@@ -518,24 +520,24 @@ where
         // write comm only for test
         // 0x2a6148ae85b8df7365f051126ccac4df868497e62758daff76cb89aeea12bdb6,
         // 0x2390bb5e606ac7db700236a04d8da435940d1332e2a66332f0f87329fd47398c,
-        let hex_str_x = "0x2a6148ae85b8df7365f051126ccac4df868497e62758daff76cb89aeea12bdb6";
-        let decimal_value_x = U256::from_str_radix(&hex_str_x[2..], 16).unwrap();
-        let hex_str_y = "0x2390bb5e606ac7db700236a04d8da435940d1332e2a66332f0f87329fd47398c";
-        let decimal_value_y = U256::from_str_radix(&hex_str_y[2..], 16).unwrap();
-        let bn254_random = C::from_xy(
-            C::Base::from_str_vartime(&decimal_value_x.to_string()).unwrap(),
-            C::Base::from_str_vartime(&decimal_value_y.to_string()).unwrap(),
-        ).unwrap();
+        // let hex_str_x = "0x2a6148ae85b8df7365f051126ccac4df868497e62758daff76cb89aeea12bdb6";
+        // let decimal_value_x = U256::from_str_radix(&hex_str_x[2..], 16).unwrap();
+        // let hex_str_y = "0x2390bb5e606ac7db700236a04d8da435940d1332e2a66332f0f87329fd47398c";
+        // let decimal_value_y = U256::from_str_radix(&hex_str_y[2..], 16).unwrap();
+        // let bn254_random = C::from_xy(
+        //     C::Base::from_str_vartime(&decimal_value_x.to_string()).unwrap(),
+        //     C::Base::from_str_vartime(&decimal_value_y.to_string()).unwrap(),
+        // ).unwrap();
 
-        // write comm only for test
-        witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
-        //witness_comms.push(transcript_chip.read_commitment(layouter)?);
-        //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
-        //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
+        // // write comm only for test
+        //witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
+        witness_comms.push(transcript_chip.read_commitment(layouter)?);
+        // //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
+        // //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
-        witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
-        //witness_comms.push(transcript_chip.read_commitment(layouter)?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
+        witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // let challenge3 = transcript_chip.squeeze_challenge(layouter)?.challenge;
         // challenges.extend(main_chip.powers(layouter, &challenge3, 2)?.into_iter().skip(1).take(1).collect::<Vec<_>>());
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
@@ -549,12 +551,12 @@ where
                 (cross_term_comms, None)
             }
             Compressing => {
-                // let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
-                let zeta_cross_term_comm = vec![transcript_chip.write_commitment(layouter, &bn254_random)?];
-                // let compressed_cross_term_sums =
-                //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
+                let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
+                //let zeta_cross_term_comm = vec![transcript_chip.write_commitment(layouter, &bn254_random)?];
                 let compressed_cross_term_sums =
-                    transcript_chip.write_field_elements(layouter, &vec![C::Scalar::ONE; *num_cross_terms])?;
+                    transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
+                // let compressed_cross_term_sums =
+                //     transcript_chip.write_field_elements(layouter, &vec![C::Scalar::ONE; *num_cross_terms])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -566,7 +568,8 @@ where
         // let assigned_cyclefold_instances = self.assign_cyclefold_instances(builder, cyclefold_instances)?;
         // self.check_assigned_cyclefold_instances(builder, r.as_ref(), &nark, &cross_term_comms, &acc, &assigned_cyclefold_instances);
 
-        //let acc_prime = acc.clone();
+        // Witness count: 5833 - 5752 = 81
+        // Copy count: 1170 - 1118 = 52
         let acc_prime = self.fold_accumulator_from_nark(
             layouter,
             acc,
@@ -764,20 +767,20 @@ where
         // 0x2c678516c21eef9231dc569ce9d6e41269dc4c1e7c923c25b0664cea8cb74890,
         // let hex_str = "0x2c678516c21eef9231dc569ce9d6e41269dc4c1e7c923c25b0664cea8cb74890";
         // let decimal_value = U256::from_str_radix(&hex_str[2..], 16).unwrap();
-        let grumpkin_random = C::Secondary::from_xy(
-            C::Scalar::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap(),
-            C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
-        ).unwrap();
+        // let grumpkin_random = C::Secondary::from_xy(
+        //     C::Scalar::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap(),
+        //     C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
+        // ).unwrap();
 
         // Witness count: 10817 - 10773 = 44
         // Copy count: 2085 - 2081 = 4
-        witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
-        // witness_comms.push(transcript_chip.read_commitment(layouter)?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
+        witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // Witness count 11748 - 10817 = 931 (bits_and_num - 594 (256 copy) + 254 (pow2 copy) = 828)
         // Copy count 2373 - 2085 = 288
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.scalar);
-        witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
-        // witness_comms.push(transcript_chip.read_commitment(layouter)?);
+        //witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
+        witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
         //let challenge3 = transcript_chip.squeeze_challenge(layouter)?.scalar;
         // challenges.extend(main_chip.powers_base(layouter, &challenge3, 2)?.into_iter().skip(1).take(1).collect::<Vec<_>>()); // num_alpha_primes
@@ -791,12 +794,12 @@ where
                 (cross_term_comms, None)
             }
             Compressing => {
-                // let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
-                let zeta_cross_term_comm = vec![transcript_chip.write_commitment(layouter, &grumpkin_random)?];
-                // let compressed_cross_term_sums =
-                //     transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
+                let zeta_cross_term_comm = vec![transcript_chip.read_commitment(layouter)?];
+                //let zeta_cross_term_comm = vec![transcript_chip.write_commitment(layouter, &grumpkin_random)?];
                 let compressed_cross_term_sums =
-                    transcript_chip.write_field_elements(layouter, &vec![C::Base::ONE; *num_cross_terms])?;
+                    transcript_chip.read_field_elements(layouter, *num_cross_terms)?;
+                // let compressed_cross_term_sums =
+                //     transcript_chip.write_field_elements(layouter, &vec![C::Base::ONE; *num_cross_terms])?;
                 (zeta_cross_term_comm, Some(compressed_cross_term_sums))
             }
         };
@@ -806,8 +809,8 @@ where
         let r = transcript_chip.squeeze_challenge(layouter)?;
         let r_le_bits = r.le_bits.clone();
 
-        // Witness count: 22203 - 15491 = 6712 (SM - 910 * 3 = 2730)
-        // Copy count: 5594 - 2887 = 2707 (SM - 130 * 2 = 260)
+        // Witness count: 19996 - 14319 = 5677 (SM - 910 * 3 = 2730)
+        // Copy count: 4986 - 2780 = 2206 (SM - 130 * 2 = 260)
         let acc_prime = self.fold_accumulator_from_nark_ec(
             layouter,
             acc,

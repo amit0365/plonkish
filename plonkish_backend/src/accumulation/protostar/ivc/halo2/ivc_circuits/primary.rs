@@ -6,7 +6,7 @@ use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash, Spec}, spec::Po
 use halo2_proofs::{circuit::floor_planner::Folding, plonk::Error};
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_proofs::arithmetic::Field;
-use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_MAIN_ADVICE}, poseidon::hash_chip::PoseidonConfig, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
+use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_MAIN_ADVICE}, poseidon::hash_chip::PoseidonConfig, sha256::{Sha256, Table16Chip, Table16Config, INPUT_2}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
 use crate::accumulation::protostar::{ivc::halo2::chips::{main_chip::{EcPointNonNative, Number}, transcript::{native::AssignedProtostarAccumulatorInstance, nonnative::PoseidonTranscriptChip}}, ProtostarStrategy::Compressing};
 use crate::{
     accumulation::{protostar::{ivc::halo2::chips::{poseidon::hash_chip::PoseidonChip, scalar_mul::sm_chip_primary::{ScalarMulChip, ScalarMulChipConfig}, main_chip::{MainChip, MainChipConfig}, transcript::native::PoseidonNativeTranscriptChip}, ProtostarAccumulatorInstance}, PlonkishNarkInstance}, 
@@ -45,6 +45,7 @@ pub struct PrimaryCircuitConfig<C>
     poseidon_config: Poseidon2Pow5Config<C::Scalar, T, RATE>,
     main_config: MainChipConfig,
     sm_chip_config: ScalarMulChipConfig<C>,
+    //sha256_config: Table16Config<C::Scalar>,
     range_check_config: RangeCheckConfig,
     // transcript_config: PoseidonTranscriptChipConfig,
     // avp_config: AVPConfig,
@@ -101,6 +102,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         }
 
         let sm_chip_config = ScalarMulChipConfig::configure(meta, sm_advice.try_into().unwrap());
+        //let sha256_config = Table16Chip::configure(meta, main_advice.clone().try_into().unwrap());
 
         let range_check_fixed = meta.fixed_column();
         let enable_lookup_selector = meta.complex_selector();
@@ -118,6 +120,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
             poseidon_config,
             main_config,
             sm_chip_config,
+            //sha256_config,
             range_check_config,
         }
     }
@@ -585,6 +588,10 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
         let pow5_chip = Poseidon2Pow5Chip::construct(config.poseidon_config.clone());
         let sm_chip = ScalarMulChip::<C>::new(config.sm_chip_config.clone());
+
+        // let sha256_chip = Table16Chip::construct(config.sha256_config.clone());
+        // Sha256::digest(sha256_chip, layouter.namespace(|| "sha256"), INPUT_2.as_slice()).map(|_| ());
+
         let mut hash_chip_primary = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, PRIMARY_HASH_LENGTH>::construct(Poseidon2Config { pow5_config: config.poseidon_config.clone()});
         // let mut hash_chip_secondary = PoseidonChip::<C, PoseidonSpec, T, RATE, CF_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
         
@@ -640,23 +647,23 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             let proof = self.primary_proof.clone();
             let native_transcript_chip = 
                 &mut PoseidonNativeTranscriptChip::<C>::new(&mut layouter, pow5_chip.clone(), self.hash_config.clone(), main_chip.clone(), proof);
-            // Witness count: 6401 - 1059 = 5342
-            // Copy count: 1317 - 183 = 1134
+            // Witness count: 5833 - 920 = 4913
+            // Copy count: 1170 - 113 = 1057
             acc_verifier.verify_accumulation_from_nark(&mut layouter, &acc, instances, native_transcript_chip, assigned_acc_prime_comms_checked)? 
         };
 
 
         let acc_prime = {
-            // Witness count: 6718 - 6401 = 317
-            // Copy count: 1376 - 1317 = 59
+            // Witness count: 6339 - 5833 = 506
+            // Copy count: 1376 - 1170 = 206
             let acc_default = acc_verifier.assign_default_accumulator(&mut layouter)?;
             // Witness count: 6967 - 6718 = 249
             // Copy count: 1567 - 1376 = 191
             acc_verifier.select_accumulator(&mut layouter, &is_base_case, &acc_default, &acc_prime)?
         };
 
-        // Witness count: 10726 - 6967 = 3759
-        // Copy count: 2200 - 1567 = 633
+        // Witness count: 10726 - 6339 = 4387
+        // Copy count: 2200 - 1390 = 810
         // check if nark.instances[0][0] = Hash(inputs, acc)
         self.check_state_hash::<PRIMARY_HASH_LENGTH>(
             &mut layouter,
@@ -686,8 +693,8 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &acc_prime,
         )?;
 
-        // Witness count: 23069 - 10726 = 12343
-        // Copy count: 6149 - 2200 = 3949
+        // Witness count: 19996 - 10098 = 9898
+        // Copy count: 4986 - 2023 = 2963
         let acc_verifier_ec = ProtostarAccumulationVerifier::new(cyclefold_avp.clone(), main_chip.clone(), sm_chip.clone());
         let acc_ec = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_ec.as_ref())?;
         let acc_ec_prime_result = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_prime_ec.as_ref())?;
@@ -701,8 +708,8 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
 
 
         let (acc_ec_prime, acc_ec_prime_result) = {
-            // Witness count: 22225 - 22203 = 22
-            // Copy count: 5606 - 5594 = 12
+            // Witness count: 20398 - 19996 = 402
+            // Copy count: 5290 - 4986 = 304
             let acc_ec_default = acc_verifier_ec.assign_default_accumulator_ec(&mut layouter)?;
             // Witness count: 22605 - 22225 = 380
             // Copy count: 5898 - 5606 = 292
@@ -711,8 +718,8 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             (acc_ec_prime, acc_ec_prime_result)
         };
 
-        // Witness count: 22609 - 22605 = 4
-        // Copy count: 5919 - 5898 = 21
+        // Witness count: 20402 - 20398 = 4
+        // Copy count: 5311 - 5290 = 21
         self.check_folding_ec(
             &mut layouter,
             &main_chip,
@@ -720,8 +727,8 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             &acc_ec_prime_result,
         )?; 
 
-        // Witness count: 22609
-        // Copy count: 5919
+        // Witness count: 20402
+        // Copy count: 5311
         // assign public instances
         // main_chip.expose_public(layouter, &h_prime, 0)?;
 
@@ -750,7 +757,7 @@ where
 #[test]
 fn primary_chip() {
 
-    let k = 12;
+    let k = 16;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,

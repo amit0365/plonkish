@@ -122,7 +122,7 @@ where
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
         let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 2)/2 + 1)]);
-        let zero_poly_lookup_table = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << LOOKUP_BITS]);
+        let zero_poly_lookup_table = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]); //LOOKUP_BITS
         Self {
             instance: ProtostarAccumulatorInstance::init(
                 strategy,

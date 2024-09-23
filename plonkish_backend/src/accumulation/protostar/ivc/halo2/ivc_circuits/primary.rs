@@ -1,9 +1,9 @@
 use itertools::Itertools;
 use rand::{rngs::OsRng, RngCore};
 use std::{iter, marker::PhantomData, os::macos::raw::stat, time::Instant};
-use halo2_base::{halo2_proofs::{circuit::{floor_planner::V1, AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}}, utils::{BigPrimeField, FromUniformBytes, PrimeField}};
+use halo2_base::{halo2_proofs::{circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}}, utils::{BigPrimeField}};
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash, Spec}, spec::PoseidonSpec, PoseidonSpongeChip, Pow5Chip, Pow5Config}; 
-use halo2_proofs::{circuit::floor_planner::Folding, plonk::Error};
+use halo2_proofs::{circuit::floor_planner::Folding, halo2curves::ff::FromUniformBytes, plonk::Error};
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_proofs::arithmetic::Field;
 use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_MAIN_ADVICE}, poseidon::hash_chip::PoseidonConfig, sha256::{Sha256, Table16Chip, Table16Config, INPUT_2}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};

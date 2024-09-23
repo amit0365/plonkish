@@ -6,4 +6,3 @@ resolver = "1"
 inherits = "release"
 debug = true
 codegen-units = 1
-

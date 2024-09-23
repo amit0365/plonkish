@@ -32,7 +32,7 @@ use crate::{
     util::{
         arithmetic::{
             barycentric_weights, fe_to_fe, fe_truncated_from_le_bytes, powers, steps, CurveAffine,
-            BooleanHypercube, Field, MultiMillerLoop, PrimeCurveAffine, PrimeField, TwoChainCurve, OverridenCurveAffine
+            BooleanHypercube, Field, PrimeCurveAffine, PrimeField, TwoChainCurve
         },
         chain, end_timer,
         expression::{CommonPolynomial, Expression, Query, Rotation},
@@ -74,7 +74,7 @@ use halo2_base::{
     utils::{CurveAffineExt, ScalarField, BigPrimeField},
     QuantumCell::{Constant, Existing, Witness, WitnessFraction},
     AssignedValue,
-    poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, 
+    poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec}, 
     halo2_proofs::dev::MockProver, virtual_region::copy_constraints::SharedCopyConstraintManager,
 };
 

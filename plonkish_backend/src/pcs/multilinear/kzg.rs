@@ -7,7 +7,7 @@ use crate::{
     util::{
         arithmetic::{
             fixed_base_msm, variable_base_msm, window_size, window_table, Curve, CurveAffine,
-            Field, MultiMillerLoop, PrimeCurveAffine,
+            Field, PrimeCurveAffine,
         },
         izip,
         parallel::parallelize,
@@ -16,6 +16,7 @@ use crate::{
     },
     Error,
 };
+use halo2_proofs::halo2curves::pairing::MultiMillerLoop;
 use rand::RngCore;
 use std::{iter, marker::PhantomData, ops::Neg, slice};
 
@@ -149,17 +150,17 @@ impl<C: CurveAffine> AdditiveCommitment<C::Scalar> for MultilinearKzgCommitment<
     }
 }
 
-impl<M> PolynomialCommitmentScheme<M::Scalar> for MultilinearKzg<M>
+impl<M> PolynomialCommitmentScheme<M::Fr> for MultilinearKzg<M>
 where
     M: MultiMillerLoop,
-    M::Scalar: Serialize + DeserializeOwned,
+    M::Fr: Serialize + DeserializeOwned,
     M::G1Affine: Serialize + DeserializeOwned,
     M::G2Affine: Serialize + DeserializeOwned,
 {
     type Param = MultilinearKzgParams<M>;
     type ProverParam = MultilinearKzgProverParams<M>;
     type VerifierParam = MultilinearKzgVerifierParams<M>;
-    type Polynomial = MultilinearPolynomial<M::Scalar>;
+    type Polynomial = MultilinearPolynomial<M::Fr>;
     type Commitment = MultilinearKzgCommitment<M::G1Affine>;
     type CommitmentChunk = M::G1Affine;
 

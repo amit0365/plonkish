@@ -13,20 +13,21 @@ use crate::{
         Polynomial,
     },
     util::{
-        arithmetic::{squares, Field, MultiMillerLoop}, chain, reduce_scalars, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
+        arithmetic::{squares, Field}, chain, reduce_scalars, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
+use halo2_proofs::halo2curves::pairing::MultiMillerLoop;
 use rand::RngCore;
 use std::{marker::PhantomData, ops::Neg};
 
 #[derive(Clone, Debug)]
 pub struct Gemini<Pcs>(PhantomData<Pcs>);
 
-impl<M> PolynomialCommitmentScheme<M::Scalar> for Gemini<UnivariateKzg<M>>
+impl<M> PolynomialCommitmentScheme<M::Fr> for Gemini<UnivariateKzg<M>>
 where
     M: MultiMillerLoop,
-    M::Scalar: Serialize + DeserializeOwned,
+    M::Fr: Serialize + DeserializeOwned,
     M::G1Affine: Serialize + DeserializeOwned,
     M::G2Affine: Serialize + DeserializeOwned,
 {

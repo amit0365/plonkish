@@ -5,7 +5,8 @@ use std::{
 
 use crate::{accumulation::protostar::{hyperplonk::prover::powers_of_zeta_poly, ProtostarAccumulator}, backend::hyperplonk::prover::instance_polys, pcs::PolynomialCommitmentScheme, poly::multilinear::MultilinearPolynomial, util::{arithmetic::{div_ceil, field_integers, powers, BooleanHypercube, Field}, end_timer, expression::Rotation, expression_new::constraints::LookupData, izip, izip_eq, parallel::{num_threads, par_map_collect, parallelize_iter}, start_timer, Deserialize, Itertools, Serialize}};
 use ark_std::{end_timer, start_timer};
-use halo2_base::{halo2_proofs::{arithmetic::lagrange_interpolate, plonk}, utils::PrimeField};
+use halo2_base::{halo2_proofs::{arithmetic::lagrange_interpolate, plonk}};
+use halo2_proofs::halo2curves::ff::PrimeField;
 pub use halo2_proofs::halo2curves::CurveAffine;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator};
 use rayon::iter::IndexedParallelIterator;

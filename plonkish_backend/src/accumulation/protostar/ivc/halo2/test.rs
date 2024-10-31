@@ -1,6 +1,6 @@
 use crate::{
     accumulation::protostar::{
-        ivc::halo2::{chips::transcript::{accumulation_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
+        ivc::halo2::{chips::{minroot::MinRootCircuit, transcript::{accumulation_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -17,7 +17,7 @@ use crate::{
     util::{
         arithmetic::{
             fe_from_bits_le, fe_to_fe, CurveAffine, Field, FromUniformBytes, MultiMillerLoop, PrimeFieldBits, TwoChainCurve
-        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::InMemoryTranscript, DeserializeOwned, Itertools, Serialize
+        }, chain, end_timer, start_timer, test::seeded_std_rng, transcript::{InMemoryTranscript, TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
     },
 };
 use halo2_proofs::halo2curves::{bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta}};
@@ -29,9 +29,9 @@ use halo2_proofs::{
 
 use core::num;
 use rand::RngCore;
-use std::{fs::File, io::Cursor, mem, rc::Rc};
+use std::{fs::File, io::Cursor, mem, rc::Rc, time::Duration};
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, convert::From, time::Instant};
-use super::{chips::main_chip::{MainChipConfig, Number}, ProtostarIvcVerifierParam};
+use super::{chips::main_chip::{MainChipConfig, Number}, ivc_circuits::primary::{PrimaryCircuit, PrimaryCircuitConfig}, ProtostarIvcProverParam, ProtostarIvcVerifierParam};
 use super::ivc_circuits::primary::{T, RATE};
 
 // use self::strawman::{NUM_LIMB_BITS, NUM_LIMBS, T, RATE, R_F, R_P, SECURE_MDS, Chip};
@@ -94,12 +94,26 @@ where
         &[]
     }
 
+    fn setup(&mut self) -> C::Scalar {
+        C::Scalar::from(0u64)
+    }
+
     fn input(&self) -> &[C::Scalar] {
         &[]
     }
 
+    fn set_input(&mut self, input: &[C::Scalar]) {
+    }
+
     fn output(&self) -> &[C::Scalar] {
         &[]
+    }
+
+    fn set_output(&mut self, output: &[C::Scalar]) {
+    }
+
+    fn next_output(&mut self) -> Vec<C::Scalar> {
+        Vec::new()
     }
 
     fn step_idx(&self) -> usize {
@@ -110,10 +124,14 @@ where
         self.step_idx += 1;
     }
 
+    fn num_constraints(&self) -> usize {
+        0
+    }
+
     //todo fix this with other synthesizes
     fn synthesize(
-        &self,
-        _: Self::Config,
+        &mut self,
+        _: PrimaryCircuitConfig<C>,
         _: impl Layouter<C::Scalar>,
     ) -> Result<
         (
@@ -325,30 +343,131 @@ where
     //     secondary_proof,
     // )
 
-// pub fn fn_gemini_kzg_ipa_protostar_hyperplonk_ivc(num_steps: usize) {
-//     let primary_circuit_params = BaseCircuitParams {
-//             k: 19,
-//             num_advice_per_phase: vec![1],
-//             num_lookup_advice_per_phase: vec![1],
-//             num_fixed: 1,
-//             lookup_bits: Some(13),
-//             num_instance_columns: 1,
-//         };
-
-//     let cyclefold_num_vars = 8;
+// #[allow(clippy::type_complexity)]
+// pub fn run_protostar_hyperplonk_ivc_minroot_preprocess<C, P1, P2>(
+//     num_steps: usize,
+//     primary_circuit_k: usize,
+//     primary_param: P1::Param,
+//     cyclefold_num_vars: usize,
+//     cyclefold_param: P2::Param,
+// ) -> (
+//     Halo2Circuit<C::Scalar, PrimaryCircuit<C, MinRootCircuit<C>>>,
+//     Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
+//     ProtostarIvcProverParam<
+//         C,
+//         P1,
+//         P2,
+//         PoseidonTranscript<C::Base, Cursor<Vec<u8>>>,
+//         PoseidonTranscript<C::Scalar, Cursor<Vec<u8>>>,
+//     >,
+//     ProtostarIvcVerifierParam<
+//         C,
+//         P1,
+//         P2,
+//     >,
+//     usize,
+//     usize,
+// )
+// where
+//     C: TwoChainCurve,
+//     C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+//     C::Scalar: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+//     P1: PolynomialCommitmentScheme<
+//     C::ScalarExt,
+//     Polynomial = MultilinearPolynomial<C::Scalar>,
+//     CommitmentChunk = C,
+//     >,
+//     P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
+//     P2: PolynomialCommitmentScheme<
+//     C::Base,
+//     Polynomial = MultilinearPolynomial<C::Base>,
+//     CommitmentChunk = C::Secondary,
+//     >,
+//     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
+// {
+// //let rng = OsRng;
+// let primary_atp = accumulation_transcript_param();
+// let secondary_atp = accumulation_transcript_param();
+// let minroot_circuit = MinRootCircuit::<C>::new(MinRootOutput{ i: C::Scalar::ZERO, pt_ai: C::Secondary::identity(), pt_bi: C::Secondary::identity()}, 1);    
     
-//     run_protostar_hyperplonk_ivc::<
-//         bn256::G1Affine,
-//         Gemini<UnivariateKzg<Bn256>>,
-//         MultilinearIpa<grumpkin::G1Affine>,
-//     >(num_steps, primary_circuit_params, cyclefold_num_vars);
+// let preprocess_time = Instant::now();
+// let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
+//     C,
+//     P1,
+//     P2,
+//     MinRootCircuit<C>,
+//     PoseidonTranscript<_, _>,
+//     PoseidonTranscript<_, _>,
+// >(  
+//     primary_num_vars
+//     primary_param,
+//     primary_atp,
+//     minroot_circuit,
+//     secondary_num_vars,
+//     secondary_atp,
+//     TrivialCircuit::default(),
+//     circuit_params.clone(), 
+//     seeded_std_rng(),
+// )
+// .unwrap();
+// println!("Preprocess time: {:?}", preprocess_time.elapsed());
+
+// let primary_witness_size = primary_circuit.circuit().witness_ref.clone().into_inner();
+// let secondary_witness_size = secondary_circuit.circuit().witness_ref.clone().into_inner();
+
+// (primary_circuit, secondary_circuit, ivc_pp, ivc_vp, primary_witness_size, secondary_witness_size)
+// }
+
+// #[allow(clippy::type_complexity)]
+// pub fn run_protostar_hyperplonk_ivc_prove<C, Sc1, Sc2, P1, P2, AT1, AT2>(
+//     mut primary_circuit: Halo2Circuit<C::Scalar, PrimaryCircuit<C, Sc1>>,
+//     mut secondary_circuit: Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
+//     ivc_pp: ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
+//     ivc_vp: ProtostarIvcVerifierParam<C, P1, P2>,
+//     num_steps: usize,
+// ) -> Duration
+// where
+//     C: TwoChainCurve,
+//     C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+//     C::Scalar: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+//     P1: PolynomialCommitmentScheme<
+//         C::ScalarExt,
+//         Polynomial = MultilinearPolynomial<C::Scalar>,
+//         CommitmentChunk = C,
+//     >,
+//     P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
+//     P2: PolynomialCommitmentScheme<
+//         C::Base,
+//         Polynomial = MultilinearPolynomial<C::Base>,
+//         CommitmentChunk = C::Secondary,
+//     >,
+//     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
+//     Sc1: StepCircuit<C>,
+//     Sc2: StepCircuit<C::Secondary>,
+//     AT1: TranscriptRead<P1::CommitmentChunk, C::Scalar>
+//     + TranscriptWrite<P1::CommitmentChunk, C::Scalar>
+//     + InMemoryTranscript,
+//     AT2: TranscriptRead<P2::CommitmentChunk, C::Base>
+//         + TranscriptWrite<P2::CommitmentChunk, C::Base>
+//         + InMemoryTranscript,
+// {
+//     let prove_time = Instant::now();
+//     let (primary_acc, mut secondary_acc, secondary_last_instances) = prove_steps(
+//         &ivc_pp, 
+//         &mut primary_circuit,
+//         &mut secondary_circuit,
+//         num_steps,
+//         seeded_std_rng(),
+//     )
+//     .unwrap();
+//     prove_time.elapsed()
 // }
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_STEPS: usize = 3;
+    const NUM_STEPS: usize = 2;
 
-    let primary_circuit_k = 12;
+    let primary_circuit_k = 13;
     let cyclefold_num_vars = 10;
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();

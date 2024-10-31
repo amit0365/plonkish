@@ -26,6 +26,7 @@ pub const NUM_LIMB_BITS: usize = 88;
         PoseidonSpec::<F, T, RATE>::new(R_F, R_P)
     }
 
+    #[derive(Clone)]
     pub struct PoseidonTranscript<F: ScalarField, S> {
         state: PoseidonHash<F, T, RATE>,
         stream: S,
@@ -154,7 +155,8 @@ pub const NUM_LIMB_BITS: usize = 88;
             Ok(())
         }
     }
-
+    
+    #[derive(Clone)]
     pub struct PoseidonNativeTranscript<F: ScalarField, S> {
         state: PoseidonHash<F, T, RATE>,
         stream: S,

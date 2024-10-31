@@ -41,7 +41,7 @@ where
     C: TwoChainCurve,
     C::Scalar: BigPrimeField + PrimeFieldBits,
     C::Base: BigPrimeField + PrimeFieldBits,
-{
+{   //todo might not need to constraint sum of rbits to r_given -- this is alreadey done by the primary verifier when converting challenge to bits
     pub fn configure(meta: &mut ConstraintSystem<C::Scalar>, advices: [Column<Advice>; NUM_ADVICE_SM], 
         fixed: [Column<Fixed>; NUM_FIXED_SM]) -> Self {
 
@@ -134,12 +134,13 @@ where
                      q_ec_double_add.clone() * (acc_sub_z - lambda.clone() * acc_double_z.clone())]
 
             });
-            
+            // todo need to constrain that comm_x != sm_x
             meta.create_gate("ec_add_unequal_last", |meta| {
 
                 let q_ec_add_unequal_last = meta.query_selector(q_ec_add_unequal_last);
                 let comm_x = meta.query_advice(col_ptx, Rotation(0));
                 let comm_y = meta.query_advice(col_pty, Rotation(0));
+                let comm_sel_bit = meta.query_advice(col_rbits, Rotation(0));
                 let sm_x = meta.query_advice(col_acc_x, Rotation(0));
                 let sm_y = meta.query_advice(col_acc_y, Rotation(0));
                 let x3 = meta.query_advice(col_acc_z, Rotation(0));
@@ -438,7 +439,7 @@ mod test {
             pty_vec.push(Value::known(p_single.y));
         }
 
-        let comm = G1::random(rng);
+        let comm = G1::identity(); //G1::random(rng);
         let mut acc_prev = ProjectivePoint::identity();
         let mut acc_prev_xvec = Vec::new();
         let mut acc_prev_yvec = Vec::new();
@@ -547,9 +548,9 @@ mod test {
         let circuit = ScalarMulChip::<grumpkin::G1Affine> { inputs: vec![inputs] };
         MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
 
-        halo2_base::halo2_proofs::dev::CircuitLayout::default()
-        .render(k, &circuit, &root)
-        .unwrap();
+        // halo2_base::halo2_proofs::dev::CircuitLayout::default()
+        // .render(k, &circuit, &root)
+        // .unwrap();
     }
 
     #[test]

@@ -7,3 +7,4 @@ pub mod ec_chip_proj_deg12;
 pub mod full_ecc_deg6;
 pub mod ecc_deg6_hash;
 pub mod sm_chip_primary;
+pub mod ecc_deg6_hash_opt;

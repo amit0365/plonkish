@@ -5,9 +5,9 @@ use halo2_proofs::{circuit::floor_planner::Folding, halo2curves::ff::BatchInvert
 use itertools::Itertools;
 use core::{borrow::Borrow, marker::PhantomData};
 use std::{cell::RefCell, fs::File, iter, time::Instant};
-use crate::accumulation::protostar::ivc::halo2::chips::{poseidon::hash_chip::Poseidon2Chip, scalar_mul::ecc_deg6_hash::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs, ScalarMulConfigInputs, NUM_ADVICE_SM, NUM_FIXED_SM, NUM_INSTANCE_SM}};
+use crate::accumulation::protostar::ivc::halo2::chips::{poseidon::hash_chip::Poseidon2Chip, scalar_mul::ecc_deg6_hash_opt::{ScalarMulChip, ScalarMulChipConfig, ScalarMulChipInputs, ScalarMulConfigInputs, NUM_ADVICE_SM, NUM_FIXED_SM, NUM_INSTANCE_SM}};
 use crate::{accumulation::protostar::ivc::halo2::chips::transcript::{NUM_HASH_BITS, NUM_CHALLENGE_BITS}, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates}};
-use crate::accumulation::protostar::ivc::halo2::{ProtostarAccumulationVerifierParam, chips::{L, T, R as RATE, NUM_ADVICE, NUM_CONSTANTS}};
+use crate::accumulation::protostar::ivc::halo2::{ProtostarAccumulationVerifierParam, chips::{L, L1,  T, R as RATE, NUM_ADVICE, NUM_CONSTANTS}};
 use crate::{accumulation::{protostar::{ProtostarAccumulatorInstance, ProtostarStrategy::{Compressing, NoCompressing}}, PlonkishNarkInstance}, backend::PlonkishCircuit, frontend::halo2::CircuitExt, poly::multilinear::MultilinearPolynomial, util::{
     arithmetic::{add_proj, add_proj_comp, double_proj, double_proj_comp, fe_from_bits_le, fe_to_bits_le, fe_to_fe, fe_truncated, into_coordinate_proj, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, CurveAffine, PrimeFieldBits, ProjectivePoint, TwoChainCurve}, end_timer, izip_eq, start_timer, transcript::{TranscriptRead, TranscriptWrite}}};
 use rand::RngCore;
@@ -19,7 +19,7 @@ use crate::accumulation::protostar::ivc::halo2::chips::poseidon::hash_chip::Pose
 // public inputs length for the CycleFoldInputs for compressing 
 pub const CF_IO_LEN: usize = 1;
 pub const NUM_FIXED: usize = NUM_CONSTANTS + 1;
-
+pub const NUM_ADVICE_CF: usize = T + NUM_PARTIAL_SBOX + 1;
 // pub type AssignedCycleFoldInputs<Assigned, AssignedSecondary> =
 //     CycleFoldInputs<Assigned, AssignedSecondary>;
 
@@ -53,7 +53,7 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 {
     //poseidon: PoseidonConfig<C, T, RATE, L>,
-    poseidon: Poseidon2Config<C, T, RATE, L>,
+    poseidon: Poseidon2Config<C, T, RATE, L1>,
     scalar_mul: ScalarMulChipConfig<C>,
     instance: Column<Instance>,
 }
@@ -190,7 +190,7 @@ where
                 { if *fe == C::Scalar::ONE {true} else {false} })
                 .collect_vec();
 
-            let rbits_vec = rbits_rev_fe.iter().map(|fe| Value::known(*fe)).collect_vec();
+            let mut rbits_vec = rbits_rev_fe.iter().map(|fe| Value::known(*fe)).collect_vec();
             let re2_vec = powers(C::Scalar::from(2)).take(scalar_bits + 1).map(Value::known).collect_vec().into_iter().rev().collect_vec();
             let mut rlc_vec = vec![Value::known(C::Scalar::ZERO)];
             for i in 0..scalar_bits {
@@ -219,6 +219,12 @@ where
 
             let acc_comm_x = into_coordinates(&acc_comm)[0];
             let acc_comm_y = into_coordinates(&acc_comm)[1];
+            let acc_comm_is_identity = acc_comm == C::Secondary::identity();
+            if acc_comm_is_identity {
+                rbits_vec.push(Value::known(C::Scalar::ZERO));
+            } else {
+                rbits_vec.push(Value::known(C::Scalar::ONE));
+            }
     
             let mut acc_prev = ProjectivePoint::identity();
             let mut acc_prev_xvec = Vec::new();
@@ -397,7 +403,7 @@ where
             meta.enable_equality(*col);
         }
 
-        let advices = [0; NUM_ADVICE_SM].map(|_| meta.advice_column());
+        let advices = [0; NUM_ADVICE_CF].map(|_| meta.advice_column());
         for col in &advices {
             meta.enable_equality(*col);
         }
@@ -408,22 +414,14 @@ where
             meta.enable_equality(*col);
         }
 
-        let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices, [constants[NUM_CONSTANTS]]);
-        
-        //let poseidon = 
-            // PoseidonChip::<C, PoseidonChipSpec, T, RATE, L>::configure(
-            //     meta,
-            //     advices[..T].try_into().unwrap(),
-            //     advices[T],
-            //     constants[..T].try_into().unwrap(), 
-            //     constants[T..2*T].try_into().unwrap(), 
-            // );
+        let scalar_mul = ScalarMulChipConfig::<C>::configure(meta, advices.into_iter().skip(NUM_ADVICE_CF - NUM_ADVICE_SM).collect_vec().try_into().unwrap(), [constants[NUM_CONSTANTS]]);
 
         let poseidon = 
-            Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L>::configure(
+            Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L1>::configure(
                 meta,
                 advices[..T].try_into().unwrap(),
                 advices[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(),
+                advices[T + NUM_PARTIAL_SBOX],
                 constants[..T].try_into().unwrap(), 
                 constants[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(), 
                 constants[T+ NUM_PARTIAL_SBOX..2*T + NUM_PARTIAL_SBOX].try_into().unwrap(), 
@@ -452,30 +450,25 @@ where
             if i == 0 {
                 hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_inputs[i].clone())?);
             } else {
-                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_inputs[i].clone())?[1..]);
+                //hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_inputs[i].clone())?[1..]);
             }
         }
-        
-        // let hash_chip = PoseidonChip::<C, PoseidonChipSpec, T, RATE, L>::construct(
+
+        //hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_inputs[1].clone())?[2..]);
+        // let hash_chip = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L1>::construct(
         //     config.poseidon,
         // );
 
-        let hash_chip = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L>::construct(
-            config.poseidon,
-        );
+        // let message: [AssignedCell<C::Scalar, C::Scalar>; L1] =
+        // match hash_inputs.try_into() {
+        //     Ok(arr) => arr,
+        //     Err(_) => panic!("Failed to convert Vec to Array"),
+        // };
 
-        let message: [AssignedCell<C::Scalar, C::Scalar>; L] =
-        match hash_inputs.try_into() {
-            Ok(arr) => arr,
-            Err(_) => panic!("Failed to convert Vec to Array"),
-        };
-
-        let time = Instant::now();
-        let hash = hash_chip.hash(
-                layouter.namespace(|| "perform poseidon hash"),
-                message.clone(),
-        )?;
-        println!("hash: {:?}", time.elapsed());
+        // let hash = hash_chip.hash(
+        //         layouter.namespace(|| "perform poseidon hash"),
+        //         message.clone(),
+        // )?;
 
         // println!("hash_circuit: {:?}", hash);
         // layouter.constrain_instance(hash.cell(), config.instance, 0)?;

@@ -1,17 +1,18 @@
 use crate::util::arithmetic::Field;
-use std::{fmt::Debug, ops::AddAssign};
+use std::{fmt::Debug, ops::{AddAssign, Sub, SubAssign}};
 
 pub mod multilinear;
 pub mod univariate;
 
-pub trait Polynomial<F: Field>: Clone + Debug + for<'a> AddAssign<(&'a F, &'a Self)> {
-    type Point: Clone + Debug;
+pub trait Polynomial<F: Field>: Clone + Debug + 
+    for<'a> AddAssign<(&'a F, &'a Self)> {
+        type Point: Clone + Debug;
 
-    fn from_evals(evals: Vec<F>) -> Self;
+        fn from_evals(evals: Vec<F>) -> Self;
 
-    fn into_evals(self) -> Vec<F>;
+        fn into_evals(self) -> Vec<F>;
 
-    fn evals(&self) -> &[F];
+        fn evals(&self) -> &[F];
 
-    fn evaluate(&self, point: &Self::Point) -> F;
+        fn evaluate(&self, point: &Self::Point) -> F;
 }

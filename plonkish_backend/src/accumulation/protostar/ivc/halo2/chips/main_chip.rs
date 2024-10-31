@@ -22,7 +22,7 @@ use super::transcript::{NUM_CHALLENGE_BITS, NUM_HASH_BITS, RANGE_BITS};
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
 pub const LOOKUP_BITS: usize = 8;
-pub const NUM_MAIN_ADVICE: usize = 2*T + 2;
+pub const NUM_MAIN_ADVICE: usize = 2*T + 3;
 pub const NUM_MAIN_FIXED: usize = 2*T + NUM_PARTIAL_SBOX;
 pub const NUM_MAIN_SELECTORS: usize = 5;
 
@@ -232,6 +232,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 vec![s * (product - acc)]
             });
 
+            // | col 0 | col 1| col 2| ... |col N-1|
             meta.create_gate("inner product opt", |meta| {
                 let s = meta.query_selector(inner_product_opt);
                 let zero = Expression::Constant(C::Scalar::ZERO);
@@ -291,6 +292,17 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             )
         }
 
+        pub fn assign_witness_auto<'a>(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            value: &C::Scalar,
+            witness_idx: &'a mut usize,
+        ) -> Result<Number<C::Scalar>, Error> {
+            let res = self.assign_witness(layouter, value, *witness_idx)?;
+            *witness_idx += 1;
+            Ok(res)
+        }
+
         pub fn assign_witness(
             &self,
             layouter: &mut impl Layouter<C::Scalar>,
@@ -298,14 +310,17 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             witness_index: usize,
         ) -> Result<Self::Num, Error> {
             let config = &self.config;
-            let idx = witness_index % NUM_MAIN_ADVICE;
+            let quotient = witness_index / NUM_MAIN_ADVICE;
+            let remainder = witness_index % NUM_MAIN_ADVICE;
+            let offset = quotient;
+            let idx = remainder;
             layouter.assign_region(
                 || "assign witness",
                 |mut region| {
                     region.assign_advice(
                             || "witness",
                             config.advice[idx],
-                            0,
+                            offset,
                             || Value::known(*witness),
                         ).map(Number)
                 },
@@ -1806,7 +1821,7 @@ where
 
         let range_chip = RangeCheckChip::<C>::construct(config.range_check_config);
         let mut main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
-        main_chip.initialize_pow2(&mut layouter)?;
+        //main_chip.initialize_pow2(&mut layouter)?;
         main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
 
         /// test inner product
@@ -1837,10 +1852,11 @@ where
         // let num = main_chip.bits_to_num(&mut layouter, &bits[..NUM_HASH_BITS])?;
 
         /// test bits_and_num, Witness count: 594 + 254(pow2 copy) = 826
-        let mut rng = OsRng;
-        let a = C::Scalar::random(&mut rng);
-        let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
-        let (_, _, bits) = main_chip.bits_and_num(&mut layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 10, &a_assigned)?;
+        // let mut rng = OsRng;
+        // let a = C::Scalar::random(&mut rng);
+        // let a_assigned = main_chip.assign_witness(&mut layouter, &a, 0)?;
+        // let (_, _, bits) = main_chip.bits_and_num(&mut layouter, RANGE_BITS, NUM_CHALLENGE_BITS, 10, &a_assigned)?;
+        // let bits = main_chip.bits_and_num_limbs_hash(&mut layouter, RANGE_BITS, NUM_CHALLENGE_BITS, &a_assigned)?; // 687 - 199 copy
         // println!("bits: {:?}", bits.len());
         // let num = main_chip.bits_to_num(&mut layouter, &bits[..NUM_HASH_BITS])?;
         
@@ -1858,10 +1874,10 @@ where
         // let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
 
         /// test assign_witness_base, mul_add_base and mod_reduce, Witness count: 42 + 47 + 268 = 357
-        // let a = C::Base::from_str_vartime("198343826082974478899613233026774670550701100").unwrap();
-        // let a_assigned = main_chip.assign_witness_base(&mut layouter, a)?;
-        // let power_no_mod = main_chip.mul_add_base(&mut layouter, &a_assigned, &a_assigned, &a_assigned)?;
-        // let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
+        let a = C::Base::from_str_vartime("198343826082974478899613233026774670550701100").unwrap();
+        let a_assigned = main_chip.assign_witness_base(&mut layouter, a)?;
+        let power_no_mod = main_chip.mul_add_base(&mut layouter, &a_assigned, &a_assigned, &a_assigned)?;
+        let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
 
         /// test vec.len = 9, inner_product_base: assign_witness_base + inner_product_base + mod_reduce, Witness count: 756 + 144 + 268 = 1168
         // let mut rng = OsRng;
@@ -1882,6 +1898,7 @@ fn circuit_test() {
     let circuit = MainChipCircuit::<bn256::G1Affine>{ marker: PhantomData::<bn256::G1Affine> };
     let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
     println!("Witness count: {}", prover.witness_count);
+    println!("Copy count: {}", prover.copy_count);
     //prover.assert_satisfied();
     // assert_eq!(prover.verify(), Ok(()));
 }

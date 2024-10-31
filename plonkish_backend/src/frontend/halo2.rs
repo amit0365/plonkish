@@ -178,13 +178,15 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .collect_vec()
         })
         .collect_vec();
-    println!("cs.num_fixed_columns() {:?}", cs.num_fixed_columns());
+
     if !lookups.is_empty() {
         cs.lookups().iter().map(|lookup| {
             let selector_index = lookup.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
             queried_selectors.insert(selector_index, (1, vec![3])); //todo hardcoded lookup degree and constraints
         }).collect_vec();
         queried_selectors.insert(queried_selectors.len(), (1, vec![3])); //todo hardcoded lookup degree and constraints
+    } else {
+        println!("queried_selectors {:?}", queried_selectors);
     }
 
     let num_instances = instances.iter().map(Vec::len).collect_vec();
@@ -242,6 +244,7 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         selector_groups: vec![],
         floor_planner_data: None,
         last_rows: vec![],
+        log_num_betas: 0,
     })
 }
 
@@ -346,6 +349,9 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         num_betas += values.len() * queried_selectors.get(key).unwrap_or(&(0, vec![])).0;
     }
     println!("num_betas: {}", num_betas);
+    let log_num_betas = (num_betas as f64).log2().ceil() as usize;
+    println!("log_num_betas: {}", log_num_betas);
+    circuit_info.log_num_betas = log_num_betas;
 
     let instances = self.instances.iter().map(Vec::as_slice).collect_vec();
     let challenges = vec![F::ZERO; circuit_info.num_challenges.iter().sum::<usize>()];

@@ -205,7 +205,7 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
     betas: &[F],
 ) -> [MultilinearPolynomial<F>; 2] {
     let num_vars = polys[0].num_vars();
-    let bh = BooleanHypercube::new(num_vars);
+    // let bh = BooleanHypercube::new(num_vars);
     let compress = |expressions: &[&Expression<F>]| {
         betas
             .iter()
@@ -227,8 +227,33 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
                                 }
                                 CommonPolynomial::EqXY(_) => unreachable!(),
                             },
-                            //&|query| polys[query.poly()][bh.rotate(b, query.rotation())], //linear rotation
                             &|query| polys[query.poly()][get_rotation_idx(b, query.rotation(), 1 << num_vars)],
+                            &|challenge| challenges[challenge],
+                            &|value| -value,
+                            &|lhs, rhs| lhs + &rhs,
+                            &|lhs, rhs| lhs * &rhs,
+                            &|value, scalar| value * &scalar,
+                        );
+                    }
+                });
+                MultilinearPolynomial::new(compressed)
+            }))
+            .sum::<MultilinearPolynomial<_>>()
+    };
+
+    //query and evaluate fixed lookup values with challenges
+    let compress_table = |expressions: &[&Expression<F>]| {
+        betas
+            .iter()
+            .copied()
+            .zip(expressions.iter().map(|expression| {
+                let mut compressed = vec![F::ZERO; 1 << LOOKUP_BITS];
+                parallelize(&mut compressed, |(compressed, start)| {
+                    for (b, compressed) in (start..).zip(compressed) {
+                        *compressed = expression.evaluate(
+                            &|constant| constant,
+                            &|_| F::ZERO,
+                            &|_| F::ZERO,
                             &|challenge| challenges[challenge],
                             &|value| -value,
                             &|lhs, rhs| lhs + &rhs,
@@ -252,7 +277,7 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
     end_timer(timer);
 
     let timer = start_timer(|| "compressed_table_poly");
-    let compressed_table_poly = compress(&tables);
+    let compressed_table_poly = compress_table(&tables);
     end_timer(timer);
 
     [compressed_input_poly, compressed_table_poly]

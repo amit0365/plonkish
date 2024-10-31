@@ -2,6 +2,7 @@ pub mod test;
 pub mod chips;
 pub mod ivc_circuits;
 use ethereum_types::U256;
+use ivc_circuits::primary::PrimaryCircuitConfig;
 
 use crate::{
     accumulation::{
@@ -124,26 +125,36 @@ type AssignedPlonkishNarkInstance<AssignedBase, AssignedSecondary> =
 
 pub trait StepCircuit<C: TwoChainCurve>: Clone + Debug + CircuitExt<C::Scalar> 
 where
-    C::Scalar: BigPrimeField,
-    C::Base: BigPrimeField,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {   
 
     fn arity() -> usize;
-
+    
     fn initial_input(&self) -> &[C::Scalar];
+
+    fn setup(&mut self) -> C::Scalar;
 
     fn input(&self) -> &[C::Scalar];
 
+    fn set_input(&mut self, input: &[C::Scalar]);
+
     fn output(&self) -> &[C::Scalar];
+
+    fn set_output(&mut self, output: &[C::Scalar]);
+
+    fn next_output(&mut self) -> Vec<C::Scalar>;
 
     fn step_idx(&self) -> usize;
 
     fn next(&mut self);
 
+    fn num_constraints(&self) -> usize;
+
     #[allow(clippy::type_complexity)]
     fn synthesize(
-        &self,
-        config: MainChipConfig,
+        &mut self,
+        config: PrimaryCircuitConfig<C>,
         layouter: impl Layouter<C::Scalar>,
     ) -> Result<
         (
@@ -515,32 +526,14 @@ where
         }
 
         let mut witness_comms = Vec::with_capacity(2);
-        let mut challenges = Vec::with_capacity(2);
-        
-        // write comm only for test
-        // 0x2a6148ae85b8df7365f051126ccac4df868497e62758daff76cb89aeea12bdb6,
-        // 0x2390bb5e606ac7db700236a04d8da435940d1332e2a66332f0f87329fd47398c,
-        // let hex_str_x = "0x2a6148ae85b8df7365f051126ccac4df868497e62758daff76cb89aeea12bdb6";
-        // let decimal_value_x = U256::from_str_radix(&hex_str_x[2..], 16).unwrap();
-        // let hex_str_y = "0x2390bb5e606ac7db700236a04d8da435940d1332e2a66332f0f87329fd47398c";
-        // let decimal_value_y = U256::from_str_radix(&hex_str_y[2..], 16).unwrap();
-        // let bn254_random = C::from_xy(
-        //     C::Base::from_str_vartime(&decimal_value_x.to_string()).unwrap(),
-        //     C::Base::from_str_vartime(&decimal_value_y.to_string()).unwrap(),
-        // ).unwrap();
+        let mut challenges = Vec::with_capacity(3);
 
-        // // write comm only for test
-        //witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
         witness_comms.push(transcript_chip.read_commitment(layouter)?);
-        // //let beta_prime = transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge1"))?.challenge;
-        // //challenges.extend(main_chip.powers(layouter.namespace(|| "challenge1"), &beta_prime, 5)?.into_iter().skip(1).take(5).collect::<Vec<_>>());
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
-        //witness_comms.push(transcript_chip.write_commitment(layouter, &bn254_random)?);
+        challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         witness_comms.push(transcript_chip.read_commitment(layouter)?);
-        // let challenge3 = transcript_chip.squeeze_challenge(layouter)?.challenge;
-        // challenges.extend(main_chip.powers(layouter, &challenge3, 2)?.into_iter().skip(1).take(1).collect::<Vec<_>>());
-        // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "challenge3"))?.challenge);
+
         let nark = PlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(layouter.namespace(|| "absorb_accumulator"), acc)?;
 
@@ -761,29 +754,14 @@ where
 
         let mut witness_comms = Vec::with_capacity(2);
         let mut challenges = Vec::with_capacity(3);
-        
-        // write comm only for test
-        // 0x2bd9dcdba86889ed8988b66aa3f3eb49b3990420274d33b1eb66969b8ac0dd9a,
-        // 0x2c678516c21eef9231dc569ce9d6e41269dc4c1e7c923c25b0664cea8cb74890,
-        // let hex_str = "0x2c678516c21eef9231dc569ce9d6e41269dc4c1e7c923c25b0664cea8cb74890";
-        // let decimal_value = U256::from_str_radix(&hex_str[2..], 16).unwrap();
-        // let grumpkin_random = C::Secondary::from_xy(
-        //     C::Scalar::from_str_vartime("19834382608297447889961323302677467055070110053155139740545148874538063289754").unwrap(),
-        //     C::Scalar::from_str_vartime("20084669131162155340423162249467328031170931348295785825029782732565818853520").unwrap(),
-        // ).unwrap();
 
         // Witness count: 10817 - 10773 = 44
         // Copy count: 2085 - 2081 = 4
-        //witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
         witness_comms.push(transcript_chip.read_commitment(layouter)?);
         // Witness count 11748 - 10817 = 931 (bits_and_num - 594 (256 copy) + 254 (pow2 copy) = 828)
         // Copy count 2373 - 2085 = 288
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.scalar);
-        //witness_comms.push(transcript_chip.write_commitment(layouter, &grumpkin_random)?);
         witness_comms.push(transcript_chip.read_commitment(layouter)?);
-        // challenges.push(transcript_chip.squeeze_challenge(layouter.namespace(|| "transcript_chip"))?.scalar);
-        //let challenge3 = transcript_chip.squeeze_challenge(layouter)?.scalar;
-        // challenges.extend(main_chip.powers_base(layouter, &challenge3, 2)?.into_iter().skip(1).take(1).collect::<Vec<_>>()); // num_alpha_primes
 
         let nark = AssignedPlonkishNarkInstance::new(vec![instances], challenges, witness_comms);
         transcript_chip.absorb_accumulator(acc)?;
@@ -1372,14 +1350,16 @@ where
     S1: StepCircuit<C>,
     AT1: TranscriptRead<P1::CommitmentChunk, C::Scalar>
         + TranscriptWrite<P1::CommitmentChunk, C::Scalar>
-        + InMemoryTranscript,
+        + InMemoryTranscript + Clone,
     AT2: TranscriptRead<P2::CommitmentChunk, C::Base>
         + TranscriptWrite<P2::CommitmentChunk, C::Base>
-        + InMemoryTranscript,
+        + InMemoryTranscript + Clone,
 
 {
     let mut primary_acc = Protostar::<HyperPlonk<P1>>::init_accumulator(&ivc_pp.primary_pp)?;
     let mut primary_acc_ec = Protostar::<HyperPlonk<P2>>::init_accumulator_ec(&ivc_pp.cyclefold_pp)?;
+    let mut primary_transcript = AT1::new(ivc_pp.primary_atp.clone());
+    let mut cyclefold_transcript = AT2::new(ivc_pp.cyclefold_atp.clone());
 
     for step_idx in 0..num_steps {
 
@@ -1394,7 +1374,6 @@ where
         });
 
         let (r_le_bits, r, primary_nark_x, cross_term_comms, primary_proof) = {
-            let mut primary_transcript = AT1::new(ivc_pp.primary_atp.clone());
             let (r_le_bits, r, primary_nark_as_acc, cross_term_comms) = Protostar::<HyperPlonk<P1>>::prove_accumulation_from_nark(
                     &ivc_pp.primary_pp,
                     &mut primary_acc,
@@ -1402,7 +1381,7 @@ where
                     &mut primary_transcript,
                     &mut rng,
                 )?;
-                (r_le_bits, r, primary_nark_as_acc.instance, cross_term_comms, primary_transcript.into_proof())
+                (r_le_bits, r, primary_nark_as_acc.instance, cross_term_comms, primary_transcript.clone().into_proof())
             };
         end_timer(timer);
 
@@ -1442,7 +1421,6 @@ where
             });
     
             let cyclefold_proof = {
-                let mut cyclefold_transcript = AT2::new(ivc_pp.cyclefold_atp.clone());
                     Protostar::<HyperPlonk<P2>>::prove_accumulation_from_nark_ec(
                         &ivc_pp.cyclefold_pp,
                         &mut primary_acc_ec,
@@ -1450,7 +1428,7 @@ where
                         &mut cyclefold_transcript,
                         &mut rng,
                     )?;
-                    cyclefold_transcript.into_proof()
+                    cyclefold_transcript.clone().into_proof()
                 };
 
 
@@ -1462,10 +1440,27 @@ where
                     primary_acc_ec_x,
                     primary_acc_ec.instance.clone(),
                 );
-                // MockProver::run(14, circuit, vec![]).unwrap().assert_satisfied();
             });
 
         } else {
+            let timer = start_timer(|| "decide_strawman");
+            Protostar::<HyperPlonk<P1>>::decide_strawman(
+                &ivc_pp.primary_pp,
+                &primary_acc,
+                &mut primary_transcript,
+                &mut rng,
+            )?;
+            end_timer(timer);
+
+            let timer = start_timer(|| "decide_strawman_ec");
+            Protostar::<HyperPlonk<P2>>::decide_strawman_ec(
+                &ivc_pp.cyclefold_pp,
+                &primary_acc_ec,
+                &mut cyclefold_transcript,
+                &mut rng,
+            )?;
+            end_timer(timer);
+
             return Ok((
                 primary_acc,
                 primary_acc_ec,

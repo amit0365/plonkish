@@ -1,4 +1,3 @@
-//use ark_std::iterable::Iterable;
 use halo2_proofs::plonk;
 use ivc::halo2::chips::main_chip::LOOKUP_BITS;
 
@@ -9,13 +8,13 @@ use crate::{
     },
     backend::{hyperplonk::{prover::instance_polys, HyperPlonk}, PlonkishBackend, WitnessEncoding},
     pcs::{AdditiveCommitment, PolynomialCommitmentScheme},
-    poly::Polynomial,
+    poly::{multilinear::MultilinearPolynomial, univariate::UnivariatePolynomial, Polynomial},
     util::{
         arithmetic::{inner_product, powers, CurveAffine, Field}, chain, expression::Expression, izip, izip_eq, parallel::parallelize_iter, transcript::Transcript, Deserialize, Itertools, Serialize
     },
     Error,
 };
-use std::{collections::HashMap, iter, marker::PhantomData};
+use std::{collections::HashMap, iter, marker::PhantomData, ops::Sub, slice::from_ref};
 use rayon::prelude::*;
 use rayon::iter::ParallelBridge;
 pub mod hyperplonk;
@@ -60,10 +59,9 @@ where
     lookup_expressions: Vec<Vec<(plonk::Expression<F>, plonk::Expression<F>)>>,
     queried_selectors: HashMap<usize, (usize, Vec<usize>)>,
     selector_map: HashMap<usize, Vec<usize>>,
-    row_map_selector: HashMap<usize, Vec<usize>>,
-    selector_groups: Vec<Vec<usize>>,
     last_rows: Vec<usize>,
     advice_copies: Vec<Vec<usize>>,
+    log_num_betas: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -80,6 +78,7 @@ where
     num_folding_witness_polys: usize,
     num_folding_challenges: usize,
     num_cross_terms: usize,
+    lookups: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -121,8 +120,8 @@ where
         num_challenges: usize,
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
-        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 2)/2 + 1)]);
-        let zero_poly_lookup_table = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]); //LOOKUP_BITS
+        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 1)/2 + 1)]);
+        //let zero_poly_lookup_table = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]); //LOOKUP_BITS
         Self {
             instance: ProtostarAccumulatorInstance::init(
                 strategy,
@@ -132,9 +131,10 @@ where
             ),
             witness_polys: iter::repeat_with(|| zero_poly.clone()) // all witness polys
                 .take(num_witness_polys - 3)
-                //.chain(iter::once(zero_poly_lookup_table.clone())) // lookup_m
+                //.chain(iter::once(zero_poly_lookup_table.clone())) // lookup_m, somethings fails here so check lookup_m
                 .chain(iter::once(zero_poly.clone())) // lookup_h
-                .chain(iter::once(zero_poly_lookup_table.clone()))// lookup_g
+                .chain(iter::once(zero_poly.clone())) // lookup_h
+                //.chain(iter::once(zero_poly_lookup_table.clone()))// lookup_g
                 .chain(iter::once(zero_poly_sqrt.clone()))
                 .collect_vec(),
             // witness_polys: iter::repeat_with(|| zero_poly.clone())
@@ -158,7 +158,7 @@ where
         num_challenges: usize,
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
-        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 2)/2 + 1)]);
+        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (k/2 + 1)]);
 
         Self {
             instance: ProtostarAccumulatorInstance::init_ec(
@@ -185,7 +185,7 @@ where
         Self {
             instance: ProtostarAccumulatorInstance::from_nark(strategy, nark.instance),
             witness_polys,
-            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 2)/2 + 1)]),
+            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 1)/2 + 1)]),
             instance_polys,
             _marker: PhantomData,
         }
@@ -197,7 +197,7 @@ where
         Self {
             instance: ProtostarAccumulatorInstance::from_nark(strategy, nark.instance),
             witness_polys,
-            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 2)/2  + 1)]),
+            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (k/2 + 1)]),
             instance_polys,
             _marker: PhantomData,
         }
@@ -257,8 +257,23 @@ where
             compressed_cross_term_sums,
             r,
         );
+        // folding w0(1-x) + x*w1 = w0 + (w1-w0)*x, w0 = rhs, w1 = lhs
+        let witness_polys_len = self.witness_polys.len();
         izip_eq!(&mut self.witness_polys, &rhs.witness_polys)
-            .for_each(|(lhs, rhs)| *lhs += (r, rhs));
+            .for_each(|(lhs, rhs)| {
+                let diff = Pcs::Polynomial::from_evals(lhs.clone().into_evals().into_iter().zip(rhs.clone().into_evals()).map(|(a, b)| a - b).collect_vec());
+                *lhs = rhs.clone();
+                *lhs += (r, &diff);
+            });
+
+        // let mut new_e_poly = self.e_poly.clone(); // no need to chain rhs, nark_error = 0
+        // izip!(powers(*r).skip(1), [&self.e_poly, zeta_cross_term_poly])
+        //     .for_each(|(power_of_r, poly)| new_e_poly += (&power_of_r, poly));
+        // self.e_poly = new_e_poly;
+
+        // fold the error polynomial separately
+        // izip_eq!(&mut self.witness_polys.last().unwrap(), &rhs.witness_polys.last().unwrap())
+        // .for_each(|(lhs, rhs)| *lhs += (r, rhs));
         izip!(powers(*r).skip(1), [zeta_cross_term_poly, &rhs.e_poly])
             .for_each(|(power_of_r, poly)| self.e_poly += (&power_of_r, poly));
     }
@@ -410,23 +425,33 @@ where
         let powers_of_r = powers(*r)
             .take(compressed_cross_term_sums.len().max(1) + 2)
             .collect_vec();
+        // folding w0(1-x) + x*w1 = w0 + (w1-w0)*x, lhs = w1, rhs = w0
         izip_eq!(&mut self.instances, &rhs.instances)
-            .for_each(|(lhs, rhs)| izip_eq!(lhs, rhs).for_each(|(lhs, rhs)| *lhs += &(*rhs * r)));
+            .for_each(|(lhs, rhs)| izip_eq!(lhs, rhs).for_each(|(lhs, rhs)| *lhs = *rhs + &((*lhs - *rhs) * r)));
         izip_eq!(&mut self.witness_comms, &rhs.witness_comms)
-            .for_each(|(lhs, rhs)| *lhs = C::sum_with_scalar([&one, r], [lhs, rhs]));
-        izip_eq!(&mut self.challenges, &rhs.challenges).for_each(|(lhs, rhs)| *lhs += &(*rhs * r));
+            .for_each(|(lhs, rhs)| *lhs = C::sum_with_scalar([&one, r, &(-*r)], [rhs, lhs, rhs]));
+        izip_eq!(&mut self.challenges, &rhs.challenges).for_each(|(lhs, rhs)| *lhs = *rhs + &((*lhs - *rhs) * r));
+        
         self.u += &(rhs.u * r);
         self.e_comm = {
             let comms = [&self.e_comm, zeta_cross_term_comm, &rhs.e_comm];
             C::sum_with_scalar(&powers_of_r[..3], comms)
         };
-        *self.compressed_e_sum.as_mut().unwrap() += &inner_product(
-            &powers_of_r[1..],
-            chain![
-                compressed_cross_term_sums,
-                [rhs.compressed_e_sum.as_ref().unwrap()]
-            ],
-        );
+        assert_eq!(rhs.compressed_e_sum.unwrap(), F::ZERO);
+        
+        let error_poly = UnivariatePolynomial::new(compressed_cross_term_sums.iter().copied().collect_vec());
+        *self.compressed_e_sum.as_mut().unwrap() = error_poly.evaluate(r);
+
+        // izip_eq!(&mut self.instances, &rhs.instances)
+        //     .for_each(|(lhs, rhs)| izip_eq!(lhs, rhs).for_each(|(lhs, rhs)| *lhs += &(*rhs * r)));
+        // izip_eq!(&mut self.witness_comms, &rhs.witness_comms)
+        //     .for_each(|(lhs, rhs)| *lhs = C::sum_with_scalar([&one, r], [lhs, rhs]));
+        // izip_eq!(&mut self.challenges, &rhs.challenges).for_each(|(lhs, rhs)| *lhs += &(*rhs * r));
+        // self.u += &(rhs.u * r);
+        self.e_comm = {
+            let comms = [&self.e_comm, zeta_cross_term_comm, &rhs.e_comm];
+            C::sum_with_scalar(&powers_of_r[..3], comms)
+        };
     }
 
 }

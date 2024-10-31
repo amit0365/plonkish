@@ -274,7 +274,6 @@ pub(crate) fn cross_term_expressions_par<F: PrimeField + Send + Sync>(
         //     .reduce(|| Expression::<F>::zero(), |acc, expr| acc + expr)
         // })
         // .collect();
-
 }
 
 pub(crate) fn relaxed_expression<F: PrimeField>(

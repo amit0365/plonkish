@@ -95,6 +95,14 @@ pub fn sum<F: Field>(values: impl IntoIterator<Item = impl Borrow<F>>) -> F {
         .fold(F::ZERO, |acc, value| acc + value.borrow())
 }
 
+pub fn repeat_vector<F: Clone>(vec: &[F], times: usize) -> Vec<F> {
+    vec.iter().cloned().cycle().take(vec.len() * times).collect()
+}
+
+pub fn repeat_elements<F: Clone>(vec: &[F], times: usize) -> Vec<F> {
+    vec.iter().flat_map(|x| std::iter::repeat(x.clone()).take(times)).collect()
+}
+
 pub fn inner_product<'a, 'b, F: Field>(
     lhs: impl IntoIterator<Item = &'a F>,
     rhs: impl IntoIterator<Item = &'b F>,

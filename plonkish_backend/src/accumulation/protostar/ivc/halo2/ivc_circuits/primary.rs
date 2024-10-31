@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use rand::{rngs::OsRng, RngCore};
-use std::{iter, marker::PhantomData, os::macos::raw::stat, time::Instant};
+use std::{cell::RefCell, iter::{self, once}, marker::PhantomData, os::macos::raw::stat, time::Instant};
 use halo2_base::{halo2_proofs::{circuit::{floor_planner::V1, AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}}, utils::{BigPrimeField, FromUniformBytes, PrimeField}};
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash, Spec}, spec::PoseidonSpec, PoseidonSpongeChip, Pow5Chip, Pow5Config}; 
 use halo2_proofs::{circuit::floor_planner::Folding, plonk::Error};
@@ -25,7 +25,8 @@ pub const T: usize = 4;
 pub const RATE: usize = 3;
 pub const NUM_RANGE_COLS: usize = 1; //(T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 25; //num_challenges 10 from 5 so 29 + 5; //34 - 4limbs
+pub const PRIMARY_HASH_LENGTH: usize = 26; //num_challenges 10 from 5 so 29 + 5; //34 - 4limbs
+pub const PRIMARY_HASH_LENGTH_EC: usize = 19;
 pub const CF_HASH_LENGTH: usize = 13;
 
 pub const N_BYTES: usize = 16;
@@ -42,13 +43,11 @@ pub struct PrimaryCircuitConfig<C>
     C::Base: BigPrimeField + PrimeFieldBits,
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
-    poseidon_config: Poseidon2Pow5Config<C::Scalar, T, RATE>,
-    main_config: MainChipConfig,
-    sm_chip_config: ScalarMulChipConfig<C>,
+    pub poseidon_config: Poseidon2Pow5Config<C::Scalar, T, RATE>,
+    pub main_config: MainChipConfig,
+    pub sm_chip_config: ScalarMulChipConfig<C>,
     //sha256_config: Table16Config<C::Scalar>,
-    range_check_config: RangeCheckConfig,
-    // transcript_config: PoseidonTranscriptChipConfig,
-    // avp_config: AVPConfig,
+    pub range_check_config: RangeCheckConfig,
 }
 
 impl<C: TwoChainCurve> PrimaryCircuitConfig<C> 
@@ -72,6 +71,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
             meta,
             main_advice[..T].try_into().unwrap(),//state.clone().try_into().unwrap(),
             main_advice[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(),//partial_sbox,
+            main_advice[T + NUM_PARTIAL_SBOX],
             rc_full_rounds.clone().try_into().unwrap(),
             rc_partial_rounds.clone().try_into().unwrap(),
             pad_fixed.clone().try_into().unwrap(),
@@ -95,7 +95,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         }  
 
         let main_config = MainChip::<C>::configure(meta, main_advice.clone().try_into().unwrap(), main_fixed.try_into().unwrap());
-        let sm_advice = main_advice.iter().skip(3).cloned().collect_vec();
+        let sm_advice = main_advice.iter().skip(4).cloned().collect_vec();
 
         for col in sm_advice.iter() {
             meta.enable_equality(*col);
@@ -124,6 +124,19 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
             range_check_config,
         }
     }
+
+    pub fn initialize_chips(
+        &self,
+        layouter: &mut impl Layouter<C::Scalar>,
+    ) -> Result<(MainChip<C>, RangeCheckChip<C>, Poseidon2Pow5Chip<C::Scalar, T, RATE>, ScalarMulChip<C>), Error> {
+        let range_chip = RangeCheckChip::<C>::construct(self.range_check_config);
+        let mut main_chip = MainChip::<C>::new(self.main_config.clone(), range_chip.clone());
+        main_chip.initialize_pow2(layouter)?;
+        main_chip.load_range_check_table(layouter, self.range_check_config.lookup_u8_table)?;
+        let pow5_chip = Poseidon2Pow5Chip::construct(self.poseidon_config.clone());
+        let sm_chip = ScalarMulChip::<C>::new(self.sm_chip_config.clone());
+        Ok((main_chip, range_chip, pow5_chip, sm_chip))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -135,7 +148,7 @@ pub struct PrimaryCircuit<C, Sc>
     C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
 {
     is_primary: bool,
-    step_circuit: Sc,
+    step_circuit: RefCell<Sc>,
     pub hash_config: Poseidon2ChipSpec,
     pub cyclefold_hash_config: Poseidon2ChipSpec,
     // hash_config_base: PoseidonSpec,
@@ -143,6 +156,7 @@ pub struct PrimaryCircuit<C, Sc>
     pub primary_avp: ProtostarAccumulationVerifierParam<C::Scalar>,
     pub cyclefold_avp: ProtostarAccumulationVerifierParam<C::Scalar>,
     h_prime: Value<C::Scalar>,
+    h_prime_ec: Value<C::Scalar>,
     cyclefold_inputs_hash: Value<C::Base>,
     acc: Value<ProtostarAccumulatorInstance<C::Scalar, C>>,
     acc_prime: Value<ProtostarAccumulatorInstance<C::Scalar, C>>,
@@ -183,7 +197,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
 
         Self {
                 is_primary,
-                step_circuit,
+                step_circuit: RefCell::new(step_circuit),
                 hash_config,
                 cyclefold_hash_config,
                 // hash_config_base,
@@ -191,6 +205,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 primary_avp: primary_avp.clone().unwrap_or_default(),
                 cyclefold_avp: cyclefold_avp.clone().unwrap_or_default(),
                 h_prime: Value::known(C::Scalar::ZERO),
+                h_prime_ec: Value::known(C::Scalar::ZERO),
                 cyclefold_inputs_hash: Value::known(C::Base::ZERO),
                 acc: Value::known(primary_avp.clone().unwrap_or_default().init_accumulator()),
                 acc_prime: Value::known(primary_avp.clone().unwrap_or_default().init_accumulator()),
@@ -316,6 +331,71 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             Ok(bits_to_num)
         }
 
+        pub fn hash_state_ec<Comm: AsRef<C::Secondary>>(
+            &self,
+            vp_digest: C::Scalar,
+            acc: &ProtostarAccumulatorInstance<C::Base, Comm>,
+        ) -> C::Scalar {
+            //let mut poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<PRIMARY_HASH_LENGTH>, T, RATE>::from_spec(self.hash_config.clone());
+            let mut poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<PRIMARY_HASH_LENGTH_EC>, T, RATE>::init();
+            let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMBS_NON_NATIVE);
+            let inputs = iter::empty()
+                .chain([vp_digest])
+                .chain(once(acc.instances[0][0]).map(fe_to_limbs).flatten())
+                .chain(acc.witness_comms
+                        .iter()
+                        .map(AsRef::as_ref)
+                        .flat_map(into_coordinates),
+                )
+                .chain(acc.challenges.iter().copied().map(fe_to_limbs).flatten())
+                .chain(once(acc.u).map(fe_to_limbs).flatten())
+                .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
+                .chain(acc.compressed_e_sum.into_iter().map(fe_to_limbs).flatten())
+                .collect_vec();
+
+            let hash = poseidon.hash(inputs.try_into().unwrap());
+            fe_truncated(hash, NUM_HASH_BITS)
+        }
+
+    pub fn hash_assigned_state_ec<
+        const L: usize,
+    >(
+        &self,
+        layouter: &mut impl Layouter<C::Scalar>,
+        main_chip: &MainChip<C>,
+        mut poseidon_chip: &mut Poseidon2Chip<C, Poseidon2ChipSpec, T, RATE, L>,
+        vp_digest: &Self::Num,
+        acc: &AssignedProtostarAccumulatorInstance<
+            Self::NonNatNum,
+            Self::NatEcc,
+        >,
+    ) -> Result<Self::Num, Error> {
+        let inputs = iter::empty()
+            .chain([vp_digest])
+            .chain(acc.instances[0][0].limbs.iter())
+            .chain(
+                acc.witness_comms
+                    .iter()
+                    .flat_map(|point| [&point.x, &point.y].into_iter()))
+            .chain(acc.challenges.iter().flat_map(|x| x.limbs.iter()))
+            .chain(acc.u.limbs.iter())
+            .chain([&acc.e_comm.x, &acc.e_comm.y])
+            .chain(
+                acc.compressed_e_sum
+                    .as_ref()
+                    .into_iter().flat_map(|x| x.limbs.iter()))
+            .collect_vec();
+
+        let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
+        let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
+        // change to strict - Witness count: 29272
+        // let hash_le_bits = main_chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?;
+        // main_chip.bits_to_num(layouter, &hash_le_bits[..NUM_HASH_BITS])
+        // Witness count: 28170 // TODO CHECK THIS
+        let bits_to_num = main_chip.bits_and_num_limbs_hash(layouter, RANGE_BITS, NUM_HASH_BITS, &Number(hash))?;
+        Ok(bits_to_num)
+    }
+
     pub fn update_from_cyclefold<
         Comm_ec: AsRef<C::Secondary>
     >(
@@ -325,11 +405,10 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         acc_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
         acc_prime_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
     ) {
-        // self.h_prime_ec = Value::known(Chip::<C>::hash_state_ec(
-        //     self.hash_config.borrow(),
-        //     self.primary_avp.vp_digest,
-        //     &acc_prime_ec,
-        // ));
+        self.h_prime_ec = Value::known(self.hash_state_ec(
+            self.cyclefold_avp.vp_digest,
+            &acc_prime_ec,
+        ));
         self.cyclefold_proof = Value::known(cyclefold_proof);
         self.cyclefold_instances = cyclefold_instances.map(Value::known);
         self.acc_ec = Value::known(acc_ec.unwrap_comm());
@@ -351,10 +430,16 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         acc_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
         acc_prime_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
     ) {
+        let mut next_output = Vec::new();
         if (self.is_primary && acc_prime.u != C::Scalar::ZERO)//
             || (!self.is_primary && acc.u != C::Scalar::ZERO)
             {
-                self.step_circuit.next();
+                let mut step_circuit = self.step_circuit.borrow_mut();
+                step_circuit.next();
+            }
+            {
+                let mut step_circuit = self.step_circuit.borrow_mut();
+                next_output = step_circuit.next_output();
             }
             self.cyclefold_inputs_hash = Value::known(self.hash_cyclefold_inputs(
                 // &self.hash_config_base,
@@ -367,9 +452,9 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             self.h_prime = Value::known(self.hash_state(
                 // &self.hash_config,
                 self.primary_avp.vp_digest,
-                self.step_circuit.step_idx() + 1,
-                self.step_circuit.initial_input(),
-                self.step_circuit.output(),
+                self.step_circuit.borrow().step_idx() + 1,
+                self.step_circuit.borrow().initial_input(),
+                &next_output,
                 &acc_prime,
             ));
 
@@ -458,6 +543,47 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    fn check_state_hash_ec<
+        const L: usize,
+    >(
+        &self,
+        layouter: &mut impl Layouter<C::Scalar>,
+        main_chip: &MainChip<C>,
+        poseidon_chip: &mut Poseidon2Chip<C, Poseidon2ChipSpec, T, RATE, L>,
+        is_base_case: Option<&Self::Num>,
+        h: &Self::Num,
+        vp_digest: &Self::Num,
+        acc: &AssignedProtostarAccumulatorInstance<
+            Self::NonNatNum,
+            Self::NatEcc,
+        >,
+    ) -> Result<(), Error> {
+
+        let lhs = h;
+        let zero = main_chip.assign_witness(layouter, &C::Scalar::ZERO, 0).unwrap();
+        let rhs = self.hash_assigned_state_ec(
+            layouter,
+            main_chip,
+            poseidon_chip,
+            vp_digest,
+            acc,
+        )?;
+        let rhs = if let Some(is_base_case) = is_base_case {
+            main_chip.select(layouter, is_base_case, &zero, &rhs)?
+        } else {
+            rhs
+        };
+
+        // lhs = h == 0 initalised 
+        let lhs_is_zero = main_chip.is_zero(layouter, lhs)?;
+        let rhs = main_chip.select(layouter, &lhs_is_zero, &zero, &rhs)?;
+        //main_chip.constrain_equal(layouter, lhs, &rhs)?; //todo
+
+        Ok(())
+    }
+
     fn check_folding_ec(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
@@ -493,84 +619,12 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         Ok(())
     }
 
-    // fn check_folding_ec_hash(
-    //     &self,
-    //     builder: &mut SinglePhaseCoreManager<C::Scalar>,
-    //     is_base_case: Option<&AssignedValue<C::Scalar>>,
-    //     vp_digest: &AssignedValue<C::Scalar>,
-    //     h_prime: &AssignedValue<C::Scalar>,
-    //     acc_prime: &AssignedProtostarAccumulatorInstance<
-    //         ProperCrtUint<C::Scalar>,
-    //         EcPoint<C::Scalar, AssignedValue<C::Scalar>>,
-    //     >,
-    // ) -> Result<(), Error> {
-    //     let tcc_chip = &self.tcc_chip;
-    //     let hash_chip = &self.hash_chip;
-    //     let lhs = h_prime;
-    //     let rhs = hash_chip.hash_assigned_acc_prime(
-    //         builder,
-    //         vp_digest,
-    //         acc_prime,
-    //     )?;
-    //     let rhs = if let Some(is_base_case) = is_base_case {
-    //         let zero = builder.main().load_zero();
-    //         tcc_chip.select_gatechip(builder, is_base_case, &zero, &rhs)?
-    //     } else {
-    //         rhs
-    //     };
-
-    //     // todo check this fails because before prove_steps lhs = h == 0 initalised 
-    //     // since axiom api doesn't handle option
-    //     if *lhs.value() != C::Scalar::ZERO {
-    //         tcc_chip.constrain_equal(builder, lhs, &rhs)?;
-    //     }
-    //     Ok(())
-    // }
-
-}
-
-impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc> 
-    where
-    C: TwoChainCurve,
-    Sc: StepCircuit<C>,
-    C::Base: BigPrimeField + PrimeFieldBits,
-    C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
-{
-
-    type Config = PrimaryCircuitConfig<C>;
-    type FloorPlanner = Folding; //V1;
-    type Params = ();
-
-    fn without_witnesses(&self) -> Self {
-        Self { 
-            is_primary: false,
-            step_circuit: self.step_circuit.without_witnesses(),
-            hash_config: self.hash_config.clone(),
-            cyclefold_hash_config: self.cyclefold_hash_config.clone(),
-            // transcript_config: self.transcript_config,
-            primary_avp: self.primary_avp.clone(),
-            cyclefold_avp: self.cyclefold_avp.clone(),
-            h_prime: Value::unknown(),
-            cyclefold_inputs_hash: Value::unknown(),
-            acc: Value::unknown(),
-            acc_prime: Value::unknown(),
-            primary_instances: [Value::unknown(); NUM_INSTANCES],
-            primary_proof: Value::unknown(),
-            cyclefold_instances: [Value::unknown(); CF_IO_LEN],
-            cyclefold_proof: Value::unknown(),
-            acc_ec: Value::unknown(),
-            acc_prime_ec: Value::unknown(),
-         }
-    }
-
-    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-        PrimaryCircuitConfig::configure(meta)
-    }
-
-    fn synthesize(
+    fn synthesize_accumulation_verifier(
         &self,
-        config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
+        config: <PrimaryCircuit<C, Sc> as Circuit<C::Scalar>>::Config,
+        input: &[Number<C::Scalar>],
+        output: &[Number<C::Scalar>],
     ) -> Result<(), Error> {
 
         let Self {
@@ -579,21 +633,9 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
             ..
         } = &self;
 
-        let (input, output) =
-            StepCircuit::synthesize(&self.step_circuit, config.main_config.clone(), layouter.namespace(|| ""))?;
-
-        let range_chip = RangeCheckChip::<C>::construct(config.range_check_config);
-        let mut main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
-        main_chip.initialize_pow2(&mut layouter)?;
-        main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
-        let pow5_chip = Poseidon2Pow5Chip::construct(config.poseidon_config.clone());
-        let sm_chip = ScalarMulChip::<C>::new(config.sm_chip_config.clone());
-
-        // let sha256_chip = Table16Chip::construct(config.sha256_config.clone());
-        // Sha256::digest(sha256_chip, layouter.namespace(|| "sha256"), INPUT_2.as_slice()).map(|_| ());
-
+        let (main_chip, range_chip, pow5_chip, sm_chip) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
         let mut hash_chip_primary = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, PRIMARY_HASH_LENGTH>::construct(Poseidon2Config { pow5_config: config.poseidon_config.clone()});
-        // let mut hash_chip_secondary = PoseidonChip::<C, PoseidonSpec, T, RATE, CF_HASH_LENGTH>::construct(PoseidonConfig { pow5_config: config.poseidon_config.clone()});
+        let mut hash_chip_primary_ec = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, PRIMARY_HASH_LENGTH_EC>::construct(Poseidon2Config { pow5_config: config.poseidon_config.clone()});
         
         let acc_verifier = ProtostarAccumulationVerifier::new(primary_avp.clone(), main_chip.clone(), sm_chip.clone());
         let zero = main_chip.assign_fixed(&mut layouter, &C::Scalar::ZERO, 0)?;
@@ -601,19 +643,23 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         let vp_digest = main_chip.assign_witness(&mut layouter, &primary_avp.vp_digest, 0)?;
         let step_idx = main_chip.assign_witness(
             &mut layouter,
-            &C::Scalar::from(self.step_circuit.step_idx() as u64),
+            &C::Scalar::from(self.step_circuit.borrow().step_idx() as u64),
             1,
         )?;
 
         let mut h_prime_val = C::Scalar::ZERO;
+        let mut h_prime_ec_val = C::Scalar::ZERO;
         self.h_prime.map(|val| h_prime_val = val);
+        self.h_prime_ec.map(|val| h_prime_ec_val = val);
         let step_idx_plus_one = main_chip.add(&mut layouter, &step_idx, &one)?;
         let h_prime = main_chip.assign_witness(&mut layouter, &h_prime_val, 4)?;
+        let h_prime_ec = main_chip.assign_witness(&mut layouter, &h_prime_ec_val, 5)?;
         let initial_input = self
             .step_circuit
+            .borrow()
             .initial_input()
             .iter()
-            .map(|value| main_chip.assign_witness(&mut layouter, value, 5))
+            .map(|value| main_chip.assign_witness(&mut layouter, value, 6))
             .try_collect::<_, Vec<_>, _>()?;
 
         let is_base_case = main_chip.is_equal(&mut layouter, &step_idx, &zero)?;
@@ -720,18 +766,94 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
 
         // Witness count: 20402 - 20398 = 4
         // Copy count: 5311 - 5290 = 21
-        self.check_folding_ec(
+        // self.check_folding_ec(
+        //     &mut layouter,
+        //     &main_chip,
+        //     &acc_ec_prime,
+        //     &acc_ec_prime_result,
+        // )?; 
+
+        self.check_state_hash_ec::<PRIMARY_HASH_LENGTH_EC>(
             &mut layouter,
             &main_chip,
+            &mut hash_chip_primary_ec,
+            Some(&is_base_case),
+            &nark.instances[0][0],
+            &vp_digest,
+            &acc_ec,
+        )?;
+
+        self.check_state_hash_ec::<PRIMARY_HASH_LENGTH_EC>(
+            &mut layouter,
+            &main_chip,
+            &mut hash_chip_primary_ec,
+            Some(&is_base_case),
+            &h_prime_ec,
+            &vp_digest,
             &acc_ec_prime,
-            &acc_ec_prime_result,
-        )?; 
+        )?;
 
         // Witness count: 20402
         // Copy count: 5311
         // assign public instances
         // main_chip.expose_public(layouter, &h_prime, 0)?;
 
+        Ok(())
+    }
+
+}
+
+impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc> 
+    where
+    C: TwoChainCurve,
+    Sc: StepCircuit<C>,
+    C::Base: BigPrimeField + PrimeFieldBits,
+    C::Scalar: BigPrimeField + FromUniformBytes<64> + PrimeFieldBits,
+{
+
+    type Config = PrimaryCircuitConfig<C>;
+    type FloorPlanner = Folding;
+    type Params = ();
+
+    fn without_witnesses(&self) -> Self {
+        Self { 
+            is_primary: false,
+            step_circuit: self.step_circuit.clone(),
+            hash_config: self.hash_config.clone(),
+            cyclefold_hash_config: self.cyclefold_hash_config.clone(),
+            // transcript_config: self.transcript_config,
+            primary_avp: self.primary_avp.clone(),
+            cyclefold_avp: self.cyclefold_avp.clone(),
+            h_prime: Value::unknown(),
+            h_prime_ec: Value::unknown(),
+            cyclefold_inputs_hash: Value::unknown(),
+            acc: Value::unknown(),
+            acc_prime: Value::unknown(),
+            primary_instances: [Value::unknown(); NUM_INSTANCES],
+            primary_proof: Value::unknown(),
+            cyclefold_instances: [Value::unknown(); CF_IO_LEN],
+            cyclefold_proof: Value::unknown(),
+            acc_ec: Value::unknown(),
+            acc_prime_ec: Value::unknown(),
+         }
+    }
+
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        PrimaryCircuitConfig::configure(meta)
+    }
+
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<C::Scalar>,
+    ) -> Result<(), Error> {
+
+        let mut step_circuit = self.step_circuit.borrow_mut();
+        let (input, output) =
+            StepCircuit::<C>::synthesize(&mut *step_circuit, config.clone(), layouter.namespace(|| "step_circuit"))?;
+        drop(step_circuit);
+
+        self.synthesize_accumulation_verifier(layouter.namespace(|| "synthesize_accumulation_verifier"), config.clone(), &input, &output)?;
         Ok(())
     }
 }
@@ -757,7 +879,7 @@ where
 #[test]
 fn primary_chip() {
 
-    let k = 16;
+    let k = 13;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,

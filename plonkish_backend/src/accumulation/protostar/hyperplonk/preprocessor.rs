@@ -111,7 +111,7 @@ where
             let alpha_prime_offset = if circuit_info.lookups.is_empty() {
                 challenge_offset + num_theta_primes
             } else {
-                challenge_offset + num_theta_primes + 1
+                challenge_offset + num_theta_primes + 1 
             };
             let num_builtin_witness_polys = 3 * circuit_info.lookups.len();
             let builtin_witness_poly_offset =
@@ -187,7 +187,7 @@ where
             let alpha_prime_offset = if circuit_info.lookups.is_empty() {
                 zeta + 1
             } else {
-                challenge_offset + num_theta_primes + 1
+                challenge_offset + num_theta_primes + 1 + 1 // 1 for beta_prime lookup, 1 for zeta
             };
             let num_builtin_witness_polys = 3 * circuit_info.lookups.len() + 1;
             let builtin_witness_poly_offset =
@@ -274,6 +274,7 @@ where
 
     let num_folding_witness_polys = num_witness_polys + num_builtin_witness_polys;
     let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
+    println!("num_folding_challenges: {:?}", num_folding_challenges);
     let u = num_folding_challenges;
 
     let [beta, gamma, alpha] =
@@ -314,7 +315,6 @@ where
         let (mut pp, mut vp) = HyperPlonk::preprocess(param, circuit_info)?;
         let batch_size = batch_size(circuit_info, strategy);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << poly_setup, batch_size)?;
-        // let reduced_bases = Pcs::reduce_bases(&pcs_pp, &circuit_info.advice_copies)?;
         pp.pcs = pcs_pp;
         vp.pcs = pcs_vp;
         pp.num_permutation_z_polys = num_permutation_z_polys;
@@ -338,11 +338,9 @@ where
         lookup_expressions: lookup_expressions.clone(),
         queried_selectors: circuit_info.queried_selectors.clone(),
         selector_map: circuit_info.selector_map.clone(),
-        row_map_selector: circuit_info.row_map_selector.clone(),
-        selector_groups: circuit_info.selector_groups.clone(),
         last_rows: circuit_info.last_rows.clone(),
         advice_copies: circuit_info.advice_copies.clone(),
-        //reduced_bases: reduced_bases.clone(),
+        log_num_betas: circuit_info.log_num_betas,
     };
 
     let verifier_param = ProtostarVerifierParam {
@@ -354,6 +352,7 @@ where
         num_folding_witness_polys,
         num_folding_challenges,
         num_cross_terms,
+        lookups: circuit_info.lookups.len() > 0,
     };
 
     Ok((Box::new(prover_param), Box::new(verifier_param)))

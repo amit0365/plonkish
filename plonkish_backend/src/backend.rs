@@ -97,6 +97,8 @@ pub struct PlonkishCircuitInfo<F> {
     pub last_rows: Vec<usize>,
     // advice copies 
     pub advice_copies: Vec<Vec<usize>>,
+    // log number of beta or sqrt(l)
+    pub log_num_betas: usize,
 }
 
 impl<F: Clone> PlonkishCircuitInfo<F> {

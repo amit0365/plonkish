@@ -4,6 +4,7 @@ pub mod main_chip;
 pub mod transcript;
 pub mod range;
 pub mod sha256;
+pub mod minroot;
 
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
 use halo2_base::{
@@ -26,6 +27,7 @@ use self::{poseidon::{hash_chip::{PoseidonChip, PoseidonConfig}, spec::PoseidonS
 pub const T: usize = 4;
 pub const R: usize = 3;
 pub const L: usize = 13;
+pub const L1: usize = 13;
 
 pub const NUM_ADVICE: usize = T+1;
 pub const NUM_CONSTANTS: usize = 2*T + NUM_PARTIAL_SBOX;
@@ -91,6 +93,7 @@ where
                 meta,
                 advices[..T].try_into().unwrap(),
                 advices[T..2*T].try_into().unwrap(),
+                advices[2*T],
                 constants[..T].try_into().unwrap(), 
                 constants[T..T + NUM_PARTIAL_SBOX].try_into().unwrap(), 
                 constants[T+ NUM_PARTIAL_SBOX..2*T + NUM_PARTIAL_SBOX].try_into().unwrap(), 

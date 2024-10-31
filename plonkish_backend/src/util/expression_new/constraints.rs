@@ -1,7 +1,7 @@
 use std::{iter::zip, marker::PhantomData};
 
 use crate::util::{arithmetic::Field, expression::Rotation, izip, Deserialize, Itertools, Serialize};
-use halo2_proofs::plonk;
+use halo2_proofs::plonk::{self, Expression};
 
 //use halo2curves::CurveAffine;
 // use crate::{
@@ -20,7 +20,8 @@ pub struct Data<T: QueryType> {
     pub instance: Vec<T::Witness>,
     pub advice: Vec<T::Witness>,
     pub challenges: Vec<T::Challenge>,
-    pub beta: T::Witness,
+    pub beta_polys: T::Witness,
+    pub beta_prime_polys: T::Witness,
     pub lookups: Vec<LookupData<T>>,
     pub ys: Vec<T::Challenge>,
 }
@@ -36,8 +37,8 @@ pub struct LookupData<T: QueryType> {
 impl<T: QueryType> LookupData<T> {
     pub fn new(lookups_polys: Vec<T::Witness>, thetas: Vec<T::Challenge>, r: T::Challenge) -> Self {
         let m = lookups_polys[0];
-        let g = lookups_polys[1];
-        let h = lookups_polys[2];
+        let h = lookups_polys[1];
+        let g = lookups_polys[2];
         LookupData { m, g, h, thetas, r }
     }
 }
@@ -48,6 +49,7 @@ impl<T: QueryType> Data<T> {
         &self,
         gate_expressions: Vec<plonk::Expression<T::F>>,
         lookup_expressions: Vec<Vec<(plonk::Expression<T::F>, plonk::Expression<T::F>)>>,
+        num_witness_polys: usize,
     ) -> Vec<QueriedExpression<T>> {
 
         let gate_constraints = gate_expressions
@@ -63,7 +65,7 @@ impl<T: QueryType> Data<T> {
                     )
                 })
             .collect_vec();
-        
+
         let lookup_constraints = lookup_expressions
             .iter()
             .zip(self.lookups.iter())
@@ -96,8 +98,12 @@ impl<T: QueryType> Data<T> {
                 // Get expressions for variables r, m, g, h
                 let r = T::new_challenge(data.r);
                 let m = T::new_witness(data.m);
-                let g = T::new_witness(data.g);
                 let h = T::new_witness(data.h);
+                let g = T::new_witness(data.g);
+
+                // let m = T::new_witness_with_idx(data.m, num_witness_polys);
+                // let h = T::new_witness_with_idx(data.h, num_witness_polys + 1);
+                // let g = T::new_witness_with_idx(data.g, num_witness_polys + 2);
 
                 // Get expressions for variables theta_0, ..., theta_k
                 let thetas = data
@@ -129,10 +135,11 @@ impl<T: QueryType> Data<T> {
         &self,
         gate_expressions: Vec<plonk::Expression<T::F>>,
         lookup_expressions: Vec<Vec<(plonk::Expression<T::F>, plonk::Expression<T::F>)>>,
+        num_witness_polys: usize,
     ) -> QueriedExpression<T> {
-        let beta = T::new_witness(self.beta);
+        let beta = T::new_witness(self.beta_polys);
 
-        let constraints = self.all_constraints(gate_expressions, lookup_expressions);
+        let constraints = self.all_constraints(gate_expressions, lookup_expressions, num_witness_polys);
         let ys = self
             .ys
             .iter()
@@ -144,22 +151,34 @@ impl<T: QueryType> Data<T> {
 
     pub fn full_constraint_vec(
         &self,
-        gate_expressions: Vec<plonk::Expression<T::F>>,
-        lookup_expressions: Vec<Vec<(plonk::Expression<T::F>, plonk::Expression<T::F>)>>,
+        gate_expressions: Vec<Expression<T::F>>,
+        lookup_expressions: Vec<Vec<(Expression<T::F>, Expression<T::F>)>>,
+        num_witness_polys: usize,
     ) -> Vec<QueriedExpression<T>> {
-        let beta = T::new_witness(self.beta);
-
-        let constraints = self.all_constraints(gate_expressions, lookup_expressions);
+        let beta = T::new_witness(self.beta_polys);
+        let constraints = self.all_constraints(gate_expressions, lookup_expressions, num_witness_polys);
         constraints.iter().map(|constraint| beta.clone() * constraint.clone()).collect_vec()
     }
 
     pub fn full_constraint_no_beta_vec(
         &self,
-        gate_expressions: Vec<plonk::Expression<T::F>>,
-        lookup_expressions: Vec<Vec<(plonk::Expression<T::F>, plonk::Expression<T::F>)>>,
+        gate_expressions: Vec<Expression<T::F>>,
+        lookup_expressions: Vec<Vec<(Expression<T::F>, Expression<T::F>)>>,
+        num_witness_polys: usize,
     ) -> Vec<QueriedExpression<T>> {
-        let constraints = self.all_constraints(gate_expressions, lookup_expressions);
-        constraints
+        self.all_constraints(gate_expressions, lookup_expressions, num_witness_polys)
+    }
+
+    pub fn full_constraint_beta_vec(
+        &self,
+        gate_expressions: Vec<Expression<T::F>>,
+        lookup_expressions: Vec<Vec<(Expression<T::F>, Expression<T::F>)>>,
+        num_witness_polys: usize,
+    ) -> Vec<QueriedExpression<T>> {
+        let beta = T::new_witness(self.beta_polys);
+        let beta_prime = T::new_witness(self.beta_prime_polys);
+        let constraints = self.all_constraints(gate_expressions, lookup_expressions, num_witness_polys);
+        constraints.iter().map(|constraint| beta.clone() * beta_prime.clone() * constraint.clone()).collect_vec()
     }
 
     pub fn ys_paired_vec(&self) -> Vec<QueriedExpression<T>> {

@@ -141,6 +141,7 @@ impl<F, CV, FV, WV> Mul for Expression<F, CV, FV, WV> {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct ColumnQuery<T> {
     pub column: T,
+    pub column_idx: Option<usize>,
     pub rotation: i32,
 }
 
@@ -209,24 +210,28 @@ pub trait QueryType {
             &|selector_column| {
                 QueriedExpression::<Self>::Fixed(ColumnQuery {
                     column: selectors[selector_column.index()],
+                    column_idx: Some(selector_column.index()),
                     rotation: 0,
                 })
             },
             &|fixed_column| {
                 QueriedExpression::<Self>::Fixed(ColumnQuery {
                     column: fixed[fixed_column.column_index()],
+                    column_idx: Some(fixed_column.column_index()),
                     rotation: fixed_column.rotation().0,
                 })
             },
             &|advice_column| {
                 QueriedExpression::<Self>::Witness(ColumnQuery {
                     column: advice[advice_column.column_index()],
+                    column_idx: Some(advice_column.column_index()),
                     rotation: advice_column.rotation().0,
                 })
             },
             &|instance_column| {
                 QueriedExpression::<Self>::Witness(ColumnQuery {
                     column: instance[instance_column.column_index()],
+                    column_idx: Some(instance_column.column_index()),
                     rotation: instance_column.rotation().0,
                 })
             },
@@ -254,13 +259,19 @@ pub trait QueryType {
 
     /// Create a Witness QueriedExpression with 0 rotation
     fn new_witness(value: Self::Witness) -> QueriedExpression<Self> {
-        Self::new_witness_with_rotations(value, Rotation::cur())
+        Self::new_witness_with_rotations(value, Rotation::cur(), None)
+    }
+
+    /// Create a Witness QueriedExpression with column_idx
+    fn new_witness_with_idx(value: Self::Witness, idx: usize) -> QueriedExpression<Self> {
+        Self::new_witness_with_rotations(value, Rotation::cur(), Some(idx))
     }
 
     /// Create a Witness QueriedExpression
-    fn new_witness_with_rotations(value: Self::Witness, rot: Rotation) -> QueriedExpression<Self> {
+    fn new_witness_with_rotations(value: Self::Witness, rot: Rotation, idx: Option<usize>) -> QueriedExpression<Self> {
         QueriedExpression::<Self>::Witness(ColumnQuery {
             column: value,
+            column_idx: idx,
             rotation: rot.0,
         })
     }
@@ -269,6 +280,7 @@ pub trait QueryType {
     fn new_fixed(value: Self::Fixed) -> QueriedExpression<Self> {
         QueriedExpression::<Self>::Fixed(ColumnQuery {
             column: value,
+            column_idx: None,
             rotation: 0,
         })
     }

@@ -1,9 +1,9 @@
 use core::num;
 use std::{
-    collections::HashMap, iter::zip, marker::PhantomData, ops::{AddAssign, Range}, time::Instant
+    cell::RefCell, cmp::max, collections::HashMap, iter::zip, marker::PhantomData, ops::{AddAssign, Range}, time::Instant
 };
 
-use crate::{accumulation::protostar::{hyperplonk::prover::powers_of_zeta_poly, ProtostarAccumulator}, backend::hyperplonk::prover::instance_polys, pcs::PolynomialCommitmentScheme, poly::multilinear::MultilinearPolynomial, util::{arithmetic::{div_ceil, field_integers, powers, BooleanHypercube, Field}, end_timer, expression::Rotation, expression_new::constraints::LookupData, izip, izip_eq, parallel::{num_threads, par_map_collect, parallelize_iter}, start_timer, Deserialize, Itertools, Serialize}};
+use crate::{accumulation::protostar::{hyperplonk::prover::{powers_of_zeta_poly, PolynomialsRefsHolder}, ivc::halo2::chips::main_chip::LOOKUP_BITS, ProtostarAccumulator}, backend::hyperplonk::prover::instance_polys, pcs::PolynomialCommitmentScheme, poly::{multilinear::MultilinearPolynomial, Polynomial}, util::{arithmetic::{div_ceil, field_integers, powers, BooleanHypercube, Field}, end_timer, expression::Rotation, expression_new::constraints::LookupData, izip, izip_eq, parallel::{num_threads, par_map_collect, parallelize_iter}, start_timer, Deserialize, Itertools, Serialize}};
 use ark_std::{end_timer, start_timer};
 use halo2_base::{halo2_proofs::{arithmetic::lagrange_interpolate, plonk}, utils::PrimeField};
 pub use halo2_proofs::halo2curves::CurveAffine;
@@ -20,6 +20,38 @@ use super::{constraints::Data, IndexedExpression, QueriedExpression, QueryType};
 pub fn split_polys<'a, F>(polys: [&'a MultilinearPolynomial<F>; 2]) -> [(&'a [F], &'a [F]); 2] {
     polys.map(|poly| poly.evals().split_at(poly.evals().len() / 2))
 }
+
+pub fn beta_prime_polys<'a, F>(
+    beta_prime_polys_raw: [&'a MultilinearPolynomial<F>; 2],
+    beta_polys_len: usize,
+    beta_prime_polys_owned: &'a mut Box<[MultilinearPolynomial<F>; 2]>,
+) -> Vec<[&'a MultilinearPolynomial<F>; 2]> 
+where F: Field {
+    beta_prime_polys_owned[0] = MultilinearPolynomial::new(
+        beta_prime_polys_raw[0]
+            .clone()
+            .into_evals()
+            .into_iter()
+            .flat_map(|x| std::iter::repeat(x).take(beta_polys_len))
+            .collect(),
+    );
+
+    beta_prime_polys_owned[1] = MultilinearPolynomial::new(
+        beta_prime_polys_raw[1]
+            .clone()
+            .into_evals()
+            .into_iter()
+            .flat_map(|x| std::iter::repeat(x).take(beta_polys_len))
+            .collect(),
+    );
+
+    let beta_prime_polys = vec![
+        [&beta_prime_polys_owned[0], &beta_prime_polys_owned[1]],
+    ];
+
+    beta_prime_polys
+}
+
 
 /// Defines a QueriedExpression where leaves are references values from two accumulators.
 pub struct Paired<'a, F> {
@@ -46,7 +78,8 @@ impl<'a, F: PrimeField> Paired<'a, F> {
         num_theta_primes: usize,
         num_alpha_primes: usize,
         preprocess_polys: &'a [MultilinearPolynomial<F>],
-        beta: [&'a MultilinearPolynomial<F>; 2],
+        beta_polys_owned: &'a [MultilinearPolynomial<F>],
+        beta_prime_polys_owned: &'a [MultilinearPolynomial<F>],
         acc0: &'a ProtostarAccumulator<F, Pcs>,
         acc1: &'a ProtostarAccumulator<F, Pcs>,
     ) -> Data<Self>
@@ -70,8 +103,19 @@ impl<'a, F: PrimeField> Paired<'a, F> {
         let advice= total_advice.iter().take(num_witness_polys).cloned().collect_vec();
         let challenges = total_challenges.iter().take(num_challenges).cloned().collect_vec();
         let thetas = total_challenges.iter().skip(num_challenges).take(num_theta_primes).cloned().collect_vec();
-        let r = total_challenges.iter().skip(num_challenges + num_theta_primes).take(1).cloned().collect_vec()[0]; // beta_prime 
+        let r = total_challenges.iter().skip(num_challenges + num_theta_primes).take(1).cloned().collect_vec()[0];
         let ys = total_challenges.iter().rev().take(num_alpha_primes).cloned().rev().collect_vec();
+
+        let beta_polys = 
+            [
+                &beta_polys_owned[0],
+                &beta_polys_owned[1],
+            ];
+        let beta_prime_polys = 
+            [
+                &beta_prime_polys_owned[0],
+                &beta_prime_polys_owned[1],
+            ];
 
         let lookups = if lookups_empty {
             Vec::new()
@@ -86,7 +130,8 @@ impl<'a, F: PrimeField> Paired<'a, F> {
             instance,
             advice,
             challenges,
-            beta,
+            beta_polys,
+            beta_prime_polys,
             lookups,
             ys,
         }
@@ -112,20 +157,98 @@ impl<'a, F: PrimeField> Paired<'a, F> {
     /// TODO: As an optimization, we can get away with evaluating the polynomial only at the points 2,...,d,
     /// since e(0) and e(1) are the existing errors from both accumulators. If we let D' = D \ {0,1}, then we can compute
     /// e(D') and reinsert the evaluations at 0 and 1 for the final result before the conversion to coefficients.
-    pub fn evaluate_compressed_polynomial_allrows(
-        expr: QueriedExpression<Self>,
-        rows: Vec<usize>,
+    // pub fn evaluate_compressed_polynomial_allrows(
+    //     expr: QueriedExpression<Self>,
+    //     rows: Vec<usize>,
+    //     num_vars: usize,
+    // ) -> Vec<F> {
+    //     // Convert the expression into an indexed one, where all leaves are extracted into vectors,
+    //     // and replaced by the index in these vectors.
+    //     // This allows us to separate the evaluation of the variables from the evaluation of the expression,
+    //     // since the expression leaves will point to the indices in buffers where the evaluations are stored.
+    //     let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
+
+    //     // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
+    //     // since the polynomial e(X) has d+1 coefficients.
+    //     let num_evals = indexed.expr.degree() + 1;
+
+    //     // For two transcripts with respective challenge, c₀, c₁,
+    //     // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
+    //     let challenges: Vec<_> = indexed
+    //         .challenges
+    //         .iter()
+    //         .map(|queried_challenge| {
+    //             EvaluatedError::new_from_boolean_evals(
+    //                 *queried_challenge.value[0],
+    //                 *queried_challenge.value[1],
+    //                 num_evals,
+    //             )
+    //         })
+    //         .collect();
+
+    //     // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
+    //     // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
+    //     //   and consider fᵢ(j) = fᵢ for all j
+    //     // - Witness variables are interpolated from the values at the two accumulators,
+    //     //   and the evaluations are stored in a buffer.
+    //     let mut fixed = vec![F::ZERO; indexed.fixed.len()];
+    //     let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
+
+    //     // Running sum for e(D) = ∑ᵢ eᵢ(D)
+    //     let mut sum = EvaluatedError::<F>::new(num_evals);
+       
+    //     for row_index in rows {
+    //         // Fetch fixed data 
+    //         for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
+    //             let row_idx = query.row_idx(row_index, num_vars);
+    //             *fixed = query.column[row_idx];
+    //         }
+
+    //         // Fetch witness data and interpolate
+    //         for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
+    //             let row_idx = query.row_idx(row_index, num_vars);
+    //             let eval0 = query.column[0][row_idx];
+    //             let eval1 = query.column[1][row_idx];
+    //             witness.evaluate(eval0, eval1);
+    //         }
+
+    //         // Evaluate the expression in the current row and add it to e(D)
+    //         for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
+    //             // For each `eval_idx` j = 0, 1, ..., d, evaluate the expression eᵢ(j) = βᵢ(j) G(fᵢ, wᵢ(j), rᵢ(j))
+    //             *eval += indexed.expr.evaluate(
+    //                 &|&constant| constant,
+    //                 &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
+    //                 &|&fixed_idx| fixed[fixed_idx],
+    //                 &|&witness_idx| witness[witness_idx].evals[eval_idx],
+    //                 &|&negated| -negated,
+    //                 &|a, b| a + b,
+    //                 &|a, b| a * b,
+    //             );
+    //         }
+    //     };
+    //     Convert the evaluations into the coefficients of the polynomial
+    //     sum.to_coefficients()
+    // }
+
+    pub fn evaluate_compressed_polynomial_full(
+        expr: &QueriedExpression<Self>,
+        rows: &[usize],
         num_vars: usize,
+        num_witness_polys: usize,
+        lookups_empty: bool,
     ) -> Vec<F> {
         // Convert the expression into an indexed one, where all leaves are extracted into vectors,
         // and replaced by the index in these vectors.
         // This allows us to separate the evaluation of the variables from the evaluation of the expression,
         // since the expression leaves will point to the indices in buffers where the evaluations are stored.
-        let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
-
+        let indexed = IndexedExpression::<Paired<'a, F>>::new(expr);
+        let num_evals = indexed.expr.degree() + 1;
+        if indexed.expr.degree() < 4 { // linear gate constraints don't contribute to the error polynomial i.e. 1 + 2(betas) = 3 degree free
+            return vec![F::ZERO; num_evals];
+        }
         // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
         // since the polynomial e(X) has d+1 coefficients.
-        let num_evals = indexed.expr.degree() + 1;
+        // let num_evals = indexed.expr.degree() + 1;
 
         // For two transcripts with respective challenge, c₀, c₁,
         // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
@@ -148,24 +271,47 @@ impl<'a, F: PrimeField> Paired<'a, F> {
         //   and the evaluations are stored in a buffer.
         let mut fixed = vec![F::ZERO; indexed.fixed.len()];
         let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
-
+        let g_witness_poly_offset = num_witness_polys + 3;
+        let g_witness_poly_idx = g_witness_poly_offset - 1;
+        let mut fixed_size = 0;
+        let mut witness_size = 0;
         // Running sum for e(D) = ∑ᵢ eᵢ(D)
         let mut sum = EvaluatedError::<F>::new(num_evals);
-       
-        for row_index in rows {
-            // Fetch fixed data 
+        for (i, row_index) in rows.iter().enumerate() {
+            // Fetch fixed data
             for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
-                let row_idx = query.row_idx(row_index, num_vars);
+                // if query.column_idx.is_some() && query.column_idx.unwrap() == 0 && !lookups_empty {
+                //     fixed_size = num_vars;//LOOKUP_BITS;
+                // } else {
+                //     fixed_size = num_vars;
+                // }
+                fixed_size = num_vars;
+                let row_idx = query.row_idx(*row_index, fixed_size);
                 *fixed = query.column[row_idx];
             }
 
             // Fetch witness data and interpolate
             for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
-                let row_idx = query.row_idx(row_index, num_vars);
+                // if query.column_idx.is_some() && query.column_idx.unwrap() == g_witness_poly_idx && !lookups_empty {
+                //     println!("query.column_idx {:?}", g_witness_poly_idx);
+                //     witness_size = num_vars;//LOOKUP_BITS;
+                // } else {
+                //     witness_size = num_vars;
+                // }
+                witness_size = num_vars;
+                let row_idx = query.row_idx(*row_index, witness_size);
                 let eval0 = query.column[0][row_idx];
                 let eval1 = query.column[1][row_idx];
                 witness.evaluate(eval0, eval1);
             }
+
+            // Fetch witness data and interpolate in parallel
+            // witness.par_iter_mut().zip(indexed.witness.par_iter()).for_each(|(witness, query)| {
+            //     let row_idx = query.row_idx(*row_index, num_vars);
+            //     let eval0 = query.column[0][row_idx];
+            //     let eval1 = query.column[1][row_idx];
+            //     witness.evaluate(eval0, eval1);
+            // });
 
             // Evaluate the expression in the current row and add it to e(D)
             for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
@@ -179,83 +325,6 @@ impl<'a, F: PrimeField> Paired<'a, F> {
                     &|a, b| a + b,
                     &|a, b| a * b,
                 );
-            }
-        };
-        // Convert the evaluations into the coefficients of the polynomial
-        sum.to_coefficients()
-    }
-
-    pub fn evaluate_compressed_polynomial_full(
-        expr: &QueriedExpression<Self>,
-        rows: &[usize],
-        num_vars: usize,
-        beta: &[CombinedQuadraticErrorFull<F>],
-    ) -> Vec<F> {
-        // Convert the expression into an indexed one, where all leaves are extracted into vectors,
-        // and replaced by the index in these vectors.
-        // This allows us to separate the evaluation of the variables from the evaluation of the expression,
-        // since the expression leaves will point to the indices in buffers where the evaluations are stored.
-        let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
-
-        // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
-        // since the polynomial e(X) has d+1 coefficients.
-        let num_evals = indexed.expr.degree() + 1;
-        assert!(rows.len() == beta.len());
-        //assert!(beta[0].evals.len() >= num_evals);
-
-        // For two transcripts with respective challenge, c₀, c₁,
-        // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
-        let challenges: Vec<_> = indexed
-            .challenges
-            .iter()
-            .map(|queried_challenge| {
-                EvaluatedError::new_from_boolean_evals(
-                    *queried_challenge.value[0],
-                    *queried_challenge.value[1],
-                    num_evals,
-                )
-            })
-            .collect();
-
-        // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
-        // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
-        //   and consider fᵢ(j) = fᵢ for all j
-        // - Witness variables are interpolated from the values at the two accumulators,
-        //   and the evaluations are stored in a buffer.
-        let mut fixed = vec![F::ZERO; indexed.fixed.len()];
-        let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
-
-        // Running sum for e(D) = ∑ᵢ eᵢ(D)
-        let mut sum = EvaluatedError::<F>::new(num_evals);
-       
-        for (i, row_index) in rows.iter().enumerate() {
-            // Fetch fixed data
-            for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
-                let row_idx = query.row_idx(*row_index, num_vars);
-                *fixed = query.column[row_idx];
-            }
-
-            // Fetch witness data and interpolate
-            for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
-                let row_idx = query.row_idx(*row_index, num_vars);
-                let eval0 = query.column[0][row_idx];
-                let eval1 = query.column[1][row_idx];
-                witness.evaluate(eval0, eval1);
-            }
-
-            // Evaluate the expression in the current row and add it to e(D)
-            for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
-                // For each `eval_idx` j = 0, 1, ..., d, evaluate the expression eᵢ(j) = βᵢ(j) G(fᵢ, wᵢ(j), rᵢ(j))
-                let expr_eval = indexed.expr.evaluate(
-                    &|&constant| constant,
-                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
-                    &|&fixed_idx| fixed[fixed_idx],
-                    &|&witness_idx| witness[witness_idx].evals[eval_idx],
-                    &|&negated| -negated,
-                    &|a, b| a + b,
-                    &|a, b| a * b,
-                );
-                *eval += beta[i].evals[eval_idx] * expr_eval;
             }
         };
         // Convert the evaluations into the coefficients of the polynomial
@@ -267,338 +336,219 @@ impl<'a, F: PrimeField> Paired<'a, F> {
         expr: &QueriedExpression<Self>,
         rows: &[usize],
         num_vars: usize,
-        beta: &[CombinedQuadraticErrorFull<F>],
+        //acc_u: F,
     ) -> Vec<F> {
         // Convert the expression into an indexed one, where all leaves are extracted into vectors,
         // and replaced by the index in these vectors.
         // This allows us to separate the evaluation of the variables from the evaluation of the expression,
         // since the expression leaves will point to the indices in buffers where the evaluations are stored.
-        let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
-
+        let indexed = IndexedExpression::<Paired<'a, F>>::new(expr);
         // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
         // since the polynomial e(X) has d+1 coefficients.
         let num_evals = indexed.expr.degree() + 1;
-        assert!(rows.len() == beta.len());
-        //assert!(beta[0].evals.len() >= num_evals);
-
-        // For two transcripts with respective challenge, c₀, c₁,
-        // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
-        let challenges: Vec<_> = indexed
-            .challenges
-            .iter()
-            .map(|queried_challenge| {
-                EvaluatedError::new_from_boolean_evals(
-                    *queried_challenge.value[0],
-                    *queried_challenge.value[1],
-                    num_evals,
-                )
-            })
-            .collect();
-
-        // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
-        // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
-        //   and consider fᵢ(j) = fᵢ for all j
-        // - Witness variables are interpolated from the values at the two accumulators,
-        //   and the evaluations are stored in a buffer.
-
-        // Running sum for e(D) = ∑ᵢ eᵢ(D)
-        let sum: EvaluatedError<F> = rows.into_par_iter().map(|row_index| {
-            let mut fixed = vec![F::ZERO; indexed.fixed.len()];
-            let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
-    
-            for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
-                let row_idx = query.row_idx(*row_index, num_vars);
-                *fixed = query.column[row_idx];
-            }
-    
-            for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
-                let row_idx = query.row_idx(*row_index, num_vars);
-                let eval0 = query.column[0][row_idx];
-                let eval1 = query.column[1][row_idx];
-                witness.evaluate(eval0, eval1);
-            }
-    
-            let mut row_sum = EvaluatedError::<F>::new(num_evals);
-            for eval_idx in 0..num_evals {
-                row_sum.evals[eval_idx] = indexed.expr.evaluate(
-                    &|&constant| constant,
-                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
-                    &|&fixed_idx| fixed[fixed_idx],
-                    &|&witness_idx| witness[witness_idx].evals[eval_idx],
-                    &|&negated| -negated,
-                    &|a, b| a + b,
-                    &|a, b| a * b,
-                );
-            }
-            row_sum
-        }).reduce(|| EvaluatedError::<F>::new(num_evals), |a, b| {
-            let mut result = EvaluatedError::<F>::new(num_evals);
-            for i in 0..num_evals {
-                result.evals[i] = a.evals[i] + b.evals[i];
-            }
-            result
-        });
-        // Convert the evaluations into the coefficients of the polynomial
-        sum.to_coefficients()
-    }
-
-    pub fn evaluate_compressed_polynomial_allrows_parallel(
-        expr: QueriedExpression<Self>,
-        rows: Vec<usize>,
-        num_vars: usize,
-    ) -> Vec<F> {
-        use rayon::prelude::*;
-
-        let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
-        let num_evals = indexed.expr.degree() + 1;
-
-        let challenges: Vec<_> = indexed
-            .challenges
-            .iter()
-            .map(|queried_challenge| {
-                EvaluatedError::new_from_boolean_evals(
-                    *queried_challenge.value[0],
-                    *queried_challenge.value[1],
-                    num_evals,
-                )
-            })
-            .collect();
-
-        let sum: EvaluatedError<F> = rows.into_par_iter().map(|row_index| {
-            let mut fixed = vec![F::ZERO; indexed.fixed.len()];
-            let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
-
-            for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
-                let row_idx = query.row_idx(row_index, num_vars);
-                *fixed = query.column[row_idx];
-            }
-
-            for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
-                let row_idx = query.row_idx(row_index, num_vars);
-                let eval0 = query.column[0][row_idx];
-                let eval1 = query.column[1][row_idx];
-                witness.evaluate(eval0, eval1);
-            }
-
-            let mut row_sum = EvaluatedError::<F>::new(num_evals);
-            for eval_idx in 0..num_evals {
-                row_sum.evals[eval_idx] = indexed.expr.evaluate(
-                    &|&constant| constant,
-                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
-                    &|&fixed_idx| fixed[fixed_idx],
-                    &|&witness_idx| witness[witness_idx].evals[eval_idx],
-                    &|&negated| -negated,
-                    &|a, b| a + b,
-                    &|a, b| a * b,
-                );
-            }
-            row_sum
-        }).reduce(|| EvaluatedError::<F>::new(num_evals), |a, b| {
-            let mut result = EvaluatedError::<F>::new(num_evals);
-            for i in 0..num_evals {
-                result.evals[i] = a.evals[i] + b.evals[i];
-            }
-            result
-        });
-
-        sum.to_coefficients()
-    }
-
-    pub fn evaluate_compressed_polynomial_rowwise(
-        expr: QueriedExpression<Self>,
-        row_index: usize,
-        num_vars: usize,
-    ) -> Vec<F> {
-        // Convert the expression into an indexed one, where all leaves are extracted into vectors,
-        // and replaced by the index in these vectors.
-        // This allows us to separate the evaluation of the variables from the evaluation of the expression,
-        // since the expression leaves will point to the indices in buffers where the evaluations are stored.
-        let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
-
-        // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
-        // since the polynomial e(X) has d+1 coefficients.
-        let num_evals = indexed.expr.degree() + 1;
-
-        // For two transcripts with respective challenge, c₀, c₁,
-        // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
-        let challenges: Vec<_> = indexed
-            .challenges
-            .iter()
-            .map(|queried_challenge| {
-                EvaluatedError::new_from_boolean_evals(
-                    *queried_challenge.value[0],
-                    *queried_challenge.value[1],
-                    num_evals,
-                )
-            })
-            .collect();
-
-        // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
-        // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
-        //   and consider fᵢ(j) = fᵢ for all j
-        // - Witness variables are interpolated from the values at the two accumulators,
-        //   and the evaluations are stored in a buffer.
-        let mut fixed = vec![F::ZERO; indexed.fixed.len()];
-        let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
-
-        // Running sum for e(D) = ∑ᵢ eᵢ(D)
-        let mut sum = EvaluatedError::<F>::new(num_evals);
-       
-            // Fetch fixed data
-            for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
-                let row_idx = query.row_idx(row_index, num_vars);
-                *fixed = query.column[row_idx];
-            }
-
-            // Fetch witness data and interpolate
-            for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
-                let row_idx = query.row_idx(row_index, num_vars);
-                let eval0 = query.column[0][row_idx];
-                let eval1 = query.column[1][row_idx];
-                witness.evaluate(eval0, eval1);
-            }
-
-            // Evaluate the expression in the current row and add it to e(D)
-            for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
-                // For each `eval_idx` j = 0, 1, ..., d, evaluate the expression eᵢ(j) = βᵢ(j) G(fᵢ, wᵢ(j), rᵢ(j))
-                *eval += indexed.expr.evaluate(
-                    &|&constant| constant,
-                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
-                    &|&fixed_idx| fixed[fixed_idx],
-                    &|&witness_idx| witness[witness_idx].evals[eval_idx],
-                    &|&negated| -negated,
-                    &|a, b| a + b,
-                    &|a, b| a * b,
-                );
-            };
-
-        // Convert the evaluations into the coefficients of the polynomial
-        sum.to_coefficients()
-    }
-
-    pub fn evaluate_compressed_polynomial(
-        expr: QueriedExpression<Self>,
-        rows: Range<usize>,
-        num_vars: usize,
-    ) -> Vec<F> {
-        // Convert the expression into an indexed one, where all leaves are extracted into vectors,
-        // and replaced by the index in these vectors.
-        // This allows us to separate the evaluation of the variables from the evaluation of the expression,
-        // since the expression leaves will point to the indices in buffers where the evaluations are stored.
-        let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
-
-        // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
-        // since the polynomial e(X) has d+1 coefficients.
-        let num_evals = indexed.expr.degree() + 1;
-
-        // For two transcripts with respective challenge, c₀, c₁,
-        // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
-        let challenges: Vec<_> = indexed
-            .challenges
-            .iter()
-            .map(|queried_challenge| {
-                EvaluatedError::new_from_boolean_evals(
-                    *queried_challenge.value[0],
-                    *queried_challenge.value[1],
-                    num_evals,
-                )
-            })
-            .collect();
-
-        // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
-        // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
-        //   and consider fᵢ(j) = fᵢ for all j
-        // - Witness variables are interpolated from the values at the two accumulators,
-        //   and the evaluations are stored in a buffer.
-        let mut fixed = vec![F::ZERO; indexed.fixed.len()];
-        let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
-
-        // Running sum for e(D) = ∑ᵢ eᵢ(D)
-        let mut sum = EvaluatedError::<F>::new(num_evals);
-       
-        for row_index in rows {
-            // Fetch fixed data
-            for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
-                let row_idx = query.row_idx(row_index, num_vars);
-                *fixed = query.column[row_idx];
-            }
-
-            // Fetch witness data and interpolate
-            for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
-                let row_idx = query.row_idx(row_index, num_vars);
-                let eval0 = query.column[0][row_idx];
-                let eval1 = query.column[1][row_idx];
-                witness.evaluate(eval0, eval1);
-            }
-
-            // Evaluate the expression in the current row and add it to e(D)
-            for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
-                // For each `eval_idx` j = 0, 1, ..., d, evaluate the expression eᵢ(j) = βᵢ(j) G(fᵢ, wᵢ(j), rᵢ(j))
-                *eval += indexed.expr.evaluate(
-                    &|&constant| constant,
-                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
-                    &|&fixed_idx| fixed[fixed_idx],
-                    &|&witness_idx| witness[witness_idx].evals[eval_idx],
-                    &|&negated| -negated,
-                    &|a, b| a + b,
-                    &|a, b| a * b,
-                );
-            }
-        };
-        // Convert the evaluations into the coefficients of the polynomial
-        sum.to_coefficients()
-    }
-
-    pub fn evaluate_ys_polynomial(
-        expr: QueriedExpression<Self>,
-        rows: Range<usize>,
-        num_vars: usize,
-    ) -> Vec<F> {
-        // Convert the expression into an indexed one, where all leaves are extracted into vectors,
-        // and replaced by the index in these vectors.
-        // This allows us to separate the evaluation of the variables from the evaluation of the expression,
-        // since the expression leaves will point to the indices in buffers where the evaluations are stored.
-        let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
-
-        // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
-        // since the polynomial e(X) has d+1 coefficients.
-        let num_evals = indexed.expr.degree() + 1;
-        // For two transcripts with respective challenge, c₀, c₁,
-        // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
-        let challenges: Vec<_> = indexed
-            .challenges
-            .iter()
-            .map(|queried_challenge| {
-                EvaluatedError::new_from_boolean_evals(
-                    *queried_challenge.value[0],
-                    *queried_challenge.value[1],
-                    num_evals,
-                )
-            })
-            .collect();
-
-        // Running sum for e(D) = ∑ᵢ eᵢ(D)
-        let mut sum = EvaluatedError::<F>::new(num_evals);
-        
-        for row_index in rows {
-            // Evaluate the expression in the current row and add it to e(D)
-            for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
-                // For each `eval_idx` j = 0, 1, ..., d, evaluate the expression eᵢ(j) = βᵢ(j) G(fᵢ, wᵢ(j), rᵢ(j))
-                *eval += indexed.expr.evaluate(
-                    &|&constant| F::ZERO,
-                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
-                    &|&fixed_idx| F::ZERO,
-                    &|&witness_idx| F::ZERO,
-                    &|&negated| F::ZERO,
-                    &|a, b| a + b,
-                    &|a, b| a * b,
-                );
-            }
+        if indexed.expr.degree() < 4 { // linear gate constraints don't contribute to the error polynomial i.e. 1 + 2(betas) = 3 degree free
+            return vec![F::ZERO; num_evals];
         }
 
+        // For two transcripts with respective challenge, c₀, c₁,
+        // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
+        let challenges: Vec<_> = indexed
+            .challenges
+            .iter()
+            .map(|queried_challenge| {
+                EvaluatedError::new_from_boolean_evals(
+                    *queried_challenge.value[0],
+                    *queried_challenge.value[1],
+                    num_evals,
+                )
+            })
+            .collect();
+
+        // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
+        // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
+        //   and consider fᵢ(j) = fᵢ for all j
+        // - Witness variables are interpolated from the values at the two accumulators,
+        //   and the evaluations are stored in a buffer.
+
+        // Running sum for e(D) = ∑ᵢ eᵢ(D)
+        let sum: EvaluatedError<F> = rows.into_par_iter().map(|row_index| {
+            let mut fixed = vec![F::ZERO; indexed.fixed.len()];
+            let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
+            let mut fixed_size = 0;
+            for (i, (fixed, query)) in fixed.iter_mut().zip(indexed.fixed.iter()).enumerate() {
+                // if i == 0 {
+                //     println!("row_index {}", row_index);
+                //     fixed_size = LOOKUP_BITS;
+                // } else {
+                //     fixed_size = num_vars;
+                // }
+                fixed_size = num_vars;
+                let row_idx = query.row_idx(*row_index, fixed_size);
+                *fixed = query.column[row_idx];
+            }
+    
+            for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
+                let row_idx = query.row_idx(*row_index, num_vars);
+                let eval0 = query.column[0][row_idx];
+                let eval1 = query.column[1][row_idx];
+                witness.evaluate(eval0, eval1);
+            }
+
+            // Fetch witness data and interpolate in parallel
+            // witness.par_iter_mut().zip(indexed.witness.par_iter()).for_each(|(witness, query)| {
+            //     let row_idx = query.row_idx(*row_index, num_vars);
+            //     let eval0 = query.column[0][row_idx];
+            //     let eval1 = query.column[1][row_idx];
+            //     witness.evaluate(eval0, eval1);
+            // });
+    
+            let mut row_sum = EvaluatedError::<F>::new(num_evals);
+            for eval_idx in 0..num_evals {
+                row_sum.evals[eval_idx] = indexed.expr.evaluate(
+                    &|&constant| constant,
+                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
+                    &|&fixed_idx| fixed[fixed_idx],
+                    &|&witness_idx| witness[witness_idx].evals[eval_idx],
+                    &|&negated| -negated,
+                    &|a, b| a + b,
+                    &|a, b| a * b,
+                );
+            }
+            row_sum
+        }).reduce(|| EvaluatedError::<F>::new(num_evals), |a, b| {
+            let mut result = EvaluatedError::<F>::new(num_evals);
+            for i in 0..num_evals {
+                result.evals[i] = a.evals[i] + b.evals[i];
+            }
+            result
+        });
         // Convert the evaluations into the coefficients of the polynomial
         sum.to_coefficients()
     }
+
+    // pub fn evaluate_compressed_polynomial(
+    //     expr: QueriedExpression<Self>,
+    //     rows: Range<usize>,
+    //     num_vars: usize,
+    // ) -> Vec<F> {
+    //     // Convert the expression into an indexed one, where all leaves are extracted into vectors,
+    //     // and replaced by the index in these vectors.
+    //     // This allows us to separate the evaluation of the variables from the evaluation of the expression,
+    //     // since the expression leaves will point to the indices in buffers where the evaluations are stored.
+    //     let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
+
+    //     // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
+    //     // since the polynomial e(X) has d+1 coefficients.
+    //     let num_evals = indexed.expr.degree() + 1;
+
+    //     // For two transcripts with respective challenge, c₀, c₁,
+    //     // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
+    //     let challenges: Vec<_> = indexed
+    //         .challenges
+    //         .iter()
+    //         .map(|queried_challenge| {
+    //             EvaluatedError::new_from_boolean_evals(
+    //                 *queried_challenge.value[0],
+    //                 *queried_challenge.value[1],
+    //                 num_evals,
+    //             )
+    //         })
+    //         .collect();
+
+    //     // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
+    //     // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
+    //     //   and consider fᵢ(j) = fᵢ for all j
+    //     // - Witness variables are interpolated from the values at the two accumulators,
+    //     //   and the evaluations are stored in a buffer.
+    //     let mut fixed = vec![F::ZERO; indexed.fixed.len()];
+    //     let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
+
+    //     // Running sum for e(D) = ∑ᵢ eᵢ(D)
+    //     let mut sum = EvaluatedError::<F>::new(num_evals);
+       
+    //     for row_index in rows {
+    //         // Fetch fixed data
+    //         for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
+    //             let row_idx = query.row_idx(row_index, num_vars);
+    //             *fixed = query.column[row_idx];
+    //         }
+
+    //         // Fetch witness data and interpolate
+    //         for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
+    //             let row_idx = query.row_idx(row_index, num_vars);
+    //             let eval0 = query.column[0][row_idx];
+    //             let eval1 = query.column[1][row_idx];
+    //             witness.evaluate(eval0, eval1);
+    //         }
+
+    //         // Evaluate the expression in the current row and add it to e(D)
+    //         for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
+    //             // For each `eval_idx` j = 0, 1, ..., d, evaluate the expression eᵢ(j) = βᵢ(j) G(fᵢ, wᵢ(j), rᵢ(j))
+    //             *eval += indexed.expr.evaluate(
+    //                 &|&constant| constant,
+    //                 &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
+    //                 &|&fixed_idx| fixed[fixed_idx],
+    //                 &|&witness_idx| witness[witness_idx].evals[eval_idx],
+    //                 &|&negated| -negated,
+    //                 &|a, b| a + b,
+    //                 &|a, b| a * b,
+    //             );
+    //         }
+    //     };
+    //     // Convert the evaluations into the coefficients of the polynomial
+    //     sum.to_coefficients()
+    // }
+
+    // pub fn evaluate_ys_polynomial(
+    //     expr: QueriedExpression<Self>,
+    //     rows: Range<usize>,
+    //     num_vars: usize,
+    // ) -> Vec<F> {
+    //     // Convert the expression into an indexed one, where all leaves are extracted into vectors,
+    //     // and replaced by the index in these vectors.
+    //     // This allows us to separate the evaluation of the variables from the evaluation of the expression,
+    //     // since the expression leaves will point to the indices in buffers where the evaluations are stored.
+    //     let indexed = IndexedExpression::<Paired<'a, F>>::new(&expr);
+
+    //     // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
+    //     // since the polynomial e(X) has d+1 coefficients.
+    //     let num_evals = indexed.expr.degree() + 1;
+    //     // For two transcripts with respective challenge, c₀, c₁,
+    //     // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
+    //     let challenges: Vec<_> = indexed
+    //         .challenges
+    //         .iter()
+    //         .map(|queried_challenge| {
+    //             EvaluatedError::new_from_boolean_evals(
+    //                 *queried_challenge.value[0],
+    //                 *queried_challenge.value[1],
+    //                 num_evals,
+    //             )
+    //         })
+    //         .collect();
+
+    //     // Running sum for e(D) = ∑ᵢ eᵢ(D)
+    //     let mut sum = EvaluatedError::<F>::new(num_evals);
+        
+    //     for row_index in rows {
+    //         // Evaluate the expression in the current row and add it to e(D)
+    //         for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
+    //             // For each `eval_idx` j = 0, 1, ..., d, evaluate the expression eᵢ(j) = βᵢ(j) G(fᵢ, wᵢ(j), rᵢ(j))
+    //             *eval += indexed.expr.evaluate(
+    //                 &|&constant| F::ZERO,
+    //                 &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
+    //                 &|&fixed_idx| F::ZERO,
+    //                 &|&witness_idx| F::ZERO,
+    //                 &|&negated| F::ZERO,
+    //                 &|a, b| a + b,
+    //                 &|a, b| a * b,
+    //             );
+    //         }
+    //     }
+
+    //     // Convert the evaluations into the coefficients of the polynomial
+    //     sum.to_coefficients()
+    // }
 }
 
 // pub fn evaluate_betas_polynomial_par<F: PrimeField>(
@@ -662,7 +612,7 @@ impl<F: Field> CombinedQuadraticErrorFull<F> {
     pub fn from_evals(evals: Vec<F>) -> Self {
         assert_eq!(evals.len(), 7);
         Self {
-            evals: [evals[0], evals[1], evals[2], evals[3], evals[4], evals[5], evals[6]],
+            evals: [evals[0], evals[1], evals[2], evals[3], evals[4], evals[5], evals[6], evals[7], evals[8]],
         }
     }
 
@@ -673,7 +623,7 @@ impl<F: Field> CombinedQuadraticErrorFull<F> {
 
 impl<F: Field> IntoIterator for CombinedQuadraticErrorFull<F> {
     type Item = F;
-    type IntoIter = std::array::IntoIter<F, 7>;
+    type IntoIter = std::array::IntoIter<F, 9>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.evals.into_iter()
@@ -682,7 +632,7 @@ impl<F: Field> IntoIterator for CombinedQuadraticErrorFull<F> {
 
 #[derive(Clone, Debug, Default)]
 pub struct CombinedQuadraticErrorFull<F> {
-    pub evals: [F; 7],
+    pub evals: [F; 9],
 }
 
 
@@ -692,7 +642,6 @@ pub fn evaluate_betas_polynomial_par<F: PrimeField>(
     beta_sqrt0: &[F],
     beta_sqrt1: &[F],
 ) -> Vec<CombinedQuadraticError<F>> {
-    println!("beta0.len(): {:?}", beta0.len());
     assert_eq!(beta0.len(), beta1.len());
     assert_eq!(beta_sqrt0.len(), beta_sqrt1.len());
 
@@ -751,24 +700,24 @@ pub fn evaluate_betas_selectorwise<F: PrimeField>(
     assert_eq!(beta0.len(), beta1.len());
     assert_eq!(beta_sqrt0.len(), beta_sqrt1.len());
 
-    let [two, three, four, five, six] = [F::from(2u64), F::from(3u64), F::from(4u64), F::from(5u64), F::from(6u64)];
+    let [two, three, four, five, six, seven, eight] = [F::from(2u64), F::from(3u64), F::from(4u64), F::from(5u64), F::from(6u64), F::from(7u64), F::from(8u64)];
 
     // Pre-compute evaluations for beta and beta_sqrt
-    let beta_evals: Vec<[F; 7]> = beta0
+    let beta_evals: Vec<[F; 9]> = beta0
         .iter()
         .zip(beta1)
         .map(|(&b0, &b1)| {
             let delta = b1 - b0;
-            [b0, b1, b0 + delta * two, b0 + delta * three, b0 + delta * four, b0 + delta * five, b0 + delta * six]
+            [b0, b1, b0 + delta * two, b0 + delta * three, b0 + delta * four, b0 + delta * five, b0 + delta * six, b0 + delta * seven, b0 + delta * eight]
         })
         .collect();
 
-    let beta_sqrt_evals: Vec<[F; 7]> = beta_sqrt0
+    let beta_sqrt_evals: Vec<[F; 9]> = beta_sqrt0
         .iter()
         .zip(beta_sqrt1)
         .map(|(&bs0, &bs1)| {
             let delta = bs1 - bs0;
-            [bs0, bs1, bs0 + delta * two, bs0 + delta * three, bs0 + delta * four, bs0 + delta * five, bs0 + delta * six]
+            [bs0, bs1, bs0 + delta * two, bs0 + delta * three, bs0 + delta * four, bs0 + delta * five, bs0 + delta * six, bs0 + delta * seven, bs0 + delta * eight]
         })
         .collect();
 
@@ -795,6 +744,8 @@ pub fn evaluate_betas_selectorwise<F: PrimeField>(
                     b_eval[4] * bs_eval[4],
                     b_eval[5] * bs_eval[5],
                     b_eval[6] * bs_eval[6],
+                    b_eval[7] * bs_eval[7],
+                    b_eval[8] * bs_eval[8],
                 ],
             }
         })
@@ -807,7 +758,6 @@ pub fn evaluate_betas_polynomial<F: Field>(
     beta_sqrt0: &[F],
     beta_sqrt1: &[F],
 ) -> Vec<CombinedQuadraticError<F>> {
-    println!("beta0.len(): {:?}", beta0.len());
     assert!(beta0.len() == beta1.len());
     assert!(beta_sqrt0.len() == beta_sqrt1.len());
     let beta_len = beta0.len() * beta_sqrt0.len();
@@ -946,5 +896,86 @@ impl<F: Field> EvaluatedError<F> {
     pub fn to_coefficients(&self) -> Vec<F> {
         let points: Vec<_> = field_integers().take(self.evals.len()).collect();
         lagrange_interpolate(&points, &self.evals)
+    }
+}
+
+// Given a polynomial p(X) of degree d > 1, compute its quotient q(X)
+// such that p(X) = (1-X)X⋅q(X).
+// Panics if deg(p) ≤ 1 or if p(0) ≠ 0 or p(1) ≠ 0
+pub fn quotient_by_boolean_vanishing<F: Field>(poly: &[F]) -> Vec<F> {
+    let n = poly.len();
+    assert!(n >= 2, "deg(poly) < 2");
+    assert!(poly[0].is_zero_vartime(), "poly(0) != 0");
+
+    let mut tmp = F::ZERO;
+
+    let mut quotient = vec![F::ZERO; n - 2];
+    for i in 0..(n - 2) {
+        tmp += poly[i + 1];
+        quotient[i] = tmp;
+    }
+
+    // p(1) = ∑p_i = 0
+    assert_eq!(
+        *quotient.last().unwrap(),
+        poly.last().unwrap().neg(),
+        "poly(1) != 0"
+    );
+    quotient
+}
+
+/// This evaluates a provided polynomial (in coefficient form) at `point`.
+pub fn eval_polynomial<F: Field>(poly: &[F], point: F) -> F {
+    fn evaluate<F: Field>(poly: &[F], point: F) -> F {
+        poly.iter()
+            .rev()
+            .fold(F::ZERO, |acc, coeff| acc * point + coeff)
+    }
+    let n = poly.len();
+    let num_threads = rayon::current_num_threads();
+    if n * 2 < num_threads {
+        evaluate(poly, point)
+    } else {
+        let chunk_size = (n + num_threads - 1) / num_threads;
+        let mut parts = vec![F::ZERO; num_threads];
+        rayon::scope(|scope| {
+            for (chunk_idx, (out, poly)) in
+                parts.chunks_mut(1).zip(poly.chunks(chunk_size)).enumerate()
+            {
+                scope.spawn(move |_| {
+                    let start = chunk_idx * chunk_size;
+                    out[0] = evaluate(poly, point) * point.pow_vartime(&[start as u64, 0, 0, 0]);
+                });
+            }
+        });
+        parts.iter().fold(F::ZERO, |acc, coeff| acc + coeff)
+    }
+}
+
+/// This evaluates a provided polynomial (in coefficient form) at `point`.
+pub fn multiply_polynomial<F: Field>(poly: &[F], point: F) -> F {
+    fn evaluate<F: Field>(poly: &[F], point: F) -> F {
+        poly.iter()
+            .rev()
+            .fold(F::ZERO, |acc, coeff| acc * point + coeff)
+    }
+    let n = poly.len();
+    let num_threads = rayon::current_num_threads();
+    if n * 2 < num_threads {
+        evaluate(poly, point)
+    } else {
+        let chunk_size = (n + num_threads - 1) / num_threads;
+        let mut parts = vec![F::ZERO; num_threads];
+        rayon::scope(|scope| {
+            for (chunk_idx, (out, poly)) in
+                parts.chunks_mut(1).zip(poly.chunks(chunk_size)).enumerate()
+            {
+                scope.spawn(move |_| {
+                    let start = chunk_idx * chunk_size;
+                    out[0] = evaluate(poly, point) * point.pow_vartime(&[start as u64, 0, 0, 0]);
+                });
+            }
+        });
+        parts.iter().fold(F::ZERO, |acc, coeff| acc + coeff)
     }
 }

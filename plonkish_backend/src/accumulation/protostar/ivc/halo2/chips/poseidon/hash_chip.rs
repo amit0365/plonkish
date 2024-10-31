@@ -140,11 +140,12 @@ where
         meta: &mut ConstraintSystem<C::Scalar>,
         state: [Column<Advice>; WIDTH],
         partial_sbox: [Column<Advice>; NUM_PARTIAL_SBOX],
+        partial_sbox_before: Column<Advice>,
         rc_full_rounds: [Column<Fixed>; WIDTH],
         rc_partial_rounds: [Column<Fixed>; NUM_PARTIAL_SBOX],
         pad_fixed: [Column<Fixed>; WIDTH],
     ) -> Poseidon2Config<C, WIDTH, RATE, L> {
-        let pow5_config = Poseidon2Pow5Chip::configure::<S>(meta, state, partial_sbox, rc_full_rounds, rc_partial_rounds, pad_fixed);
+        let pow5_config = Poseidon2Pow5Chip::configure::<S>(meta, state, partial_sbox, partial_sbox_before, rc_full_rounds, rc_partial_rounds, pad_fixed);
 
         Poseidon2Config { pow5_config }
     }

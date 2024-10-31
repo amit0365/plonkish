@@ -320,6 +320,16 @@ impl<'rhs, F: Field> AddAssign<(&'rhs F, &'rhs MultilinearPolynomial<F>)>
     }
 }
 
+// Add this implementation
+impl<F: Field> Sub<&MultilinearPolynomial<F>> for MultilinearPolynomial<F> {
+    type Output = MultilinearPolynomial<F>;
+
+    fn sub(mut self, rhs: &MultilinearPolynomial<F>) -> MultilinearPolynomial<F> {
+        self -= rhs;
+        self
+    }
+}
+
 impl<'lhs, 'rhs, F: Field> Sub<&'rhs MultilinearPolynomial<F>> for &'lhs MultilinearPolynomial<F> {
     type Output = MultilinearPolynomial<F>;
 

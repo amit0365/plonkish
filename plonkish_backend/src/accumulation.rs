@@ -121,6 +121,20 @@ pub trait AccumulationScheme<F: Field>: Clone + Debug {
         rng: impl RngCore,
     ) -> Result<(), Error>;
 
+    fn decide_strawman(
+        pp: &Self::ProverParam,
+        accumulator: &Self::Accumulator,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
+        rng: impl RngCore,
+    ) -> Result<(), Error>;
+
+    fn decide_strawman_ec(
+        pp: &Self::ProverParam,
+        accumulator: &Self::Accumulator,
+        transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Self::Pcs>, F>,
+        rng: impl RngCore,
+    ) -> Result<(), Error>;
+
     // fn prove_decider_with_last_nark(
     //     pp: &Self::ProverParam,
     //     mut accumulator: impl BorrowMut<Self::Accumulator>,

@@ -1,23 +1,19 @@
 use crate::accumulation::protostar::{
     hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::ivc_circuits::primary::T,
 };
-use halo2_base::{
-    gates::flex_gate::{FlexGateConfig, FlexGateConfigParams},
-    halo2_proofs::{
+
+use halo2_proofs::{
         circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
         halo2curves::{
             bn256::{G1Affine, G2Affine, G1},
             grumpkin::{self, Fr as Fq},
         },
         plonk::{
-            Advice, Assigned, Circuit, Column, ConstraintSystem, Constraints, Error, Expression,
-            Fixed, Instance, Selector,
+            AccU, Advice, Assigned, Circuit, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Instance, Selector
         },
         poly::Rotation,
-    },
-    utils::{BigPrimeField, CurveAffineExt, ScalarField},
 };
-use halo2_base::{gates::GateInstructions, utils::bit_length, AssignedValue, Context};
+use halo2_base::utils::{BigPrimeField, CurveAffineExt, ScalarField};
 use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use itertools::Itertools;
 use poseidon2::circuit::hash_chip::NUM_PARTIAL_SBOX;
@@ -74,6 +70,11 @@ where
             [(); NUM_SELECTOR_SM].map(|_| meta.selector());
         let [col_rbits, col_rlc, col_ptx, col_pty, col_acc_x, col_acc_y, col_acc_z, col_lambda] =
             advices;
+
+        let pow4 = |x: Expression<C::Scalar>| {
+            let x_sq = x.clone() * x.clone();
+            x_sq.clone() * x_sq
+        };
 
         meta.create_gate("q_ec_double_add", |meta| {
             let q_ec_double_add = meta.query_selector(q_ec_double_add);
@@ -179,6 +180,7 @@ where
             let sm_x = meta.query_advice(col_acc_x, Rotation(-1));
             let sm_y = meta.query_advice(col_acc_y, Rotation(-1));
             let sm_z = meta.query_advice(col_acc_z, Rotation(-1));
+            let u = Expression::AccU(AccU{index: 0});
 
             let sm_xaff = meta.query_advice(col_acc_x, Rotation(0));
             let sm_yaff = meta.query_advice(col_acc_y, Rotation(0));
@@ -188,11 +190,11 @@ where
                 [
                     (
                         "Constrain affine_x conversion",
-                        sm_z.clone() * sm_xaff - sm_x,
+                        (sm_z.clone() * sm_xaff - sm_x.clone() * u.clone()) * pow4(u.clone()),
                     ),
                     (
                         "Constrain affine_y conversion",
-                        sm_z.clone() * sm_yaff - sm_y,
+                        (sm_z.clone() * sm_yaff - sm_y.clone() * u.clone()) * pow4(u.clone()),
                     )
                 ],
             )
@@ -412,298 +414,298 @@ where
     pub inputs: Vec<ScalarMulConfigInputs<C>>,
 }
 
-// impl<C> Circuit<C::Scalar> for ScalarMulChip<C>
-// where
-//     C: TwoChainCurve,
-//     C::Scalar: BigPrimeField + PrimeFieldBits,
-//     C::Base: BigPrimeField + PrimeFieldBits,
-// {
-//     type Params = ();
-//     type Config = ScalarMulChipConfig<C>;
-//     type FloorPlanner = SimpleFloorPlanner;
+impl<C> Circuit<C::Scalar> for ScalarMulChip<C>
+where
+    C: TwoChainCurve,
+    C::Scalar: BigPrimeField + PrimeFieldBits,
+    C::Base: BigPrimeField + PrimeFieldBits,
+{
+    type Params = ();
+    type Config = ScalarMulChipConfig<C>;
+    type FloorPlanner = SimpleFloorPlanner;
 
-//     fn without_witnesses(&self) -> Self {
-//         unimplemented!()
-//     }
+    fn without_witnesses(&self) -> Self {
+        unimplemented!()
+    }
 
-//     fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
-//         let advices = [0; NUM_ADVICE_SM].map(|_| meta.advice_column());
-//         for col in &advices {
-//             meta.enable_equality(*col);
-//         }
+    fn configure(meta: &mut ConstraintSystem<C::Scalar>) -> Self::Config {
+        let advices = [0; NUM_ADVICE_SM].map(|_| meta.advice_column());
+        for col in &advices {
+            meta.enable_equality(*col);
+        }
 
-//         let fixed = [0; NUM_FIXED_SM].map(|_| meta.fixed_column());
-//         for col in &fixed {
-//             meta.enable_constant(*col);
-//         }
+        let fixed = [0; NUM_FIXED_SM].map(|_| meta.fixed_column());
+        for col in &fixed {
+            meta.enable_constant(*col);
+        }
 
-//         ScalarMulChipConfig::configure(meta, advices, fixed)
-//     }
+        ScalarMulChipConfig::configure(meta, advices, fixed)
+    }
 
-//     fn synthesize(
-//         &self,
-//         config: Self::Config,
-//         mut layouter: impl Layouter<C::Scalar>,
-//     ) -> Result<(), Error> {
-//         for inputs in self.inputs.iter() {
-//             config.assign(layouter.namespace(|| "ScalarMulChip"), inputs.clone())?;
-//         }
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<C::Scalar>,
+    ) -> Result<(), Error> {
+        for inputs in self.inputs.iter() {
+            config.assign(layouter.namespace(|| "ScalarMulChip"), inputs.clone())?;
+        }
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}
 
-// #[cfg(test)]
-// mod test {
-//     use super::{ScalarMulChip, ScalarMulConfigInputs};
-//     use crate::util::{
-//         arithmetic::{
-//             add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, is_identity_proj,
-//             is_scaled_identity_proj, powers, sub_proj, sub_proj_comp, ProjectivePoint,
-//         },
-//         izip_eq,
-//     };
-//     use bitvec::vec;
-//     use halo2_proofs::{
-//         arithmetic::Field,
-//         halo2curves::{
-//             ff::BatchInvert,
-//             group::{cofactor::CofactorCurveAffine, Curve, Group},
-//             Coordinates, CurveAffine,
-//         },
-//     };
-//     use halo2_proofs::{
-//         circuit::Value,
-//         dev::MockProver,
-//         halo2curves::{
-//             bn256::{Fq, Fr, G1Affine, G1},
-//             grumpkin,
-//         },
-//         plonk::Assigned,
-//     };
-//     use itertools::Itertools;
-//     use rand::{rngs::OsRng, Rng};
-//     use std::{marker::PhantomData, time::Instant};
+#[cfg(test)]
+mod test {
+    use super::{ScalarMulChip, ScalarMulConfigInputs};
+    use crate::util::{
+        arithmetic::{
+            add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, is_identity_proj,
+            is_scaled_identity_proj, powers, sub_proj, sub_proj_comp, ProjectivePoint,
+        },
+        izip_eq,
+    };
+    use bitvec::vec;
+    use halo2_proofs::{
+        arithmetic::Field,
+        halo2curves::{
+            ff::BatchInvert,
+            group::{cofactor::CofactorCurveAffine, Curve, Group},
+            Coordinates, CurveAffine,
+        },
+    };
+    use halo2_proofs::{
+        circuit::Value,
+        dev::MockProver,
+        halo2curves::{
+            bn256::{Fq, Fr, G1Affine, G1},
+            grumpkin,
+        },
+        plonk::Assigned,
+    };
+    use itertools::Itertools;
+    use rand::{rngs::OsRng, Rng};
+    use std::{marker::PhantomData, time::Instant};
 
-//     pub const NUM_CHALLENGE_BITS: usize = 128;
+    pub const NUM_CHALLENGE_BITS: usize = 128;
 
-//     #[test]
-//     fn ec_vec() {
-//         use plotters::prelude::*;
-//         let root = BitMapBackend::new("ECChip_deg6.png", (1024, 3096)).into_drawing_area();
-//         root.fill(&WHITE).unwrap();
-//         let root = root.titled("ECChip_deg6", ("sans-serif", 60)).unwrap();
+    #[test]
+    fn ec_vec() {
+        use plotters::prelude::*;
+        let root = BitMapBackend::new("ECChip_deg6.png", (1024, 3096)).into_drawing_area();
+        root.fill(&WHITE).unwrap();
+        let root = root.titled("ECChip_deg6", ("sans-serif", 60)).unwrap();
 
-//         let k = 8;
-//         let mut rng = OsRng;
-//         let scalar_bits = NUM_CHALLENGE_BITS;
+        let k = 8;
+        let mut rng = OsRng;
+        let scalar_bits = NUM_CHALLENGE_BITS;
 
-//         let mut rbits = Vec::new();
-//         rbits.extend((0..scalar_bits).map(|_| rng.gen_bool(1.0 / 3.0)));
-//         let rbits_rev = rbits.iter().rev().cloned().collect_vec();
-//         let mut rbits_vec = rbits
-//             .iter()
-//             .map(|bit| Value::known(if *bit { Fq::ONE } else { Fq::ZERO }))
-//             .rev()
-//             .collect_vec();
+        let mut rbits = Vec::new();
+        rbits.extend((0..scalar_bits).map(|_| rng.gen_bool(1.0 / 3.0)));
+        let rbits_rev = rbits.iter().rev().cloned().collect_vec();
+        let mut rbits_vec = rbits
+            .iter()
+            .map(|bit| Value::known(if *bit { Fq::ONE } else { Fq::ZERO }))
+            .rev()
+            .collect_vec();
 
-//         let witness_gen_time = Instant::now();
-//         let re2_vec = powers(Fq::from(2))
-//             .take(scalar_bits + 1)
-//             .map(Value::known)
-//             .collect_vec()
-//             .into_iter()
-//             .rev()
-//             .collect_vec();
-//         let mut rlc_vec = vec![Value::known(Fq::ZERO)];
-//         for i in 0..scalar_bits {
-//             let rlc = if rbits_rev[i] {
-//                 rlc_vec[i] + re2_vec[i]
-//             } else {
-//                 rlc_vec[i]
-//             };
-//             rlc_vec.push(rlc);
-//         }
-//         // assert_eq!(rlc_vec.last().unwrap(), scalar_bits + 1);
-//         let zero = ProjectivePoint {
-//             x: Fq::zero(),
-//             y: Fq::one(),
-//             z: Fq::zero(),
-//         };
+        let witness_gen_time = Instant::now();
+        let re2_vec = powers(Fq::from(2))
+            .take(scalar_bits + 1)
+            .map(Value::known)
+            .collect_vec()
+            .into_iter()
+            .rev()
+            .collect_vec();
+        let mut rlc_vec = vec![Value::known(Fq::ZERO)];
+        for i in 0..scalar_bits {
+            let rlc = if rbits_rev[i] {
+                rlc_vec[i] + re2_vec[i]
+            } else {
+                rlc_vec[i]
+            };
+            rlc_vec.push(rlc);
+        }
+        // assert_eq!(rlc_vec.last().unwrap(), scalar_bits + 1);
+        let zero = ProjectivePoint {
+            x: Fq::zero(),
+            y: Fq::one(),
+            z: Fq::zero(),
+        };
 
-//         let mut p = G1Affine::identity();
-//         while p == G1Affine::identity() {
-//             p = G1Affine::random(&mut rng);
-//         }
+        let mut p = G1Affine::identity();
+        while p == G1Affine::identity() {
+            p = G1Affine::random(&mut rng);
+        }
 
-//         let p_single = p;
-//         let mut ptx_vec = Vec::new();
-//         let mut pty_vec = Vec::new();
-//         for i in 0..scalar_bits {
-//             ptx_vec.push(Value::known(p_single.x));
-//             pty_vec.push(Value::known(p_single.y));
-//         }
+        let p_single = p;
+        let mut ptx_vec = Vec::new();
+        let mut pty_vec = Vec::new();
+        for i in 0..scalar_bits {
+            ptx_vec.push(Value::known(p_single.x));
+            pty_vec.push(Value::known(p_single.y));
+        }
 
-//         let comm = G1::random(rng);
-//         if comm == G1::identity() {
-//             rbits_vec.push(Value::known(Fq::ZERO));
-//         } else {
-//             rbits_vec.push(Value::known(Fq::ONE));
-//         }
-//         let mut acc_prev = ProjectivePoint::identity();
-//         let mut acc_prev_xvec = Vec::new();
-//         let mut acc_prev_yvec = Vec::new();
-//         let mut acc_prev_zvec = Vec::new();
+        let comm = G1::random(rng);
+        if comm == G1::identity() {
+            rbits_vec.push(Value::known(Fq::ZERO));
+        } else {
+            rbits_vec.push(Value::known(Fq::ONE));
+        }
+        let mut acc_prev = ProjectivePoint::identity();
+        let mut acc_prev_xvec = Vec::new();
+        let mut acc_prev_yvec = Vec::new();
+        let mut acc_prev_zvec = Vec::new();
 
-//         let mut lhs_double_xvec = Vec::new();
-//         let mut lhs_double_yvec = Vec::new();
-//         let mut lhs_double_zvec = Vec::new();
-//         let mut lhs_zvec = Vec::new();
-//         let mut rhs_zvec = Vec::new();
+        let mut lhs_double_xvec = Vec::new();
+        let mut lhs_double_yvec = Vec::new();
+        let mut lhs_double_zvec = Vec::new();
+        let mut lhs_zvec = Vec::new();
+        let mut rhs_zvec = Vec::new();
 
-//         acc_prev_xvec.push(acc_prev.x);
-//         acc_prev_yvec.push(acc_prev.y);
-//         acc_prev_zvec.push(acc_prev.z);
+        acc_prev_xvec.push(acc_prev.x);
+        acc_prev_yvec.push(acc_prev.y);
+        acc_prev_zvec.push(acc_prev.z);
 
-//         for i in 0..scalar_bits {
-//             let choice_proj = if rbits_rev[i] {
-//                 ProjectivePoint::new(p_single.x, p_single.y, Fq::one())
-//             } else {
-//                 zero
-//             };
+        for i in 0..scalar_bits {
+            let choice_proj = if rbits_rev[i] {
+                ProjectivePoint::new(p_single.x, p_single.y, Fq::one())
+            } else {
+                zero
+            };
 
-//             acc_prev = double_proj_comp(acc_prev);
-//             let lhs = acc_prev;
-//             acc_prev = add_proj_comp(acc_prev, choice_proj);
-//             acc_prev_xvec.push(acc_prev.x);
-//             acc_prev_yvec.push(acc_prev.y);
-//             acc_prev_zvec.push(acc_prev.z);
+            acc_prev = double_proj_comp(acc_prev);
+            let lhs = acc_prev;
+            acc_prev = add_proj_comp(acc_prev, choice_proj);
+            acc_prev_xvec.push(acc_prev.x);
+            acc_prev_yvec.push(acc_prev.y);
+            acc_prev_zvec.push(acc_prev.z);
 
-//             lhs_double_xvec.push(lhs.x);
-//             lhs_double_yvec.push(lhs.y);
-//             lhs_double_zvec.push(lhs.z);
-//         }
+            lhs_double_xvec.push(lhs.x);
+            lhs_double_yvec.push(lhs.y);
+            lhs_double_zvec.push(lhs.z);
+        }
 
-//         for i in 0..scalar_bits {
-//             let acc_prev_proj = ProjectivePoint::new(
-//                 acc_prev_xvec[i + 1],
-//                 acc_prev_yvec[i + 1],
-//                 acc_prev_zvec[i + 1],
-//             );
-//             let lhs_double_proj =
-//                 ProjectivePoint::new(lhs_double_xvec[i], lhs_double_yvec[i], lhs_double_zvec[i]);
-//             let p_single_proj = if rbits_rev[i] {
-//                 ProjectivePoint::new(p_single.x, p_single.y, Fq::one())
-//             } else {
-//                 zero
-//             };
+        for i in 0..scalar_bits {
+            let acc_prev_proj = ProjectivePoint::new(
+                acc_prev_xvec[i + 1],
+                acc_prev_yvec[i + 1],
+                acc_prev_zvec[i + 1],
+            );
+            let lhs_double_proj =
+                ProjectivePoint::new(lhs_double_xvec[i], lhs_double_yvec[i], lhs_double_zvec[i]);
+            let p_single_proj = if rbits_rev[i] {
+                ProjectivePoint::new(p_single.x, p_single.y, Fq::one())
+            } else {
+                zero
+            };
 
-//             let rhs = sub_proj_comp(acc_prev_proj, p_single_proj);
-//             if is_identity_proj(rhs) && is_identity_proj(lhs_double_proj) {
-//                 lhs_zvec.push(Fq::one());
-//                 rhs_zvec.push(Fq::one());
-//             } else if is_identity_proj(rhs) && is_scaled_identity_proj(lhs_double_proj) {
-//                 lhs_zvec.push(lhs_double_proj.y);
-//                 rhs_zvec.push(Fq::one());
-//             } else if is_identity_proj(lhs_double_proj) && is_scaled_identity_proj(rhs) {
-//                 lhs_zvec.push(Fq::one());
-//                 rhs_zvec.push(rhs.y);
-//             } else {
-//                 lhs_zvec.push(lhs_double_zvec[i]);
-//                 rhs_zvec.push(rhs.z);
-//             }
-//         }
+            let rhs = sub_proj_comp(acc_prev_proj, p_single_proj);
+            if is_identity_proj(rhs) && is_identity_proj(lhs_double_proj) {
+                lhs_zvec.push(Fq::one());
+                rhs_zvec.push(Fq::one());
+            } else if is_identity_proj(rhs) && is_scaled_identity_proj(lhs_double_proj) {
+                lhs_zvec.push(lhs_double_proj.y);
+                rhs_zvec.push(Fq::one());
+            } else if is_identity_proj(lhs_double_proj) && is_scaled_identity_proj(rhs) {
+                lhs_zvec.push(Fq::one());
+                rhs_zvec.push(rhs.y);
+            } else {
+                lhs_zvec.push(lhs_double_zvec[i]);
+                rhs_zvec.push(rhs.z);
+            }
+        }
 
-//         let batch_invert_time = Instant::now();
-//         lhs_zvec.batch_invert();
-//         println!("batch_invert_time2: {:?}", batch_invert_time.elapsed());
+        let batch_invert_time = Instant::now();
+        lhs_zvec.batch_invert();
+        println!("batch_invert_time2: {:?}", batch_invert_time.elapsed());
 
-//         let lambda_vec = lhs_zvec
-//             .iter()
-//             .zip(rhs_zvec)
-//             .map(|(lhs, rhs)| Value::known(lhs * rhs))
-//             .collect_vec();
-//         let rbits_native = rbits
-//             .iter()
-//             .map(|bit| if *bit { Fr::ONE } else { Fr::ZERO })
-//             .collect_vec();
+        let lambda_vec = lhs_zvec
+            .iter()
+            .zip(rhs_zvec)
+            .map(|(lhs, rhs)| Value::known(lhs * rhs))
+            .collect_vec();
+        let rbits_native = rbits
+            .iter()
+            .map(|bit| if *bit { Fr::ONE } else { Fr::ZERO })
+            .collect_vec();
 
-//         let r = fe_from_bits_le(rbits_native);
-//         let r_non_native: Fq = fe_to_fe(r);
-//         let scalar_mul_given = p * r;
-//         let scalar_mul_proj = ProjectivePoint::new(
-//             *acc_prev_xvec.last().unwrap(),
-//             *acc_prev_yvec.last().unwrap(),
-//             *acc_prev_zvec.last().unwrap(),
-//         );
-//         assert_eq!(
-//             scalar_mul_given.x * scalar_mul_proj.z,
-//             scalar_mul_proj.x * scalar_mul_given.z
-//         );
-//         assert_eq!(
-//             scalar_mul_given.y * scalar_mul_proj.z,
-//             scalar_mul_proj.y * scalar_mul_given.z
-//         );
+        let r = fe_from_bits_le(rbits_native);
+        let r_non_native: Fq = fe_to_fe(r);
+        let scalar_mul_given = p * r;
+        let scalar_mul_proj = ProjectivePoint::new(
+            *acc_prev_xvec.last().unwrap(),
+            *acc_prev_yvec.last().unwrap(),
+            *acc_prev_zvec.last().unwrap(),
+        );
+        assert_eq!(
+            scalar_mul_given.x * scalar_mul_proj.z,
+            scalar_mul_proj.x * scalar_mul_given.z
+        );
+        assert_eq!(
+            scalar_mul_given.y * scalar_mul_proj.z,
+            scalar_mul_proj.y * scalar_mul_given.z
+        );
 
-//         // do point addition of comm and sm
-//         let result_given = comm + scalar_mul_given;
-//         let comm_affine = comm.to_affine();
-//         let comm_proj = ProjectivePoint::new(comm.x, comm.y, comm.z);
-//         let result_calc = add_proj_comp(comm_proj, scalar_mul_proj);
-//         assert_eq!(
-//             result_given.x * result_calc.z,
-//             result_calc.x * result_given.z
-//         );
-//         assert_eq!(
-//             result_given.y * result_calc.z,
-//             result_calc.y * result_given.z
-//         );
+        // do point addition of comm and sm
+        let result_given = comm + scalar_mul_given;
+        let comm_affine = comm.to_affine();
+        let comm_proj = ProjectivePoint::new(comm.x, comm.y, comm.z);
+        let result_calc = add_proj_comp(comm_proj, scalar_mul_proj);
+        assert_eq!(
+            result_given.x * result_calc.z,
+            result_calc.x * result_given.z
+        );
+        assert_eq!(
+            result_given.y * result_calc.z,
+            result_calc.y * result_given.z
+        );
 
-//         let scalar_mul_given_affine = scalar_mul_given.to_affine();
-//         let result_given_affine = result_given.to_affine();
-//         let acc_x_vec = acc_prev_xvec
-//             .iter()
-//             .map(|fe| Value::known(*fe))
-//             .collect_vec();
-//         let acc_y_vec = acc_prev_yvec
-//             .iter()
-//             .map(|fe| Value::known(*fe))
-//             .collect_vec();
-//         let acc_z_vec = acc_prev_zvec
-//             .iter()
-//             .map(|fe| Value::known(*fe))
-//             .collect_vec();
-//         println!("witness_gen_time: {:?}", witness_gen_time.elapsed());
+        let scalar_mul_given_affine = scalar_mul_given.to_affine();
+        let result_given_affine = result_given.to_affine();
+        let acc_x_vec = acc_prev_xvec
+            .iter()
+            .map(|fe| Value::known(*fe))
+            .collect_vec();
+        let acc_y_vec = acc_prev_yvec
+            .iter()
+            .map(|fe| Value::known(*fe))
+            .collect_vec();
+        let acc_z_vec = acc_prev_zvec
+            .iter()
+            .map(|fe| Value::known(*fe))
+            .collect_vec();
+        println!("witness_gen_time: {:?}", witness_gen_time.elapsed());
 
-//         let inputs = ScalarMulConfigInputs::<grumpkin::G1Affine> {
-//             rbits_vec,
-//             re2_vec,
-//             rlc_vec,
-//             ptx_vec,
-//             pty_vec,
-//             acc_x_vec,
-//             acc_y_vec,
-//             acc_z_vec,
-//             lambda_vec,
-//             comm_X: Value::known(comm_affine.x),
-//             comm_Y: Value::known(comm_affine.y),
-//             sm_X: Value::known(scalar_mul_given_affine.x),
-//             sm_Y: Value::known(scalar_mul_given_affine.y),
-//             X3: Value::known(result_given_affine.x),
-//             Y3: Value::known(result_given_affine.y),
-//         };
+        let inputs = ScalarMulConfigInputs::<grumpkin::G1Affine> {
+            rbits_vec,
+            re2_vec,
+            rlc_vec,
+            ptx_vec,
+            pty_vec,
+            acc_x_vec,
+            acc_y_vec,
+            acc_z_vec,
+            lambda_vec,
+            comm_X: Value::known(comm_affine.x),
+            comm_Y: Value::known(comm_affine.y),
+            sm_X: Value::known(scalar_mul_given_affine.x),
+            sm_Y: Value::known(scalar_mul_given_affine.y),
+            X3: Value::known(result_given_affine.x),
+            Y3: Value::known(result_given_affine.y),
+        };
 
-//         let circuit = ScalarMulChip::<grumpkin::G1Affine> {
-//             inputs: vec![inputs],
-//         };
-//         MockProver::run(k, &circuit, vec![])
-//             .unwrap()
-//             .assert_satisfied();
+        let circuit = ScalarMulChip::<grumpkin::G1Affine> {
+            inputs: vec![inputs],
+        };
+        MockProver::run(k, &circuit, vec![])
+            .unwrap()
+            .assert_satisfied();
 
-//         // halo2_base::halo2_proofs::dev::CircuitLayout::default()
-//         // .render(k, &circuit, &root)
-//         // .unwrap();
-//     }
+        // halo2_base::halo2_proofs::dev::CircuitLayout::default()
+        // .render(k, &circuit, &root)
+        // .unwrap();
+    }
 
 //     #[test]
 //     fn ec_vec_g1() {
@@ -911,4 +913,5 @@ where
 //             .render(k, &circuit, &root)
 //             .unwrap();
 //     }
-// }
+
+}

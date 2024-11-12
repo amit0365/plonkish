@@ -5,10 +5,8 @@ use crate::{
             HyperPlonk,
         },
         WitnessEncoding,
-    }, pcs::Evaluation, piop::sum_check::{
-        classic::{ClassicSumCheck, EvaluationsProver},
-        SumCheck, VirtualPolynomial,
-    }, poly::{multilinear::MultilinearPolynomial, Polynomial}, util::{
+    }, pcs::Evaluation, 
+       poly::{multilinear::MultilinearPolynomial, Polynomial}, util::{
         arithmetic::{div_ceil, powers, steps_by, sum, BatchInvert, BooleanHypercube, PrimeField}, end_timer, expression::{CommonPolynomial, Expression, Rotation}, izip_eq, parallel::{num_threads, par_map_collect, parallelize, parallelize_iter}, start_timer, transcript::FieldTranscriptWrite, Itertools
     }, Error
 };
@@ -79,13 +77,14 @@ pub(super) fn lookup_uncompressed_poly<F: PrimeField>(
     challenges: &[F],
 ) -> Vec<[MultilinearPolynomial<F>; 2]> {
     let num_vars = polys[0].num_vars();
-    let bh = BooleanHypercube::new(num_vars);
+    // let bh = BooleanHypercube::new(num_vars);
         let convert_to_poly_input = |expressions: &[&Expression<F>]| {
             expressions.iter().map(|expression| {
                 let mut compressed = vec![F::ZERO; 1 << num_vars];
                 parallelize(&mut compressed, |(compressed, start)| {
                     for (b, compressed) in (start..).zip(compressed) {
                         *compressed = expression.evaluate(
+                            &|u| u, //u = 1 for nark
                             &|constant| constant,
                             &|common_poly| match common_poly {
                                 CommonPolynomial::Identity => F::from(b as u64),
@@ -120,6 +119,7 @@ pub(super) fn lookup_uncompressed_poly<F: PrimeField>(
                 parallelize(&mut compressed, |(compressed, start)| {
                     for (b, compressed) in (start..).zip(compressed) {
                         *compressed = expression.evaluate(
+                            &|u| u, //u = 1 for nark
                             &|constant| constant,
                             &|common_poly| match common_poly {
                                 CommonPolynomial::Identity => F::from(b as u64),
@@ -215,6 +215,7 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
                 parallelize(&mut compressed, |(compressed, start)| {
                     for (b, compressed) in (start..).zip(compressed) {
                         *compressed = expression.evaluate(
+                            &|_| F::ONE, //u = 1 for nark
                             &|constant| constant,
                             &|common_poly| match common_poly {
                                 CommonPolynomial::Identity => F::from(b as u64),
@@ -251,6 +252,7 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
                 parallelize(&mut compressed, |(compressed, start)| {
                     for (b, compressed) in (start..).zip(compressed) {
                         *compressed = expression.evaluate(
+                            &|_| F::ONE, //u = 1 for nark
                             &|constant| constant,
                             &|_| F::ZERO,
                             &|_| F::ZERO,
@@ -302,7 +304,6 @@ pub(super) fn lookup_m_poly_uncompressed<F: PrimeField + Hash>(
         let mut count_vec = Vec::new();
             for (input, table) in izip_eq!(inputs, tables) {
                 let indice_map = table.iter().zip(0..).collect::<HashMap<_, usize>>();
-
                 let chunk_size = div_ceil(input.evals().len(), num_threads());
                 let num_chunks = div_ceil(input.evals().len(), chunk_size);
                 let mut counts = vec![HashMap::new(); num_chunks];
@@ -320,6 +321,7 @@ pub(super) fn lookup_m_poly_uncompressed<F: PrimeField + Hash>(
                                     .and_modify(|count| *count += 1)
                                     .or_insert(1);
                             } else {
+                                println!("invalid {:?}", input);
                                 *valid = false;
                                 break;
                             }
@@ -567,68 +569,68 @@ pub(crate) fn permutation_z_polys<F: PrimeField>(
         .collect()
 }
 
-#[allow(clippy::type_complexity)]
-pub(super) fn prove_zero_check<F: PrimeField>(
-    num_instance_poly: usize,
-    expression: &Expression<F>,
-    polys: &[&MultilinearPolynomial<F>],
-    challenges: Vec<F>,
-    y: Vec<F>,
-    transcript: &mut impl FieldTranscriptWrite<F>,
-) -> Result<(Vec<Vec<F>>, Vec<Evaluation<F>>), Error> {
-    prove_sum_check(
-        num_instance_poly,
-        expression,
-        F::ZERO,
-        polys,
-        challenges,
-        y,
-        transcript,
-    )
-}
+// #[allow(clippy::type_complexity)]
+// pub(super) fn prove_zero_check<F: PrimeField>(
+//     num_instance_poly: usize,
+//     expression: &Expression<F>,
+//     polys: &[&MultilinearPolynomial<F>],
+//     challenges: Vec<F>,
+//     y: Vec<F>,
+//     transcript: &mut impl FieldTranscriptWrite<F>,
+// ) -> Result<(Vec<Vec<F>>, Vec<Evaluation<F>>), Error> {
+//     prove_sum_check(
+//         num_instance_poly,
+//         expression,
+//         F::ZERO,
+//         polys,
+//         challenges,
+//         y,
+//         transcript,
+//     )
+// }
 
-#[allow(clippy::type_complexity)]
-pub(crate) fn prove_sum_check<F: PrimeField>(
-    num_instance_poly: usize,
-    expression: &Expression<F>,
-    sum: F,
-    polys: &[&MultilinearPolynomial<F>],
-    challenges: Vec<F>,
-    y: Vec<F>,
-    transcript: &mut impl FieldTranscriptWrite<F>,
-) -> Result<(Vec<Vec<F>>, Vec<Evaluation<F>>), Error> {
-    let num_vars = polys[0].num_vars();
-    let ys = [y];
-    let virtual_poly = VirtualPolynomial::new(expression, polys.to_vec(), &challenges, &ys);
-    let (x, evals) = ClassicSumCheck::<EvaluationsProver<_>>::prove(
-        &(),
-        num_vars,
-        virtual_poly,
-        sum,
-        transcript,
-    )?;
+// #[allow(clippy::type_complexity)]
+// pub(crate) fn prove_sum_check<F: PrimeField>(
+//     num_instance_poly: usize,
+//     expression: &Expression<F>,
+//     sum: F,
+//     polys: &[&MultilinearPolynomial<F>],
+//     challenges: Vec<F>,
+//     y: Vec<F>,
+//     transcript: &mut impl FieldTranscriptWrite<F>,
+// ) -> Result<(Vec<Vec<F>>, Vec<Evaluation<F>>), Error> {
+//     let num_vars = polys[0].num_vars();
+//     let ys = [y];
+//     let virtual_poly = VirtualPolynomial::new(expression, polys.to_vec(), &challenges, &ys);
+//     let (x, evals) = ClassicSumCheck::<EvaluationsProver<_>>::prove(
+//         &(),
+//         num_vars,
+//         virtual_poly,
+//         sum,
+//         transcript,
+//     )?;
 
-    let pcs_query = pcs_query(expression, num_instance_poly);
-    let point_offset = point_offset(&pcs_query);
+//     let pcs_query = pcs_query(expression, num_instance_poly);
+//     let point_offset = point_offset(&pcs_query);
 
-    let timer = start_timer(|| format!("evals-{}", pcs_query.len()));
-    let evals = pcs_query
-        .iter()
-        .flat_map(|query| {
-            (point_offset[&query.rotation()]..)
-                .zip(if query.rotation() == Rotation::cur() {
-                    vec![evals[query.poly()]]
-                } else {
-                    polys[query.poly()].evaluate_for_rotation(&x, query.rotation())
-                })
-                .map(|(point, eval)| Evaluation::new(query.poly(), point, eval))
-        })
-        .collect_vec();
-    end_timer(timer);
+//     let timer = start_timer(|| format!("evals-{}", pcs_query.len()));
+//     let evals = pcs_query
+//         .iter()
+//         .flat_map(|query| {
+//             (point_offset[&query.rotation()]..)
+//                 .zip(if query.rotation() == Rotation::cur() {
+//                     vec![evals[query.poly()]]
+//                 } else {
+//                     polys[query.poly()].evaluate_for_rotation(&x, query.rotation())
+//                 })
+//                 .map(|(point, eval)| Evaluation::new(query.poly(), point, eval))
+//         })
+//         .collect_vec();
+//     end_timer(timer);
 
-    transcript.write_field_elements(evals.iter().map(Evaluation::value))?;
+//     transcript.write_field_elements(evals.iter().map(Evaluation::value))?;
 
-    Ok((points(&pcs_query, &x), evals))
-}
+//     Ok((points(&pcs_query, &x), evals))
+// }
 
 

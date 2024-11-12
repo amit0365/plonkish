@@ -1,16 +1,12 @@
-use halo2_proofs::arithmetic::Field;
+use halo2_proofs::{arithmetic::Field, plonk};
 use rayon::prelude::*;
 use crossbeam::{scope, thread};
 use std::{borrow::Cow, hash::Hash, iter, sync::{Arc, Mutex}};
 
 use crate::{
-    accumulation::protostar::{ivc::halo2::chips::main_chip::LOOKUP_BITS, ProtostarAccumulator},
-    backend::hyperplonk::prover::instance_polys,
-    pcs::PolynomialCommitmentScheme,
-    poly::{multilinear::MultilinearPolynomial, Polynomial},
-    util::{
-        arithmetic::{div_ceil, powers, repeat_elements, repeat_vector, sum, BatchInvert, BooleanHypercube, PrimeField}, expression::{evaluator::ExpressionRegistry, Expression, Rotation}, expression_new::paired::eval_polynomial, izip, izip_eq, parallel::{num_threads, par_map_collect, parallelize, parallelize_iter}, Itertools
-    },
+    accumulation::protostar::{ivc::halo2::chips::main_chip::LOOKUP_BITS, ProtostarAccumulator}, backend::hyperplonk::prover::instance_polys, frontend::halo2::convert_expression, pcs::PolynomialCommitmentScheme, poly::{multilinear::MultilinearPolynomial, Polynomial}, util::{
+        arithmetic::{div_ceil, powers, repeat_elements, repeat_vector, sum, BatchInvert, BooleanHypercube, PrimeField}, expression::{Expression, Rotation}, expression_new::paired::eval_polynomial, izip, izip_eq, parallel::{num_threads, par_map_collect, parallelize, parallelize_iter}, Itertools
+    }
 };
 
 pub fn expand_beta_polys<F: Field>(
@@ -22,15 +18,15 @@ pub fn expand_beta_polys<F: Field>(
 ) {
     // Expand beta_polys using repeat_vector
     let beta_polys_owned: Box<[MultilinearPolynomial<F>]> = vec![
-        MultilinearPolynomial::new(repeat_vector(&beta_polys[0].0, expansion_factor)),
-        MultilinearPolynomial::new(repeat_vector(&beta_polys[1].0, expansion_factor)),
+        MultilinearPolynomial::new(repeat_vector(beta_polys[0].0, expansion_factor)),
+        MultilinearPolynomial::new(repeat_vector(beta_polys[1].0, expansion_factor)),
     ]
     .into_boxed_slice();
 
     // Expand beta_prime_polys using repeat_elements
     let beta_prime_polys_owned: Box<[MultilinearPolynomial<F>]> = vec![
-        MultilinearPolynomial::new(repeat_elements(&beta_polys[0].1, expansion_factor)),
-        MultilinearPolynomial::new(repeat_elements(&beta_polys[1].1, expansion_factor)),
+        MultilinearPolynomial::new(repeat_elements(beta_polys[0].1, expansion_factor)),
+        MultilinearPolynomial::new(repeat_elements(beta_polys[1].1, expansion_factor)),
     ]
     .into_boxed_slice();
 
@@ -134,7 +130,6 @@ pub fn powers_of_zeta_poly<F: PrimeField>(
     zeta: F,
 ) -> MultilinearPolynomial<F> {
     let powers_of_zeta = powers(zeta).take(1 << num_vars).collect_vec();
-    //let nth_map = BooleanHypercube::new(num_vars).nth_map();
     let nth_map = (0..1 << num_vars).collect_vec();
     MultilinearPolynomial::new(par_map_collect(&nth_map, |b| powers_of_zeta[*b]))
 }
@@ -143,28 +138,22 @@ pub fn powers_of_zeta_sqrt_poly<F: PrimeField>(
     num_vars: usize,
     zeta: F,
 ) -> MultilinearPolynomial<F> {
-    let lsqrt = 1 << (num_vars + 1)/2;
+    let lsqrt = 1 << (num_vars/2);
     let zeta_pow_lsqrt = zeta.pow([lsqrt as u64]);
     let powers_of_zeta = powers(zeta).take(lsqrt).collect_vec();
     let powers_of_zeta_sqrt = powers(zeta_pow_lsqrt).take(lsqrt).collect_vec();
-    MultilinearPolynomial::new(powers_of_zeta.into_iter().chain(powers_of_zeta_sqrt.into_iter()).collect_vec())    
-    // let nth_map = BooleanHypercube::new(num_vars/2 + 1).nth_map();
-    // let nth_map = (0..1 << ((num_vars + 2)/2 + 1)).collect_vec();
-    // MultilinearPolynomial::new(par_map_collect(&nth_map, |b| powers_of_zeta[*b]))
+    MultilinearPolynomial::new(powers_of_zeta.into_iter().chain(powers_of_zeta_sqrt).collect_vec())    
 }
 
 pub fn powers_of_zeta_sqrt_poly_ec<F: PrimeField>(
     num_vars: usize,
     zeta: F,
 ) -> MultilinearPolynomial<F> {
-    let lsqrt = 1 << num_vars/2;
+    let lsqrt = 1 << (num_vars/2);
     let zeta_pow_lsqrt = zeta.pow([lsqrt as u64]);
     let powers_of_zeta = powers(zeta).take(lsqrt).collect_vec();
     let powers_of_zeta_sqrt = powers(zeta_pow_lsqrt).take(lsqrt).collect_vec();
-    MultilinearPolynomial::new(powers_of_zeta.into_iter().chain(powers_of_zeta_sqrt.into_iter()).collect_vec())    
-    // let nth_map = BooleanHypercube::new(num_vars/2 + 1).nth_map();
-    // let nth_map = (0..1 << ((num_vars + 2)/2 + 1)).collect_vec();
-    // MultilinearPolynomial::new(par_map_collect(&nth_map, |b| powers_of_zeta[*b]))
+    MultilinearPolynomial::new(powers_of_zeta.into_iter().chain(powers_of_zeta_sqrt).collect_vec())    
 }
 
 pub fn powers_of_zeta_sqrt_poly_full<F: PrimeField>(
@@ -177,197 +166,8 @@ pub fn powers_of_zeta_sqrt_poly_full<F: PrimeField>(
     (MultilinearPolynomial::new(powers_of_zeta), MultilinearPolynomial::new(powers_of_zeta_sqrt))
 }
 
-pub(crate) fn evaluate_cross_term_polys<F, Pcs>(
-    cross_term_expressions: &[Expression<F>],
-    num_vars: usize,
-    preprocess_polys: &[MultilinearPolynomial<F>],
-    accumulator: &ProtostarAccumulator<F, Pcs>,
-    incoming: &ProtostarAccumulator<F, Pcs>,
-) -> Vec<MultilinearPolynomial<F>>
-where
-    F: PrimeField,
-    Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
-{
-    if cross_term_expressions.is_empty() {
-        return Vec::new();
-    }
-
-    let ev = init_hadamard_evaluator(
-        cross_term_expressions,
-        num_vars,
-        preprocess_polys,
-        accumulator,
-        incoming,
-    );
-
-    let size = 1 << ev.num_vars;
-    let chunk_size = div_ceil(size, num_threads());
-    let num_cross_terms = ev.reg.indexed_outputs().len();
-
-    let mut outputs = vec![F::ZERO; num_cross_terms * size];
-    parallelize_iter(
-        outputs
-            .chunks_mut(chunk_size * num_cross_terms)
-            .zip((0..).step_by(chunk_size)),
-        |(outputs, start)| {
-            let mut data = ev.cache();
-            let bs = start..(start + chunk_size).min(size);
-            izip!(bs, outputs.chunks_mut(num_cross_terms))
-                .for_each(|(b, outputs)| ev.evaluate(outputs, &mut data, b));
-        },
-    );
-
-    (0..num_cross_terms)
-        .map(|offset| par_map_collect(0..size, |idx| outputs[idx * num_cross_terms + offset]))
-        .map(MultilinearPolynomial::new)
-        .collect_vec()
-}
-
-pub(super) fn evaluate_compressed_cross_term_sums<F, Pcs>(
-    cross_term_expressions: &[Expression<F>],
-    num_vars: usize,
-    preprocess_polys: &[MultilinearPolynomial<F>],
-    accumulator: &ProtostarAccumulator<F, Pcs>,
-    incoming: &ProtostarAccumulator<F, Pcs>,
-) -> Vec<F>
-where
-    F: PrimeField,
-    Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
-{
-    if cross_term_expressions.is_empty() {
-        return Vec::new();
-    }
-
-    let ev = init_hadamard_evaluator(
-        cross_term_expressions,
-        num_vars,
-        preprocess_polys,
-        accumulator,
-        incoming,
-    );
-
-    let size = 1 << ev.num_vars;
-    let num_threads = num_threads();
-
-    let chunk_size = div_ceil(size, num_threads);
-    let num_cross_terms = ev.reg.indexed_outputs().len();
-
-    let mut partial_sums = vec![vec![F::ZERO; num_cross_terms]; num_threads];
-    parallelize_iter(
-        partial_sums.iter_mut().zip((0..).step_by(chunk_size)),
-        |(partial_sums, start)| {
-            let mut data = ev.cache();
-            (start..(start + chunk_size).min(size))
-                .for_each(|b| ev.evaluate_and_sum(partial_sums, &mut data, b))
-        },
-    );
-
-    partial_sums
-        .into_iter()
-        .reduce(|mut sums, partial_sums| {
-            izip_eq!(&mut sums, &partial_sums).for_each(|(sum, partial_sum)| *sum += partial_sum);
-            sums
-        })
-        .unwrap()
-}
-
-pub(crate) fn evaluate_zeta_cross_term_poly_bh<F, Pcs>(
-    num_vars: usize,
-    zeta_nth_back: usize,
-    accumulator: &ProtostarAccumulator<F, Pcs>,
-    incoming: &ProtostarAccumulator<F, Pcs>,
-) -> MultilinearPolynomial<F>
-where
-    F: PrimeField,
-    Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
-{
-    let [(acc_pow, acc_zeta, acc_u), (incoming_pow, incoming_zeta, incoming_u)] =
-        [accumulator, incoming].map(|witness| {
-            let pow = witness.witness_polys.last().unwrap();
-            let zeta = witness
-                .instance
-                .challenges
-                .iter()
-                .nth_back(zeta_nth_back)
-                .unwrap();
-            (pow, zeta, witness.instance.u)
-        });
-    assert_eq!(incoming_u, F::ONE);
-
-    let size = 1 << num_vars;
-    let mut cross_term = vec![F::ZERO; size];
-
-    let bh = BooleanHypercube::new(num_vars);
-    let next_map = bh.rotation_map(Rotation::next());
-    parallelize(&mut cross_term, |(cross_term, start)| {
-        cross_term
-            .iter_mut()
-            .zip(start..)
-            .for_each(|(cross_term, b)| {
-                *cross_term = acc_pow[next_map[b]] + acc_u * incoming_pow[next_map[b]]
-                    - (acc_pow[b] * incoming_zeta + incoming_pow[b] * acc_zeta);
-            })
-    });
-    let b_0 = 0;
-    let b_last = bh.rotate(1, Rotation::prev());
-    cross_term[b_0] += acc_pow[b_0] * incoming_zeta + incoming_pow[b_0] * acc_zeta - acc_u.double();
-    cross_term[b_last] += acc_pow[b_last] * incoming_zeta + incoming_pow[b_last] * acc_zeta
-        - acc_u * incoming_zeta
-        - acc_zeta;
-
-    MultilinearPolynomial::new(cross_term)
-}
-
-pub(crate) fn evaluate_zeta_sqrt_cross_term_poly_bh<F, Pcs>(
-    num_vars: usize,
-    zeta_nth_back: usize,
-    accumulator: &ProtostarAccumulator<F, Pcs>,
-    incoming: &ProtostarAccumulator<F, Pcs>,
-) -> MultilinearPolynomial<F>
-where
-    F: PrimeField,
-    Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
-{
-    let [(acc_pow, acc_zeta, acc_u), (incoming_pow, incoming_zeta, incoming_u)] =
-        [accumulator, incoming].map(|witness| {
-            let pow = witness.witness_polys.last().unwrap();
-            let zeta = witness
-                .instance
-                .challenges
-                .iter()
-                .nth_back(zeta_nth_back)
-                .unwrap();
-            (pow, zeta, witness.instance.u)
-        });
-    assert_eq!(incoming_u, F::ONE);
-
-    let size = 1 << num_vars;
-    let mut cross_term = vec![F::ZERO; size];
-
-    let bh = BooleanHypercube::new(num_vars);
-    let next_map = bh.rotation_map(Rotation::next());
-    parallelize(&mut cross_term, |(cross_term, start)| {
-        cross_term
-            .iter_mut()
-            .zip(start..)
-            .for_each(|(cross_term, b)| {
-                *cross_term = acc_pow[next_map[b]] + acc_u * incoming_pow[next_map[b]]
-                    - (acc_pow[b] * incoming_zeta + incoming_pow[b] * acc_zeta);
-            })
-    });
-    let b_0 = 0;
-    let b_last = bh.rotate(1, Rotation::prev());
-    cross_term[b_0] += acc_pow[b_0] * incoming_zeta + incoming_pow[b_0] * acc_zeta - acc_u.double();
-    cross_term[b_last] += acc_pow[b_last] * incoming_zeta + incoming_pow[b_last] * acc_zeta
-        - acc_u * incoming_zeta
-        - acc_zeta;
-
-    MultilinearPolynomial::new(cross_term)
-}
-
 pub(crate) fn evaluate_zeta_sqrt_cross_term_poly<F, Pcs>(
     num_vars: usize,
-    zeta_nth_back: usize,
     accumulator: &ProtostarAccumulator<F, Pcs>,
     incoming: &ProtostarAccumulator<F, Pcs>,
 ) -> MultilinearPolynomial<F>
@@ -375,55 +175,39 @@ where
     F: PrimeField,
     Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
 {
+    let lsqrt = 1 << (num_vars/2);
     let [(acc_pow, acc_pow_sqrt, acc_zeta, acc_zeta_sqrt, acc_u), (incoming_pow, incoming_pow_sqrt, incoming_zeta, incoming_zeta_sqrt, incoming_u)] =
         [accumulator, incoming].map(|witness| {
             let pow = witness.witness_polys.last().unwrap();
-            let (pow_poly, pow_sqrt_poly) = pow.evals().split_at(1 << num_vars/2);
+            let (pow_poly, pow_sqrt_poly) = pow.evals().split_at(lsqrt);
             let zeta = witness
                 .instance
                 .challenges
-                .iter()
-                .nth_back(zeta_nth_back)
+                .last()
                 .unwrap();
-            let lsqrt = 1 << num_vars/2;
             let zeta_sqrt = zeta.pow([lsqrt as u64]);
             (pow_poly, pow_sqrt_poly, zeta, zeta_sqrt, witness.instance.u)
         });
     assert_eq!(incoming_u, F::ONE);
 
-    println!("acc_zeta {:?}", acc_zeta);
-    println!("acc_u {:?}", acc_u);
-    println!("acc_pow[0] {:?}", acc_pow[0]);
-    println!("incoming_pow[0] {:?}", incoming_pow[0]);
-    println!("acc_pow[1] {:?}", acc_pow[1]);
-    println!("acc_pow[2] {:?}", acc_pow[2]);
-    println!("zeta_sq {:?}", *acc_zeta * acc_zeta);
-    println!("first constraint {:?}", acc_pow[0] * acc_zeta - acc_pow[1]);
-    println!("incoming_pow[1] {:?}", incoming_pow[1]);
-    println!("acc_pow_sqrt[0] {:?}", acc_pow_sqrt[0]);
-    println!("incoming_pow_sqrt[0] {:?}", incoming_pow_sqrt[0]);
-
-    let size = 1 << num_vars/2;
-    let mut cross_term = vec![F::ZERO; size];        
-    let mut cross_term_sqrt = vec![F::ZERO; size];
-
-
-    let next_map = (0..1 << num_vars/2).collect_vec();
+    let mut cross_term = vec![F::ZERO; lsqrt];        
+    let mut cross_term_sqrt = vec![F::ZERO; lsqrt];
+    let next_map = (0..lsqrt).collect_vec();
     parallelize(&mut cross_term, |(cross_term, start)| {
         cross_term
             .iter_mut()
             .zip(start..)
             .for_each(|(cross_term, b)| {
-                *cross_term = acc_pow[next_map[b]] + acc_u * incoming_pow[next_map[b]]
-                    - (acc_pow[b] * incoming_zeta + incoming_pow[b] * acc_zeta);
+                *cross_term = - acc_pow[next_map[b]] - acc_u * incoming_pow[next_map[b]]
+                    + (acc_pow[b] * incoming_zeta + incoming_pow[b] * acc_zeta);
             })
     });
     let b_0 = 0;
-    let b_last = next_map.last().unwrap().clone();
-    cross_term[b_0] += acc_pow[b_0] * incoming_zeta + incoming_pow[b_0] * acc_zeta - acc_u.double();
-    cross_term[b_last] += acc_pow[b_last] * incoming_zeta + incoming_pow[b_last] * acc_zeta
-        - acc_u * incoming_zeta
-        - acc_zeta;
+    let b_last = *next_map.last().unwrap();
+    cross_term[b_0] += - acc_pow[b_0] * incoming_zeta - incoming_pow[b_0] * acc_zeta + acc_u.double();
+    cross_term[b_last] += - acc_pow[b_last] * incoming_zeta - incoming_pow[b_last] * acc_zeta
+        + acc_u * incoming_zeta
+        + acc_zeta;
 
     parallelize(&mut cross_term_sqrt, |(cross_term_sqrt, start)| {
         cross_term_sqrt
@@ -440,164 +224,5 @@ where
         - acc_u * incoming_zeta_sqrt
         - acc_zeta_sqrt;
 
-    MultilinearPolynomial::new(cross_term.into_iter().chain(cross_term_sqrt.into_iter()).collect_vec())
-}
-
-fn init_hadamard_evaluator<'a, F, Pcs>(
-    expressions: &[Expression<F>],
-    num_vars: usize,
-    preprocess_polys: &'a [MultilinearPolynomial<F>],
-    accumulator: &'a ProtostarAccumulator<F, Pcs>,
-    incoming: &'a ProtostarAccumulator<F, Pcs>,
-) -> HadamardEvaluator<'a, F>
-where
-    F: PrimeField,
-    Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
-{
-    assert!(!expressions.is_empty());
-
-    let acc_instance_polys = instance_polys(num_vars, &accumulator.instance.instances);
-    let incoming_instance_polys = instance_polys(num_vars, &incoming.instance.instances);
-    let polys = iter::empty()
-        .chain(preprocess_polys.iter().map(Cow::Borrowed))
-        .chain(acc_instance_polys.into_iter().map(Cow::Owned))
-        .chain(accumulator.witness_polys.iter().map(Cow::Borrowed))
-        .chain(incoming_instance_polys.into_iter().map(Cow::Owned))
-        .chain(incoming.witness_polys.iter().map(Cow::Borrowed))
-        .collect_vec();
-    let challenges = iter::empty()
-        .chain(accumulator.instance.challenges.iter().cloned())
-        .chain(Some(accumulator.instance.u))
-        .chain(incoming.instance.challenges.iter().cloned())
-        .chain(Some(incoming.instance.u))
-        .collect_vec();
-
-    // println!("incoming_witness_polys: {:?}", incoming.witness_polys);
-    // println!("incoming_witness_polys_len: {:?}", incoming.witness_polys.len());
-    // println!("accumulator_witness_polys: {:?}", accumulator.witness_polys);
-    // println!("accumulator_witness_polys_len: {:?}", accumulator.witness_polys.len());
-
-    // println!("expressions: {:?}", expressions[0]);
-    // let builder = thread::Builder::new().stack_size(4 * 1024 * 1024); // 4 MB
-    // let handler = builder.spawn(move || {
-    //     let expressions = expressions_arc.as_slice()
-    //         .par_iter() // Use par_iter() instead of iter() for parallel iteration
-    //         .map(|expression| {
-    //             expression
-    //                 .simplified(Some(&challenges.clone()))
-    //                 .unwrap_or_else(Expression::zero)
-    //         })
-    //         .collect::<Vec<_>>();
-    // }).unwrap();
-    // handler.join().unwrap();
-    // let builder = thread::ScopedThreadBuilder::new().stack_size(4 * 1024 * 1024); // Set stack size to 4 MB
-
-    //let handle = builder.spawn(|| {
-
-        // scope(|s| {
-        //     s.builder().stack_size(4 * 1024 * 1024).spawn(|_| {
-        //         let expressions = expressions
-        //             .par_iter() // Use par_iter() instead of iter() for parallel iteration
-        //             .map(|expression| {
-        //                 expression
-        //                     .simplified(Some(&challenges.clone()))
-        //                     .unwrap_or_else(Expression::zero)
-        //             })
-        //             .collect::<Vec<_>>();
-        //     });
-        // }).unwrap();
-
-    //}).unwrap();
-
-    // let expressions = expressions
-    // .par_iter() // Use par_iter() instead of iter() for parallel iteration
-    // .map(|expression| {
-    //     expression
-    //         .simplified(Some(&challenges))
-    //         .unwrap_or_else(Expression::zero)
-    // })
-    // .collect::<Vec<_>>();
-
-    let expressions = expressions
-        .iter()
-        .map(|expression| {
-            expression
-                .simplified(Some(&challenges))
-                .unwrap_or_else(Expression::zero)
-        })
-        .collect_vec();
-
-        HadamardEvaluator::new(num_vars, &expressions, polys)
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct HadamardEvaluator<'a, F: PrimeField> {
-    pub(crate) num_vars: usize,
-    pub(crate) reg: ExpressionRegistry<F>,
-    lagranges: Vec<usize>,
-    polys: Vec<Cow<'a, MultilinearPolynomial<F>>>,
-}
-
-impl<'a, F: PrimeField> HadamardEvaluator<'a, F> {
-    pub(crate) fn new(
-        num_vars: usize,
-        expressions: &[Expression<F>],
-        polys: Vec<Cow<'a, MultilinearPolynomial<F>>>,
-    ) -> Self {
-        let mut reg = ExpressionRegistry::new();
-        for expression in expressions.iter() {
-            reg.register(expression);
-        }
-        assert!(reg.eq_xys().is_empty());
-
-        let bh = BooleanHypercube::new(num_vars).iter().collect_vec();
-        let lagranges = reg
-            .lagranges()
-            .iter()
-            .map(|i| bh[i.rem_euclid(1 << num_vars) as usize])
-            .collect_vec();
-
-        Self {
-            num_vars,
-            reg,
-            lagranges,
-            polys,
-        }
-    }
-
-    pub(crate) fn cache(&self) -> Vec<F> {
-        self.reg.cache()
-    }
-
-    pub(crate) fn evaluate(&self, evals: &mut [F], cache: &mut [F], b: usize) {
-        self.evaluate_calculations(cache, b);
-        izip_eq!(evals, self.reg.indexed_outputs()).for_each(|(eval, idx)| *eval = cache[*idx])
-    }
-
-    pub(crate) fn evaluate_and_sum(&self, sums: &mut [F], cache: &mut [F], b: usize) {
-        self.evaluate_calculations(cache, b);
-        izip_eq!(sums, self.reg.indexed_outputs()).for_each(|(sum, idx)| *sum += cache[*idx])
-    }
-
-    fn evaluate_calculations(&self, cache: &mut [F], b: usize) {
-        let bh = BooleanHypercube::new(self.num_vars);
-        if self.reg.has_identity() {
-            cache[self.reg.offsets().identity()] = F::from(b as u64);
-        }
-        cache[self.reg.offsets().lagranges()..]
-            .iter_mut()
-            .zip(&self.lagranges)
-            .for_each(|(value, i)| *value = if &b == i { F::ONE } else { F::ZERO });
-        cache[self.reg.offsets().polys()..]
-            .iter_mut()
-            .zip(self.reg.polys())
-            .for_each(|(value, (query, _))| {
-                *value = self.polys[query.poly()][bh.rotate(b, query.rotation())]
-            });
-        self.reg
-            .indexed_calculations()
-            .iter()
-            .zip(self.reg.offsets().calculations()..)
-            .for_each(|(calculation, idx)| calculation.calculate(cache, idx));
-    }
+    MultilinearPolynomial::new(cross_term.into_iter().chain(cross_term_sqrt).collect_vec())
 }

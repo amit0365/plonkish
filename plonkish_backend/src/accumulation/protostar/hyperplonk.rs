@@ -4,7 +4,7 @@ use crate::{
             hyperplonk::{
                 preprocessor::{batch_size, preprocess},
                 prover::{
-                    evaluate_compressed_cross_term_sums, evaluate_cross_term_polys,
+                    //evaluate_compressed_cross_term_sums, evaluate_cross_term_polys,
                     lookup_h_polys, powers_of_zeta_poly, PolynomialsHolder,
                 },
             },
@@ -18,9 +18,9 @@ use crate::{
     backend::{
         hyperplonk::{
             prover::{
-                instance_polys, lookup_compressed_polys, lookup_m_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys, permutation_z_polys, prove_sum_check
+                instance_polys, lookup_compressed_polys, lookup_m_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys, permutation_z_polys
             },
-            verifier::verify_sum_check,
+            //verifier::verify_sum_check,
             HyperPlonk, HyperPlonkVerifierParam,
         },
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
@@ -28,17 +28,17 @@ use crate::{
     pcs::{AdditiveCommitment, Commitment, CommitmentChunk, PolynomialCommitmentScheme},
     poly::{multilinear::{concat_polys, concat_polys_raw, MultilinearPolynomial}, Polynomial},
     util::{
-        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, repeat_elements, repeat_vector, PrimeField}, end_timer, expression_new::paired::{eval_polynomial, evaluate_betas_polynomial, evaluate_betas_polynomial_par, evaluate_betas_selectorwise, quotient_by_boolean_vanishing, split_polys, CombinedQuadraticErrorFull, Paired}, izip_eq, start_timer, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
+        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, repeat_elements, repeat_vector, PrimeField}, end_timer, expression_new::paired::{eval_polynomial, evaluate_betas_error_selectorwise, evaluate_betas_error_selectorwise_full, evaluate_betas_selectorwise, quotient_by_boolean_vanishing, split_polys, CombinedQuadraticErrorFull, ErrorParams, Paired, Single, COMBINED_QUADRATIC_ERROR_FULL_LEN}, izip_eq, start_timer, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
 use pprof::ProfilerGuard;
 use sysinfo::{ProcessExt, System, SystemExt};
-use halo2_proofs::halo2curves::ff::PrimeFieldBits;
+use halo2_proofs::{arithmetic::parallelize, halo2curves::ff::PrimeFieldBits};
 use num_bigint::BigUint;
 use prover::{evaluate_zeta_sqrt_cross_term_poly, expand_beta_polys, powers_of_zeta_sqrt_poly, powers_of_zeta_sqrt_poly_ec, PolynomialsRefsHolder};
 use rand::RngCore;
-use core::{error, time};
+use core::{error, num, time};
 use std::{borrow::{Borrow, BorrowMut}, collections::HashMap, hash::Hash, iter::{self, once}, sync::{mpsc, Arc, Mutex}, thread, time::{Duration, Instant}};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
@@ -135,150 +135,6 @@ where
         ))
     }
 
-    // fn prove_nark(
-    //     pp: &Self::ProverParam,
-    //     circuit: &impl PlonkishCircuit<F>,
-    //     transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
-    //     _: impl RngCore,
-    // ) -> Result<PlonkishNark<F, Pcs>, Error> {
-    //     let ProtostarProverParam {
-    //         pp,
-    //         strategy,
-    //         num_theta_primes,
-    //         num_alpha_primes,
-    //         num_folding_witness_polys,
-    //         ..
-    //     } = pp;
-
-    //     let instances = circuit.instances();
-    //     for (num_instances, instances) in pp.num_instances.iter().zip_eq(instances) {
-    //         assert_eq!(instances.len(), *num_instances);
-    //         for instance in instances.iter() {
-    //             transcript.common_field_element(instance)?;
-    //         }
-    //     }
-
-
-    //     // Round 0..n
-
-    //     let mut witness_polys = Vec::with_capacity(pp.num_witness_polys.iter().sum());
-    //     let mut witness_comms = Vec::with_capacity(witness_polys.len());
-    //     let mut challenges = Vec::with_capacity(pp.num_challenges.iter().sum());
-    //     for (round, (num_witness_polys, num_challenges)) in pp
-    //         .num_witness_polys
-    //         .iter()
-    //         .zip_eq(pp.num_challenges.iter())
-    //         .enumerate()
-    //     {
-    //         let timer = start_timer(|| format!("witness_collector-{round}"));
-    //         let polys = circuit
-    //             .synthesize(round, &challenges)?
-    //             .into_iter()
-    //             .map(MultilinearPolynomial::new)
-    //             .collect_vec();
-    //         assert_eq!(polys.len(), *num_witness_polys);
-    //         end_timer(timer);
-
-    //         witness_comms.extend(Pcs::batch_commit_and_write(&pp.pcs, &polys, transcript)?);
-    //         witness_polys.extend(polys);
-    //         challenges.extend(transcript.squeeze_challenges(*num_challenges));
-    //     }
-
-    //     // Round n
-    //     let theta_primes = powers(transcript.squeeze_challenge())
-    //         .skip(1)
-    //         .take(*num_theta_primes)
-    //         .collect_vec();
-
-    //     let timer = start_timer(|| format!("lookup_compressed_polys-{}", pp.lookups.len()));
-    //     let lookup_compressed_polys = {
-    //         let instance_polys = instance_polys(pp.num_vars, instances);
-    //         let polys = iter::empty()
-    //             .chain(instance_polys.iter())
-    //             .chain(pp.preprocess_polys.iter())
-    //             .chain(witness_polys.iter())
-    //             .collect_vec();
-    //         let thetas = iter::empty()
-    //             .chain(Some(F::ONE))
-    //             .chain(theta_primes.iter().cloned())
-    //             .collect_vec();
-    //         lookup_compressed_polys(&pp.lookups, &polys, &challenges, &thetas)
-    //     };
-    //     end_timer(timer);
-
-    //     let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
-    //     let lookup_m_polys = lookup_m_polys(&lookup_compressed_polys)?;
-    //     end_timer(timer);
-
-    //     let lookup_m_comms = Pcs::batch_commit_and_write(&pp.pcs, &lookup_m_polys, transcript)?;
-
-    //     // Round n+1
-
-    //     let beta_prime = transcript.squeeze_challenge();
-
-    //     let timer = start_timer(|| format!("lookup_h_polys-{}", pp.lookups.len()));
-    //     let lookup_h_polys = lookup_h_polys(&lookup_compressed_polys, &lookup_m_polys, &beta_prime);
-    //     end_timer(timer);
-
-    //     let lookup_h_comms = {
-    //         let polys = lookup_h_polys.iter().flatten();
-    //         Pcs::batch_commit_and_write(&pp.pcs, polys, transcript)?
-    //     };
-
-    //     // Round n+2
-
-    //     let (zeta, powers_of_zeta_poly, powers_of_zeta_comm) = match strategy {
-    //         NoCompressing => (None, None, None),
-    //         Compressing => {
-    //             let zeta = transcript.squeeze_challenge();
-
-    //             let timer = start_timer(|| "powers_of_zeta_poly");
-    //             let powers_of_zeta_poly = powers_of_zeta_poly(pp.num_vars, zeta);
-    //             end_timer(timer);
-
-    //             let powers_of_zeta_comm =
-    //                 Pcs::commit_and_write(&pp.pcs, &powers_of_zeta_poly, transcript)?;
-
-    //             (
-    //                 Some(zeta),
-    //                 Some(powers_of_zeta_poly),
-    //                 Some(powers_of_zeta_comm),
-    //             )
-    //         }
-    //     };
-
-    //     // Round n+3
-    //     let alpha_primes = powers(transcript.squeeze_challenge())
-    //         .skip(1)
-    //         .take(*num_alpha_primes)
-    //         .collect_vec();
-
-    //     let nark = PlonkishNark::new(
-    //         instances.to_vec(),
-    //         iter::empty()
-    //             .chain(challenges)
-    //             .chain(theta_primes)
-    //             .chain(Some(beta_prime))
-    //             .chain(zeta)
-    //             .chain(alpha_primes)
-    //             .collect(),
-    //         iter::empty()
-    //             .chain(witness_comms)
-    //             .chain(lookup_m_comms)
-    //             .chain(lookup_h_comms)
-    //             .chain(powers_of_zeta_comm)
-    //             .collect(),
-    //         iter::empty()
-    //             .chain(witness_polys)
-    //             .chain(lookup_m_polys)
-    //             .chain(lookup_h_polys.into_iter().flatten())
-    //             .chain(powers_of_zeta_poly)
-    //             .collect(),
-    //     );
-
-    //     Ok(nark)
-    // }
-
     fn prove_nark(
         pp: &Self::ProverParam,
         circuit: &impl PlonkishCircuit<F>,
@@ -289,9 +145,9 @@ where
             pp,
             strategy,
             num_theta_primes,
-            num_alpha_primes,
             last_rows,
             advice_copies,
+            log_num_betas,
             ..
         } = pp;
         
@@ -447,7 +303,7 @@ where
             NoCompressing => Vec::new(),
             Compressing => {
                 let timer = start_timer(|| "powers_of_zeta_poly");
-                let powers_of_zeta_poly = powers_of_zeta_sqrt_poly(pp.num_vars, zeta);
+                let powers_of_zeta_poly = powers_of_zeta_sqrt_poly(*log_num_betas, zeta);
                 end_timer(timer);
 
                 vec![powers_of_zeta_poly]
@@ -471,12 +327,6 @@ where
         let trimmed_phase2_poly_concat =  concat_polys_raw(phase2_poly);
         let phase2_comm = Pcs::commit_and_write(&pp.pcs, &trimmed_phase2_poly_concat, transcript)?;
 
-        // Round 2
-        let alpha_primes = powers(transcript.squeeze_challenge())
-            .skip(1)
-            .take(*num_alpha_primes)
-            .collect_vec();
-
         Ok(PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
@@ -484,7 +334,6 @@ where
                 .chain(theta_primes)
                 .chain(Some(beta_prime))
                 .chain(Some(zeta))
-                .chain(alpha_primes)
                 .collect(),
             iter::empty()
                 .chain([phase1_comm])
@@ -505,7 +354,7 @@ where
         incoming: &Self::Accumulator,
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
         _: impl RngCore,
-    ) -> Result<((Vec<F>, F, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>)), Error> {
+    ) -> Result<(Vec<F>, F, Vec<<Pcs as PolynomialCommitmentScheme<F>>::Commitment>), Error> {
         let ProtostarProverParam {
             pp,
             strategy,
@@ -527,23 +376,24 @@ where
             incoming.instance.absorb_into(transcript)?;
         }
 
-        let num_fixed = num_fixed_columns;
         let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
         let num_challenges = pp.num_challenges.iter().sum::<usize>();
         let lookups_empty = pp.lookups.is_empty();
+        let acc_u = accumulator.instance().u;
 
         let (r_le_bits, r, cross_term_comms) = match strategy {
             NoCompressing => {
                 let timer = start_timer(|| {
                     format!("evaluate_cross_term_polys-{}", cross_term_expressions.len())
                 });
-                let cross_term_polys = evaluate_cross_term_polys(
-                    cross_term_expressions,
-                    pp.num_vars,
-                    &pp.preprocess_polys,
-                    accumulator,
-                    incoming,
-                );
+                let cross_term_polys = vec![MultilinearPolynomial::<F>::zero(); 5];
+                // let cross_term_polys = evaluate_cross_term_polys(
+                //     cross_term_expressions,
+                //     pp.num_vars,
+                //     &pp.preprocess_polys,
+                //     accumulator,
+                //     incoming,
+                // );
                 end_timer(timer);
 
                 let cross_term_comms =
@@ -552,8 +402,7 @@ where
                 // Round 0
 
                 let r = transcript.squeeze_challenge();
-                let r_le_bits = fe_to_bits_le(r.clone());
-                //assert_eq!(r_le_bits.len(), NUM_CHALLENGE_BITS);
+                let r_le_bits = fe_to_bits_le(r);
                 assert_eq!(r, fe_from_bits_le(r_le_bits.clone()));
 
                 let timer = start_timer(|| "fold_uncompressed");
@@ -563,120 +412,96 @@ where
             }
             Compressing => {
                 let timer = start_timer(|| "evaluate_zeta_cross_term_poly");
-                let zeta_values = [incoming, accumulator].map(|witness| {
-                    let zeta = witness
-                        .instance
-                        .challenges
-                        .iter()
-                        .nth_back(*num_alpha_primes)
-                        .unwrap();
-                    *zeta
-                });
-                let holder = PolynomialsHolder::new(*log_num_betas, zeta_values);
-                let (beta_refs, beta_prime_refs) = holder.get_polys_refs();
-                let beta_polys_owned: Box<[MultilinearPolynomial<F>]> = Box::new([
-                    MultilinearPolynomial::new(
-                        beta_refs[0]
-                            .clone()
-                            .into_evals()
-                            .into_iter()
-                            .flat_map(|x| std::iter::repeat(x).take(1<<(log_num_betas/2)))
-                            .collect(),
-                    ),
-                    MultilinearPolynomial::new(
-                        beta_refs[1]
-                            .clone()
-                            .into_evals()
-                            .into_iter()
-                            .flat_map(|x| std::iter::repeat(x).take(1<<(log_num_betas/2)))
-                            .collect(),
-                    ),
-                ]);
-                    
-                let beta_prime_polys_owned: Box<[MultilinearPolynomial<F>]> = Box::new([
-                    MultilinearPolynomial::new(
-                        beta_prime_refs[0]
-                            .clone()
-                            .into_evals()
-                            .into_iter()
-                            .flat_map(|x| std::iter::repeat(x).take(1<<(log_num_betas/2)))
-                            .collect(),
-                    ),
-                    MultilinearPolynomial::new(
-                        beta_prime_refs[1]
-                            .clone()
-                            .into_evals()
-                            .into_iter()
-                            .flat_map(|x| std::iter::repeat(x).take(1<<(log_num_betas/2)))
-                            .collect(),
-                    ),
-                ]);
-
-                // let zeta_cross_term_poly = evaluate_zeta_cross_term_poly(
-                //     (pp.num_vars/2) + 1,
-                //     *num_alpha_primes,
-                //     accumulator,
-                //     incoming,
-                // );
+                let zeta_cross_term_poly = evaluate_zeta_sqrt_cross_term_poly(
+                    *log_num_betas,
+                    accumulator,
+                    incoming,
+                );
                 end_timer(timer);
 
-                //todo fix this
-                let zeta_cross_term = vec![F::ONE; 1 << ((pp.num_vars + 2)/2 + 1)];
-                let zeta_cross_term_poly = MultilinearPolynomial::new(zeta_cross_term);
+                let beta_polys = [incoming, accumulator].map(|witness| {
+                    witness
+                        .witness_polys
+                        .iter()
+                        .last()
+                        .unwrap()
+                        .evals()
+                        .split_at(1 << (log_num_betas/2))
+                });
+
+                let (beta_polys_owned, beta_prime_polys_owned) = expand_beta_polys(&beta_polys, 1 << (log_num_betas/2));
                 let zeta_cross_term_comm =
                     Pcs::commit_and_write(&pp.pcs, &zeta_cross_term_poly, transcript)?;
 
                 //calculate error poly
-                let paired_data = Paired::<'_, F>::new_data(pp.num_vars, *num_fixed, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes, &pp.preprocess_polys, &beta_polys_owned, &beta_prime_polys_owned, &incoming, &accumulator);
-                let gate_constraint_vec = paired_data.full_constraint_beta_vec(gate_expressions.to_vec(), lookup_expressions.to_vec(), num_witness_polys);
+                let error_params = ErrorParams::new(pp.num_vars, *num_fixed_columns, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes);
+                let paired_data = Paired::<'_, F>::new_data(&error_params, &pp.preprocess_polys, &beta_polys_owned, &beta_prime_polys_owned, incoming, accumulator, &acc_u);
+                let gate_constraint_vec = paired_data.full_constraint_no_beta_vec(gate_expressions.to_vec(), lookup_expressions.to_vec());
                 let num_vars = pp.num_vars;
                 let mut constraint_idx = 0;
+                let chosen_selector = 11;
                 let mut total_constraints_vec = HashMap::new();
                 let mut sorted_selectors: Vec<_> = queried_selectors.iter().collect();
                 sorted_selectors.sort_by_key(|&(idx, _)| idx);
-                for (selector_idx, (num_constraints, degree_vec)) in &sorted_selectors {
+                for (selector_idx, (num_constraints, _)) in &sorted_selectors {
                     let selector_constraints_vec: Vec<_> = gate_constraint_vec
                         .iter()
                         .skip(constraint_idx)
                         .take(*num_constraints)
                         .cloned()
                         .collect();
-                    total_constraints_vec.insert(*selector_idx, selector_constraints_vec.clone());
                     constraint_idx += *num_constraints;
+                    if **selector_idx == chosen_selector {
+                        total_constraints_vec.insert(*selector_idx, selector_constraints_vec.clone());
+                    }
                 }
 
+                let timer = start_timer(|| "split_beta_polys");
+                let betas_poly = evaluate_betas_error_selectorwise_full(beta_polys[0].0, beta_polys[1].0, beta_polys[0].1, beta_polys[1].1);
+                let mut beta_poly_selectorwise: Vec<Vec<Vec<CombinedQuadraticErrorFull<F>>>> = vec![
+                    vec![
+                        Vec::new();
+                        sorted_selectors.iter().map(|(_, (num_constraints, _))| *num_constraints).max().unwrap_or(0)
+                    ];
+                    sorted_selectors.len()
+                ];
+                let mut total_rows = 0;
+                let dummy_vec = vec![];
+                for (selector_idx, (num_constraints, _)) in &sorted_selectors {
+                    let rows = selector_map.get(selector_idx).unwrap_or(&dummy_vec);
+                    for constraint_idx in 0..*num_constraints {
+                        beta_poly_selectorwise[**selector_idx][constraint_idx] = betas_poly[total_rows..total_rows + rows.len()].to_vec();
+                        total_rows += rows.len();
+                    }
+                }
+                end_timer(timer);
+
                 let timer = start_timer(|| "evaluate_error_poly_selectorwise");
-                let error_poly_selectorwise: Vec<Vec<Vec<F>>> = total_constraints_vec.par_iter().map(|(selector_idx, selector_constraints)| {
-                    selector_constraints.par_iter().enumerate().map(|(constraint_idx, constraint)| {
-                        Paired::<'_, F>::evaluate_compressed_polynomial_full_parallel(
-                            constraint,
-                            selector_map.get(selector_idx).unwrap_or(&vec![]), 
-                            num_vars,
-                        )
+                let error_poly_selectorwise: Vec<Vec<Vec<F>>> = total_constraints_vec.iter().map(|(selector_idx, selector_constraints)| {
+                    selector_constraints.iter().enumerate().map(|(constraint_idx, constraint)| {
+                        if let Some(rows) = selector_map.get(selector_idx) {
+                            Paired::<'_, F>::evaluate_compressed_polynomial_full_beta_selectorwise(
+                                constraint,
+                                rows,
+                                num_vars,
+                                &beta_poly_selectorwise[**selector_idx][constraint_idx]
+                            )
+                        } else {
+                            vec![F::ZERO; COMBINED_QUADRATIC_ERROR_FULL_LEN]
+                        }
                     }).collect::<Vec<Vec<F>>>()
                 }).collect();
                 end_timer(timer);
                 
-                let timer = start_timer(|| "sum_error_polys");
-                let error_poly_flattened: Vec<Vec<F>> = error_poly_selectorwise
-                    .iter()
-                    .flat_map(|middle_vec| middle_vec.iter().cloned())
-                    .collect();
-
+                let error_poly_flattened = error_poly_selectorwise.into_iter().flatten().collect_vec();
                 // Initialize the sum evaluations with zeros
-                let mut error_poly_sum = [F::ZERO; 9];
+                let mut error_poly_sum = [F::ZERO; COMBINED_QUADRATIC_ERROR_FULL_LEN];
                 // Sum the evaluations pointwise
                 for evals in error_poly_flattened {
                     for (i, &val) in evals.iter().enumerate() {
                         error_poly_sum[i] += val;
                     }
                 }
-                end_timer(timer);
-
-                //println!("error_poly_sum {:?}", error_poly_sum);
-                // sanity check, check this in folding verifier
-                // assert_eq!(eval_polynomial(error_poly_sum.as_slice(), F::ZERO), F::ZERO); //nark_error = 0
-                // assert_eq!(eval_polynomial(error_poly_sum.as_slice(), F::ONE), accumulator.instance().compressed_e_sum.unwrap()); //acc_error = e_comm
 
                 transcript.write_field_elements(&error_poly_sum)?;
 
@@ -690,10 +515,40 @@ where
                     incoming,
                     &zeta_cross_term_poly,
                     &zeta_cross_term_comm,
-                    &error_poly_sum,
+                    &error_poly_sum[1..], // skip the first element = e = accumulator.instance.compressed_e_sum
                     &r,
                 );
                 end_timer(timer);
+                // let lsqrt = 1 << (log_num_betas/2);
+                // let (betas, betas_prime, beta, beta_sqrt, u) =
+                // {
+                //     let pow = accumulator.witness_polys.last().unwrap();
+                //     let (pow_poly, pow_sqrt_poly) = pow.evals().split_at(lsqrt);
+                //     let beta = accumulator
+                //         .instance
+                //         .challenges
+                //         .last()
+                //         .unwrap();
+                //     let beta_sqrt = beta.pow([lsqrt as u64]);
+                //     (pow_poly, pow_sqrt_poly, beta, beta_sqrt, accumulator.instance.u)
+                // };
+                // let init_ok = betas[0] == u;
+                // let powers_ok = (2..lsqrt - 1)
+                //     .all(|i| accumulator.e_poly.evals()[i - 1] == betas[i - 1] * beta - betas[i]*u);
+                // println!("1_ok {:?}", accumulator.e_poly.evals()[0] == betas[0] * beta - betas[1]*u);
+                // println!("accumulator.e_poly.evals()[0] {:?}", accumulator.e_poly.evals()[0]);
+                // println!("betas[0] {:?}", betas[0]);
+                // println!("beta {:?}", beta);
+                // println!("betas[1] {:?}", betas[1]);
+                // println!("betas[2] {:?}", betas[2]* betas[0]);
+                // println!("betas[1]_sq {:?}", betas[1] * betas[1]);
+                // println!("betas[2]_cal {:?}", betas[1] * betas[0]);
+                // println!("u {:?}", u);
+                // println!("betas[0] * beta {:?}", betas[0] * beta);
+                // println!("betas[1] * u {:?}", betas[1]*u);
+                // println!("2_ok {:?}", accumulator.e_poly.evals()[1] == betas[1] * beta - betas[2]*u);
+                // assert!(init_ok, "init_not_ok");
+                // assert!(powers_ok, "powers_not_ok");
                 (r_le_bits, r, vec![zeta_cross_term_comm])
             }
         };
@@ -710,8 +565,6 @@ where
         let ProtostarProverParam {
             pp,
             strategy,
-            num_theta_primes,
-            num_alpha_primes,
             last_rows,
             advice_copies,
             ..
@@ -781,10 +634,8 @@ where
             NoCompressing => (None, None, None),
             Compressing => {
                 let zeta = transcript.squeeze_challenge();
-                println!("zeta {:?}", zeta);
                 let timer = start_timer(|| "powers_of_zeta_poly");
                 let powers_of_zeta_poly = powers_of_zeta_sqrt_poly_ec(pp.num_vars, zeta);
-                println!("powers_of_zeta_poly_num_vars {:?}", powers_of_zeta_poly.num_vars());
                 end_timer(timer);
 
                 let powers_of_zeta_comm =
@@ -798,18 +649,11 @@ where
             }
         };
 
-        // Round n+3
-        let alpha_primes = powers(transcript.squeeze_challenge())
-            .skip(1)
-            .take(*num_alpha_primes)
-            .collect_vec();
-
         let nark = PlonkishNark::new(
             instances.to_vec(),
             iter::empty()
                 .chain(challenges)
                 .chain(zeta)
-                .chain(alpha_primes)
                 .collect(),
             iter::empty()
                 .chain(witness_comms)
@@ -836,6 +680,7 @@ where
             strategy,
             num_alpha_primes,
             num_theta_primes,
+            num_fixed_columns,
             cross_term_expressions,
             gate_expressions,
             lookup_expressions,
@@ -851,23 +696,24 @@ where
             incoming.instance.absorb_into(transcript)?;
         }
 
-        let num_fixed = pp.fixed_permutation_idx_for_preprocess_poly.len();
         let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
         let num_challenges = pp.num_challenges.iter().sum::<usize>();
-        let lookups_empty = if pp.lookups.is_empty() { true } else { false };
+        let lookups_empty = true; //if pp.lookups.is_empty() { true } else { false };
+        let acc_u = accumulator.instance().u;
 
         match strategy {
             NoCompressing => {
                 let timer = start_timer(|| {
                     format!("evaluate_cross_term_polys-{}", cross_term_expressions.len())
                 });
-                let cross_term_polys = evaluate_cross_term_polys(
-                    cross_term_expressions,
-                    pp.num_vars,
-                    &pp.preprocess_polys,
-                    accumulator,
-                    incoming,
-                );
+                let cross_term_polys = vec![MultilinearPolynomial::<F>::zero(); 5];
+                // let cross_term_polys = evaluate_cross_term_polys(
+                //     cross_term_expressions,
+                //     pp.num_vars,
+                //     &pp.preprocess_polys,
+                //     accumulator,
+                //     incoming,
+                // );
                 end_timer(timer);
 
                 let cross_term_comms =
@@ -885,15 +731,10 @@ where
                 let timer = start_timer(|| "evaluate_zeta_sqrt_cross_term_poly");
                 let zeta_cross_term_poly = evaluate_zeta_sqrt_cross_term_poly(
                     pp.num_vars,
-                    *num_alpha_primes,
                     accumulator,
                     incoming,
                 );
                 end_timer(timer);
-
-                // let (zeta_cross_term_poly0, zeta_cross_term_poly1) = zeta_cross_term_poly.evals().split_at(1 << (pp.num_vars/2));
-                // assert_eq!(eval_polynomial(&zeta_cross_term_poly0, F::ZERO), F::ZERO);
-                // assert_eq!(eval_polynomial(&zeta_cross_term_poly1, F::ZERO), F::ZERO);
 
                 let beta_polys = [incoming, accumulator].map(|witness| {
                     witness
@@ -908,81 +749,70 @@ where
                 let (beta_polys_owned, beta_prime_polys_owned) = expand_beta_polys(&beta_polys, 1 << (pp.num_vars/2));
                 let zeta_cross_term_comm =
                     Pcs::commit_and_write(&pp.pcs, &zeta_cross_term_poly, transcript)?;
-
-                let paired_data = Paired::<'_, F>::new_data(pp.num_vars, num_fixed, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes, &pp.preprocess_polys, &beta_polys_owned, &beta_prime_polys_owned, &incoming, &accumulator);
-                let gate_constraint_vec = paired_data.full_constraint_beta_vec(gate_expressions.to_vec(), lookup_expressions.to_vec(), num_witness_polys);
+                let error_params = ErrorParams::new(pp.num_vars, *num_fixed_columns, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes);
+                let paired_data = Paired::<'_, F>::new_data(&error_params, &pp.preprocess_polys, &beta_polys_owned, &beta_prime_polys_owned, incoming, accumulator, &acc_u);
+                let gate_constraint_vec = paired_data.full_constraint_no_beta_vec(gate_expressions.to_vec(), lookup_expressions.to_vec());
                 let num_vars = pp.num_vars;
                 let mut constraint_idx = 0;
                 let mut total_constraints_vec = HashMap::new();
                 let mut sorted_selectors: Vec<_> = queried_selectors.iter().collect();
                 sorted_selectors.sort_by_key(|&(idx, _)| idx);
-                
-                for (selector_idx, (num_constraints, degree_vec)) in &sorted_selectors {
+
+                let chosen_selector = 2;
+                for (selector_idx, (num_constraints, _)) in &sorted_selectors {
                     let selector_constraints_vec: Vec<_> = gate_constraint_vec
                         .iter()
                         .skip(constraint_idx)
                         .take(*num_constraints)
                         .cloned()
                         .collect();
-                    total_constraints_vec.insert(*selector_idx, selector_constraints_vec.clone());
                     constraint_idx += *num_constraints;
+                    if **selector_idx == chosen_selector {
+                        total_constraints_vec.insert(*selector_idx, selector_constraints_vec.clone());
+                    }
                 }
 
-                // let timer = start_timer(|| "split_beta_polys");
-                // let [(beta0, beta1), (beta_sqrt0, beta_sqrt1)] = split_polys([beta_refs[0], beta_refs[1]]);
-                // let betas_poly = evaluate_betas_selectorwise(beta0, beta1, beta_sqrt0, beta_sqrt1);
-                // let mut beta_poly_selectorwise: Vec<Vec<Vec<CombinedQuadraticErrorFull<F>>>> = vec![
-                //     vec![
-                //         Vec::new();
-                //         sorted_selectors.iter().map(|(_, (num_constraints, _))| *num_constraints).max().unwrap_or(0)
-                //     ];
-                //     sorted_selectors.len()
-                // ];
-                // let mut total_rows = 0;
-                // let dummy_vec = vec![];
-                // for (selector_idx, (num_constraints, _)) in &sorted_selectors {
-                //     let rows = selector_map.get(selector_idx).unwrap_or(&dummy_vec);
-                //     for constraint_idx in 0..*num_constraints {
-                //         beta_poly_selectorwise[**selector_idx][constraint_idx] = (betas_poly[total_rows..total_rows + rows.len()].to_vec());
-                //         total_rows += rows.len();
-                //     }
-                // }
-                // end_timer(timer);
+                let timer = start_timer(|| "split_beta_polys");
+                let betas_poly = evaluate_betas_error_selectorwise(beta_polys[0].0, beta_polys[1].0, beta_polys[0].1, beta_polys[1].1);
+                let mut beta_poly_selectorwise: Vec<Vec<Vec<CombinedQuadraticErrorFull<F>>>> = vec![
+                    vec![
+                        Vec::new();
+                        sorted_selectors.iter().map(|(_, (num_constraints, _))| *num_constraints).max().unwrap_or(0)
+                    ];
+                    sorted_selectors.len()
+                ];
+                let mut total_rows = 0;
+                let dummy_vec = vec![];
+                for (selector_idx, (num_constraints, _)) in &sorted_selectors {
+                    let rows = selector_map.get(selector_idx).unwrap_or(&dummy_vec);
+                    for constraint_idx in 0..*num_constraints {
+                        beta_poly_selectorwise[**selector_idx][constraint_idx] = betas_poly[total_rows..total_rows + rows.len()].to_vec();
+                        total_rows += rows.len();
+                    }
+                }
+                end_timer(timer);
+
                 let timer = start_timer(|| "evaluate_error_poly_selectorwise");
                 let error_poly_selectorwise: Vec<Vec<Vec<F>>> = total_constraints_vec.iter().map(|(selector_idx, selector_constraints)| {
                     selector_constraints.par_iter().enumerate().map(|(constraint_idx, constraint)| {
-                        let rows = selector_map.get(selector_idx);
-                        if rows.is_none() {
-                            vec![]
-                        } else {
-                            Paired::<'_, F>::evaluate_compressed_polynomial_full(
+                        if let Some(rows) = selector_map.get(selector_idx) {
+                            Paired::<'_, F>::evaluate_compressed_polynomial_full_beta_selectorwise(
                                 constraint,
-                                rows.unwrap(), 
+                                rows,
                                 num_vars,
-                                num_witness_polys,
-                                lookups_empty,
+                                &beta_poly_selectorwise[**selector_idx][constraint_idx]
                             )
+                        } else {
+                            vec![F::ZERO; COMBINED_QUADRATIC_ERROR_FULL_LEN]
                         }
                     }).collect::<Vec<Vec<F>>>()
                 }).collect();
                 end_timer(timer);
 
-                // let rows = selector_map.get(&chosen_selector);
-                // let timer = start_timer(|| "evaluate_error_poly_selectorwise");
-                // let error_poly_selectorwise: Vec<Vec<Vec<F>>> = vec![
-                //     full_constraint_vec.par_iter().enumerate().map(|(constraint_idx, constraint)| {
-                //             Paired::<'_, F>::evaluate_compressed_polynomial_full_parallel(
-                //                 constraint,
-                //                 rows.unwrap(), 
-                //                 num_vars,
-                //             )
-                //     }).collect::<Vec<Vec<F>>>()];
-                // end_timer(timer);
-
                 let timer = start_timer(|| "sum_error_polys");
                 let error_poly_flattened = error_poly_selectorwise.into_iter().flatten().collect_vec();
                 // Initialize the sum evaluations with zeros
-                let mut error_poly_sum = [F::ZERO; 9];
+                let mut error_poly_sum = [F::ZERO; COMBINED_QUADRATIC_ERROR_FULL_LEN];
                 // Sum the evaluations coefficient wise
                 for evals in error_poly_flattened {
                     for (i, &val) in evals.iter().enumerate() {
@@ -991,21 +821,17 @@ where
                 }
                 end_timer(timer);
 
-                // sanity check, check this in folding verifier
-                assert_eq!(eval_polynomial(error_poly_sum.as_slice(), F::ZERO), F::ZERO); //nark_error = 0
-                assert_eq!(eval_polynomial(error_poly_sum.as_slice(), F::ONE), accumulator.instance().compressed_e_sum.unwrap()); //acc_error = e_comm
                 transcript.write_field_elements(&error_poly_sum)?;
                                 
                 // Round 0
                 let r = transcript.squeeze_challenge();
-                println!("r {:?}", r);
 
                 let timer = start_timer(|| "fold_compressed");
                 accumulator.fold_compressed(
                     incoming,
                     &zeta_cross_term_poly,
                     &zeta_cross_term_comm,
-                    &error_poly_sum,
+                    &error_poly_sum[1..],
                     &r,
                 );
                 end_timer(timer);
@@ -1142,26 +968,37 @@ where
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
         _: impl RngCore,
     ) -> Result<(), Error> {
-        let ProtostarProverParam { pp: pp_hp, .. } = pp;
+        let ProtostarProverParam {
+            pp,
+            num_alpha_primes,
+            num_theta_primes,
+            num_fixed_columns,
+            gate_expressions,
+            lookup_expressions,
+            queried_selectors,
+            selector_map,
+            log_num_betas,
+            ..
+        } = pp;
 
         accumulator.instance.absorb_into(transcript)?;
-        let builtin_witness_poly_offset = pp_hp.num_witness_polys.iter().sum::<usize>();
-        let zeta_nth_back = pp.num_alpha_primes;
-        let num_vars = pp_hp.num_vars;
+        let num_vars = pp.num_vars;
+        let lsqrt = 1 << (log_num_betas/2);
+        let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
+        let num_challenges = pp.num_challenges.iter().sum::<usize>();
+        let lookups_empty = pp.lookups.is_empty();
 
-        let (acc_pow, acc_pow_sqrt, acc_zeta, acc_zeta_sqrt, acc_u) =
+        let (betas, betas_prime, beta, beta_sqrt, u) =
         {
             let pow = accumulator.witness_polys.last().unwrap();
-            let (pow_poly, pow_sqrt_poly) = pow.evals().split_at(1 << num_vars/2);
-            let zeta = accumulator
+            let (pow_poly, pow_sqrt_poly) = pow.evals().split_at(lsqrt);
+            let beta = accumulator
                 .instance
                 .challenges
-                .iter()
-                .nth_back(zeta_nth_back)
+                .last()
                 .unwrap();
-            let lsqrt = 1 << num_vars/2;
-            let zeta_sqrt = zeta.pow([lsqrt as u64]);
-            (pow_poly, pow_sqrt_poly, zeta, zeta_sqrt, accumulator.instance.u)
+            let beta_sqrt = beta.pow([lsqrt as u64]);
+            (pow_poly, pow_sqrt_poly, beta, beta_sqrt, accumulator.instance.u)
         };
 
         // Check linear lookup constraint ∑ᵢ gᵢ == ∑ᵢ hᵢ
@@ -1171,41 +1008,95 @@ where
                 lhs == rhs
         };
 
-        // Check beta constraint eᵢ ≡ β ⋅ βᵢ − βᵢ₊₁, β₀ ≡ 1
-        // let beta_ok = {
-        //     let beta_column = acc_pow;
-        //     let beta_column_sqrt = acc_pow_sqrt;
-        //     let error_column_concat = &accumulator.e_poly;
-        //     let (error_column, error_column_sqrt) = error_column_concat.evals().split_at(1 << num_vars/2);
-        //     let beta = acc_zeta;
-        //     let beta_sqrt = acc_zeta_sqrt;
+        let beta_ok = {
+            let beta_column = betas;
+            let beta_column_sqrt = betas_prime;
+            let error_column_concat = &accumulator.e_poly;
+            let (error_column, error_column_sqrt) = error_column_concat.evals().split_at(lsqrt);
         
-        //     let init_ok = acc_pow[0] == acc_u;
-        //     let powers_ok = (2..(1 << num_vars/2) - 1)
-        //         .into_iter()
-        //         .all(|i| error_column[i - 1] == acc_pow[i - 1] * beta - acc_pow[i]*acc_u);
-        //     println!("acc_pow[0] {:?}", acc_pow[0]);
-        //     println!("acc_pow[1] {:?}", acc_pow[1]);
-        //     println!("acc_pow[2] {:?}", acc_pow[2]);
-        //     println!("first constraint {:?}", acc_pow[0] * beta - acc_pow[1]*acc_u);
-        //     println!("error_column[0] {:?}", error_column[0]);
-        //     println!("second constraint {:?}", acc_pow[1] * beta - acc_pow[2]*acc_u);
-        //     println!("error_column[1] {:?}", error_column[1]);
-        //     println!("beta {:?}", beta);
-        //     println!("acc_u {:?}", acc_u);
-        //     assert!(init_ok, "init_not_ok");
-        //     assert!(powers_ok, "powers_not_ok");
+            let init_ok = beta_column[0] == u;
+            let powers_ok = (2..lsqrt - 1)
+                .all(|i| error_column[i - 1] == beta_column[i - 1] * beta - beta_column[i]*u);
+            println!("error_column {:?}", error_column[0]);
+            println!("beta_column {:?}", beta_column[0]);
+            println!("u {:?}", u);
+            println!("error_column[1] {:?}", error_column[1]);
+            println!("error_column_calc[1] {:?}", beta_column[1] * beta - beta_column[2]*u);
+            assert!(init_ok, "init_not_ok");
+            assert!(powers_ok, "powers_not_ok");
 
-        //     let init_sqrt_ok = acc_pow_sqrt[0] == F::ONE;
-        //     let powers_sqrt_ok = (1..(1 << num_vars/2))
-        //         .into_iter()
-        //         .all(|i| error_column_sqrt[i - 1] == acc_pow_sqrt[i - 1] * beta_sqrt - acc_pow_sqrt[i]);
-        //     assert!(init_sqrt_ok, "init_sqrt_not_ok");
-        //     assert!(powers_sqrt_ok, "powers_sqrt_not_ok");
+            let init_sqrt_ok = beta_column_sqrt[0] == F::ONE;
+            let powers_sqrt_ok = (1..lsqrt - 1)
+                .all(|i| error_column_sqrt[i - 1] == beta_column_sqrt[i - 1] * beta_sqrt - beta_column_sqrt[i]);
+            assert!(init_sqrt_ok, "init_sqrt_not_ok");
+            assert!(powers_sqrt_ok, "powers_sqrt_not_ok");
 
-        //     powers_ok && init_ok && powers_sqrt_ok && init_sqrt_ok
-        // };
-        // assert!(beta_ok);
+            powers_ok && init_ok && powers_sqrt_ok && init_sqrt_ok
+        };
+        assert!(beta_ok);
+
+        let beta_polys_expanded = MultilinearPolynomial::new(repeat_vector(betas, lsqrt));
+        let beta_prime_polys_expanded = MultilinearPolynomial::new(repeat_elements(betas_prime, lsqrt));
+        let error_params = ErrorParams::new(pp.num_vars, *num_fixed_columns, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes);
+        let data = Single::<'_, F>::new_data(&error_params, &pp.preprocess_polys, &beta_polys_expanded, &beta_prime_polys_expanded, accumulator, &u);
+        let gate_constraint_vec = data.full_constraint_no_beta_vec(gate_expressions.to_vec(), lookup_expressions.to_vec());
+        let mut constraint_idx = 0;
+        let mut total_constraints_vec = HashMap::new();
+        let mut sorted_selectors: Vec<_> = queried_selectors.iter().collect();
+        sorted_selectors.sort_by_key(|&(idx, _)| idx);
+        let chosen_selector = 11;
+        for (selector_idx, (num_constraints, _)) in &sorted_selectors {
+            let selector_constraints_vec: Vec<_> = gate_constraint_vec
+                .iter()
+                .skip(constraint_idx)
+                .take(*num_constraints)
+                .cloned()
+                .collect();
+            constraint_idx += *num_constraints;
+            if **selector_idx == chosen_selector {
+                total_constraints_vec.insert(*selector_idx, selector_constraints_vec.clone());
+            }
+        }
+
+        let timer = start_timer(|| "split_beta_polys");
+        let betas_poly = evaluate_betas_selectorwise(betas, betas_prime);
+        let mut betas_selectorwise: Vec<Vec<Vec<F>>> = vec![
+            vec![
+                Vec::new();
+                sorted_selectors.iter().map(|(_, (num_constraints, _))| *num_constraints).max().unwrap_or(0)
+            ];
+            sorted_selectors.len()
+        ];
+        let mut total_rows = 0;
+        let dummy_vec = vec![];
+        for (selector_idx, (num_constraints, _)) in &sorted_selectors {
+            let rows = selector_map.get(selector_idx).unwrap_or(&dummy_vec);
+            for constraint_idx in 0..*num_constraints {
+                betas_selectorwise[**selector_idx][constraint_idx] = betas_poly[total_rows..total_rows + rows.len()].to_vec();
+                total_rows += rows.len();
+            }
+        }
+        end_timer(timer);
+
+        let timer = start_timer(|| "evaluate_error_poly_selectorwise_decider");
+        let error_poly_selectorwise: Vec<Vec<F>> = total_constraints_vec.iter().map(|(selector_idx, selector_constraints)| {
+            selector_constraints.iter().enumerate().map(|(constraint_idx, constraint)| {
+                if let Some(rows) = selector_map.get(selector_idx) {
+                    Single::<'_, F>::evaluate_compressed_polynomial_full(
+                        constraint,
+                        rows,
+                        num_vars,
+                        &betas_selectorwise[**selector_idx][constraint_idx]
+                    )
+                } else {
+                    F::ZERO
+                }
+            }).collect_vec()
+        }).collect_vec();
+        end_timer(timer);
+
+        let error_poly_sum: F = error_poly_selectorwise.into_iter().flatten().collect_vec().iter().sum();
+        assert_eq!(error_poly_sum, accumulator.instance.claimed_sum());
 
         // Round 0
 
@@ -1320,63 +1211,127 @@ where
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
         _: impl RngCore,
     ) -> Result<(), Error> {
-        let ProtostarProverParam { pp: pp_hp, .. } = pp;
+        let ProtostarProverParam {
+            pp,
+            num_alpha_primes,
+            num_theta_primes,
+            num_fixed_columns,
+            gate_expressions,
+            lookup_expressions,
+            queried_selectors,
+            selector_map,
+            log_num_betas,
+            ..
+        } = pp;
 
         accumulator.instance.absorb_into(transcript)?;
-        let builtin_witness_poly_offset = pp_hp.num_witness_polys.iter().sum::<usize>();
-        let zeta_nth_back = pp.num_alpha_primes;
-        let num_vars = pp_hp.num_vars;
+        let num_vars = pp.num_vars;
+        let lsqrt = 1 << (num_vars/2);
+        let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
+        let num_challenges = pp.num_challenges.iter().sum::<usize>();
+        let lookups_empty = true; // if pp.lookups.is_empty() { true } else { false };
 
-        let (acc_pow, acc_pow_sqrt, acc_zeta, acc_zeta_sqrt, acc_u) =
+        let (beta_polys, beta_prime_polys, zeta, zeta_sqrt, u) =
         {
             let pow = accumulator.witness_polys.last().unwrap();
-            let (pow_poly, pow_sqrt_poly) = pow.evals().split_at(1 << num_vars/2);
+            let (pow_poly, pow_sqrt_poly) = pow.evals().split_at(lsqrt);
             let zeta = accumulator
                 .instance
                 .challenges
                 .iter()
-                .nth_back(zeta_nth_back)
+                .nth_back(*num_alpha_primes)
                 .unwrap();
-            let lsqrt = 1 << num_vars/2;
             let zeta_sqrt = zeta.pow([lsqrt as u64]);
             (pow_poly, pow_sqrt_poly, zeta, zeta_sqrt, accumulator.instance.u)
         };
 
         // Check beta constraint eᵢ ≡ β ⋅ βᵢ − βᵢ₊₁, β₀ ≡ 1
         // let beta_ok = {
-        //     let beta_column = acc_pow;
-        //     let beta_column_sqrt = acc_pow_sqrt;
+        //     let beta_column = beta_polys;
+        //     let beta_column_sqrt = beta_prime_polys;
         //     let error_column_concat = &accumulator.e_poly;
-        //     let (error_column, error_column_sqrt) = error_column_concat.evals().split_at(1 << num_vars/2);
-        //     let beta = acc_zeta;
-        //     let beta_sqrt = acc_zeta_sqrt;
+        //     let (error_column, error_column_sqrt) = error_column_concat.evals().split_at(lsqrt);
+        //     let beta = zeta;
+        //     let beta_sqrt = zeta_sqrt;
         
-        //     let init_ok = acc_pow[0] == acc_u;
-        //     let powers_ok = (2..(1 << num_vars/2) - 1)
-        //         .into_iter()
-        //         .all(|i| error_column[i - 1] == acc_pow[i - 1] * beta - acc_pow[i]*acc_u);
-        //     println!("acc_pow[0] {:?}", acc_pow[0]);
-        //     println!("acc_pow[1] {:?}", acc_pow[1]);
-        //     println!("acc_pow[2] {:?}", acc_pow[2]);
-        //     println!("first constraint {:?}", acc_pow[0] * beta - acc_pow[1]*acc_u);
-        //     println!("error_column[0] {:?}", error_column[0]);
-        //     println!("second constraint {:?}", acc_pow[1] * beta - acc_pow[2]*acc_u);
-        //     println!("error_column[1] {:?}", error_column[1]);
-        //     println!("beta {:?}", beta);
-        //     println!("acc_u {:?}", acc_u);
+        //     let init_ok = beta_column[0] == u;
+        //     let powers_ok = (2..lsqrt - 1)
+        //         .all(|i| error_column[i - 1] == beta_column[i - 1] * beta - beta_column[i]*u);
         //     assert!(init_ok, "init_not_ok");
         //     assert!(powers_ok, "powers_not_ok");
 
-        //     let init_sqrt_ok = acc_pow_sqrt[0] == F::ONE;
-        //     let powers_sqrt_ok = (1..(1 << num_vars/2))
-        //         .into_iter()
-        //         .all(|i| error_column_sqrt[i - 1] == acc_pow_sqrt[i - 1] * beta_sqrt - acc_pow_sqrt[i]);
+        //     let init_sqrt_ok = beta_column_sqrt[0] == F::ONE;
+        //     let powers_sqrt_ok = (1..lsqrt - 1)
+        //         .all(|i| error_column_sqrt[i - 1] == beta_column_sqrt[i - 1] * beta_sqrt - beta_column_sqrt[i]);
         //     assert!(init_sqrt_ok, "init_sqrt_not_ok");
         //     assert!(powers_sqrt_ok, "powers_sqrt_not_ok");
 
         //     powers_ok && init_ok && powers_sqrt_ok && init_sqrt_ok
         // };
         // assert!(beta_ok);
+
+        let beta_polys_expanded = MultilinearPolynomial::new(repeat_vector(beta_polys, lsqrt));
+        let beta_prime_polys_expanded = MultilinearPolynomial::new(repeat_elements(beta_prime_polys, lsqrt));
+        let error_params = ErrorParams::new(pp.num_vars, *num_fixed_columns, lookups_empty, num_witness_polys, num_challenges, *num_theta_primes, *num_alpha_primes);
+        let data = Single::<'_, F>::new_data(&error_params, &pp.preprocess_polys, &beta_polys_expanded, &beta_prime_polys_expanded, accumulator, &u);
+        let gate_constraint_vec = data.full_constraint_no_beta_vec(gate_expressions.to_vec(), lookup_expressions.to_vec());
+        let mut constraint_idx = 0;
+        let mut total_constraints_vec = HashMap::new();
+        let mut sorted_selectors: Vec<_> = queried_selectors.iter().collect();
+        sorted_selectors.sort_by_key(|&(idx, _)| idx);
+        let chosen_selector = 2;
+        for (selector_idx, (num_constraints, _)) in &sorted_selectors {
+            let selector_constraints_vec: Vec<_> = gate_constraint_vec
+                .iter()
+                .skip(constraint_idx)
+                .take(*num_constraints)
+                .cloned()
+                .collect();
+            constraint_idx += *num_constraints;
+            if **selector_idx == chosen_selector {
+                total_constraints_vec.insert(*selector_idx, selector_constraints_vec.clone());
+            }
+        }
+
+        let timer = start_timer(|| "split_beta_polys");
+        let betas_poly = evaluate_betas_selectorwise(beta_polys, beta_prime_polys);
+        let mut betas_selectorwise: Vec<Vec<Vec<F>>> = vec![
+            vec![
+                Vec::new();
+                sorted_selectors.iter().map(|(_, (num_constraints, _))| *num_constraints).max().unwrap_or(0)
+            ];
+            sorted_selectors.len()
+        ];
+        let mut total_rows = 0;
+        let dummy_vec = vec![];
+        for (selector_idx, (num_constraints, _)) in &sorted_selectors {
+            let rows = selector_map.get(selector_idx).unwrap_or(&dummy_vec);
+            for constraint_idx in 0..*num_constraints {
+                betas_selectorwise[**selector_idx][constraint_idx] = betas_poly[total_rows..total_rows + rows.len()].to_vec();
+                total_rows += rows.len();
+            }
+        }
+        end_timer(timer);
+
+        let timer = start_timer(|| "evaluate_error_poly_selectorwise_decider");
+        let error_poly_selectorwise: Vec<Vec<F>> = total_constraints_vec.iter().map(|(selector_idx, selector_constraints)| {
+            selector_constraints.iter().enumerate().map(|(constraint_idx, constraint)| {
+                if let Some(rows) = selector_map.get(selector_idx) {
+                    Single::<'_, F>::evaluate_compressed_polynomial_full(
+                        constraint,
+                        rows,
+                        num_vars,
+                        &betas_selectorwise[**selector_idx][constraint_idx]
+                    )
+                } else {
+                    F::ZERO
+                }
+            }).collect_vec()
+        }).collect_vec();
+        end_timer(timer);
+
+        let error_poly_sum: F = error_poly_selectorwise.into_iter().flatten().collect_vec().iter().sum();
+        assert_eq!(error_poly_sum, accumulator.instance.claimed_sum());
 
         // Round 0
 
@@ -1456,7 +1411,7 @@ where
         //     )?
         // };
 
-        //let witness_polys_comms = Pcs::batch_commit_and_write(&pp.pcs, &accumulator.witness_polys[builtin_witness_poly_offset..], transcript)?;
+        // let witness_polys_comms = Pcs::batch_commit_and_write(&pp.pcs, &accumulator.witness_polys[builtin_witness_poly_offset..], transcript)?;
         // izip_eq!(
         //     accumulator.instance.witness_comms[..builtin_witness_poly_offset].iter(),
         //     accumulator.witness_polys[builtin_witness_poly_offset..].iter()
@@ -1464,7 +1419,7 @@ where
         //     assert_eq!(comm, &Pcs::commit(&pp.pcs, poly).unwrap());
         // });
 
-        //assert_eq!(accumulator.instance.e_comm, Pcs::commit(&pp_hp.pcs, &accumulator.e_poly).unwrap());
+        // assert_eq!(accumulator.instance.e_comm, Pcs::commit(&pp_hp.pcs, &accumulator.e_poly).unwrap());
 
         // PCS open
 
@@ -1491,103 +1446,103 @@ where
         transcript: &mut impl TranscriptWrite<CommitmentChunk<F, Pcs>, F>,
         _: impl RngCore,
     ) -> Result<(), Error> {
-        let ProtostarProverParam { pp, .. } = pp;
+    //     let ProtostarProverParam { pp, .. } = pp;
 
-        accumulator.instance.absorb_into(transcript)?;
+    //     accumulator.instance.absorb_into(transcript)?;
 
-        // Round 0
+    //     // Round 0
 
-        let beta = transcript.squeeze_challenge();
-        let gamma = transcript.squeeze_challenge();
+    //     let beta = transcript.squeeze_challenge();
+    //     let gamma = transcript.squeeze_challenge();
 
-        let timer = start_timer(|| format!("permutation_z_polys-{}", pp.permutation_polys.len()));
-        let builtin_witness_poly_offset = pp.num_witness_polys.iter().sum::<usize>();
-        let instance_polys = instance_polys(pp.num_vars, &accumulator.instance.instances);
-        let u = accumulator.instance.u.clone();
-        let preprocess_polys = pp.preprocess_polys.iter().map(|poly| poly.clone().into_evals()).collect_vec();
+    //     let timer = start_timer(|| format!("permutation_z_polys-{}", pp.permutation_polys.len()));
+    //     let builtin_witness_poly_offset = pp.num_witness_polys.iter().sum::<usize>();
+    //     let instance_polys = instance_polys(pp.num_vars, &accumulator.instance.instances);
+    //     let u = accumulator.instance.u.clone();
+    //     let preprocess_polys = pp.preprocess_polys.iter().map(|poly| poly.clone().into_evals()).collect_vec();
 
-        let fixed_permutation_idx_offset = &pp.fixed_permutation_idx_for_preprocess_poly; 
-        let fixed_preprocess_polys = preprocess_polys.clone().iter().enumerate()
-            .map(|(idx, poly)| {
-                MultilinearPolynomial::new(poly.iter().map(|poly_element| {
-                    if fixed_permutation_idx_offset.contains(&idx) {
-                        *poly_element * u
-                    } else {
-                        *poly_element
-                    }
-                }).collect_vec())
-            })
-            .collect_vec();
+    //     let fixed_permutation_idx_offset = &pp.fixed_permutation_idx_for_preprocess_poly; 
+    //     let fixed_preprocess_polys = preprocess_polys.clone().iter().enumerate()
+    //         .map(|(idx, poly)| {
+    //             MultilinearPolynomial::new(poly.iter().map(|poly_element| {
+    //                 if fixed_permutation_idx_offset.contains(&idx) {
+    //                     *poly_element * u
+    //                 } else {
+    //                     *poly_element
+    //                 }
+    //             }).collect_vec())
+    //         })
+    //         .collect_vec();
 
-        let polys = iter::empty()
-            .chain(&instance_polys)
-            .chain(&pp.preprocess_polys)
-            .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
-            .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
-            .collect_vec();
+    //     let polys = iter::empty()
+    //         .chain(&instance_polys)
+    //         .chain(&pp.preprocess_polys)
+    //         .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
+    //         .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
+    //         .collect_vec();
 
-        let polys_for_permutation = iter::empty()
-            .chain(&instance_polys)
-            .chain(&fixed_preprocess_polys)
-            .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
-            .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
-            .collect_vec();
+    //     let polys_for_permutation = iter::empty()
+    //         .chain(&instance_polys)
+    //         .chain(&fixed_preprocess_polys)
+    //         .chain(&accumulator.witness_polys[..builtin_witness_poly_offset])
+    //         .chain(pp.permutation_polys.iter().map(|(_, poly)| poly))
+    //         .collect_vec();
 
-        let permutation_z_polys = permutation_z_polys(
-            pp.num_permutation_z_polys,
-            &pp.permutation_polys,
-            &polys_for_permutation,
-            &beta,
-            &gamma,
-        );
-        end_timer(timer);
+    //     let permutation_z_polys = permutation_z_polys(
+    //         pp.num_permutation_z_polys,
+    //         &pp.permutation_polys,
+    //         &polys_for_permutation,
+    //         &beta,
+    //         &gamma,
+    //     );
+    //     end_timer(timer);
 
-        let permutation_z_comms =
-            Pcs::batch_commit_and_write(&pp.pcs, &permutation_z_polys, transcript)?;
+    //     let permutation_z_comms =
+    //         Pcs::batch_commit_and_write(&pp.pcs, &permutation_z_polys, transcript)?;
 
-        // Round 1
+    //     // Round 1
 
-        let alpha = transcript.squeeze_challenge();
-        let y = transcript.squeeze_challenges(pp.num_vars);
+    //     let alpha = transcript.squeeze_challenge();
+    //     let y = transcript.squeeze_challenges(pp.num_vars);
 
-        let polys = iter::empty()
-            .chain(polys)
-            .chain(&accumulator.witness_polys[builtin_witness_poly_offset..])
-            .chain(permutation_z_polys.iter())
-            .chain(Some(&accumulator.e_poly))
-            .collect_vec();
-        let challenges = iter::empty()
-            .chain(accumulator.instance.challenges.iter().copied())
-            .chain([accumulator.instance.u])
-            .chain([beta, gamma, alpha])
-            .collect();
-        let (points, evals) = {
-            prove_sum_check(
-                pp.num_instances.len(),
-                &pp.expression,
-                accumulator.instance.claimed_sum(),
-                &polys,
-                challenges,
-                y,
-                transcript,
-            )?
-        };
+    //     let polys = iter::empty()
+    //         .chain(polys)
+    //         .chain(&accumulator.witness_polys[builtin_witness_poly_offset..])
+    //         .chain(permutation_z_polys.iter())
+    //         .chain(Some(&accumulator.e_poly))
+    //         .collect_vec();
+    //     let challenges = iter::empty()
+    //         .chain(accumulator.instance.challenges.iter().copied())
+    //         .chain([accumulator.instance.u])
+    //         .chain([beta, gamma, alpha])
+    //         .collect();
+    //     let (points, evals) = {
+    //         prove_sum_check(
+    //             pp.num_instances.len(),
+    //             &pp.expression,
+    //             accumulator.instance.claimed_sum(),
+    //             &polys,
+    //             challenges,
+    //             y,
+    //             transcript,
+    //         )?
+    //     };
 
-        // PCS open
+    //     // PCS open
 
-        let dummy_comm = Pcs::Commitment::default();
-        let comms = iter::empty()
-            .chain(iter::repeat(&dummy_comm).take(pp.num_instances.len()))
-            .chain(&pp.preprocess_comms)
-            .chain(&accumulator.instance.witness_comms[..builtin_witness_poly_offset])
-            .chain(&pp.permutation_comms)
-            .chain(&accumulator.instance.witness_comms[builtin_witness_poly_offset..])
-            .chain(&permutation_z_comms)
-            .chain(Some(&accumulator.instance.e_comm))
-            .collect_vec();
-        let timer = start_timer(|| format!("pcs_batch_open-{}", evals.len()));
-        Pcs::batch_open(&pp.pcs, polys, comms, &points, &evals, transcript)?;
-        end_timer(timer);
+    //     let dummy_comm = Pcs::Commitment::default();
+    //     let comms = iter::empty()
+    //         .chain(iter::repeat(&dummy_comm).take(pp.num_instances.len()))
+    //         .chain(&pp.preprocess_comms)
+    //         .chain(&accumulator.instance.witness_comms[..builtin_witness_poly_offset])
+    //         .chain(&pp.permutation_comms)
+    //         .chain(&accumulator.instance.witness_comms[builtin_witness_poly_offset..])
+    //         .chain(&permutation_z_comms)
+    //         .chain(Some(&accumulator.instance.e_comm))
+    //         .collect_vec();
+    //     let timer = start_timer(|| format!("pcs_batch_open-{}", evals.len()));
+    //     Pcs::batch_open(&pp.pcs, polys, comms, &points, &evals, transcript)?;
+    //     end_timer(timer);
 
         Ok(())
     }
@@ -1598,54 +1553,54 @@ where
         transcript: &mut impl TranscriptRead<CommitmentChunk<F, Pcs>, F>,
         _: impl RngCore,
     ) -> Result<(), Error> {
-        let ProtostarVerifierParam { vp, .. } = vp;
+        // let ProtostarVerifierParam { vp, .. } = vp;
 
-        accumulator.absorb_into(transcript)?;
+        // accumulator.absorb_into(transcript)?;
 
-        // Round 0
+        // // Round 0
 
-        let beta = transcript.squeeze_challenge();
-        let gamma = transcript.squeeze_challenge();
+        // let beta = transcript.squeeze_challenge();
+        // let gamma = transcript.squeeze_challenge();
 
-        let permutation_z_comms =
-            Pcs::read_commitments(&vp.pcs, vp.num_permutation_z_polys, transcript)?;
+        // let permutation_z_comms =
+        //     Pcs::read_commitments(&vp.pcs, vp.num_permutation_z_polys, transcript)?;
 
-        // Round 1
+        // // Round 1
 
-        let alpha = transcript.squeeze_challenge();
-        let y = transcript.squeeze_challenges(vp.num_vars);
+        // let alpha = transcript.squeeze_challenge();
+        // let y = transcript.squeeze_challenges(vp.num_vars);
 
-        let challenges = iter::empty()
-            .chain(accumulator.challenges.iter().copied())
-            .chain([accumulator.u])
-            .chain([beta, gamma, alpha])
-            .collect_vec();
-        let (points, evals) = {
-            verify_sum_check(
-                vp.num_vars,
-                &vp.expression,
-                accumulator.claimed_sum(),
-                accumulator.instances(),
-                &challenges,
-                &y,
-                transcript,
-            )?
-        };
+        // let challenges = iter::empty()
+        //     .chain(accumulator.challenges.iter().copied())
+        //     .chain([accumulator.u])
+        //     .chain([beta, gamma, alpha])
+        //     .collect_vec();
+        // let (points, evals) = {
+        //     verify_sum_check(
+        //         vp.num_vars,
+        //         &vp.expression,
+        //         accumulator.claimed_sum(),
+        //         accumulator.instances(),
+        //         &challenges,
+        //         &y,
+        //         transcript,
+        //     )?
+        // };
 
-        // PCS verify
+        // // PCS verify
 
-        let builtin_witness_poly_offset = vp.num_witness_polys.iter().sum::<usize>();
-        let dummy_comm = Pcs::Commitment::default();
-        let comms = iter::empty()
-            .chain(iter::repeat(&dummy_comm).take(vp.num_instances.len()))
-            .chain(&vp.preprocess_comms)
-            .chain(&accumulator.witness_comms[..builtin_witness_poly_offset])
-            .chain(vp.permutation_comms.iter().map(|(_, comm)| comm))
-            .chain(&accumulator.witness_comms[builtin_witness_poly_offset..])
-            .chain(&permutation_z_comms)
-            .chain(Some(&accumulator.e_comm))
-            .collect_vec();
-        Pcs::batch_verify(&vp.pcs, comms, &points, &evals, transcript)?;
+        // let builtin_witness_poly_offset = vp.num_witness_polys.iter().sum::<usize>();
+        // let dummy_comm = Pcs::Commitment::default();
+        // let comms = iter::empty()
+        //     .chain(iter::repeat(&dummy_comm).take(vp.num_instances.len()))
+        //     .chain(&vp.preprocess_comms)
+        //     .chain(&accumulator.witness_comms[..builtin_witness_poly_offset])
+        //     .chain(vp.permutation_comms.iter().map(|(_, comm)| comm))
+        //     .chain(&accumulator.witness_comms[builtin_witness_poly_offset..])
+        //     .chain(&permutation_z_comms)
+        //     .chain(Some(&accumulator.e_comm))
+        //     .collect_vec();
+        // Pcs::batch_verify(&vp.pcs, comms, &points, &evals, transcript)?;
 
         Ok(())
     }
@@ -1664,23 +1619,21 @@ where
             .chain([1])
             .chain([1])
             .collect();
-
         let num_challenges = {
             let mut num_challenges = iter::empty()
                 .chain(vp.vp.num_challenges.iter().cloned())
                 .map(|num_challenge| vec![1; num_challenge])
                 .collect_vec();
             if vp.lookups {
-                num_challenges.last_mut().unwrap().push(vp.num_theta_primes + 2);
+                num_challenges.last_mut().unwrap().push(vp.num_theta_primes + 2); // +1 for zeta, +1 for beta 
             } else {
                 num_challenges.last_mut().unwrap().push(vp.num_theta_primes + 1);
             }
             iter::empty()
                 .chain(num_challenges)
-                .chain([vec![vp.num_alpha_primes]])
                 .collect()
         };
-        println!("num_challenges {:?}", num_challenges);
+
         Self {
             vp_digest: N::ZERO,
             strategy: vp.strategy,

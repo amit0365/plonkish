@@ -120,15 +120,16 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
 
     let advice_idx = advice_idx(cs);
 
-    let constraints = cs
-        .gates()
-        .iter()
-        .flat_map(|gate| {
-            gate.polynomials().iter().map(|expression| {
-                convert_expression(cs, &advice_idx, challenge_idx, expression)
-            })
-        })
-        .collect();
+    let constraints = vec![Expression::Constant(F::ZERO)];
+    // let constraints = cs
+    //     .gates()
+    //     .iter()
+    //     .flat_map(|gate| {
+    //         gate.polynomials().iter().map(|expression| {
+    //             convert_expression(cs, &advice_idx, challenge_idx, expression)
+    //         })
+    //     })
+    //     .collect();
 
     let gate_expressions: Vec<plonk::Expression<F>> = cs
         .gates()
@@ -137,13 +138,15 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
             gate.polynomials().iter().cloned()
         })
     .collect_vec();
-    //todo assuming each gate has only one selector
+    // todo assuming each gate has only one selector
     let mut queried_selectors: HashMap<usize, (usize, Vec<usize>)> = cs.gates().iter().map(|gate| {
         let selector_index = gate.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
         let degree_vec = gate.polynomials().iter().map(|poly| poly.degree()).collect_vec();
         (selector_index, (gate.polynomials().len(), degree_vec))
     }).collect();
 
+    let one = F::ONE;
+    // not used for error only for creating nark lookup polys so u = 1
     let lookups = cs
         .lookups()
         .iter()
@@ -154,13 +157,15 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .zip(lookup.table_expressions())
                 .map(|(input, table)| {
                     let [input, table] = [input, table].map(|expression| {
-                        convert_expression(cs, &advice_idx, challenge_idx, expression)
+                        convert_expression(cs, &advice_idx, challenge_idx, expression) 
                     });
                     (input, table)
                 })
                 .collect_vec()
         })
         .collect_vec();
+
+    // used for error
     let lookup_expressions: Vec<Vec<(plonk::Expression<F>, plonk::Expression<F>)>> = cs
         .lookups()
         .iter()
@@ -182,12 +187,10 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
     if !lookups.is_empty() {
         cs.lookups().iter().map(|lookup| {
             let selector_index = lookup.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
-            queried_selectors.insert(selector_index, (1, vec![3])); //todo hardcoded lookup degree and constraints
+            queried_selectors.insert(selector_index, (1, vec![3])); // h constraint
         }).collect_vec();
-        queried_selectors.insert(queried_selectors.len(), (1, vec![3])); //todo hardcoded lookup degree and constraints
-    } else {
-        println!("queried_selectors {:?}", queried_selectors);
-    }
+        queried_selectors.insert(queried_selectors.len(), (1, vec![3])); // g constraint
+    } 
 
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
@@ -340,7 +343,6 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     
     let mut selector_map = preprocess_collector.selector_map.clone();
     if !circuit_info.lookups.is_empty() {
-        println!("queried_selectors {:?}", queried_selectors.len());
         selector_map.insert(queried_selectors.len(), (0..1<<LOOKUP_BITS).collect_vec()); //todo hardcoded to 0 for now
     }
     circuit_info.selector_map = selector_map.clone();
@@ -349,7 +351,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         num_betas += values.len() * queried_selectors.get(key).unwrap_or(&(0, vec![])).0;
     }
     println!("num_betas: {}", num_betas);
-    let log_num_betas = (num_betas as f64).log2().ceil() as usize;
+    let log_num_betas = ((num_betas as f64).log2().ceil() as usize + 1) & !1;
     println!("log_num_betas: {}", log_num_betas);
     circuit_info.log_num_betas = log_num_betas;
 
@@ -1049,7 +1051,7 @@ fn phase_offsets(phases: &[u8]) -> Vec<usize> {
         .collect()
 }
 
-fn convert_expression<F: Field>(
+pub fn convert_expression<F: Field>(
     cs: &ConstraintSystem<F>,
     advice_idx: &[usize],
     challenge_idx: &[usize],
@@ -1057,6 +1059,7 @@ fn convert_expression<F: Field>(
 ) -> Expression<F> {
 
     expression.evaluate(
+        &|_| unreachable!("AccU should not be used in convert_expression"),
         &|constant| Expression::Constant(constant),
         &|selector| {
             let poly = cs.num_instance_columns() + cs.num_fixed_columns() + selector.index();

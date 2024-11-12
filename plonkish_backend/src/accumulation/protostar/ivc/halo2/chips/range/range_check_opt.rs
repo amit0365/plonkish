@@ -119,14 +119,14 @@ where
             "range u8 check for difference between each interstitial running sum output",
             |meta| {
                 let z0 = meta.query_advice(z[0], Rotation::cur());
-                let z1 = meta.query_advice(z[1], Rotation::cur());
+                //let z1 = meta.query_advice(z[0], Rotation::next());
                 //let z2 = meta.query_advice(z[2], Rotation::cur());
                 //let z3 = meta.query_advice(z[3], Rotation::cur());
 
                 let lookup_enable_selector = meta.query_selector(lookup_enable_selector);
                 let u8_range = meta.query_fixed(lookup_u8_table, Rotation::cur());
 
-                let diff0 = z0 - z1.clone() * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
+                let diff0 = z0 * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
                 //let diff1 = z1 - z2.clone() * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
                 //let diff2 = z2 - z3 * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
 
@@ -182,7 +182,7 @@ where
 
                 for (i, byte) in bytes.iter().enumerate() {
                     println!("i: {}", i);
-                    let idx = if i < NUM_RANGE_COLS { i + 1 } else { (i % NUM_RANGE_COLS) + 1};
+                    let idx = i + 1; //if i < NUM_RANGE_COLS { i + 1 } else { (i % NUM_RANGE_COLS) + 1};
                     println!("idx: {}", idx);
                     // z_next = (z_cur - byte) / (2^K)
                     let z_next = {

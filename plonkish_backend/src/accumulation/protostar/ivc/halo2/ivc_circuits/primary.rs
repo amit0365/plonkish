@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use rand::{rngs::OsRng, RngCore};
-use std::{cell::RefCell, iter::{self, once}, marker::PhantomData, os::macos::raw::stat, time::Instant};
-use halo2_base::{halo2_proofs::{circuit::{floor_planner::V1, AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}}, utils::{BigPrimeField, FromUniformBytes, PrimeField}};
+use std::{cell::RefCell, iter::{self, once}};
+use halo2_proofs::{circuit::{floor_planner::V1, AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}};
+use halo2_base::utils::{BigPrimeField, FromUniformBytes, PrimeField};
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash, Spec}, spec::PoseidonSpec, PoseidonSpongeChip, Pow5Chip, Pow5Config}; 
 use halo2_proofs::{circuit::floor_planner::Folding, plonk::Error};
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
@@ -14,10 +15,7 @@ use crate::{
 };
 use crate::accumulation::protostar::ivc::halo2::chips::range::range_check::{RangeCheckChip, RangeCheckConfig};
 use poseidon2::circuit::{hash_chip::NUM_PARTIAL_SBOX, pow5::{Pow5Chip as Poseidon2Pow5Chip, Pow5Config as Poseidon2Pow5Config}, primitives::{ConstantLength as ConstantLength2, Hash as Hash2}};
-//use poseidon::{Spec as PoseidonSpec, Poseidon as PoseidonInlineHash};
-use poseidon2::circuit::hash_chip::Poseidon2SpongeChip;
 use poseidon2::circuit::spec::PoseidonSpec as Poseidon2ChipSpec;
-use halo2_gadgets::poseidon::spec::PoseidonSpec as PoseidonChipSpec;
 use crate::accumulation::protostar::ivc::halo2::chips::poseidon::hash_chip::{Poseidon2Chip, Poseidon2Config};
 use crate::accumulation::protostar::ivc::halo2::chips::{T as T2, R as R2};
 
@@ -25,7 +23,7 @@ pub const T: usize = 4;
 pub const RATE: usize = 3;
 pub const NUM_RANGE_COLS: usize = 1; //(T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 26; //num_challenges 10 from 5 so 29 + 5; //34 - 4limbs
+pub const PRIMARY_HASH_LENGTH: usize = 25; 
 pub const PRIMARY_HASH_LENGTH_EC: usize = 19;
 pub const CF_HASH_LENGTH: usize = 13;
 
@@ -64,8 +62,6 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         let rc_full_rounds = (0..T).map(|_| meta.fixed_column()).collect::<Vec<_>>();
         let rc_partial_rounds = (0..NUM_PARTIAL_SBOX).map(|_| meta.fixed_column()).collect::<Vec<_>>();
         let pad_fixed = (0..T).map(|_| meta.fixed_column()).collect::<Vec<_>>();
-
-        meta.enable_constant(pad_fixed[0]);
 
         let poseidon_config = Poseidon2Pow5Chip::configure::<Poseidon2ChipSpec>(
             meta,
@@ -132,7 +128,7 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         let range_chip = RangeCheckChip::<C>::construct(self.range_check_config);
         let mut main_chip = MainChip::<C>::new(self.main_config.clone(), range_chip.clone());
         main_chip.initialize_pow2(layouter)?;
-        main_chip.load_range_check_table(layouter, self.range_check_config.lookup_u8_table)?;
+        main_chip.load_range_check_table(layouter.namespace(||"load range check table"), self.range_check_config.lookup_u8_table)?;
         let pow5_chip = Poseidon2Pow5Chip::construct(self.poseidon_config.clone());
         let sm_chip = ScalarMulChip::<C>::new(self.sm_chip_config.clone());
         Ok((main_chip, range_chip, pow5_chip, sm_chip))
@@ -226,8 +222,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             cross_term_comms: Vec<Comm>,
             acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
         ) -> C::Base {
-            //let mut poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<CF_HASH_LENGTH>, T2, R2>::from_spec(self.cyclefold_hash_config.clone()); // PoseidonHash::from_spec(spec.clone());
-            let mut poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<CF_HASH_LENGTH>, T2, R2>::init();
+            let poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<CF_HASH_LENGTH>, T2, R2>::init();
             let inputs = iter::empty()
                 //.chain([fe_to_fe(vp_digest)])
                 .chain([fe_to_fe(fe_from_bits_le(r_le_bits))])
@@ -249,7 +244,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                         .map(AsRef::as_ref)
                         .flat_map(into_coordinates),
                 )
-                .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
+                .chain(into_coordinates(acc.e_comm.as_ref()))
                 .collect_vec();
    
             let hash = poseidon.hash(inputs.try_into().unwrap());
@@ -264,8 +259,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             output: &[C::Scalar],
             acc: &ProtostarAccumulatorInstance<C::Scalar, Comm>,
         ) -> C::Scalar {
-            //let mut poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<PRIMARY_HASH_LENGTH>, T, RATE>::from_spec(self.hash_config.clone());
-            let mut poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<PRIMARY_HASH_LENGTH>, T, RATE>::init();
+            let poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<PRIMARY_HASH_LENGTH>, T, RATE>::init();
             let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMBS_NON_NATIVE);
             let inputs = iter::empty()
                 .chain([vp_digest, C::Scalar::from(step_idx as u64)])
@@ -275,12 +269,12 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 .chain(acc.witness_comms
                         .iter()
                         .map(AsRef::as_ref)
-                        .flat_map(into_coordinates).into_iter().map(fe_to_limbs).flatten(),
+                        .flat_map(into_coordinates).flat_map(fe_to_limbs),
                 )
                 .chain(acc.challenges.iter().copied())
                 .chain([acc.u])
-                .chain(into_coordinates(acc.e_comm.as_ref()).into_iter().map(fe_to_limbs).flatten())
-                .chain(acc.compressed_e_sum.into_iter())
+                .chain(into_coordinates(acc.e_comm.as_ref()).into_iter().flat_map(fe_to_limbs))
+                .chain(acc.compressed_e_sum)
                 .collect_vec();
 
             let hash = poseidon.hash(inputs.try_into().unwrap());
@@ -315,13 +309,10 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 .chain(acc.challenges.iter())
                 .chain([&acc.u])
                 .chain(acc.e_comm.x.limbs.iter().chain(acc.e_comm.y.limbs.iter()))
-                .chain(
-                    acc.compressed_e_sum
-                        .as_ref()
-                        .into_iter())
+                .chain(acc.compressed_e_sum.as_ref())
                 .collect_vec();
-
             let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
+            
             let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
             // change to strict - Witness count: 29272
             // let hash_le_bits = main_chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?;
@@ -337,20 +328,20 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             acc: &ProtostarAccumulatorInstance<C::Base, Comm>,
         ) -> C::Scalar {
             //let mut poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<PRIMARY_HASH_LENGTH>, T, RATE>::from_spec(self.hash_config.clone());
-            let mut poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<PRIMARY_HASH_LENGTH_EC>, T, RATE>::init();
+            let poseidon = Hash::<_, Poseidon2ChipSpec, ConstantLength<PRIMARY_HASH_LENGTH_EC>, T, RATE>::init();
             let fe_to_limbs = |fe| fe_to_limbs(fe, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMBS_NON_NATIVE);
             let inputs = iter::empty()
                 .chain([vp_digest])
-                .chain(once(acc.instances[0][0]).map(fe_to_limbs).flatten())
+                .chain(once(acc.instances[0][0]).flat_map(fe_to_limbs))
                 .chain(acc.witness_comms
                         .iter()
                         .map(AsRef::as_ref)
                         .flat_map(into_coordinates),
                 )
-                .chain(acc.challenges.iter().copied().map(fe_to_limbs).flatten())
-                .chain(once(acc.u).map(fe_to_limbs).flatten())
-                .chain(into_coordinates(acc.e_comm.as_ref()).into_iter())
-                .chain(acc.compressed_e_sum.into_iter().map(fe_to_limbs).flatten())
+                .chain(acc.challenges.iter().copied().flat_map(fe_to_limbs))
+                .chain(once(acc.u).flat_map(fe_to_limbs))
+                .chain(into_coordinates(acc.e_comm.as_ref()))
+                .chain(acc.compressed_e_sum.into_iter().flat_map(fe_to_limbs))
                 .collect_vec();
 
             let hash = poseidon.hash(inputs.try_into().unwrap());
@@ -397,13 +388,13 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
     }
 
     pub fn update_from_cyclefold<
-        Comm_ec: AsRef<C::Secondary>
+        CommEc: AsRef<C::Secondary>
     >(
         &mut self,
         cyclefold_proof: Vec<u8>,
         cyclefold_instances: [C::Base; CF_IO_LEN],
-        acc_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
-        acc_prime_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
+        acc_ec: ProtostarAccumulatorInstance<C::Base, CommEc>,
+        acc_prime_ec: ProtostarAccumulatorInstance<C::Base, CommEc>,
     ) {
         self.h_prime_ec = Value::known(self.hash_state_ec(
             self.cyclefold_avp.vp_digest,
@@ -417,7 +408,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
 
     pub fn update_both_running_instances<
         Comm: AsRef<C>, 
-        Comm_ec: AsRef<C::Secondary>
+        CommEc: AsRef<C::Secondary>
     >(
         &mut self,
         r_le_bits: Vec<C::Scalar>,
@@ -427,8 +418,8 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         acc_prime: ProtostarAccumulatorInstance<C::Scalar, Comm>,
         primary_instances: [C::Scalar; NUM_INSTANCES],
         primary_proof: Vec<u8>,
-        acc_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
-        acc_prime_ec: ProtostarAccumulatorInstance<C::Base, Comm_ec>,
+        acc_ec: ProtostarAccumulatorInstance<C::Base, CommEc>,
+        acc_prime_ec: ProtostarAccumulatorInstance<C::Base, CommEc>,
     ) {
         let mut next_output = Vec::new();
         if (self.is_primary && acc_prime.u != C::Scalar::ZERO)//
@@ -692,7 +683,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 [&self.primary_instances[0]].map(Value::as_ref);  
             let proof = self.primary_proof.clone();
             let native_transcript_chip = 
-                &mut PoseidonNativeTranscriptChip::<C>::new(&mut layouter, pow5_chip.clone(), self.hash_config.clone(), main_chip.clone(), proof);
+                &mut PoseidonNativeTranscriptChip::<C>::new(&mut layouter, pow5_chip.clone(), self.hash_config, main_chip.clone(), proof);
             // Witness count: 5833 - 920 = 4913
             // Copy count: 1170 - 113 = 1057
             acc_verifier.verify_accumulation_from_nark(&mut layouter, &acc, instances, native_transcript_chip, assigned_acc_prime_comms_checked)? 
@@ -720,7 +711,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             &vp_digest,
             &step_idx,
             &initial_input,
-            &input,
+            input,
             &acc,
         )?;
 
@@ -735,7 +726,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             &vp_digest,
             &step_idx_plus_one,
             &initial_input,
-            &output,
+            output,
             &acc_prime,
         )?;
 
@@ -747,7 +738,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         let (nark_ec, acc_ec_prime) = {     
             let proof = self.cyclefold_proof.clone();
             let transcript_chip = 
-                &mut PoseidonTranscriptChip::<C>::new(&mut layouter, pow5_chip.clone(), self.hash_config.clone(), main_chip.clone(), proof);
+                &mut PoseidonTranscriptChip::<C>::new(&mut layouter, pow5_chip.clone(), self.hash_config, main_chip.clone(), proof);
 
             acc_verifier_ec.verify_accumulation_from_nark_ec(&mut layouter, &acc_ec, cyclefold_instances.try_into().unwrap(), transcript_chip)?
         };
@@ -796,7 +787,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
         // Witness count: 20402
         // Copy count: 5311
         // assign public instances
-        // main_chip.expose_public(layouter, &h_prime, 0)?;
+        main_chip.expose_public(layouter, &h_prime, 0)?;
 
         Ok(())
     }
@@ -819,8 +810,8 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
         Self { 
             is_primary: false,
             step_circuit: self.step_circuit.clone(),
-            hash_config: self.hash_config.clone(),
-            cyclefold_hash_config: self.cyclefold_hash_config.clone(),
+            hash_config: self.hash_config,
+            cyclefold_hash_config: self.cyclefold_hash_config,
             // transcript_config: self.transcript_config,
             primary_avp: self.primary_avp.clone(),
             cyclefold_avp: self.cyclefold_avp.clone(),
@@ -912,13 +903,13 @@ fn primary_chip_layout() {
     use plotters::prelude::*;
     use halo2_proofs::dev::CircuitLayout;
 
-    let root = BitMapBackend::new("PrimaryChipPoseidon2V1_ERROR_FULL.png", (30024, 30068)).into_drawing_area();
+    let root = BitMapBackend::new("PrimaryChipLookupError.png", (3002, 3006)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let root = root
         .titled("Primary Chip Layout", ("sans-serif", 60))
         .unwrap();
 
-    let k = 12;
+    let k = 8;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
         bn256::Fr::ZERO,
         Compressing,
@@ -941,16 +932,20 @@ fn primary_chip_layout() {
     let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
     println!("Witness count: {}", prover.witness_count);
     println!("Copy count: {}", prover.copy_count);
-    //prover.assert_satisfied();
+    prover.assert_satisfied();
 
-    let circuit_layout = CircuitLayout{
-        hide_labels: false,
-        mark_equality_cells: false,
-        show_equality_constraints: false,
-        view_width: Some(0..24),
-        view_height: Some(0..(1<<k)),
-    };
-
-    circuit_layout.render(k, &circuit, &root)
+    halo2_proofs::dev::CircuitLayout::default()
+    .render(k, &circuit, &root)
     .unwrap();
+
+    // let circuit_layout = CircuitLayout{
+    //     hide_labels: false,
+    //     mark_equality_cells: false,
+    //     show_equality_constraints: false,
+    //     view_width: Some(0..24),
+    //     view_height: Some(0..(1<<k)),
+    // };
+
+    // circuit_layout.render(k, &circuit, &root)
+    // .unwrap();
 }

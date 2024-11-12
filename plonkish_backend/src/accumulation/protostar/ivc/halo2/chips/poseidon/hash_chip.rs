@@ -1,9 +1,10 @@
 //! An easy-to-use implementation of the Poseidon Hash in the form of a Halo2 Chip. While the Poseidon Hash function
 //! is already implemented in halo2_gadgets, there is no wrapper chip that makes it easy to use in other circuits.
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash as inlineHash, Spec}, Hash, Pow5Chip, Pow5Config};
-use halo2_base::{halo2_proofs::{
+use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::{bn256::{self, Fq as Fp}, grumpkin}, plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed}
-}, utils::FromUniformBytes};
+};
+use halo2_base::utils::FromUniformBytes;
 use halo2_proofs::arithmetic::Field;
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::{RATE, T}, util::{arithmetic::{PrimeFieldBits, TwoChainCurve}, end_timer, start_timer}};
 use halo2_base::utils::BigPrimeField;
@@ -395,7 +396,7 @@ fn poseidon_hash_longer_input_custom() {
     println!("prover.copy_count: {:?}", prover.copy_count);
     assert_eq!(prover.verify(), Ok(()));
 
-    halo2_base::halo2_proofs::dev::CircuitLayout::default()
+    halo2_proofs::dev::CircuitLayout::default()
     .render(k, &circuit, &root)
     .unwrap();
 }

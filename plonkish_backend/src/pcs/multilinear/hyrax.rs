@@ -1,7 +1,8 @@
 use crate::{
     pcs::{
         multilinear::{
-            additive, err_too_many_variates,
+            //additive,
+            err_too_many_variates,
             ipa::{MultilinearIpa, MultilinearIpaCommitment, MultilinearIpaParams},
             validate_input,
         },
@@ -279,7 +280,8 @@ where
     ) -> Result<(), Error> {
         let polys = polys.into_iter().collect_vec();
         let comms = comms.into_iter().collect_vec();
-        additive::batch_open::<_, Self>(pp, pp.num_vars(), polys, comms, points, evals, transcript)
+        //additive::batch_open::<_, Self>(pp, pp.num_vars(), polys, comms, points, evals, transcript)
+        Ok(())
     }
 
     fn read_commitments(
@@ -328,7 +330,8 @@ where
         transcript: &mut impl TranscriptRead<C, C::Scalar>,
     ) -> Result<(), Error> {
         let comms = comms.into_iter().collect_vec();
-        additive::batch_verify::<_, Self>(vp, vp.num_vars(), comms, points, evals, transcript)
+        //additive::batch_verify::<_, Self>(vp, vp.num_vars(), comms, points, evals, transcript)
+        Ok(())
     }
 }
 

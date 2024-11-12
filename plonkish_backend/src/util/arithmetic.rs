@@ -17,10 +17,7 @@ pub use halo2_proofs::halo2curves::{
     CurveAffine,Coordinates,CurveExt, pairing::{self, MillerLoopResult}, bn256::{self, Bn256}, grumpkin, pasta::{pallas, vesta}
     };
 pub use msm::{fixed_base_msm, variable_base_msm, window_size, window_table};
-use halo2_base::{
-    gates::flex_gate::{GateChip, GateInstructions},
-    utils::{CurveAffineExt, ScalarField, BigPrimeField},
-};
+use halo2_base::utils::{CurveAffineExt, ScalarField, BigPrimeField};
 
 pub trait MultiMillerLoop: pairing::MultiMillerLoop + Debug + Sync {
     fn pairings_product_is_identity(terms: &[(&Self::G1Affine, &Self::G2Prepared)]) -> bool {
@@ -108,7 +105,7 @@ pub fn inner_product<'a, 'b, F: Field>(
     rhs: impl IntoIterator<Item = &'b F>,
 ) -> F {
     lhs.into_iter()
-        .zip_eq(rhs.into_iter())
+        .zip_eq(rhs)
         .map(|(lhs, rhs)| *lhs * rhs)
         .reduce(|acc, product| acc + product)
         .unwrap_or_default()

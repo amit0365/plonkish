@@ -8,30 +8,30 @@ use halo2_proofs::plonk;
 
 use crate::util::{arithmetic::Field, expression::Rotation, izip, Deserialize, Itertools, Serialize};
 
-use super::arithmetic::BooleanHypercube;
-
 /// Mirror of a `plonk::Expression` where nodes have been moved to a `Queries` structure, and replaced with their indices therein.
 #[derive(Clone, Debug)]
-pub enum Expression<F, CV, FV, WV> {
+pub enum Expression<F, CV, FV, WV, AV> {
+    AccU(AV),
     Constant(F),
     Challenge(CV),
     Fixed(FV),
     Witness(WV),
-    Negated(Box<Expression<F, CV, FV, WV>>),
+    Negated(Box<Expression<F, CV, FV, WV, AV>>),
     Sum(
-        Box<Expression<F, CV, FV, WV>>,
-        Box<Expression<F, CV, FV, WV>>,
+        Box<Expression<F, CV, FV, WV, AV>>,
+        Box<Expression<F, CV, FV, WV, AV>>,
     ),
     Product(
-        Box<Expression<F, CV, FV, WV>>,
-        Box<Expression<F, CV, FV, WV>>,
+        Box<Expression<F, CV, FV, WV, AV>>,
+        Box<Expression<F, CV, FV, WV, AV>>,
     ),
 }
 
-impl<F, CV, FV, WV> Expression<F, CV, FV, WV> {
+impl<F, CV, FV, WV, AV> Expression<F, CV, FV, WV, AV> {
     /// Returns the degree of the Expression, considering Challenge and Witness leaves as variables.
     pub fn degree(&self) -> usize {
         match self {
+            Self::AccU(_) => 1,
             Self::Constant(_) => 0,
             Self::Challenge(_) => 1,
             Self::Fixed(_) => 0,
@@ -45,6 +45,7 @@ impl<F, CV, FV, WV> Expression<F, CV, FV, WV> {
     /// Evaluate the polynomial using the provided closures to perform the operations.
     pub fn evaluate<T>(
         &self,
+        acc_u: &impl Fn(&AV) -> T,
         constant: &impl Fn(&F) -> T,
         challenge: &impl Fn(&CV) -> T,
         fixed: &impl Fn(&FV) -> T,
@@ -54,22 +55,23 @@ impl<F, CV, FV, WV> Expression<F, CV, FV, WV> {
         product: &impl Fn(T, T) -> T,
     ) -> T {
         match self {
+            Self::AccU(v) => acc_u(v),
             Self::Constant(v) => constant(v),
             Self::Challenge(v) => challenge(v),
             Self::Fixed(v) => fixed(v),
             Self::Witness(v) => witness(v),
             Self::Negated(a) => {
-                let a = a.evaluate(constant, challenge, fixed, witness, negated, sum, product);
+                let a = a.evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
                 negated(&a)
             }
             Self::Sum(a, b) => {
-                let a = a.evaluate(constant, challenge, fixed, witness, negated, sum, product);
-                let b = b.evaluate(constant, challenge, fixed, witness, negated, sum, product);
+                let a = a.evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                let b = b.evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
                 sum(a, b)
             }
             Self::Product(a, b) => {
-                let a = a.evaluate(constant, challenge, fixed, witness, negated, sum, product);
-                let b = b.evaluate(constant, challenge, fixed, witness, negated, sum, product);
+                let a = a.evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                let b = b.evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
                 product(a, b)
             }
         }
@@ -78,6 +80,7 @@ impl<F, CV, FV, WV> Expression<F, CV, FV, WV> {
     /// Evaluate the polynomial using the provided mutable closures to perform the operations.
     pub fn evaluate_mut<T>(
         &self,
+        acc_u: &mut impl FnMut(&AV) -> T,
         constant: &mut impl FnMut(&F) -> T,
         challenge: &mut impl FnMut(&CV) -> T,
         fixed: &mut impl FnMut(&FV) -> T,
@@ -87,50 +90,51 @@ impl<F, CV, FV, WV> Expression<F, CV, FV, WV> {
         product: &mut impl FnMut(T, T) -> T,
     ) -> T {
         match self {
+            Self::AccU(v) => acc_u(v),
             Self::Constant(v) => constant(v),
             Self::Challenge(v) => challenge(v),
             Self::Fixed(v) => fixed(v),
             Self::Witness(v) => witness(v),
             Self::Negated(a) => {
-                let a = a.evaluate_mut(constant, challenge, fixed, witness, negated, sum, product);
+                let a = a.evaluate_mut(acc_u, constant, challenge, fixed, witness, negated, sum, product);
                 negated(a)
             }
             Self::Sum(a, b) => {
-                let a = a.evaluate_mut(constant, challenge, fixed, witness, negated, sum, product);
-                let b = b.evaluate_mut(constant, challenge, fixed, witness, negated, sum, product);
+                let a = a.evaluate_mut(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                let b = b.evaluate_mut(acc_u, constant, challenge, fixed, witness, negated, sum, product);
                 sum(a, b)
             }
             Self::Product(a, b) => {
-                let a = a.evaluate_mut(constant, challenge, fixed, witness, negated, sum, product);
-                let b = b.evaluate_mut(constant, challenge, fixed, witness, negated, sum, product);
+                let a = a.evaluate_mut(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                let b = b.evaluate_mut(acc_u, constant, challenge, fixed, witness, negated, sum, product);
                 product(a, b)
             }
         }
     }
 }
 
-impl<F, CV, FV, WV> Neg for Expression<F, CV, FV, WV> {
+impl<F, CV, FV, WV, AV> Neg for Expression<F, CV, FV, WV, AV> {
     type Output = Self;
     fn neg(self) -> Self::Output {
         Expression::Negated(Box::new(self))
     }
 }
 
-impl<F, CV, FV, WV> Add for Expression<F, CV, FV, WV> {
+impl<F, CV, FV, WV, AV> Add for Expression<F, CV, FV, WV, AV> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         Expression::Sum(Box::new(self), Box::new(rhs))
     }
 }
 
-impl<F, CV, FV, WV> Sub for Expression<F, CV, FV, WV> {
+impl<F, CV, FV, WV, AV> Sub for Expression<F, CV, FV, WV, AV> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         Expression::Sum(Box::new(self), Box::new(-rhs))
     }
 }
 
-impl<F, CV, FV, WV> Mul for Expression<F, CV, FV, WV> {
+impl<F, CV, FV, WV, AV> Mul for Expression<F, CV, FV, WV, AV> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         Expression::Product(Box::new(self), Box::new(rhs))
@@ -167,6 +171,11 @@ impl<T> ColumnQuery<T> {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct AccUQuery<T> {
+    pub value: T,
+}
+
 /// Reference to a challenge variable
 /// TODO: Circuit expressions containing powers of challenges will blow up the degree of the error polynomial.
 /// By substituting powers of a challenge with a symbolic variable, we can reduce the degree of the error polynomial.
@@ -183,6 +192,7 @@ pub type QueriedExpression<T> = Expression<
     ChallengeQuery<<T as QueryType>::Challenge>,
     ColumnQuery<<T as QueryType>::Fixed>,
     ColumnQuery<<T as QueryType>::Witness>,
+    AccUQuery<<T as QueryType>::AccU>,
 >;
 
 /// Container type for data contained in a QueriedExpression
@@ -195,10 +205,13 @@ pub trait QueryType {
     type Fixed: Copy + PartialEq;
     // WitnessVariable
     type Witness: Copy + PartialEq;
+    // AccUVariable
+    type AccU: Copy + PartialEq + Debug;
 
     /// Convert a plonk::Expression into a QueriedExpression, where leaves contain references to the underlying data.
     fn from_expression(
         expr: &plonk::Expression<Self::F>,
+        acc_u: &[Self::AccU],
         selectors: &[Self::Fixed],
         fixed: &[Self::Fixed],
         instance: &[Self::Witness],
@@ -206,6 +219,11 @@ pub trait QueryType {
         challenges: &[Self::Challenge],
     ) -> QueriedExpression<Self> {
         expr.evaluate(
+            &|u| { 
+                    QueriedExpression::<Self>::AccU(AccUQuery {
+                    value: acc_u[u.index],
+                })
+            },
             &QueriedExpression::<Self>::Constant,
             &|selector_column| {
                 QueriedExpression::<Self>::Fixed(ColumnQuery {
@@ -250,6 +268,11 @@ pub trait QueryType {
                 )
             },
         )
+    }
+
+    /// Create a AccU QueriedExpression
+    fn new_u(value: Self::AccU) -> QueriedExpression<Self> {
+        QueriedExpression::<Self>::AccU(AccUQuery { value })
     }
 
     /// Create a Constant QueriedExpression
@@ -327,10 +350,11 @@ pub trait QueryType {
 /// Derived from a QueriedExpression, where the leaves are collected into separate structures,
 /// and the expression leaves point to indices in the query sets.
 pub struct IndexedExpression<T: QueryType> {
-    pub expr: Expression<T::F, usize, usize, usize>,
+    pub expr: Expression<T::F, usize, usize, usize, usize>,
     pub challenges: Vec<ChallengeQuery<T::Challenge>>,
     pub fixed: Vec<ColumnQuery<T::Fixed>>,
     pub witness: Vec<ColumnQuery<T::Witness>>,
+    pub acc_u: Vec<AccUQuery<T::AccU>>,
 }
 
 impl<T: QueryType> IndexedExpression<T> {
@@ -348,9 +372,11 @@ impl<T: QueryType> IndexedExpression<T> {
         let mut challenges = Vec::new();
         let mut fixed = Vec::new();
         let mut witness = Vec::new();
+        let mut acc_u = Vec::new();
 
         // Create an expression where the leaves are indices into `queried_*`
         let expr = expr.evaluate_mut(
+            &mut |u| Expression::AccU(find_or_insert(&mut acc_u, u)),
             &mut |constant| Expression::Constant(*constant),
             &mut |c| Expression::Challenge(find_or_insert(&mut challenges, c)),
             &mut |f| Expression::Fixed(find_or_insert(&mut fixed, f)),
@@ -365,6 +391,7 @@ impl<T: QueryType> IndexedExpression<T> {
             challenges,
             fixed,
             witness,
+            acc_u,
         }
     }
 }

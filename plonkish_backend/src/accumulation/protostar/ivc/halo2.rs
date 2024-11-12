@@ -65,23 +65,11 @@ use poseidon2::circuit::spec::PoseidonSpec as Poseidon2ChipSpec;
 use rand::{rngs::OsRng, RngCore};
 use std::cell::RefCell;
 
-use halo2_base::{
-    Context,
-    gates::{
-        circuit::{builder::{RangeCircuitBuilder, BaseCircuitBuilder, self},
-        CircuitBuilderStage, BaseCircuitParams, BaseConfig},
-        flex_gate::{GateChip, GateInstructions, threads::SinglePhaseCoreManager}, RangeChip,
-    },
-    utils::{CurveAffineExt, ScalarField, BigPrimeField},
-    QuantumCell::{Constant, Existing, Witness, WitnessFraction},
-    AssignedValue,
-    poseidon::hasher::{PoseidonSponge, PoseidonHasher, spec::OptimizedPoseidonSpec, PoseidonHash}, 
-    halo2_proofs::dev::MockProver, virtual_region::copy_constraints::SharedCopyConstraintManager,
-};
-
+use halo2_base::utils::{CurveAffineExt, ScalarField, BigPrimeField};
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value},
     plonk::{Circuit, Selector, Error, ConstraintSystem},
+    dev::MockProver,
 };
 
 use halo2_proofs::halo2curves::{
@@ -225,6 +213,7 @@ where
             iter::repeat_with(|| main_chip.assign_fixed(layouter, &C::Scalar::ZERO, 0))
                 .take(self.avp.num_folding_challenges())
                 .try_collect::<_, Vec<_>, _>()?;
+        println!("challenges_assign_default_accumulator {:?}", challenges.len());
         let u = main_chip.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
         let e_comm = main_chip.assign_constant_primary(layouter, C::identity())?;
         let compressed_e_sum = match self.avp.strategy {
@@ -371,6 +360,7 @@ where
                     main_chip.assign_witness(layouter, &challenge_val, idx)
                 })
             .try_collect::<_, Vec<_>, _>()?;
+        println!("challenges_assign_accumulator {:?}", challenges.len());
 
         let mut acc_u_val = C::Scalar::ZERO;
         acc.map(|acc| acc.u).map(|val| acc_u_val = val);
@@ -529,7 +519,7 @@ where
         let mut challenges = Vec::with_capacity(3);
 
         witness_comms.push(transcript_chip.read_commitment(layouter)?);
-        challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
+        //challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         witness_comms.push(transcript_chip.read_commitment(layouter)?);

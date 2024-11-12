@@ -66,6 +66,7 @@ pub enum CommonPolynomial {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Expression<F> {
+    AccU(F),
     Constant(F),
     CommonPolynomial(CommonPolynomial),
     Polynomial(Query),
@@ -110,6 +111,7 @@ impl<F: Clone> Expression<F> {
     #[allow(clippy::too_many_arguments)]
     pub fn evaluate<T: Clone>(
         &self,
+        acc_u: &impl Fn(F) -> T,
         constant: &impl Fn(F) -> T,
         common_poly: &impl Fn(CommonPolynomial) -> T,
         poly: &impl Fn(Query) -> T,
@@ -121,6 +123,7 @@ impl<F: Clone> Expression<F> {
     ) -> T {
         let evaluate = |expr: &Expression<F>| {
             expr.evaluate(
+                acc_u,
                 constant,
                 common_poly,
                 poly,
@@ -132,6 +135,7 @@ impl<F: Clone> Expression<F> {
             )
         };
         match self {
+            Expression::AccU(u) => unreachable!(),
             Expression::Constant(scalar) => constant(scalar.clone()),
             Expression::CommonPolynomial(poly) => common_poly(*poly),
             Expression::Polynomial(query) => poly(*query),
@@ -173,8 +177,9 @@ impl<F: Clone> Expression<F> {
     pub fn degree(&self) -> usize {
         self.evaluate(
             &|_| 0,
-            &|_| 1,
-            &|_| 1,
+            &|_| 0,
+            &|_| 0,
+            &|_| 0,
             &|_| 0,
             &|a| a,
             &|a, b| a.max(b),
@@ -218,6 +223,7 @@ impl<F: Clone> Expression<F> {
             &|_| None,
             &|_| None,
             &|_| None,
+            &|_| None,
             &|challenge| Some(BTreeSet::from([challenge])),
             &|a| a,
             &merge_left_right,
@@ -233,6 +239,7 @@ impl<F: Clone> Expression<F> {
         poly: &impl Fn(Query) -> Option<T>,
     ) -> BTreeSet<T> {
         self.evaluate(
+            &|_| None,
             &|_| None,
             &|poly| common_poly(poly).map(|t| BTreeSet::from([t])),
             &|query| poly(query).map(|t| BTreeSet::from([t])),
@@ -250,6 +257,7 @@ impl<F: Clone> Expression<F> {
         F: Debug,
     {
         match self {
+            Expression::AccU(acc_u) => write!(writer, "{:?}", *acc_u),
             Expression::Constant(constant) => write!(writer, "{:?}", *constant),
             Expression::CommonPolynomial(poly) => match poly {
                 CommonPolynomial::Identity => write!(writer, "id"),
@@ -328,6 +336,7 @@ impl<F: Field> Expression<F> {
     pub fn simplified(&self, challenges: Option<&[F]>) -> Option<Expression<F>> {
         #[derive(Clone)]
         enum Case<F> {
+            AccU(F),
             Constant(F),
             Sum(F, Expression<F>),
             Scaled(F, F, Expression<F>),
@@ -353,6 +362,7 @@ impl<F: Field> Expression<F> {
 
             fn into_expression(self) -> Option<Expression<F>> {
                 match self {
+                    Case::AccU(acc_u) => Some(Expression::AccU(acc_u)),
                     Case::Constant(constant) => Some(Expression::Constant(constant)),
                     Case::Sum(constant, expression) => {
                         if constant == F::ZERO {
@@ -374,7 +384,10 @@ impl<F: Field> Expression<F> {
 
             fn add(self, rhs: Self) -> Self::Output {
                 match (self, rhs) {
+                    (Case::AccU(lhs), Case::AccU(rhs)) => Case::AccU(lhs + rhs),
                     (Case::Constant(lhs), Case::Constant(rhs)) => Case::Constant(lhs + rhs),
+                    (Case::AccU(acc), other) | (other, Case::AccU(acc)) => 
+                        Case::Sum(F::ZERO, Expression::AccU(acc)) + other,
                     (Case::Constant(lhs), Case::Sum(rhs, expression))
                     | (Case::Sum(rhs, expression), Case::Constant(lhs)) => {
                         Case::Sum(lhs + rhs, expression)
@@ -418,6 +431,7 @@ impl<F: Field> Expression<F> {
 
             fn neg(self) -> Self::Output {
                 match self {
+                    Case::AccU(acc_u) => Case::AccU(-acc_u),
                     Case::Constant(constant) => Case::Constant(-constant),
                     Case::Sum(constant, expression) => Case::Sum(-constant, -expression),
                     Case::Scaled(scalar, constant, expression) => {
@@ -459,6 +473,7 @@ impl<F: Field> Expression<F> {
 
             fn mul(self, rhs: F) -> Self::Output {
                 match self {
+                    Case::AccU(lhs) => Case::AccU(lhs * rhs),
                     Case::Constant(lhs) => Case::Constant(lhs * rhs),
                     Case::Sum(constant, expression) => Case::Scaled(rhs, constant, expression),
                     Case::Scaled(lhs, constant, expression) => {
@@ -470,6 +485,7 @@ impl<F: Field> Expression<F> {
         }
 
         self.evaluate(
+            &|acc_u| Case::AccU(acc_u),
             &|constant| Case::Constant(constant),
             &|poly| Case::Sum(F::ZERO, poly.into()),
             &|query| Case::Sum(F::ZERO, query.into()),

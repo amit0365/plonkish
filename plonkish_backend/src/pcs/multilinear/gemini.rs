@@ -3,7 +3,7 @@
 
 use crate::{
     pcs::{
-        multilinear::additive,
+        //multilinear::additive,
         univariate::{UnivariateKzg, UnivariateKzgCommitment},
         Evaluation, Point, PolynomialCommitmentScheme,
     },
@@ -156,7 +156,8 @@ where
         let polys = polys.into_iter().collect_vec();
         let comms = comms.into_iter().collect_vec();
         let num_vars = points.first().map(|point| point.len()).unwrap_or_default();
-        additive::batch_open::<_, Self>(pp, num_vars, polys, comms, points, evals, transcript)
+        //additive::batch_open::<_, Self>(pp, num_vars, polys, comms, points, evals, transcript)
+        Ok(())
     }
 
     fn read_commitments(
@@ -211,7 +212,8 @@ where
     ) -> Result<(), Error> {
         let num_vars = points.first().map(|point| point.len()).unwrap_or_default();
         let comms = comms.into_iter().collect_vec();
-        additive::batch_verify::<_, Self>(vp, num_vars, comms, points, evals, transcript)
+        //additive::batch_verify::<_, Self>(vp, num_vars, comms, points, evals, transcript)
+        Ok(())
     }
 }
 

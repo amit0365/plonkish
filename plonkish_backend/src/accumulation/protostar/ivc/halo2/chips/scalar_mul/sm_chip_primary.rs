@@ -1,12 +1,15 @@
-use halo2_base::{gates::flex_gate::{FlexGateConfig, FlexGateConfigParams}, halo2_proofs::
-    {circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value}, halo2curves::{bn256::{G1Affine, G2Affine, G1}, grumpkin::{self, Fr as Fq}}, plonk::{Advice, Assigned, Circuit, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Selector}, poly::Rotation
-}, utils::{BigPrimeField, CurveAffineExt, ScalarField}
+use halo2_proofs::{
+    circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
+    halo2curves::{
+        bn256::{G1Affine, G2Affine, G1},
+        grumpkin::{self, Fr as Fq},
+    },
+    plonk::{
+        AccU, Advice, Assigned, Circuit, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Instance, Selector
+    },
+    poly::Rotation,
 };
-use halo2_base::{
-    gates::GateInstructions,
-    utils::bit_length,
-    AssignedValue, Context,
-};
+use halo2_base::utils::{BigPrimeField, CurveAffineExt, ScalarField};
 use halo2_proofs::arithmetic::CurveExt;
 use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use halo2_proofs::halo2curves::ff::BatchInvert;
@@ -173,6 +176,7 @@ where
                 let sm_y = meta.query_advice(col_acc_y, Rotation(-1));
                 let sm_z = meta.query_advice(col_acc_z, Rotation(-1));
 
+                let u = Expression::AccU(AccU{index: 0});
                 let x3_aff = meta.query_advice(col_acc_x, Rotation(0));
                 let y3_aff = meta.query_advice(col_acc_y, Rotation(0));
 
@@ -181,11 +185,11 @@ where
                     [
                         (
                             "Constrain affine_x conversion",
-                            sm_z.clone() * x3_aff - sm_x.clone(),
+                            sm_z.clone() * x3_aff - sm_x.clone() * u.clone(),
                         ),
                         (
                             "Constrain affine_y conversion",
-                            sm_z.clone() * y3_aff - sm_y.clone(),
+                            sm_z.clone() * y3_aff - sm_y.clone() * u.clone(),
                         )
                     ],
                 )

@@ -1,5 +1,5 @@
-use halo2_base::{gates::{circuit::{builder::{self, BaseCircuitBuilder}, BaseCircuitParams, BaseConfig, CircuitBuilderStage}, flex_gate::threads::SinglePhaseCoreManager, GateInstructions}, halo2_proofs::
-    {arithmetic::Field, circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::group::{prime::PrimeCurveAffine, Curve, Group}, plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector}, poly::Rotation}, poseidon::hasher::{spec::OptimizedPoseidonSpec, PoseidonHash, PoseidonSponge}, utils::{BigPrimeField, ScalarField}, AssignedValue};
+use halo2_proofs::{arithmetic::Field, circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::group::{prime::PrimeCurveAffine, Curve, Group}, plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector}, poly::Rotation};
+use halo2_base::utils::{BigPrimeField, ScalarField};
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash as inlineHash, Spec}};
 use halo2_proofs::{circuit::floor_planner::Folding, halo2curves::ff::BatchInvert};
 use itertools::Itertools;

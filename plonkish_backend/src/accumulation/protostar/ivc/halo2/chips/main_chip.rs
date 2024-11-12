@@ -7,8 +7,8 @@ use halo2_proofs::circuit::{Region, SimpleFloorPlanner};
 use halo2_proofs::dev::{CircuitLayout, MockProver};
 use halo2_proofs::halo2curves::bn256;
 use halo2_proofs::plonk::{Circuit, Constraints, Instance};
-use halo2_base::utils::ScalarField;
-use halo2_base::{halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation}, utils::{bigint_to_fe, biguint_to_fe, decompose_bigint, decompose_biguint, fe_to_bigint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes}};
+use halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation};
+use halo2_base::utils::{bigint_to_fe, biguint_to_fe, decompose_bigint, decompose_biguint, fe_to_bigint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes};
 use halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
 use num_bigint::{BigUint, BigInt};
 use halo2_base::utils::decompose;
@@ -163,7 +163,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         pub config: MainChipConfig,
         pub pow_of_two: Vec<C::Scalar>,
         pub pow_of_two_assigned: Vec<Number<C::Scalar>>,
-        range_check_chip: RangeCheckChip<C>,
+        pub range_check_chip: RangeCheckChip<C>,
     }
 
     impl<C: TwoChainCurve> MainChip<C> 
@@ -273,7 +273,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         }
 
         /// Loads the lookup table with values from `0` to `2^LOOKUP_BITS - 1`
-        pub fn load_range_check_table(&self, layouter: &mut impl Layouter<C::Scalar>, column: Column<Fixed>) -> Result<(), Error> {
+        pub fn load_range_check_table(&self, mut layouter: impl Layouter<C::Scalar>, column: Column<Fixed>) -> Result<(), Error> {
             let range = 1 << LOOKUP_BITS;
 
             layouter.assign_region(
@@ -320,7 +320,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                     region.assign_advice(
                             || "witness",
                             config.advice[idx],
-                            offset,
+                            0,
                             || Value::known(*witness),
                         ).map(Number)
                 },
@@ -1821,8 +1821,12 @@ where
 
         let range_chip = RangeCheckChip::<C>::construct(config.range_check_config);
         let mut main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
+        let one = main_chip.assign_fixed(&mut layouter, &C::Scalar::from(164), 1)?;
+        main_chip.load_range_check_table(layouter.namespace(|| "load range check table"), config.range_check_config.lookup_u8_table)?;
+        main_chip.range_check_chip.assign(&mut layouter, &one, C::Scalar::NUM_BITS as usize)?;
         //main_chip.initialize_pow2(&mut layouter)?;
-        main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
+        //main_chip.load_range_check_table(layouter.namespace(|| "load range check table"), config.range_check_config.lookup_u8_table)?;
+
 
         /// test inner product
         // let mut rng = OsRng;
@@ -1874,10 +1878,10 @@ where
         // let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
 
         /// test assign_witness_base, mul_add_base and mod_reduce, Witness count: 42 + 47 + 268 = 357
-        let a = C::Base::from_str_vartime("198343826082974478899613233026774670550701100").unwrap();
-        let a_assigned = main_chip.assign_witness_base(&mut layouter, a)?;
-        let power_no_mod = main_chip.mul_add_base(&mut layouter, &a_assigned, &a_assigned, &a_assigned)?;
-        let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
+        // let a = C::Base::from_str_vartime("198343826082974478899613233026774670550701100").unwrap();
+        // let a_assigned = main_chip.assign_witness_base(&mut layouter, a)?;
+        // let power_no_mod = main_chip.mul_add_base(&mut layouter, &a_assigned, &a_assigned, &a_assigned)?;
+        // let power_no_mod_reduced = main_chip.mod_reduce(&mut layouter, power_no_mod)?;
 
         /// test vec.len = 9, inner_product_base: assign_witness_base + inner_product_base + mod_reduce, Witness count: 756 + 144 + 268 = 1168
         // let mut rng = OsRng;
@@ -1912,11 +1916,9 @@ fn circuit_test_layout() {
         .titled("Main Chip Layout", ("sans-serif", 60))
         .unwrap();
 
-    let k = 12;
+    let k = 8;
     let circuit = MainChipCircuit::<bn256::G1Affine>{ marker: PhantomData::<bn256::G1Affine> };
     MockProver::run(k, &circuit, vec![vec![]]).unwrap().assert_satisfied();
-    // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-    // assert_eq!(prover.verify(), Ok(()));
 
     let circuit_layout = CircuitLayout{
         hide_labels: false,

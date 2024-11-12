@@ -4,9 +4,9 @@ use crate::{
             preprocessor::{batch_size, compose, permutation_polys},
             prover::{
                 instance_polys, lookup_compressed_polys, lookup_h_polys, lookup_m_polys,
-                permutation_z_polys, prove_zero_check,
+                permutation_z_polys,
             },
-            verifier::verify_zero_check,
+            //verifier::verify_zero_check,
         },
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo, WitnessEncoding,
     },
@@ -182,7 +182,6 @@ impl<Pcs> WitnessEncoding for HyperPlonk<Pcs> {
         (0..1 << k).collect()
     }
 }
-
 
 //     fn prove(
 //         pp: &Self::ProverParam,

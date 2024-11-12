@@ -1,17 +1,10 @@
-use halo2_base::{halo2_proofs::
+use halo2_proofs::
     {circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
     plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Selector, Expression, Assigned, Fixed},
     poly::Rotation, 
     halo2curves::{bn256::{G1Affine, G2Affine, G1}, grumpkin::{self, Fr as Fq}},
-}, 
-gates::flex_gate::{FlexGateConfig, FlexGateConfigParams},
-utils::{CurveAffineExt, ScalarField, BigPrimeField},
 };
-use halo2_base::{
-    gates::GateInstructions,
-    utils::bit_length,
-    AssignedValue, Context,
-};
+use halo2_base::utils::{CurveAffineExt, ScalarField, BigPrimeField};
 use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
 use itertools::Itertools;
 use std::{
@@ -524,7 +517,7 @@ mod test {
         let circuit = ScalarMulChip::<grumpkin::G1Affine> { inputs: vec![inputs; 6] };
         MockProver::run(k, &circuit, vec![]).unwrap().assert_satisfied();
 
-        halo2_base::halo2_proofs::dev::CircuitLayout::default()
+        halo2_proofs::dev::CircuitLayout::default()
         .render(k, &circuit, &root)
         .unwrap();
     }

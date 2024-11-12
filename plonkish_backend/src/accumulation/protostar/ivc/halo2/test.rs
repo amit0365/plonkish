@@ -1,6 +1,6 @@
 use crate::{
     accumulation::protostar::{
-        ivc::halo2::{chips::{minroot::MinRootCircuit, transcript::{accumulation_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
+        ivc::halo2::{chips::{transcript::{accumulation_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -465,9 +465,9 @@ where
 
 #[test]
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
-    const NUM_STEPS: usize = 2;
+    const NUM_STEPS: usize = 5;
 
-    let primary_circuit_k = 13;
+    let primary_circuit_k = 12;
     let cyclefold_num_vars = 10;
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();

@@ -7,12 +7,11 @@ pub mod sha256;
 pub mod minroot;
 
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
-use halo2_base::{
-    halo2_proofs::{
+use halo2_base::utils::{CurveAffineExt, ScalarField, BigPrimeField};
+use halo2_proofs::{
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Chip, Value},
     halo2curves::{bn256::Fr as Fp, grumpkin::Fr as Fq},
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance}, dev::MockProver},
-    utils::{CurveAffineExt, ScalarField, BigPrimeField},
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance}, dev::MockProver
 };
 use halo2_proofs::arithmetic::Field;
 use poseidon2::circuit::{hash_chip::NUM_PARTIAL_SBOX, spec::PoseidonSpec as Poseidon2ChipSpec};
@@ -345,7 +344,7 @@ mod test {
         println!("Witness count: {}", prover.witness_count);
         println!("Copy count: {}", prover.copy_count);
 
-        halo2_base::halo2_proofs::dev::CircuitLayout::default()
+        halo2_proofs::dev::CircuitLayout::default()
             .render(k, &circuit, &root)
             .unwrap();
     }

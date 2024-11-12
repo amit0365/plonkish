@@ -1,5 +1,3 @@
-use halo2_base::gates::circuit;
-
 use crate::{
     backend::PlonkishCircuitInfo,
     poly::multilinear::MultilinearPolynomial,

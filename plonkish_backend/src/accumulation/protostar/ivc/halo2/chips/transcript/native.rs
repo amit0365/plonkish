@@ -1,4 +1,3 @@
-use ark_std::perf_trace::inner;
 use halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Fixed, Selector}, poly::Rotation};
 use halo2_base::utils::{biguint_to_fe, decompose_biguint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes, PrimeField, ScalarField};
 use halo2_gadgets::poseidon::{spec::PoseidonSpec, PoseidonSpongeChip, Pow5Chip};

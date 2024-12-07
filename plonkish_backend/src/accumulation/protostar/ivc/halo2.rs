@@ -1147,10 +1147,10 @@ where
     C::Base: BigPrimeField + PrimeFieldBits,
 
 {
-    primary_pp: ProtostarProverParam<C::Scalar, HyperPlonk<P1>>,
-    primary_atp: AT1::Param,
-    cyclefold_pp: ProtostarProverParam<C::Base, HyperPlonk<P2>>,
-    cyclefold_atp: AT2::Param,
+    pub primary_pp: ProtostarProverParam<C::Scalar, HyperPlonk<P1>>,
+    pub primary_atp: AT1::Param,
+    pub cyclefold_pp: ProtostarProverParam<C::Base, HyperPlonk<P2>>,
+    pub cyclefold_atp: AT2::Param,
     _marker: PhantomData<(C, AT1, AT2)>,
 }
 

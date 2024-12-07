@@ -358,7 +358,7 @@ pub fn run_protostar_hyperplonk_ivc_minroot_preprocess<C, P1, P2>(
         C,
         P1,
         P2,
-        PoseidonNativeTranscript<C::Base, Cursor<Vec<u8>>>,
+        PoseidonNativeTranscript<C::Scalar, Cursor<Vec<u8>>>,
         PoseidonTranscript<C::Scalar, Cursor<Vec<u8>>>,
     >,
     ProtostarIvcVerifierParam<

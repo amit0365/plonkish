@@ -395,8 +395,8 @@ where
         P1,
         P2,
         MinRootCircuit<C>,
-        PoseidonNativeTranscript<_, _>,
-        PoseidonTranscript<_, _>,
+        PoseidonNativeTranscript<C::Scalar, _>,
+        PoseidonTranscript<C::Scalar, _>,
     >(  
         primary_num_vars,
         primary_param,

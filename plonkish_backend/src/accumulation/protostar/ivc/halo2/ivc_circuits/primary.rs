@@ -23,7 +23,7 @@ pub const T: usize = 4;
 pub const RATE: usize = 3;
 pub const NUM_RANGE_COLS: usize = 1; //(T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 25; //29 for smchain //27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
+pub const PRIMARY_HASH_LENGTH: usize = 31; //29 for smchain //27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
 pub const PRIMARY_HASH_LENGTH_EC: usize = 19;
 pub const CF_HASH_LENGTH: usize = 13;
 
@@ -312,8 +312,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 .chain(initial_input)
                 .chain(output)
                 .chain([&acc.instances[0][0]])
-                .chain(
-                    acc.witness_comms
+                .chain(acc.witness_comms
                         .iter()
                         .flat_map(|point| point.x.limbs.iter().chain(point.y.limbs.iter())))
                 .chain(acc.challenges.iter())

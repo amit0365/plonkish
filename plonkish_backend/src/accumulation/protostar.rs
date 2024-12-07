@@ -62,8 +62,8 @@ where
     last_rows: Vec<usize>,
     advice_copies: Vec<Vec<usize>>,
     log_num_betas: usize,
-    witness_count: usize,
-    copy_count: usize,
+    pub witness_count: usize,
+    pub copy_count: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

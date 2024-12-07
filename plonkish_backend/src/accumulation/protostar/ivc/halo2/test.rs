@@ -414,10 +414,10 @@ where
 
 #[allow(clippy::type_complexity)]
 pub fn run_protostar_hyperplonk_ivc_prove<C, Sc1, P1, P2, AT1, AT2>(
-    mut primary_circuit: Halo2Circuit<C::Scalar, PrimaryCircuit<C, Sc1>>,
-    mut secondary_circuit: Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
-    ivc_pp: ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
-    ivc_vp: ProtostarIvcVerifierParam<C, P1, P2>,
+    primary_circuit: &mut Halo2Circuit<C::Scalar, PrimaryCircuit<C, Sc1>>,
+    secondary_circuit: &mut Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
+    ivc_pp: &ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,
+    ivc_vp: &ProtostarIvcVerifierParam<C, P1, P2>,
     num_iters_step: usize,
     num_steps: usize,
 ) -> Duration
@@ -448,8 +448,8 @@ where
     let prove_time = Instant::now();
     let (primary_acc, mut secondary_acc) = prove_steps(
         &ivc_pp, 
-        &mut primary_circuit,
-        &mut secondary_circuit,
+        primary_circuit,
+        secondary_circuit,
         num_steps,
         seeded_std_rng(),
     )

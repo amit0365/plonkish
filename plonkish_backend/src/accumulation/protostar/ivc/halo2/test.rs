@@ -413,7 +413,7 @@ where
 }
 
 #[allow(clippy::type_complexity)]
-pub fn run_protostar_hyperplonk_ivc_prove<C, Sc1, Sc2, P1, P2, AT1, AT2>(
+pub fn run_protostar_hyperplonk_ivc_prove<C, Sc1, P1, P2, AT1, AT2>(
     mut primary_circuit: Halo2Circuit<C::Scalar, PrimaryCircuit<C, Sc1>>,
     mut secondary_circuit: Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
     ivc_pp: ProtostarIvcProverParam<C, P1, P2, AT1, AT2>,

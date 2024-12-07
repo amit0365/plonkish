@@ -344,7 +344,7 @@ where
     ) -> C::Scalar {
         let witness_comm =
             inputs.nark_witness_comms.clone().into_iter()
-            .zip(inputs.acc_witness_comms.clone().into_iter())
+            .zip(inputs.acc_witness_comms.clone())
             .flat_map(|(a, b)| vec![a, b])
             .collect_vec();
 
@@ -359,7 +359,7 @@ where
                 inputs.cross_term_comms
                     .iter()
                     .flat_map(into_coordinates))
-            .chain(into_coordinates(&inputs.acc_e_comm).into_iter())                     
+            .chain(into_coordinates(&inputs.acc_e_comm))                     
             .collect_vec();
 
         let message: [C::Scalar; L] =
@@ -446,29 +446,28 @@ where
         let config_inputs = self.config_inputs_ecc_deg6_full(&sm_chip_inputs)?;
         println!("config_input_time: {:?}", config_inputs_time.elapsed());
 
-        for i in 0..config_inputs.len() {
-            if i == 0 {
-                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_inputs[i].clone())?);
+        for (idx, config_input) in config_inputs.iter().enumerate() {
+            if idx == 0 {
+                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_input.clone())?);
             } else {
-                //hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_inputs[i].clone())?[1..]);
+                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_input.clone())?[1..]);
             }
         }
 
-        //hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_inputs[1].clone())?[2..]);
-        // let hash_chip = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L1>::construct(
-        //     config.poseidon,
-        // );
+        let hash_chip = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, L1>::construct(
+            config.poseidon,
+        );
 
-        // let message: [AssignedCell<C::Scalar, C::Scalar>; L1] =
-        // match hash_inputs.try_into() {
-        //     Ok(arr) => arr,
-        //     Err(_) => panic!("Failed to convert Vec to Array"),
-        // };
+        let message: [AssignedCell<C::Scalar, C::Scalar>; L1] =
+        match hash_inputs.try_into() {
+            Ok(arr) => arr,
+            Err(_) => panic!("Failed to convert Vec to Array"),
+        };
 
-        // let hash = hash_chip.hash(
-        //         layouter.namespace(|| "perform poseidon hash"),
-        //         message.clone(),
-        // )?;
+        let hash = hash_chip.hash(
+                layouter.namespace(|| "perform poseidon hash"),
+                message.clone(),
+        )?;
 
         // println!("hash_circuit: {:?}", hash);
         // layouter.constrain_instance(hash.cell(), config.instance, 0)?;

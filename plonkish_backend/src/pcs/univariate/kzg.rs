@@ -3,14 +3,15 @@ use crate::{
     poly::univariate::{CoefficientBasis, UnivariatePolynomial},
     util::{
         arithmetic::{
-            barycentric_interpolate, barycentric_weights, fixed_base_msm, inner_product, powers, variable_base_msm, window_size, window_table, Curve, CurveAffine, Field, MultiMillerLoop, PrimeCurveAffine
-        }, chain, izip, izip_eq, parallel::parallelize, reduce_scalars, sum_and_reduce_bases, transcript::{TranscriptRead, TranscriptWrite}, Deserialize, DeserializeOwned, Itertools, Serialize
+            barycentric_interpolate, barycentric_weights, div_ceil, fixed_base_msm, inner_product, powers, variable_base_msm, window_size, window_table, Curve, CurveAffine, Field, MultiMillerLoop, PrimeCurveAffine
+        }, chain, izip, izip_eq, parallel::{num_threads, parallelize, parallelize_iter}, reduce_scalars, sum_and_reduce_bases, transcript::{TranscriptRead, TranscriptWrite}, Deserialize, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
 use halo2_proofs::
     halo2curves::{bn256, grumpkin, pairing::Engine, pasta::{pallas, vesta}
 };
+use rayon::prelude::*;
 use halo2_proofs::halo2curves::group::Group;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rayon::iter::IntoParallelRefIterator;
@@ -133,31 +134,84 @@ impl<M: MultiMillerLoop> UnivariateKzgParam<M> {
         Ok(())
     }
 
+    // pub fn load_from_file(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    //     let mut file = File::open(filename)?;
+    //     let mut encoded = Vec::new();
+    //     file.read_to_end(&mut encoded)?;
+    //     let (powers_of_s_g1_bytes, powers_of_s_g2_bytes): (Vec<Vec<u8>>, Vec<Vec<u8>>) = bincode::deserialize(&encoded)?;
+    //     let time = Instant::now();
+    //     let (powers_of_s_g1, powers_of_s_g2) = rayon::join(
+    //         || {
+    //             let mut result = Vec::with_capacity(powers_of_s_g1_bytes.len());
+    //             result.extend(powers_of_s_g1_bytes.par_iter().map(|bytes| {
+    //                 let mut encoding_g1 = <M::G1Affine as GroupEncoding>::Repr::default();
+    //                 encoding_g1.as_mut().copy_from_slice(bytes.as_slice());
+    //                 M::G1Affine::from_bytes(&encoding_g1).expect("Failed to convert G1 bytes")
+    //             }).collect::<Vec<_>>());
+    //             result
+    //         },
+    //         || {
+    //             let mut result = Vec::with_capacity(powers_of_s_g2_bytes.len());
+    //             result.extend(powers_of_s_g2_bytes.par_iter().map(|bytes| {
+    //                 let mut encoding_g2 = <M::G2Affine as GroupEncoding>::Repr::default();
+    //                 encoding_g2.as_mut().copy_from_slice(bytes.as_slice());
+    //                 M::G2Affine::from_bytes(&encoding_g2).expect("Failed to convert G2 bytes")
+    //             }).collect::<Vec<_>>());
+    //             result
+    //         }
+    //     );
+    //     println!("time: {:?}", time.elapsed());
+    //     Ok(Self::new(powers_of_s_g1, powers_of_s_g2))
+    //}
+
     pub fn load_from_file(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let mut file = File::open(filename)?;
         let mut encoded = Vec::new();
         file.read_to_end(&mut encoded)?;
         let (powers_of_s_g1_bytes, powers_of_s_g2_bytes): (Vec<Vec<u8>>, Vec<Vec<u8>>) = bincode::deserialize(&encoded)?;
         let time = Instant::now();
+        // let (powers_of_s_g1, powers_of_s_g2) = rayon::join(
+        //     || {
+        //         let chunk_size = div_ceil(powers_of_s_g1_bytes.len(), num_threads());
+        //         powers_of_s_g1_bytes.par_chunks(chunk_size)
+        //         .flat_map(|chunk| {
+        //             chunk.par_iter().map(|bytes| {
+        //                 let mut encoding_g1 = <M::G1Affine as GroupEncoding>::Repr::default();
+        //                 encoding_g1.as_mut().copy_from_slice(bytes.as_slice());
+        //                 M::G1Affine::from_bytes(&encoding_g1).expect("Failed to convert G1 bytes")
+        //             }).collect::<Vec<_>>()
+        //         })
+        //         .collect()
+        //     },
+        //     || {
+        //         // Same pattern for G2
+        //         let chunk_size = div_ceil(powers_of_s_g2_bytes.len(), num_threads());
+        //         powers_of_s_g2_bytes.par_chunks(chunk_size)
+        //         .flat_map(|chunk| {
+        //             chunk.par_iter().map(|bytes| {
+        //                 let mut encoding_g2 = <M::G2Affine as GroupEncoding>::Repr::default();
+        //                 encoding_g2.as_mut().copy_from_slice(bytes.as_slice());
+        //                 M::G2Affine::from_bytes(&encoding_g2).expect("Failed to convert G2 bytes")
+        //             }).collect::<Vec<_>>()
+        //         })
+        //         .collect()
+        //     }
+        // );
         let (powers_of_s_g1, powers_of_s_g2) = rayon::join(
-            || {
-                let mut result = Vec::with_capacity(powers_of_s_g1_bytes.len());
-                result.extend(powers_of_s_g1_bytes.par_iter().map(|bytes| {
+            || powers_of_s_g1_bytes.par_iter()
+                .map(|bytes| {
                     let mut encoding_g1 = <M::G1Affine as GroupEncoding>::Repr::default();
                     encoding_g1.as_mut().copy_from_slice(bytes.as_slice());
                     M::G1Affine::from_bytes(&encoding_g1).expect("Failed to convert G1 bytes")
-                }).collect::<Vec<_>>());
-                result
-            },
-            || {
-                let mut result = Vec::with_capacity(powers_of_s_g2_bytes.len());
-                result.extend(powers_of_s_g2_bytes.par_iter().map(|bytes| {
+                })
+                .collect(),
+            || powers_of_s_g2_bytes.par_iter()
+                .map(|bytes| {
                     let mut encoding_g2 = <M::G2Affine as GroupEncoding>::Repr::default();
                     encoding_g2.as_mut().copy_from_slice(bytes.as_slice());
                     M::G2Affine::from_bytes(&encoding_g2).expect("Failed to convert G2 bytes")
-                }).collect::<Vec<_>>());
-                result
-            }
+                })
+                .collect()
         );
         println!("time: {:?}", time.elapsed());
         Ok(Self::new(powers_of_s_g1, powers_of_s_g2))

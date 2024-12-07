@@ -9,7 +9,7 @@ use poseidon::{Spec as PoseidonSpec, Poseidon as PoseidonHash};
 use halo2_proofs::arithmetic::CurveAffine;
 
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::{R_F, R_P}, util::{arithmetic::{fe_from_le_bytes, fe_to_limbs, into_coordinates}, transcript::{FieldTranscript, FieldTranscriptRead, FieldTranscriptWrite, InMemoryTranscript, Transcript, TranscriptRead, TranscriptWrite}}};
-use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{T, RATE};
+pub use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::{T, RATE};
 pub const RANGE_BITS: usize = 254;
 pub const NUM_CHALLENGE_BITS: usize = 128;
 pub const NUM_CHALLENGE_BYTES: usize = NUM_CHALLENGE_BITS / 8;

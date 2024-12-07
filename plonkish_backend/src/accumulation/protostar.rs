@@ -62,6 +62,8 @@ where
     last_rows: Vec<usize>,
     advice_copies: Vec<Vec<usize>>,
     log_num_betas: usize,
+    witness_count: usize,
+    copy_count: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -118,9 +120,11 @@ where
         num_instances: &[usize],
         num_witness_polys: usize,
         num_challenges: usize,
+        log_num_betas: usize,
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
-        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 2)/2 + 1)]);
+        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (log_num_betas/2 + 1)]);
+        let zero_poly_lookup_h = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << last_rows.last().unwrap()]);
         let zero_poly_lookup_table = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << LOOKUP_BITS]);
         Self {
             instance: ProtostarAccumulatorInstance::init(
@@ -155,9 +159,10 @@ where
         num_instances: &[usize],
         num_witness_polys: usize,
         num_challenges: usize,
+        log_num_betas: usize,
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
-        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (k/2 + 1)]);
+        let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (log_num_betas/2 + 1)]);
 
         Self {
             instance: ProtostarAccumulatorInstance::init_ec(
@@ -178,25 +183,25 @@ where
         }
     }
 
-    fn from_nark(strategy: ProtostarStrategy, k: usize, nark: PlonkishNark<F, Pcs>) -> Self {
+    fn from_nark(strategy: ProtostarStrategy, k: usize, log_num_betas: usize, nark: PlonkishNark<F, Pcs>) -> Self {
         let witness_polys = nark.witness_polys;
         let instance_polys = Self::instance_polynomial(k, nark.instance.clone().instances);
         Self {
             instance: ProtostarAccumulatorInstance::from_nark(strategy, nark.instance),
             witness_polys,
-            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << ((k + 2)/2 + 1)]),
+            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (log_num_betas/2 + 1)]),
             instance_polys,
             _marker: PhantomData,
         }
     }
 
-    fn from_nark_ec(strategy: ProtostarStrategy, k: usize, nark: PlonkishNark<F, Pcs>) -> Self {
+    fn from_nark_ec(strategy: ProtostarStrategy, k: usize, log_num_betas: usize, nark: PlonkishNark<F, Pcs>) -> Self {
         let witness_polys = nark.witness_polys;
         let instance_polys = Self::instance_polynomial(k, nark.instance.clone().instances);
         Self {
             instance: ProtostarAccumulatorInstance::from_nark(strategy, nark.instance),
             witness_polys,
-            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (k/2 + 1)]),
+            e_poly: Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (log_num_betas/2 + 1)]),
             instance_polys,
             _marker: PhantomData,
         }
@@ -256,7 +261,7 @@ where
             compressed_cross_term_sums,
             r,
         );
-
+ 
         izip_eq!(&mut self.witness_polys, &rhs.witness_polys)
         .for_each(|(lhs, rhs)| *lhs += (r, rhs));
         izip!(powers(*r).skip(1), [zeta_cross_term_poly, &rhs.e_poly])

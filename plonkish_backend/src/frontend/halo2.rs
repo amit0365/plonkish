@@ -145,7 +145,6 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         (selector_index, (gate.polynomials().len(), degree_vec))
     }).collect();
 
-    let one = F::ONE;
     // not used for error only for creating nark lookup polys so u = 1
     let lookups = cs
         .lookups()
@@ -183,15 +182,15 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .collect_vec()
         })
         .collect_vec();
-
+    println!("queried_selectors before {:?}", queried_selectors.len());
     if !lookups.is_empty() {
         cs.lookups().iter().map(|lookup| {
             let selector_index = lookup.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
             queried_selectors.insert(selector_index, (1, vec![3])); // h constraint
         }).collect_vec();
-        queried_selectors.insert(queried_selectors.len(), (1, vec![3])); // g constraint
+        queried_selectors.insert(queried_selectors.len(), (1, vec![2])); // g constraint
     } 
-
+    println!("queried_selectors after {:?}", queried_selectors.len());
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
         vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];
@@ -248,6 +247,8 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         floor_planner_data: None,
         last_rows: vec![],
         log_num_betas: 0,
+        witness_count: 0,
+        copy_count: 0,
     })
 }
 
@@ -274,6 +275,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             (key, column_idx[&key])
         })
         .collect();
+
     let mut preprocess_collector = PreprocessCollector {
         k: *k,
         num_instances,        
@@ -287,7 +289,6 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
 
     let queried_selectors = &circuit_info.queried_selectors;
 
-        // let timer = Instant::now();
         let mut plan = FoldingPlan::new(&mut preprocess_collector).unwrap();
         // First pass: measure the regions within the circuit.
         let mut measure = MeasurementPass::new();
@@ -297,9 +298,8 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
                 .without_witnesses()
                 .synthesize(config.clone(), FoldingPass::<_, PreprocessCollector<F>>::measure(pass)).unwrap();
         }
-        //println!("first pass synthesize: {:?}", timer.elapsed());
 
-        let timer = Instant::now();
+
         // Planning:
         // - Position the regions.
         let (regions, column_allocations) = strategy::slot_in_biggest_advice_first(measure.regions);
@@ -311,7 +311,6 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             .map(|a| a.unbounded_interval_start())
             .max()
             .unwrap_or(0);
-        // println!("first pass measure: {:?}", timer.elapsed());
 
         let data = FloorPlannerData {
             regions,
@@ -343,7 +342,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     
     let mut selector_map = preprocess_collector.selector_map.clone();
     if !circuit_info.lookups.is_empty() {
-        selector_map.insert(queried_selectors.len(), (0..1<<LOOKUP_BITS).collect_vec()); //todo hardcoded to 0 for now
+        selector_map.insert(queried_selectors.len() - 1, (0..1<<LOOKUP_BITS).collect_vec()); //todo hardcoded to 0 for now
     }
     circuit_info.selector_map = selector_map.clone();
     let mut num_betas = 0;
@@ -369,6 +368,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         challenges: &challenges,
         row_mapping: &self.row_mapping,
         witness_count: 0,
+        copy_count: 0,
     };
     let constants = self.constants.clone();
     C::FloorPlanner::synthesize(
@@ -380,6 +380,8 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
     circuit_info.last_rows = dummy_witness_collector.last_rows.clone();
+    circuit_info.witness_count = dummy_witness_collector.witness_count;
+    circuit_info.copy_count = dummy_witness_collector.copy_count;
     
     let last_row_offset: Vec<usize> = circuit_info.last_rows.iter().map(|&row| row + 1).collect();
     let mut acc_last_row = Vec::new();
@@ -864,6 +866,7 @@ struct DummyWitnessCollector<'a, F: Field> {
     challenges: &'a [F],
     row_mapping: &'a [usize],
     witness_count: usize,
+    copy_count: usize,
 }
 
 impl<'a, F: Field> Assignment<F> for DummyWitnessCollector<'a, F> {
@@ -955,6 +958,7 @@ impl<'a, F: Field> Assignment<F> for DummyWitnessCollector<'a, F> {
     }
 
     fn copy(&mut self, _: Column<Any>, _: usize, _: Column<Any>, _: usize) -> Result<(), Error> {
+        self.copy_count += 1;
         Ok(())
     }
 

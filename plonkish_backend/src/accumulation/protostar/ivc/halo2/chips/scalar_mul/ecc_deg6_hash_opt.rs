@@ -1,6 +1,6 @@
-use crate::accumulation::protostar::{
-    hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::ivc_circuits::primary::T,
-};
+use crate::{accumulation::protostar::{
+    hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::{chips::main_chip::Number, ivc_circuits::primary::{PrimaryCircuitConfig, T}, StepCircuit},
+}, util::expression::pow_expr};
 
 use halo2_proofs::{
         circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
@@ -13,14 +13,10 @@ use halo2_proofs::{
         },
         poly::Rotation,
 };
-use halo2_base::utils::{BigPrimeField, CurveAffineExt, ScalarField};
-use halo2_proofs::halo2curves::{group::Group, grumpkin::Fr, Coordinates, CurveAffine};
-use itertools::Itertools;
+use halo2_base::utils::{BigPrimeField, CurveAffineExt, FromUniformBytes, ScalarField};
 use poseidon2::circuit::hash_chip::NUM_PARTIAL_SBOX;
 use std::{
-    iter,
     marker::PhantomData,
-    sync::{RwLock, RwLockReadGuard},
 };
 
 use crate::util::arithmetic::{Field, PrimeFieldBits, TwoChainCurve};
@@ -71,11 +67,6 @@ where
         let [col_rbits, col_rlc, col_ptx, col_pty, col_acc_x, col_acc_y, col_acc_z, col_lambda] =
             advices;
 
-        let pow4 = |x: Expression<C::Scalar>| {
-            let x_sq = x.clone() * x.clone();
-            x_sq.clone() * x_sq
-        };
-
         meta.create_gate("q_ec_double_add", |meta| {
             let q_ec_double_add = meta.query_selector(q_ec_double_add);
             let acc_prev_x = meta.query_advice(col_acc_x, Rotation(-1));
@@ -103,8 +94,9 @@ where
             let twenty_four = Expression::Constant(C::Scalar::from(24));
             let twenty_seven = Expression::Constant(C::Scalar::from(27)); // nine * b
             let seventy_two = Expression::Constant(C::Scalar::from(72)); // twenty_four * b
+            let u = Expression::AccU(AccU{index: 0});
 
-            // pt double, b = 3 for bn254
+            // pt double, b = 3 for bn254, degree 4
             //  x' = 2xy(y^2 - 9bz^2)
             //  y' = (y^2 - 9bz^2)(y^2 + 3bz^2) + 24*b*y^2*z^2
             //  z' = 8y^3*z
@@ -115,10 +107,10 @@ where
                              * (acc_prev_y_sq.clone() + nine.clone() * acc_prev_z_sq.clone()) + seventy_two.clone() * acc_prev_y_sq.clone() * acc_prev_z_sq.clone();
             let acc_double_z = eight.clone() * acc_prev_y_sq.clone() * acc_prev_y.clone() * acc_prev_z.clone();
 
-            // choice poly in projective coordinates, identity is (0,1,0)
+            // choice poly in projective coordinates, identity is (0,1,0), 2 choices so degree 2
             let sel_x = r.clone() * x.clone();
-            let sel_y = (one.clone() - r.clone()) + r.clone() * y.clone();
-            let sel_z = r.clone();
+            let sel_y = (one.clone() * u.clone() - r.clone()) * u.clone() + r.clone() * y.clone();
+            let sel_z = r.clone() * u.clone();
 
             // X_1 = acc_next_x, Y_2 = sel_y
             // X_3 &= (X_1(-Y_2) + X_2Y_1)(Y_1(-Y_2)) - 3bZ_1Z_2) \\ x1y1
@@ -128,7 +120,7 @@ where
             // Z_3 &= (Y_1Z_2 - Y_2Z_1)(Y_1(-Y_2) + 3bZ_1Z_2) \\ z1y1
             //  + (X_1(-Y_2) + X_2Y_1)(3X_1X_2).
 
-            // simplified for b = 3,
+            // simplified for b = 3, degree 6
             let acc_sub_x = (acc_next_x.clone() * ( - sel_y.clone()) + sel_x.clone() * acc_next_y.clone())
                 * ( acc_next_y.clone() * (- sel_y.clone()) - nine.clone() * acc_next_z.clone() * sel_z.clone())
                 - ( acc_next_y.clone() * sel_z.clone() - sel_y.clone() * acc_next_z.clone())
@@ -144,9 +136,9 @@ where
                 + ( - acc_next_x.clone() * sel_y.clone() + sel_x.clone() * acc_next_y.clone())
                 * (three.clone() * acc_next_x.clone() * sel_x.clone());
 
-            vec![q_ec_double_add.clone() * (acc_sub_x - lambda.clone() * acc_double_x.clone()),
-                 q_ec_double_add.clone() * (acc_sub_y - lambda.clone() * acc_double_y.clone()),
-                 q_ec_double_add.clone() * (acc_sub_z - lambda.clone() * acc_double_z.clone())]
+            vec![q_ec_double_add.clone() * (acc_sub_x - lambda.clone() * acc_double_x.clone() * u.clone()),
+                 q_ec_double_add.clone() * (acc_sub_y - lambda.clone() * acc_double_y.clone() * u.clone()),
+                 q_ec_double_add.clone() * (acc_sub_z - lambda.clone() * acc_double_z.clone() * u.clone())]
 
         });
 
@@ -161,6 +153,7 @@ where
             let x3 = meta.query_advice(col_acc_z, Rotation(0));
             let y3 = meta.query_advice(col_lambda, Rotation(0));
             let one = Expression::Constant(C::Scalar::ONE);
+            let u = Expression::AccU(AccU{index: 0});
 
             // dx = x2 - x1
             let dx = sm_x.clone() - comm_x.clone();
@@ -168,11 +161,11 @@ where
             let dx_sq = dx.clone() * dx.clone();
             let dy_sq = dy.clone() * dy.clone();
 
-            //  x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq
-            //  y_3 * dx = dy * (x_1 - x_3) - y_1 * dx
+            //  x_3 * dx_sq = dy_sq - x_1 * dx_sq - x_2 * dx_sq, degree 3
+            //  y_3 * dx = dy * (x_1 - x_3) - y_1 * dx, degree 2
 
-            vec![q_ec_add_unequal_last.clone() * ((x3.clone() * dx_sq.clone() - dy_sq.clone() + comm_x.clone() * dx_sq.clone() + sm_x.clone() * dx_sq.clone()) * comm_sel_bit.clone() + (one.clone() - comm_sel_bit.clone()) * (x3.clone() - sm_x.clone())),
-                 q_ec_add_unequal_last * ((y3.clone() * dx.clone() - dy.clone() * (comm_x.clone() - x3.clone()) + comm_y.clone() * dx.clone()) * comm_sel_bit.clone() + (one.clone() - comm_sel_bit.clone()) * (y3.clone() - sm_y.clone()))]
+            vec![q_ec_add_unequal_last.clone() * (((x3.clone() * dx_sq.clone() - dy_sq.clone() * u.clone() + comm_x.clone() * dx_sq.clone() + sm_x.clone() * dx_sq.clone()) * comm_sel_bit.clone()) * pow_expr(u.clone(), 2) + ((one.clone() * u.clone() - comm_sel_bit.clone()) * (x3.clone() - sm_x.clone()))*pow_expr(u.clone(), 4)),
+                 q_ec_add_unequal_last * (((y3.clone() * dx.clone() - dy.clone() * (comm_x.clone() - x3.clone()) + comm_y.clone() * dx.clone()) * comm_sel_bit.clone()) * pow_expr(u.clone(), 3) + ((one.clone() * u.clone() - comm_sel_bit.clone()) * (y3.clone() - sm_y.clone()))*pow_expr(u.clone(), 4))]
         });
 
         meta.create_gate("ec_convert_affine", |meta| {
@@ -190,11 +183,11 @@ where
                 [
                     (
                         "Constrain affine_x conversion",
-                        (sm_z.clone() * sm_xaff - sm_x.clone() * u.clone()) * pow4(u.clone()),
+                        (sm_z.clone() * sm_xaff - sm_x.clone() * u.clone()) * pow_expr(u.clone(), 4),
                     ),
                     (
                         "Constrain affine_y conversion",
-                        (sm_z.clone() * sm_yaff - sm_y.clone() * u.clone()) * pow4(u.clone()),
+                        (sm_z.clone() * sm_yaff - sm_y.clone() * u.clone()) * pow_expr(u.clone(), 4),
                     )
                 ],
             )
@@ -207,16 +200,17 @@ where
             let lc_prev = meta.query_advice(col_rlc, Rotation(0));
             let lc_next = meta.query_advice(col_rlc, Rotation(1));
             let one = Expression::Constant(C::Scalar::ONE);
+            let u = Expression::AccU(AccU{index: 0});
 
             Constraints::with_selector(
                 q_ec_num,
                 [
                     (
                         "Constrain bit is boolean",
-                        rbit.clone() * (one - rbit.clone()),
+                        rbit.clone() * (one * u.clone() - rbit.clone()) * pow_expr(u.clone(), 4),
                     ),
                     (
-                        "If bit is 1, e2 added to sum",
+                        "If bit is 1, e2 added to sum", // linear constraint. no need to homogenize
                         rbit.clone() * e2_prev.clone() + lc_prev.clone() - lc_next.clone(),
                     ),
                 ],

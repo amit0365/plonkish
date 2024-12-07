@@ -95,6 +95,10 @@ pub struct PlonkishCircuitInfo<F> {
     pub floor_planner_data: Option<FloorPlannerData>,
     // last rows of each witness
     pub last_rows: Vec<usize>,
+    // number of witness in each phase
+    pub witness_count: usize,
+    // number of advice copies
+    pub copy_count: usize,
     // advice copies 
     pub advice_copies: Vec<Vec<usize>>,
     // log number of beta or sqrt(l)

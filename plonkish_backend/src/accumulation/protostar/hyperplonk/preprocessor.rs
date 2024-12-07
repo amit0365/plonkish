@@ -271,7 +271,7 @@ where
 
     let num_folding_witness_polys = num_witness_polys + num_builtin_witness_polys;
     let num_folding_challenges = alpha_prime_offset + num_alpha_primes;
-    println!("num_folding_challenges: {:?}", num_folding_challenges);
+
     let u = num_folding_challenges;
 
     let [beta, gamma, alpha] =
@@ -338,6 +338,8 @@ where
         last_rows: circuit_info.last_rows.clone(),
         advice_copies: circuit_info.advice_copies.clone(),
         log_num_betas: circuit_info.log_num_betas,
+        witness_count: circuit_info.witness_count,
+        copy_count: circuit_info.copy_count,
     };
 
     let verifier_param = ProtostarVerifierParam {

@@ -5,6 +5,7 @@ pub mod transcript;
 pub mod range;
 pub mod sha256;
 pub mod minroot;
+pub mod hashchain;
 
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
 use halo2_base::utils::{CurveAffineExt, ScalarField, BigPrimeField};
@@ -316,8 +317,8 @@ mod test {
         let mut messages_vec = Vec::new();
         let message_vec = iter::empty()
             .chain([r_non_native])
-            .chain(into_coordinates(&p_single).into_iter())
-            .chain(into_coordinates(&comm_affine).into_iter())
+            .chain(into_coordinates(&p_single))
+            .chain(into_coordinates(&comm_affine))
             .collect_vec();
         
         let input_len = L/4;

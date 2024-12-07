@@ -6,7 +6,7 @@ use halo2_proofs::circuit::floor_planner::V1;
 use halo2_proofs::circuit::{Region, SimpleFloorPlanner};
 use halo2_proofs::dev::{CircuitLayout, MockProver};
 use halo2_proofs::halo2curves::bn256;
-use halo2_proofs::plonk::{Circuit, Constraints, Instance};
+use halo2_proofs::plonk::{AccU, Circuit, Constraints, Instance};
 use halo2_proofs::{circuit::{AssignedCell, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Selector}, poly::Rotation};
 use halo2_base::utils::{bigint_to_fe, biguint_to_fe, decompose_bigint, decompose_biguint, fe_to_bigint, fe_to_biguint, modulus, BigPrimeField, FromUniformBytes};
 use halo2_proofs::{arithmetic::{CurveAffine, Field}, halo2curves::ff::PrimeFieldBits};
@@ -17,14 +17,16 @@ use num_integer::Integer;
 use num_traits::sign::Signed;
 use poseidon2::circuit::hash_chip::NUM_PARTIAL_SBOX;
 use rand::rngs::OsRng;
+use super::minroot::{MinrootGateInputs, MinrootGateOutputs};
 use super::range::range_check::{RangeCheckChip, RangeCheckConfig};
 use super::transcript::{NUM_CHALLENGE_BITS, NUM_HASH_BITS, RANGE_BITS};
+use crate::util::expression::pow_expr;
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
 pub const LOOKUP_BITS: usize = 8;
 pub const NUM_MAIN_ADVICE: usize = 2*T + 3;
 pub const NUM_MAIN_FIXED: usize = 2*T + NUM_PARTIAL_SBOX;
-pub const NUM_MAIN_SELECTORS: usize = 5;
+pub const NUM_MAIN_SELECTORS: usize = 7;
 
 pub const NUM_LIMB_BITS_PRIMARY_NON_NATIVE: usize = 128;
 pub const NUM_LIMBS_PRIMARY_NON_NATIVE: usize = 2;
@@ -194,64 +196,113 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             Ok(())
         }
     
+        // | row |  advice[0] |  advice[1]  |  advice[2]  |  advice[3]  |  advice[4]  |  advice[5]  |  ...  | range_check | 
+        // | 0   |    5       |    3        |   3         |   0         |   1         |   0         |  ...  |  0xabcdef12 |
+        // | 1   |    0       |    7        |   4         |   5         |   4         |   58        |  ...  |   0xabcdef  |
+        // | 2   |    1       |    9        |   3         |   23        |   24        |   99        |  ...  |    0xabcd   |
+        // | 3   |    1       |    3        |   4         |   41        |   43        |   34        |  ...  |     0xab    |
         pub fn configure(
             meta: &mut ConstraintSystem<C::Scalar>,
             advice: [Column<Advice>; NUM_MAIN_ADVICE],
             fixed: [Column<Fixed>; NUM_MAIN_FIXED],
         ) -> MainChipConfig {
 
-            let [mul_add, inner_product, inner_product_opt, inner_product_opt_base, bit_constraint] = [(); NUM_MAIN_SELECTORS].map(|_| meta.selector());
+            let [mul_add_left, inner_product, inner_product_opt, inner_product_opt_base, bit_constraint, mul_add_right, minroot] = [(); NUM_MAIN_SELECTORS].map(|_| meta.selector());
             let instance = meta.instance_column();
             meta.enable_equality(instance);
 
-            meta.create_gate("mul add constraint", |meta| {
-                let s = meta.query_selector(mul_add);
+            // x_i_plus_1^5 = y_i + x_i , x_i + i = y_i_plus_1, i + 1 = i_plus_1
+            // | x_i_plus_1^5 | y_i | x_i | i | y_i_plus_1 | i_plus_1 |
+            meta.create_gate("minroot", |meta| {
+                let s = meta.query_selector(minroot);
+                let u = Expression::AccU(AccU{index: 0});
+                let one = Expression::Constant(C::Scalar::ONE);
+                let x_i_plus_1 = meta.query_advice(advice[0], Rotation::cur());
+                let y_i = meta.query_advice(advice[1], Rotation::cur());
+                let x_i = meta.query_advice(advice[2], Rotation::cur());
+                let i = meta.query_advice(advice[3], Rotation::cur());
+                let y_i_plus_1 = meta.query_advice(advice[4], Rotation::cur());
+                let i_plus_1 = meta.query_advice(advice[5], Rotation::cur());
+                let x_i_plus_2 = meta.query_advice(advice[6], Rotation::cur());
+                let y_i_plus_2 = meta.query_advice(advice[7], Rotation::cur());
+                let i_plus_2 = meta.query_advice(advice[8], Rotation::cur());
+
+                Constraints::with_selector(
+                    s,
+                    [
+                        ("x_i_plus_1^5 = y_i + x_i", (pow_expr(x_i_plus_1.clone(), 5) - (y_i + x_i.clone()) * pow_expr(u.clone(), 4)) * u.clone()),
+                        ("x_i + i = y_i_plus_1", (x_i + i.clone()) - y_i_plus_1.clone()),
+                        ("i + 1 = i_plus_1", i + one.clone() - i_plus_1.clone()),
+                        ("x_i_plus_2^5 = y_i_plus_1 + x_i_plus_1", (pow_expr(x_i_plus_2.clone(), 5) - (y_i_plus_1 + x_i_plus_1.clone()) * pow_expr(u.clone(), 4)) * u.clone()),
+                        ("x_i_plus_1 + i_plus_1 = y_i_plus_2", (x_i_plus_1 + i_plus_1.clone()) - y_i_plus_2.clone()),
+                        ("i_plus_1 + 1 = i_plus_2", i_plus_1 + one - i_plus_2.clone()),
+                    ]
+                )
+            });
+
+            meta.create_gate("mul add constraint left", |meta| {
+                let s = meta.query_selector(mul_add_left);
+                let u = Expression::AccU(AccU{index: 0});
                 let a = meta.query_advice(advice[0], Rotation::cur());
                 let b = meta.query_advice(advice[1], Rotation::cur());
                 let c = meta.query_advice(advice[2], Rotation::cur());
                 let out = meta.query_advice(advice[3], Rotation::cur());
-                vec![s * (a * b + c - out)]
+                vec![s * ((a * b + c * u.clone() - out * u.clone()) * pow_expr(u.clone(), 4))]
+            });
+
+            meta.create_gate("mul add constraint right", |meta| {
+                let s = meta.query_selector(mul_add_right);
+                let u = Expression::AccU(AccU{index: 0});
+                let a = meta.query_advice(advice[4], Rotation::cur());
+                let b = meta.query_advice(advice[5], Rotation::cur());
+                let c = meta.query_advice(advice[6], Rotation::cur());
+                let out = meta.query_advice(advice[7], Rotation::cur());
+                vec![s * ((a * b + c * u.clone() - out * u.clone()) * pow_expr(u.clone(), 4))]
             });
 
             meta.create_gate("inner product constraint", |meta| {
                 let s = meta.query_selector(inner_product);
+                let u = Expression::AccU(AccU{index: 0});
                 let a = meta.query_advice(advice[0], Rotation::cur());
                 let b = meta.query_advice(advice[1], Rotation::cur());
                 let acc = meta.query_advice(advice[2], Rotation::cur());
                 let acc_next = meta.query_advice(advice[3], Rotation::cur());    
-                vec![s * (a * b + acc - acc_next)]
+                vec![s * ((a * b + acc * u.clone() - acc_next * u.clone()) * pow_expr(u.clone(), 4))]
             });
 
             meta.create_gate("inner product assign witness base", |meta| {
                 let s = meta.query_selector(inner_product_opt_base);
+                let u = Expression::AccU(AccU{index: 0});
                 let zero = Expression::Constant(C::Scalar::ZERO);
                 let a = (0..NUM_LIMBS_NON_NATIVE).map(|i| meta.query_advice(advice[i], Rotation::cur())).collect_vec();
                 let b = (0..NUM_LIMBS_NON_NATIVE).map(|i| meta.query_advice(advice[i], Rotation::next())).collect_vec();
                 let acc = meta.query_advice(advice[NUM_LIMBS_NON_NATIVE], Rotation::cur());
                 let product = a.iter().zip(b.iter()).fold(zero, |acc, (a, b)| acc + a.clone() * b.clone());
-                vec![s * (product - acc)]
+                vec![s * ((product - acc * u.clone()) * pow_expr(u.clone(), 4))]
             });
 
             // | col 0 | col 1| col 2| ... |col N-1|
             meta.create_gate("inner product opt", |meta| {
                 let s = meta.query_selector(inner_product_opt);
                 let zero = Expression::Constant(C::Scalar::ZERO);
+                let u = Expression::AccU(AccU{index: 0});
                 let a = (0..NUM_MAIN_ADVICE - 1).map(|i| meta.query_advice(advice[i], Rotation::cur())).collect_vec();
                 let b = (0..NUM_MAIN_ADVICE - 1).map(|i| meta.query_advice(advice[i], Rotation::next())).collect_vec();
                 let acc = meta.query_advice(advice[NUM_MAIN_ADVICE - 1], Rotation::cur());
                 let acc_next = meta.query_advice(advice[NUM_MAIN_ADVICE - 1], Rotation::next());    
                 let product = a.iter().zip(b.iter()).fold(zero, |acc, (a, b)| acc + a.clone() * b.clone());
-                vec![s * (product + acc - acc_next)]
+                vec![s * ((product + acc * u.clone() - acc_next * u.clone()) * pow_expr(u.clone(), 4))]
             });
 
             meta.create_gate("bit constraint", |meta| {
                 let s = meta.query_selector(bit_constraint);
                 let one = Expression::Constant(C::Scalar::ONE);
+                let u = Expression::AccU(AccU{index: 0});
                 let x = (0..NUM_MAIN_ADVICE - 1).map(|i| meta.query_advice(advice[i], Rotation::cur())).collect_vec();
                 
                 Constraints::with_selector(
                     s,
-                    x.into_iter().map(|x| x.clone() * (one.clone() - x)).collect_vec()
+                    x.into_iter().map(|x| x.clone() * (one.clone() * u.clone() - x) * pow_expr(u.clone(), 4)).collect_vec()
                 )
             });
             
@@ -259,7 +310,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
                 advice,
                 fixed,
                 instance,
-                selector: [mul_add, inner_product, inner_product_opt, inner_product_opt_base, bit_constraint],
+                selector: [mul_add_left, inner_product, inner_product_opt, inner_product_opt_base, bit_constraint, mul_add_right, minroot],
             }
         }
 
@@ -633,6 +684,99 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
             Ok(())
         }
         
+        // pub fn minroot_gate(
+        //     &self,
+        //     layouter: &mut impl Layouter<C::Scalar>,
+        //     inputs: MinrootGateInputs<C::Scalar>,
+        // ) -> Result<MinrootGateOutputs<C::Scalar>, Error> {
+        //     // x_i_plus_1^5 = y_i + x_i , x_i + i = y_i_plus_1, i + 1 = i_plus_1
+        //     // | x_i_plus_1^5 | y_i | x_i | i | y_i_plus_1 | i_plus_1 |     |
+        //     layouter.namespace(|| "minroot").assign_region(
+        //         || "minroot",
+        //         |mut region | {
+        //             self.config.selector.last().unwrap().enable(&mut region, 0)?;
+        //             let x_i_plus_1 = Number(region.assign_advice(
+        //                 || "x_i_plus_1",
+        //                 self.config.advice[0], 0, || Value::known(inputs.x_i_plus_1)
+        //             )?);
+        //             let _y_i = region.assign_advice(
+        //                 || "y_i",
+        //                 self.config.advice[1], 0, || Value::known(inputs.y_i)
+        //             )?;
+        //             let _x_i = region.assign_advice(
+        //                 || "x_i",
+        //                 self.config.advice[2], 0, || Value::known(inputs.x_i)
+        //             )?;
+        //             let _i = region.assign_advice(
+        //                 || "i",
+        //                 self.config.advice[3], 0, || Value::known(inputs.i)
+        //             )?;
+        //             let y_i_plus_1 = Number(region.assign_advice(
+        //                 || "y_i_plus_1",
+        //                 self.config.advice[4], 0, || Value::known(inputs.y_i_plus_1)
+        //             )?);
+        //             let i_plus_1 = Number(region.assign_advice(
+        //                 || "i_plus_1",
+        //                 self.config.advice[5], 0, || Value::known(inputs.i_plus_1)
+        //             )?);
+        //             Ok(MinrootGateOutputs{ i_plus_1, x_i_plus_1, y_i_plus_1 })
+        //         }
+        //     )
+        // }
+
+        pub fn minroot_gate_double(
+            &self,
+            layouter: &mut impl Layouter<C::Scalar>,
+            inputs: MinrootGateInputs<C::Scalar>,
+        ) -> Result<MinrootGateOutputs<C::Scalar>, Error> {
+            // x_i_plus_1^5 = y_i + x_i , x_i + i = y_i_plus_1, i + 1 = i_plus_1
+            // x_i_plus_2^5 = y_i_plus_1 + x_i_plus_1, x_i_plus_1 + i_plus_1 = y_i_plus_2, i_plus_1 + 1 = i_plus_2
+            // | x_i_plus_1 | y_i | x_i | i | y_i_plus_1 | i_plus_1 | x_i_plus_2 | y_i_plus_2  | i_plus_2 |
+            layouter.namespace(|| "minroot").assign_region(
+                || "minroot",
+                |mut region | {
+                    self.config.selector.last().unwrap().enable(&mut region, 0)?;
+                    let x_i_plus_1 = Number(region.assign_advice(
+                        || "x_i_plus_1",
+                        self.config.advice[0], 0, || Value::known(inputs.x_i_plus_1)
+                    )?);
+                    let _y_i = region.assign_advice(
+                        || "y_i",
+                        self.config.advice[1], 0, || Value::known(inputs.y_i)
+                    )?;
+                    let _x_i = region.assign_advice(
+                        || "x_i",
+                        self.config.advice[2], 0, || Value::known(inputs.x_i)
+                    )?;
+                    let _i = region.assign_advice(
+                        || "i",
+                        self.config.advice[3], 0, || Value::known(inputs.i)
+                    )?;
+                    let y_i_plus_1 = Number(region.assign_advice(
+                        || "y_i_plus_1",
+                        self.config.advice[4], 0, || Value::known(inputs.y_i_plus_1)
+                    )?);
+                    let i_plus_1 = Number(region.assign_advice(
+                        || "i_plus_1",
+                        self.config.advice[5], 0, || Value::known(inputs.i_plus_1)
+                    )?);
+                    let x_i_plus_2 = Number(region.assign_advice(
+                        || "x_i_plus_2",
+                        self.config.advice[6], 0, || Value::known(inputs.x_i_plus_2)
+                    )?);
+                    let y_i_plus_2 = Number(region.assign_advice(
+                        || "y_i_plus_2",
+                        self.config.advice[7], 0, || Value::known(inputs.y_i_plus_2)
+                    )?);
+                    let i_plus_2 = Number(region.assign_advice(
+                        || "i_plus_2",
+                        self.config.advice[8], 0, || Value::known(inputs.i_plus_2)
+                    )?);
+                    Ok(MinrootGateOutputs{ i_plus_1, x_i_plus_1, y_i_plus_1, i_plus_2, x_i_plus_2, y_i_plus_2 })
+                }
+            )
+        }
+
         /// Constrains that x is boolean (e.g. 0 or 1).
         ///
         /// Defines a vertical gate of form | 0 | x | x | x |.

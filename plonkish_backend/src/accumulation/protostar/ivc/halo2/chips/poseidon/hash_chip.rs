@@ -2,7 +2,7 @@
 //! is already implemented in halo2_gadgets, there is no wrapper chip that makes it easy to use in other circuits.
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash as inlineHash, Spec}, Hash, Pow5Chip, Pow5Config};
 use halo2_proofs::{
-    circuit::{AssignedCell, Chip, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::{bn256::{self, Fq as Fp}, grumpkin}, plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed}
+    circuit::{AssignedCell, Chip, Layouter, SimpleFloorPlanner, Value}, dev::{circuit_dot_graph, MockProver}, halo2curves::{bn256::{self, Fq as Fp}, grumpkin}, plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed}
 };
 use halo2_base::utils::FromUniformBytes;
 use halo2_proofs::arithmetic::Field;
@@ -10,7 +10,7 @@ use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::{RATE, T
 use halo2_base::utils::BigPrimeField;
 use rand::rngs::OsRng;
 use super::spec::{PoseidonSpecFp, PoseidonSpec};
-use std::{fs::File, marker::PhantomData};
+use std::{fs::{write, File}, marker::PhantomData};
 // use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash as inlineHash, Spec}, Hash, Pow5Chip, Pow5Config};
 use poseidon2::circuit::{hash_chip::NUM_PARTIAL_SBOX, spec::PoseidonSpec as Poseidon2ChipSpec};
 
@@ -386,7 +386,7 @@ fn poseidon_hash_longer_input_custom() {
     //     inlineHash::<_, PoseidonSpec, ConstantLength<L>, T, RATE>::init().hash(message);
     // println!("output: {:?}", output);
 
-    let k = 7;
+    let k = 8;
     let circuit = PoseidonHashCircuit::<grumpkin::G1Affine> {
         message,
     };
@@ -399,6 +399,9 @@ fn poseidon_hash_longer_input_custom() {
     halo2_proofs::dev::CircuitLayout::default()
     .render(k, &circuit, &root)
     .unwrap();
+
+    let circuit_dot = circuit_dot_graph(&circuit);
+    write("poseidon_hash_circuit_dot", circuit_dot).unwrap();
 }
 
 // #[test]

@@ -16,13 +16,13 @@ use crate::{
         AccumulationScheme,
     },
     backend::{
-        hyperplonk::{verifier::point_offset, HyperPlonk, HyperPlonkVerifierParam},
+        hyperplonk::{HyperPlonk, HyperPlonkVerifierParam}, //verifier::point_offset,
         PlonkishBackend, PlonkishCircuit
     },
     frontend::halo2::{Halo2Circuit, CircuitExt},
     pcs::{
         multilinear::{
-            Gemini, MultilinearHyrax, MultilinearHyraxParams, MultilinearIpa, MultilinearIpaParams,
+            Gemini, MultilinearIpa, MultilinearIpaParams,
         },
         univariate::{kzg::eval_sets, UnivariateKzg},
         AdditiveCommitment, Evaluation, PolynomialCommitmentScheme,
@@ -213,8 +213,8 @@ where
             iter::repeat_with(|| main_chip.assign_fixed(layouter, &C::Scalar::ZERO, 0))
                 .take(self.avp.num_folding_challenges())
                 .try_collect::<_, Vec<_>, _>()?;
-        println!("challenges_assign_default_accumulator {:?}", challenges.len());
-        let u = main_chip.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
+
+                let u = main_chip.assign_fixed(layouter, &C::Scalar::ZERO, 0)?;
         let e_comm = main_chip.assign_constant_primary(layouter, C::identity())?;
         let compressed_e_sum = match self.avp.strategy {
             NoCompressing => None,
@@ -360,7 +360,6 @@ where
                     main_chip.assign_witness(layouter, &challenge_val, idx)
                 })
             .try_collect::<_, Vec<_>, _>()?;
-        println!("challenges_assign_accumulator {:?}", challenges.len());
 
         let mut acc_u_val = C::Scalar::ZERO;
         acc.map(|acc| acc.u).map(|val| acc_u_val = val);
@@ -1203,7 +1202,6 @@ pub fn preprocess<C, P1, P2, S1, AT1, AT2>(
     cyclefold_num_vars: usize,
     cyclefold_param: P2::Param,
     cyclefold_atp: AT2::Param,
-    mut rng: impl RngCore,
 ) -> Result<
     (
         Halo2Circuit<C::Scalar, PrimaryCircuit<C, S1>>,
@@ -1270,12 +1268,13 @@ where
 
     let timer = start_timer(|| "preprocess primary circuit_info twice");
     let primary_circuit_info = primary_circuit.circuit_info().unwrap();
+    println!("primary_circuit_info done");
     primary_circuit.floor_planner_data();
     end_timer(timer);
     let (primary_pp, primary_vp) =
         Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
 
-    let num_bits = NUM_HASH_BITS; //Chip::<C>::NUM_HASH_BITS
+    let num_bits = NUM_HASH_BITS; // Chip::<C>::NUM_HASH_BITS
     let vp_digest = fe_truncated_from_le_bytes(
         Keccak256::digest(bincode::serialize(&(&primary_vp, &cyclefold_vp)).unwrap()),
         num_bits,
@@ -1433,23 +1432,23 @@ where
             });
 
         } else {
-            let timer = start_timer(|| "decide_strawman");
-            Protostar::<HyperPlonk<P1>>::decide_strawman(
-                &ivc_pp.primary_pp,
-                &primary_acc,
-                &mut primary_transcript,
-                &mut rng,
-            )?;
-            end_timer(timer);
+            // let timer = start_timer(|| "decide_strawman");
+            // Protostar::<HyperPlonk<P1>>::decide_strawman(
+            //     &ivc_pp.primary_pp,
+            //     &primary_acc,
+            //     &mut primary_transcript,
+            //     &mut rng,
+            // )?;
+            // end_timer(timer);
 
-            let timer = start_timer(|| "decide_strawman_ec");
-            Protostar::<HyperPlonk<P2>>::decide_strawman_ec(
-                &ivc_pp.cyclefold_pp,
-                &primary_acc_ec,
-                &mut cyclefold_transcript,
-                &mut rng,
-            )?;
-            end_timer(timer);
+            // let timer = start_timer(|| "decide_strawman_ec");
+            // Protostar::<HyperPlonk<P2>>::decide_strawman_ec(
+            //     &ivc_pp.cyclefold_pp,
+            //     &primary_acc_ec,
+            //     &mut cyclefold_transcript,
+            //     &mut rng,
+            // )?;
+            // end_timer(timer);
 
             return Ok((
                 primary_acc,

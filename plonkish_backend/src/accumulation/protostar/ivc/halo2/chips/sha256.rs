@@ -198,6 +198,12 @@ impl<F: Field, Sha256Chip: Sha256Instructions<F>> Sha256<F, Sha256Chip> {
         input_size: usize,
     }
 
+    impl Sha256Circuit {
+        pub fn new(input_size: usize) -> Self {
+            Self { input_size }
+        }
+    }
+
     impl Circuit<Fr> for Sha256Circuit {
         type Params = ();
         type Config = Table16Config<Fr>;
@@ -253,9 +259,108 @@ impl<F: Field, Sha256Chip: Sha256Instructions<F>> Sha256<F, Sha256Chip> {
         }
     }
 
-    use plotters::prelude::*;
+
+// Todo: Allow to pass an input and constrain correctness against a PI or similar.
+#[derive(Default)]
+struct MyCircuit {
+    iter_num: usize,
+}
+
+impl Circuit<Fr> for MyCircuit {
+    type Params = ();
+    type Config = Table16Config<Fr>;
+    type FloorPlanner = SimpleFloorPlanner;
+
+    fn without_witnesses(&self) -> Self {
+        unimplemented!()
+    }
+
+    fn configure(meta: &mut ConstraintSystem<Fr>) -> Self::Config {
+        let advice = [meta.advice_column(); 10];
+        Table16Chip::configure(meta, advice)
+    }
+
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<Fr>,
+    ) -> Result<(), Error> {
+        Table16Chip::load(config.clone(), &mut layouter)?;
+        let table16_chip = Table16Chip::construct(config);
+
+        let mut test_input = [BlockWord(Value::known(0xff)); 8];
+
+        for _ in 0..self.iter_num {
+            test_input = Sha256::digest(
+                table16_chip.clone(),
+                layouter.namespace(|| "'abc' * 2"),
+                &test_input,
+            )?
+            .0;
+        }
+        Ok(())
+    }
+}
+
+// fn main() {
+//     let args: Vec<String> = std::env::args().collect();
+//     let k: usize = args[2].parse().unwrap();
+//     let params_size: u32 = args[1].parse().unwrap();
+
+//     let params = ParamsKZG::<Bn256>::setup(params_size, OsRng);
+//     let circuit = MyCircuit { iter_num: k };
+
+//     // Plotting circuit
+//     // use plotters::prelude::*;
+//     // let root = BitMapBackend::new("sha_layout.png", (1024, 7680)).into_drawing_area();
+//     // root.fill(&WHITE).unwrap();
+//     // let root = root
+//     //     .titled(&format!("SHA - Depth={}", params_size), ("sans-serif", 60))
+//     //     .unwrap();
+
+//     // halo2_proofs::dev::CircuitLayout::default()
+//     //     .render(params_size as u32, &circuit, &root)
+//     //     .unwrap();
+
+//     let vk = keygen_vk(&params, &circuit).unwrap();
+//     let pk = keygen_pk(&params, vk, &circuit).unwrap();
+
+//     let start = start_timer!(|| "Compute Halo2 recursive hash");
+//     let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+//     create_proof::<KZGCommitmentScheme<_>, ProverGWC<_>, _, _, _, _>(
+//         &params,
+//         &pk,
+//         &[circuit],
+//         &[],
+//         OsRng,
+//         &mut transcript,
+//     )
+//     .expect("proof generation should not fail");
+//     let proof: Vec<u8> = transcript.finalize();
+//     end_timer!(start);
+// }
+
+    #[test]
+    pub fn sha_test_iter() {
+        let k = 16;
+        let circuit = MyCircuit{iter_num: 1};
+        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+        prover.assert_satisfied();
+    }
+
     #[test]
     pub fn sha_test() {
+        let k = 18;
+        let circuit = Sha256Circuit{input_size: 65};
+        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+        //prover.assert_satisfied();
+        println!("Witness Count: {:?}", prover.witness_count);
+        println!("Copy Count: {:?}", prover.copy_count);
+    }
+
+    use plotters::prelude::*;
+    #[test]
+    pub fn sha_test_layout() {
         let root =
         BitMapBackend::new("sha-256-table16-chip-layout.png", (1024, 3480)).into_drawing_area();
         root.fill(&WHITE).unwrap();
@@ -281,51 +386,3 @@ impl<F: Field, Sha256Chip: Sha256Instructions<F>> Sha256<F, Sha256Chip> {
         circuit_layout.render(k, &circuit, &root)
         .unwrap();
     }
-
-    // #[derive(Default)]
-    // struct MyCircuit {
-    //     iter_num: usize,
-    // }
-
-    // impl Circuit<Fr> for MyCircuit {
-    //     type Params = ();
-    //     type Config = Table16Config<Fr>;
-    //     type FloorPlanner = SimpleFloorPlanner;
-    
-    //     fn without_witnesses(&self) -> Self {
-    //         Self::default()
-    //     }
-    
-    //     fn configure(meta: &mut ConstraintSystem<Fr>) -> Self::Config {
-    //         Table16Chip::configure(meta)
-    //     }
-    
-    //     fn synthesize(
-    //         &self,
-    //         config: Self::Config,
-    //         mut layouter: impl Layouter<Fr>,
-    //     ) -> Result<(), Error> {
-    //         Table16Chip::load(config.clone(), &mut layouter)?;
-    //         let table16_chip = Table16Chip::construct(config);
-    
-    //         let mut test_input = [BlockWord(Value::known(0xff)); 8];
-    
-    //         for _ in 0..self.iter_num {
-    //             test_input = Sha256::digest(
-    //                 table16_chip.clone(),
-    //                 layouter.namespace(|| "'abc' * 2"),
-    //                 &test_input,
-    //             )?
-    //             .0;
-    //         }
-    //         Ok(())
-    //     }
-    // }
-
-    // #[test]
-    // pub fn sha_test() {
-    //     let k = 17;
-    //     let circuit = MyCircuit{iter_num: 1};
-    //     let prover = MockProver::run(k as u32, &circuit, vec![]).unwrap();
-    //     prover.assert_satisfied();
-    // }

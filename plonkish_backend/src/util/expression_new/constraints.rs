@@ -112,12 +112,12 @@ impl<T: QueryType> Data<T> {
                 let one = T::new_constant(T::F::ONE);
                 let u = T::new_u(self.acc_u[0]);
 
-                // h * (r + theta_1 * input_1 + ... + theta_k * input_k )
+                // h * (r*u + theta_1 * input_1 + ... + theta_k * input_k ) = 1 * u^2
                 let input_constraint =
-                    h * zip(inputs, thetas.iter()).fold(r.clone(), |acc, (input, theta)| {
+                    h * zip(inputs, thetas.iter()).fold(r.clone() * u.clone(), |acc, (input, theta)| {
                         acc + (input * theta.clone())
-                    }) - one ;//* u.clone() * u.clone();
-
+                    }) - one * u.clone() * u.clone();
+                // g * (r + theta_1 * table_1 + ... + theta_k * table_k ) = m * u
                 let table_constraint = g * zip(tables, thetas.iter())
                     .fold(r, |acc, (table, theta)| acc + (table * theta.clone()))
                     - m * u.clone();

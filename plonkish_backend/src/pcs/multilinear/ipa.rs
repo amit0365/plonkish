@@ -16,19 +16,30 @@ use halo2_proofs::halo2curves::group::ff::BatchInvert;
 use rand::RngCore;
 use std::fs::File;
 use std::io::Write;
+use std::io::Read;
 use std::{iter, marker::PhantomData, slice};
 
 #[derive(Clone, Debug)]
-pub struct MultilinearIpa<C: CurveAffine>(PhantomData<C>);
+pub struct MultilinearIpa<C>(PhantomData<C>);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MultilinearIpaParams<C: CurveAffine> {
+#[serde(bound(
+    serialize = "C: Serialize",
+    deserialize = "C: DeserializeOwned",
+))]
+pub struct MultilinearIpaParams<C> 
+where
+    C: CurveAffine + Serialize + DeserializeOwned,
+{
     num_vars: usize,
     g: Vec<C>,
     h: C,
 }
 
-impl<C: CurveAffine> MultilinearIpaParams<C> {
+impl<C> MultilinearIpaParams<C> 
+where
+    C: CurveAffine + Serialize + DeserializeOwned,
+{
     pub fn num_vars(&self) -> usize {
         self.num_vars
     }
@@ -41,20 +52,20 @@ impl<C: CurveAffine> MultilinearIpaParams<C> {
         &self.h
     }
 
-    // pub fn save_to_file(&self, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
-    //     let encoded: Vec<u8> = bincode::serialize(&self)?;
-    //     let mut file = File::create(filename)?;
-    //     file.write_all(&encoded)?;
-    //     Ok(())
-    // }
+    pub fn save_to_file(&self, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let encoded: Vec<u8> = bincode::serialize(&self)?;
+        let mut file = File::create(filename)?;
+        file.write_all(&encoded)?;
+        Ok(())
+    }
 
-    // pub fn load_from_file(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
-    //     let mut file = File::open(filename)?;
-    //     let mut encoded = Vec::new();
-    //     file.read_to_end(&mut encoded)?;
-    //     let param: Self = bincode::deserialize(&encoded)?;
-    //     Ok(param)
-    // }
+    pub fn load_from_file(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut file = File::open(filename)?;
+        let mut encoded = Vec::new();
+        file.read_to_end(&mut encoded)?;
+        let param: Self = bincode::deserialize(&encoded)?;
+        Ok(param)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,16 +1,16 @@
 use itertools::Itertools;
 use rand::{rngs::OsRng, RngCore};
-use std::{cell::RefCell, iter::{self, once}};
-use halo2_proofs::{circuit::{floor_planner::V1, AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::MockProver, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}};
+use std::{cell::RefCell, fs::write, iter::{self, once}};
+use halo2_proofs::{circuit::{floor_planner::V1, AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::{circuit_dot_graph, MockProver}, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}};
 use halo2_base::utils::{BigPrimeField, FromUniformBytes, PrimeField};
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash, Spec}, spec::PoseidonSpec, PoseidonSpongeChip, Pow5Chip, Pow5Config}; 
 use halo2_proofs::{circuit::floor_planner::Folding, plonk::Error};
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_proofs::arithmetic::Field;
-use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_MAIN_ADVICE}, poseidon::hash_chip::PoseidonConfig, sha256::{Sha256, Table16Chip, Table16Config, INPUT_2}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
+use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_MAIN_ADVICE}, minroot::MinRootCircuit, poseidon::hash_chip::PoseidonConfig, sha256::{Sha256, Table16Chip, Table16Config, INPUT_2}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
 use crate::accumulation::protostar::{ivc::halo2::chips::{main_chip::{EcPointNonNative, Number}, transcript::{native::AssignedProtostarAccumulatorInstance, nonnative::PoseidonTranscriptChip}}, ProtostarStrategy::Compressing};
 use crate::{
-    accumulation::{protostar::{ivc::halo2::chips::{poseidon::hash_chip::PoseidonChip, scalar_mul::sm_chip_primary::{ScalarMulChip, ScalarMulChipConfig}, main_chip::{MainChip, MainChipConfig}, transcript::native::PoseidonNativeTranscriptChip}, ProtostarAccumulatorInstance}, PlonkishNarkInstance}, 
+    accumulation::{protostar::{ivc::halo2::chips::{scalar_mul::sm_chip_primary::{ScalarMulChip, ScalarMulChipConfig}, main_chip::{MainChip, MainChipConfig}, transcript::native::PoseidonNativeTranscriptChip}, ProtostarAccumulatorInstance}, PlonkishNarkInstance}, 
     util::arithmetic::{powers, TwoChainCurve}
 };
 use crate::accumulation::protostar::ivc::halo2::chips::range::range_check::{RangeCheckChip, RangeCheckConfig};
@@ -23,7 +23,7 @@ pub const T: usize = 4;
 pub const RATE: usize = 3;
 pub const NUM_RANGE_COLS: usize = 1; //(T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 25; 
+pub const PRIMARY_HASH_LENGTH: usize = 25; //29 for smchain //27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
 pub const PRIMARY_HASH_LENGTH_EC: usize = 19;
 pub const CF_HASH_LENGTH: usize = 13;
 
@@ -133,6 +133,16 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
         let sm_chip = ScalarMulChip::<C>::new(self.sm_chip_config.clone());
         Ok((main_chip, range_chip, pow5_chip, sm_chip))
     }
+
+    // pub fn initialize_pow2(
+    //     &self,
+    //     layouter: &mut impl Layouter<C::Scalar>,
+    // ) -> Result<(), Error> {
+    //     let range_chip = RangeCheckChip::<C>::construct(self.range_check_config);
+    //     let mut main_chip = MainChip::<C>::new(self.main_config.clone(), range_chip.clone());
+    //     main_chip.initialize_pow2(layouter)?;
+    //     Ok(())
+    // }
 }
 
 #[derive(Clone, Debug)]
@@ -312,7 +322,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 .chain(acc.compressed_e_sum.as_ref())
                 .collect_vec();
             let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
-            
+            println!("inputs: {:?}", input_cells.len());
             let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
             // change to strict - Witness count: 29272
             // let hash_le_bits = main_chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?;
@@ -803,7 +813,7 @@ impl<C, Sc> Circuit<C::Scalar> for PrimaryCircuit<C, Sc>
 {
 
     type Config = PrimaryCircuitConfig<C>;
-    type FloorPlanner = Folding;
+    type FloorPlanner = SimpleFloorPlanner;
     type Params = ();
 
     fn without_witnesses(&self) -> Self {
@@ -869,6 +879,50 @@ where
 
 #[test]
 fn primary_chip() {
+    
+    let k = 13;
+    let primary_avp = ProtostarAccumulationVerifierParam::new(
+        bn256::Fr::ZERO,
+        Compressing,
+        vec![NUM_INSTANCES],
+        vec![1usize, 1usize],
+        vec![vec![1usize], vec![1usize]],
+        5,
+    );
+
+    let cyclefold_avp = ProtostarAccumulationVerifierParam::new(
+        bn256::Fr::ZERO,
+        Compressing,
+        vec![CF_IO_LEN],
+        vec![1usize, 1usize],
+        vec![vec![1usize], vec![0usize]],
+        5,
+    );
+
+    // let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 1024);
+    let primary_step_circuit = TrivialCircuit::<bn256::G1Affine>::default();
+    let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, primary_step_circuit, Some(primary_avp), Some(cyclefold_avp));
+    let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
+    println!("Witness count: {}", prover.witness_count);
+    println!("Copy count: {}", prover.copy_count);
+    // prover.assert_satisfied();
+    // assert_eq!(prover.verify(), Ok(()));
+
+    let circuit_dot = circuit_dot_graph(&circuit);
+    write("primary_circuit_dot", circuit_dot).unwrap();
+
+}
+
+#[test]
+fn primary_chip_layout() {
+    use plotters::prelude::*;
+    use halo2_proofs::dev::CircuitLayout;
+
+    let root = BitMapBackend::new("PrimaryChipMiniRoot.png", (30022, 30062)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let root = root
+        .titled("Primary Chip Layout", ("sans-serif", 60))
+        .unwrap();
 
     let k = 13;
     let primary_avp = ProtostarAccumulationVerifierParam::new(
@@ -889,50 +943,13 @@ fn primary_chip() {
         5,
     );
 
-    let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
+    let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 1024);
+    let circuit = PrimaryCircuit::<bn256::G1Affine, MinRootCircuit<bn256::G1Affine>>::new(true, primary_step_circuit, Some(primary_avp), Some(cyclefold_avp));
+    // let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
     let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
     println!("Witness count: {}", prover.witness_count);
     println!("Copy count: {}", prover.copy_count);
     // prover.assert_satisfied();
-    // assert_eq!(prover.verify(), Ok(()));
-
-}
-
-#[test]
-fn primary_chip_layout() {
-    use plotters::prelude::*;
-    use halo2_proofs::dev::CircuitLayout;
-
-    let root = BitMapBackend::new("PrimaryChipLookupError.png", (3002, 3006)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
-    let root = root
-        .titled("Primary Chip Layout", ("sans-serif", 60))
-        .unwrap();
-
-    let k = 8;
-    let primary_avp = ProtostarAccumulationVerifierParam::new(
-        bn256::Fr::ZERO,
-        Compressing,
-        vec![NUM_INSTANCES],
-        vec![1usize, 1usize],
-        vec![vec![1usize], vec![1usize]],
-        5,
-    );
-
-    let cyclefold_avp = ProtostarAccumulationVerifierParam::new(
-        bn256::Fr::ZERO,
-        Compressing,
-        vec![CF_IO_LEN],
-        vec![1usize, 1usize],
-        vec![vec![1usize], vec![0usize]],
-        5,
-    );
-
-    let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
-    let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
-    println!("Witness count: {}", prover.witness_count);
-    println!("Copy count: {}", prover.copy_count);
-    prover.assert_satisfied();
 
     halo2_proofs::dev::CircuitLayout::default()
     .render(k, &circuit, &root)

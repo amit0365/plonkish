@@ -10,7 +10,7 @@ use crate::util::{arithmetic::Field, expression::Rotation, izip, Deserialize, It
 
 /// Mirror of a `plonk::Expression` where nodes have been moved to a `Queries` structure, and replaced with their indices therein.
 #[derive(Clone, Debug)]
-pub enum Expression<F, CV, FV, WV, AV> {
+pub enum Expression<F: Clone, CV, FV, WV, AV> {
     AccU(AV),
     Constant(F),
     Challenge(CV),
@@ -27,7 +27,7 @@ pub enum Expression<F, CV, FV, WV, AV> {
     ),
 }
 
-impl<F, CV, FV, WV, AV> Expression<F, CV, FV, WV, AV> {
+impl<F: Clone, CV, FV, WV, AV> Expression<F, CV, FV, WV, AV> {
     /// Returns the degree of the Expression, considering Challenge and Witness leaves as variables.
     pub fn degree(&self) -> usize {
         match self {
@@ -77,6 +77,59 @@ impl<F, CV, FV, WV, AV> Expression<F, CV, FV, WV, AV> {
         }
     }
 
+    /// Evaluate the polynomial over all evaluation points at once.
+    ///
+    /// - `acc_u`, `challenge`, `fixed`, `witness` now provide slices of length `num_evals`.
+    /// - `constant` returns a Vec<F> of length `num_evals` containing the same constant value.
+    /// - `negated`, `sum`, `product` operate on slices of length `num_evals` and return a Vec<F>.
+    pub fn batch_evaluate(
+        &self,
+        acc_u: &impl Fn(&AV) -> Vec<F>,
+        constant: &impl Fn(&F) -> Vec<F>,
+        challenge: &impl Fn(&CV) -> Vec<F>,
+        fixed: &impl Fn(&FV) -> Vec<F>,
+        witness: &impl Fn(&WV) -> Vec<F>,
+        negated: &impl Fn(&[F]) -> Vec<F>,
+        sum: &impl Fn(&[F], &[F]) -> Vec<F>,
+        product: &impl Fn(&[F], &[F]) -> Vec<F>,
+    ) -> Vec<F> {
+        match self {
+            Self::AccU(v) => {
+                // acc_u(v) returns &[F], convert it to Vec<F>
+                acc_u(v).to_vec()
+            }
+            Self::Constant(v) => {
+                // constant(v) returns a Vec<F> with the constant replicated num_evals times
+                constant(v)
+            }
+            Self::Challenge(v) => {
+                challenge(v).to_vec()
+            }
+            Self::Fixed(v) => {
+                fixed(v).to_vec()
+            }
+            Self::Witness(v) => {
+                witness(v).to_vec()
+            }
+            Self::Negated(a) => {
+                let a_vals = a.batch_evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                negated(&a_vals)
+            }
+            Self::Sum(a, b) => {
+                let a_vals = a.batch_evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                let b_vals = b.batch_evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                sum(&a_vals, &b_vals)
+            }
+            Self::Product(a, b) => {
+                let a_vals = a.batch_evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                    let b_vals = b.batch_evaluate(acc_u, constant, challenge, fixed, witness, negated, sum, product);
+                product(&a_vals, &b_vals)
+            }
+        }
+    }
+    
+
+    
     /// Evaluate the polynomial using the provided mutable closures to perform the operations.
     pub fn evaluate_mut<T>(
         &self,
@@ -113,28 +166,28 @@ impl<F, CV, FV, WV, AV> Expression<F, CV, FV, WV, AV> {
     }
 }
 
-impl<F, CV, FV, WV, AV> Neg for Expression<F, CV, FV, WV, AV> {
+impl<F: Clone, CV, FV, WV, AV> Neg for Expression<F, CV, FV, WV, AV> {
     type Output = Self;
     fn neg(self) -> Self::Output {
         Expression::Negated(Box::new(self))
     }
 }
 
-impl<F, CV, FV, WV, AV> Add for Expression<F, CV, FV, WV, AV> {
+impl<F: Clone, CV, FV, WV, AV> Add for Expression<F, CV, FV, WV, AV> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         Expression::Sum(Box::new(self), Box::new(rhs))
     }
 }
 
-impl<F, CV, FV, WV, AV> Sub for Expression<F, CV, FV, WV, AV> {
+impl<F: Clone, CV, FV, WV, AV> Sub for Expression<F, CV, FV, WV, AV> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         Expression::Sum(Box::new(self), Box::new(-rhs))
     }
 }
 
-impl<F, CV, FV, WV, AV> Mul for Expression<F, CV, FV, WV, AV> {
+impl<F: Clone, CV, FV, WV, AV> Mul for Expression<F, CV, FV, WV, AV> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         Expression::Product(Box::new(self), Box::new(rhs))

@@ -145,39 +145,39 @@ use std::collections::{BTreeSet, HashMap};
 //         .collect()
 // }
 
-pub(super) fn pcs_query<F: PrimeField>(
-    expression: &Expression<F>,
-    num_instance_poly: usize,
-) -> BTreeSet<Query> {
-    let mut used_query = expression.used_query();
-    used_query.retain(|query| query.poly() >= num_instance_poly);
-    used_query
-}
+// pub(super) fn pcs_query<F: PrimeField>(
+//     expression: &Expression<F>,
+//     num_instance_poly: usize,
+// ) -> BTreeSet<Query> {
+//     let mut used_query = expression.used_query();
+//     used_query.retain(|query| query.poly() >= num_instance_poly);
+//     used_query
+// }
 
-pub(super) fn points<F: PrimeField>(pcs_query: &BTreeSet<Query>, x: &[F]) -> Vec<Vec<F>> {
-    pcs_query
-        .iter()
-        .map(Query::rotation)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .flat_map(|rotation| rotation_eval_points(x, rotation))
-        .collect_vec()
-}
+// pub(super) fn points<F: PrimeField>(pcs_query: &BTreeSet<Query>, x: &[F]) -> Vec<Vec<F>> {
+//     pcs_query
+//         .iter()
+//         .map(Query::rotation)
+//         .collect::<BTreeSet<_>>()
+//         .into_iter()
+//         .flat_map(|rotation| rotation_eval_points(x, rotation))
+//         .collect_vec()
+// }
 
-pub(crate) fn point_offset(pcs_query: &BTreeSet<Query>) -> HashMap<Rotation, usize> {
-    let rotations = pcs_query
-        .iter()
-        .map(Query::rotation)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect_vec();
-    rotations.windows(2).fold(
-        HashMap::from_iter([(rotations[0], 0)]),
-        |mut point_offset, rotations| {
-            let last_rotation = rotations[0];
-            let offset = point_offset[&last_rotation] + (1 << last_rotation.distance());
-            point_offset.insert(rotations[1], offset);
-            point_offset
-        },
-    )
-}
+// pub(crate) fn point_offset(pcs_query: &BTreeSet<Query>) -> HashMap<Rotation, usize> {
+//     let rotations = pcs_query
+//         .iter()
+//         .map(Query::rotation)
+//         .collect::<BTreeSet<_>>()
+//         .into_iter()
+//         .collect_vec();
+//     rotations.windows(2).fold(
+//         HashMap::from_iter([(rotations[0], 0)]),
+//         |mut point_offset, rotations| {
+//             let last_rotation = rotations[0];
+//             let offset = point_offset[&last_rotation] + (1 << last_rotation.distance());
+//             point_offset.insert(rotations[1], offset);
+//             point_offset
+//         },
+//     )
+// }

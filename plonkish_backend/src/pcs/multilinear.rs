@@ -15,7 +15,7 @@ mod kzg;
 //     MultilinearBrakedown, MultilinearBrakedownCommitment, MultilinearBrakedownParams,
 // };
 pub use gemini::Gemini;
-pub use hyrax::{MultilinearHyrax, MultilinearHyraxCommitment, MultilinearHyraxParams};
+//pub use hyrax::{MultilinearHyrax, MultilinearHyraxCommitment, MultilinearHyraxParams};
 pub use ipa::{MultilinearIpa, MultilinearIpaCommitment, MultilinearIpaParams};
 pub use kzg::{
     MultilinearKzg, MultilinearKzgCommitment, MultilinearKzgParams, MultilinearKzgProverParams,

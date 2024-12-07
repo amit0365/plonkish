@@ -71,11 +71,13 @@ pub(crate) fn lookup_h_polys<F: PrimeField + Hash>(
     compressed_polys: &[[MultilinearPolynomial<F>; 2]],
     m_polys: &[MultilinearPolynomial<F>],
     beta: &F,
+    lookup_witness_length: usize,
+    tables_len: usize,
 ) -> Vec<[MultilinearPolynomial<F>; 2]> {
     compressed_polys
         .iter()
         .zip(m_polys.iter())
-        .map(|(compressed_polys, m_poly)| lookup_h_poly(compressed_polys, m_poly, beta))
+        .map(|(compressed_polys, m_poly)| lookup_h_poly(compressed_polys, m_poly, beta, lookup_witness_length, tables_len))
         .collect()
 }
 
@@ -83,6 +85,8 @@ fn lookup_h_poly<F: PrimeField + Hash>(
     compressed_polys: &[MultilinearPolynomial<F>; 2],
     m_poly: &MultilinearPolynomial<F>,
     beta: &F,
+    lookup_witness_length: usize,
+    tables_len: usize,
 ) -> [MultilinearPolynomial<F>; 2] {
     let [input, table] = compressed_polys;
     let mut h_input = vec![F::ZERO; 1 << input.num_vars()];

@@ -1,7 +1,7 @@
 use crate::{
     accumulation::protostar::ivc::halo2::chips::main_chip::LOOKUP_BITS, backend::{
         hyperplonk::{
-            verifier::{pcs_query, point_offset, points},
+            // verifier::{pcs_query, point_offset, points},
             HyperPlonk,
         },
         WitnessEncoding,
@@ -44,6 +44,8 @@ pub(crate) fn lookup_uncompressed_polys<F: PrimeField>(
     lookups: &[Vec<(Expression<F>, Expression<F>)>],
     polys: &[&MultilinearPolynomial<F>],
     challenges: &[F],
+    lookup_witness_length: usize,
+    tables_len: usize,
 ) -> Vec<Vec<[MultilinearPolynomial<F>; 2]>> {
     if lookups.is_empty() {
         return Default::default();
@@ -66,7 +68,7 @@ pub(crate) fn lookup_uncompressed_polys<F: PrimeField>(
 
     lookups
         .iter()
-        .map(|lookup| lookup_uncompressed_poly(lookup, &lagranges, polys, challenges))
+        .map(|lookup| lookup_uncompressed_poly(lookup, &lagranges, polys, challenges, lookup_witness_length, tables_len))
         .collect()
 }
 
@@ -75,9 +77,10 @@ pub(super) fn lookup_uncompressed_poly<F: PrimeField>(
     lagranges: &HashSet<(i32, usize)>,
     polys: &[&MultilinearPolynomial<F>],
     challenges: &[F],
+    lookup_witness_length: usize,
+    tables_len: usize,
 ) -> Vec<[MultilinearPolynomial<F>; 2]> {
     let num_vars = polys[0].num_vars();
-    // let bh = BooleanHypercube::new(num_vars);
         let convert_to_poly_input = |expressions: &[&Expression<F>]| {
             expressions.iter().map(|expression| {
                 let mut compressed = vec![F::ZERO; 1 << num_vars];
@@ -172,6 +175,8 @@ pub(crate) fn lookup_compressed_polys<F: PrimeField>(
     polys: &[&MultilinearPolynomial<F>],
     challenges: &[F],
     betas: &[F],
+    lookup_witness_length: usize,
+    tables_len: usize,
 ) -> Vec<[MultilinearPolynomial<F>; 2]> {
     if lookups.is_empty() {
         return Default::default();
@@ -193,7 +198,7 @@ pub(crate) fn lookup_compressed_polys<F: PrimeField>(
     };
     lookups
         .iter()
-        .map(|lookup| lookup_compressed_poly(lookup, &lagranges, polys, challenges, betas))
+        .map(|lookup| lookup_compressed_poly(lookup, &lagranges, polys, challenges, betas, lookup_witness_length, tables_len))
         .collect()
 }
 
@@ -203,9 +208,10 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
     polys: &[&MultilinearPolynomial<F>],
     challenges: &[F],
     betas: &[F],
+    lookup_witness_length: usize,
+    tables_len: usize,
 ) -> [MultilinearPolynomial<F>; 2] {
     let num_vars = polys[0].num_vars();
-    // let bh = BooleanHypercube::new(num_vars);
     let compress = |expressions: &[&Expression<F>]| {
         betas
             .iter()
@@ -215,7 +221,7 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
                 parallelize(&mut compressed, |(compressed, start)| {
                     for (b, compressed) in (start..).zip(compressed) {
                         *compressed = expression.evaluate(
-                            &|_| F::ONE, //u = 1 for nark
+                            &|_| F::ONE, //u = 1 for nark   
                             &|constant| constant,
                             &|common_poly| match common_poly {
                                 CommonPolynomial::Identity => F::from(b as u64),
@@ -248,11 +254,11 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
             .iter()
             .copied()
             .zip(expressions.iter().map(|expression| {
-                let mut compressed = vec![F::ZERO; 1 << LOOKUP_BITS];
+                let mut compressed = vec![F::ZERO; 1 << num_vars];
                 parallelize(&mut compressed, |(compressed, start)| {
                     for (b, compressed) in (start..).zip(compressed) {
                         *compressed = expression.evaluate(
-                            &|_| F::ONE, //u = 1 for nark
+                            &|u| F::ONE, //u = 1 for nark
                             &|constant| constant,
                             &|_| F::ZERO,
                             &|_| F::ZERO,
@@ -287,15 +293,19 @@ pub(super) fn lookup_compressed_poly<F: PrimeField>(
 
 pub(crate) fn lookup_m_polys_uncompressed<F: PrimeField + Hash>(
     uncompressed_polys: &[Vec<[MultilinearPolynomial<F>; 2]>],
+    lookup_witness_length: usize,
+    tables_len: usize,
 ) -> Result<Vec<MultilinearPolynomial<F>>, Error> {
-    uncompressed_polys.iter().map(|uncompressed_poly| lookup_m_poly_uncompressed(uncompressed_poly)).try_collect()
+    uncompressed_polys.iter().map(|uncompressed_poly| lookup_m_poly_uncompressed(uncompressed_poly, lookup_witness_length, tables_len)).try_collect()
 }
 
 pub(super) fn lookup_m_poly_uncompressed<F: PrimeField + Hash>(
     uncompressed_polys: &Vec<[MultilinearPolynomial<F>; 2]>,
+    lookup_witness_length: usize,
+    tables_len: usize,
 ) -> Result<MultilinearPolynomial<F>, Error> {
     let (inputs, tables): (Vec<_>, Vec<_>) = uncompressed_polys
-                            .into_iter()
+                            .iter()
                             .map(|array| (array[0].clone(), array[1].clone()))
                             .unzip();
     
@@ -435,7 +445,11 @@ pub(super) fn lookup_h_poly<F: PrimeField + Hash>(
 
     parallelize(&mut h_input, |(h_input, start)| {
         for (h_input, input) in h_input.iter_mut().zip(input[start..].iter()) {
-            *h_input = *gamma + input;
+            if *input != F::ZERO {
+                *h_input = *gamma + input;
+            } else {
+                *h_input = F::ZERO;
+            }
         }
     });
     parallelize(&mut h_table, |(h_table, start)| {

@@ -10,34 +10,36 @@ use std::{
 pub(crate) mod evaluator;
 pub mod relaxed;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct Rotation(pub i32);
+pub use halo2_proofs::poly::Rotation;
 
-impl Rotation {
-    pub const fn cur() -> Self {
-        Rotation(0)
-    }
+// #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+// pub struct Rotation(pub i32);
 
-    pub const fn prev() -> Self {
-        Rotation(-1)
-    }
+// impl Rotation {
+//     pub const fn cur() -> Self {
+//         Rotation(0)
+//     }
 
-    pub const fn next() -> Self {
-        Rotation(1)
-    }
+//     pub const fn prev() -> Self {
+//         Rotation(-1)
+//     }
 
-    pub const fn distance(&self) -> usize {
-        self.0.unsigned_abs() as usize
-    }
-}
+//     pub const fn next() -> Self {
+//         Rotation(1)
+//     }
 
-impl From<i32> for Rotation {
-    fn from(rotation: i32) -> Self {
-        Self(rotation)
-    }
-}
+//     pub const fn distance(&self) -> usize {
+//         self.0.unsigned_abs() as usize
+//     }
+// }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+// impl From<i32> for Rotation {
+//     fn from(rotation: i32) -> Self {
+//         Self(rotation)
+//     }
+// }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Query {
     poly: usize,
     rotation: Rotation,
@@ -64,7 +66,7 @@ pub enum CommonPolynomial {
     EqXY(usize),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Expression<F> {
     AccU(F),
     Constant(F),
@@ -199,7 +201,8 @@ impl<F: Clone> Expression<F> {
     }
 
     pub fn used_query(&self) -> BTreeSet<Query> {
-        self.used_primitive(&|_| None, &|query| query.into())
+        unimplemented!()
+        //self.used_primitive(&|_| None, &|query| query.into())
     }
 
     pub fn used_poly(&self) -> BTreeSet<usize> {
@@ -207,7 +210,8 @@ impl<F: Clone> Expression<F> {
     }
 
     pub fn used_rotation(&self) -> BTreeSet<Rotation> {
-        self.used_primitive(&|_| None, &|query| query.rotation().into())
+        //self.used_primitive(&|_| None, &|query| query.rotation().into())
+        unimplemented!()
     }
 
     pub fn max_used_rotation_distance(&self) -> usize {
@@ -588,5 +592,29 @@ fn merge_left_right<T: Ord>(
             Some(lhs)
         }
         _ => None,
+    }
+}
+
+use halo2_proofs::plonk;
+pub fn pow_expr<F: Field>(x: plonk::Expression<F>, n: usize) -> plonk::Expression<F> {
+    match n {
+        1 => x.clone(),
+        2 => x.clone() * x.clone(),
+        3 => x.clone() * x.clone() * x.clone(),
+        4 => {
+            let x_sq = x.clone() * x.clone();
+            x_sq.clone() * x_sq
+        },
+        5 => {
+            let x_sq = x.clone() * x.clone();
+            x_sq.clone() * x_sq * x
+        },
+        _ => {
+            let mut result = x.clone();
+            for _ in 1..n {
+                result = result * x.clone();
+            }
+            result
+        }
     }
 }

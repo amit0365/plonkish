@@ -35,7 +35,7 @@ impl<F> MultilinearPolynomial<F> {
         let num_vars = if evals.is_empty() {
             0
         } else {
-            let num_vars = evals.len().ilog2() as usize;
+            let num_vars = evals.len().next_power_of_two().ilog2() as usize;
             //assert_eq!(evals.len(), 1 << num_vars);
             num_vars
         };
@@ -194,11 +194,11 @@ impl<F: Field> MultilinearPolynomial<F> {
             return vec![self.evaluate(x)];
         }
 
-        let distance = rotation.distance();
+        let distance = rotation.0 as usize;//rotation.distance(); todo changed
         let num_x = self.num_vars - distance;
         let mut evals = vec![F::ZERO; 1 << distance];
         let chunk_size = div_ceil(evals.len(), num_threads());
-        if rotation < Rotation::cur() {
+        //if rotation < Rotation::cur() { //todo changed
             let x = &x[distance..];
             let flipped_x = x.iter().map(flip).collect_vec();
             let pattern = rotation_eval_point_pattern::<false>(self.num_vars, distance);
@@ -226,39 +226,39 @@ impl<F: Field> MultilinearPolynomial<F> {
                     }
                 },
             );
-        } else {
-            let x = &x[..num_x];
-            let flipped_x = x.iter().map(flip).collect_vec();
-            let pattern = rotation_eval_point_pattern::<true>(self.num_vars, distance);
-            let skip_mask = (1 << distance) - 1;
-            parallelize_iter(
-                evals.chunks_mut(chunk_size).zip(pattern.chunks(chunk_size)),
-                |(evals, pattern)| {
-                    let mut buf = Vec::with_capacity(1 << (num_x - 1));
-                    let mut last_buf = Some(Vec::with_capacity(1 << (num_x - 1)));
-                    for (eval, pat) in evals.iter_mut().zip(pattern.iter()) {
-                        let mut evals = Cow::Borrowed(self.evals());
-                        let skip = pat & skip_mask;
-                        let x_0 = if pat.nth_bit(distance) {
-                            &flipped_x[0]
-                        } else {
-                            &x[0]
-                        };
-                        merge_into(&mut buf, &evals, x_0, distance + 1, skip);
-                        evals = mem::replace(&mut buf, last_buf.take().unwrap()).into();
+        // } else {
+        //     let x = &x[..num_x];
+        //     let flipped_x = x.iter().map(flip).collect_vec();
+        //     let pattern = rotation_eval_point_pattern::<true>(self.num_vars, distance);
+        //     let skip_mask = (1 << distance) - 1;
+        //     parallelize_iter(
+        //         evals.chunks_mut(chunk_size).zip(pattern.chunks(chunk_size)),
+        //         |(evals, pattern)| {
+        //             let mut buf = Vec::with_capacity(1 << (num_x - 1));
+        //             let mut last_buf = Some(Vec::with_capacity(1 << (num_x - 1)));
+        //             for (eval, pat) in evals.iter_mut().zip(pattern.iter()) {
+        //                 let mut evals = Cow::Borrowed(self.evals());
+        //                 let skip = pat & skip_mask;
+        //                 let x_0 = if pat.nth_bit(distance) {
+        //                     &flipped_x[0]
+        //                 } else {
+        //                     &x[0]
+        //                 };
+        //                 merge_into(&mut buf, &evals, x_0, distance + 1, skip);
+        //                 evals = mem::replace(&mut buf, last_buf.take().unwrap()).into();
 
-                        for ((x_i, flipped_x_i), idx) in
-                            x.iter().zip(flipped_x.iter()).zip(distance..).skip(1)
-                        {
-                            let x_i = if pat.nth_bit(idx) { flipped_x_i } else { x_i };
-                            merge_in_place(&mut evals, x_i, 1, 0, &mut buf);
-                        }
-                        *eval = evals[0];
-                        last_buf = Some(evals.into_owned());
-                    }
-                },
-            );
-        }
+        //                 for ((x_i, flipped_x_i), idx) in
+        //                     x.iter().zip(flipped_x.iter()).zip(distance..).skip(1)
+        //                 {
+        //                     let x_i = if pat.nth_bit(idx) { flipped_x_i } else { x_i };
+        //                     merge_in_place(&mut evals, x_i, 1, 0, &mut buf);
+        //                 }
+        //                 *eval = evals[0];
+        //                 last_buf = Some(evals.into_owned());
+        //             }
+        //         },
+        //     );
+        // }
         evals
     }
 }
@@ -447,23 +447,23 @@ pub fn rotation_eval<F: Field>(x: &[F], rotation: Rotation, evals_for_rotation: 
     }
 
     let num_vars = x.len();
-    let distance = rotation.distance();
+    let distance = rotation.0 as usize;//rotation.distance(); todo changed
     assert!(evals_for_rotation.len() == 1 << distance);
     assert!(distance <= num_vars);
 
-    let (pattern, nths, x) = if rotation < Rotation::cur() {
+    let (pattern, nths, x) = //if rotation < Rotation::cur() { todo changed
         (
             rotation_eval_coeff_pattern::<false>(num_vars, distance),
             (1..=distance).rev().collect_vec(),
             x[0..distance].iter().rev().collect_vec(),
-        )
-    } else {
-        (
-            rotation_eval_coeff_pattern::<true>(num_vars, distance),
-            (num_vars - 1..).take(distance).collect(),
-            x[num_vars - distance..].iter().collect(),
-        )
-    };
+        );
+    // } else {
+    //     (
+    //         rotation_eval_coeff_pattern::<true>(num_vars, distance),
+    //         (num_vars - 1..).take(distance).collect(),
+    //         x[num_vars - distance..].iter().collect(),
+    //     )
+    // };
     x.into_iter().zip(nths).enumerate().fold(
         Cow::Borrowed(evals_for_rotation),
         |evals, (idx, (x_i, nth))| {
@@ -490,9 +490,9 @@ pub fn rotation_eval_points<F: Field>(x: &[F], rotation: Rotation) -> Vec<Vec<F>
         return vec![x.to_vec()];
     }
 
-    let distance = rotation.distance();
+    let distance = rotation.0 as usize;//rotation.distance(); todo changed
     let num_x = x.len() - distance;
-    if rotation < Rotation::cur() {
+    //if rotation < Rotation::cur() { //todo changed
         let pattern = rotation_eval_point_pattern::<false>(x.len(), distance);
         let x = &x[distance..];
         let flipped_x = x.iter().map(flip).collect_vec();
@@ -511,26 +511,26 @@ pub fn rotation_eval_points<F: Field>(x: &[F], rotation: Rotation) -> Vec<Vec<F>
                     .collect_vec()
             })
             .collect()
-    } else {
-        let pattern = rotation_eval_point_pattern::<true>(x.len(), distance);
-        let x = &x[..num_x];
-        let flipped_x = x.iter().map(flip).collect_vec();
-        pattern
-            .iter()
-            .map(|pat| {
-                iter::empty()
-                    .chain((0..distance).map(|idx| bit_to_field(pat.nth_bit(idx))))
-                    .chain((0..num_x).map(|idx| {
-                        if pat.nth_bit(idx + distance) {
-                            flipped_x[idx]
-                        } else {
-                            x[idx]
-                        }
-                    }))
-                    .collect_vec()
-            })
-            .collect()
-    }
+    // } else {
+    //     let pattern = rotation_eval_point_pattern::<true>(x.len(), distance);
+    //     let x = &x[..num_x];
+    //     let flipped_x = x.iter().map(flip).collect_vec();
+    //     pattern
+    //         .iter()
+    //         .map(|pat| {
+    //             iter::empty()
+    //                 .chain((0..distance).map(|idx| bit_to_field(pat.nth_bit(idx))))
+    //                 .chain((0..num_x).map(|idx| {
+    //                     if pat.nth_bit(idx + distance) {
+    //                         flipped_x[idx]
+    //                     } else {
+    //                         x[idx]
+    //                     }
+    //                 }))
+    //                 .collect_vec()
+    //         })
+    //         .collect()
+    // }
 }
 
 pub(crate) fn rotation_eval_point_pattern<const NEXT: bool>(
@@ -716,7 +716,6 @@ mod test {
         }
     };
     use halo2_base::{halo2_proofs::halo2curves::bn256::{Fr, Fq}, gates::circuit::{builder::BaseCircuitBuilder, CircuitBuilderStage}};
-    use halo2_base::utils::PrimeField;
     use rand::{rngs::OsRng, RngCore};
     use std::iter;
 
@@ -769,11 +768,11 @@ mod test {
 
             for rotation in -(num_vars as i32) + 1..num_vars as i32 {
                 let rotation = Rotation(rotation);
-                let (f, f_rotated) = if rotation < Rotation::cur() {
-                    (fs.last().unwrap(), &fs[fs.len() - rotation.distance() - 1])
-                } else {
-                    (fs.first().unwrap(), &fs[rotation.distance()])
-                };
+                let (f, f_rotated) = //if rotation < Rotation::cur() { //todo changed
+                    (fs.last().unwrap(), &fs[fs.len() - rotation.0 as usize - 1]); // todo changed rotation.distance()
+                // } else {
+                //     (fs.first().unwrap(), &fs[rotation.distance()])
+                // };
                 assert_eq!(
                     rotation_eval(&x, rotation, &f.evaluate_for_rotation(&x, rotation)),
                     f_rotated.evaluate(&x),

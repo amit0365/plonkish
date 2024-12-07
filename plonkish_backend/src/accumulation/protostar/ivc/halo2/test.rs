@@ -438,7 +438,6 @@ where
     >,
     P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
     Sc1: StepCircuit<C>,
-    Sc2: StepCircuit<C::Secondary>,
     AT1: TranscriptRead<P1::CommitmentChunk, C::Scalar>
     + TranscriptWrite<P1::CommitmentChunk, C::Scalar>
     + InMemoryTranscript + Clone,

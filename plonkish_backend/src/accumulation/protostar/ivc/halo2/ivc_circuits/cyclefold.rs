@@ -444,7 +444,7 @@ where
         let sm_chip_inputs = self.sm_chip_inputs(&self.inputs)?;
         let config_inputs_time = Instant::now();
         let config_inputs = self.config_inputs_ecc_deg6_full(&sm_chip_inputs)?;
-        println!("config_input_time: {:?}", config_inputs_time.elapsed());
+        //println!("config_input_time: {:?}", config_inputs_time.elapsed());
 
         let mut rbits_vec = Vec::new();
         for (idx, config_input) in config_inputs.iter().enumerate() {

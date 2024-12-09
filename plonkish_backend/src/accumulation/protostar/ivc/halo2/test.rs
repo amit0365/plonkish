@@ -182,7 +182,7 @@ where
     let primary_num_vars = primary_circuit_k;
     let primary_atp = accumulation_transcript_param::<C::Scalar>();
     let cyclefold_atp = accumulation_transcript_param::<C::Scalar>();
-    println!("primary_atp done");
+    //println!("primary_atp done");
     let preprocess_time = Instant::now();
     let (mut primary_circuit, mut cyclefold_circuit, ivc_pp, ivc_vp) = preprocess::<
         C,
@@ -202,7 +202,7 @@ where
     )
     .unwrap();
     let duration_preprocess = preprocess_time.elapsed();
-    println!("Time for preprocess: {:?}", duration_preprocess);
+    //println!("Time for preprocess: {:?}", duration_preprocess);
 
     let prove_steps_time = Instant::now();
     let (primary_acc, mut cyclefold_acc) = prove_steps(
@@ -466,12 +466,13 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
     let primary_step_circuit = TrivialCircuit::default();
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();
-    println!("primary_params done: {:?}", time.elapsed());
+    //println!("primary_params done: {:?}", time.elapsed());
+    
     // primary_params.save_to_file("kzg_param.bin").unwrap();
     // let primary_params = UnivariateKzgParam::load_from_file("kzg_param.bin").unwrap();
     let time = Instant::now();
     let cyclefold_params = MultilinearIpa::setup(1 << (cyclefold_num_vars + 4), 0, &mut seeded_std_rng()).unwrap();
-    println!("cyclefold_params done: {:?}", time.elapsed());
+    //println!("cyclefold_params done: {:?}", time.elapsed());
     // cyclefold_params.save_to_file("ipa_param.bin").unwrap();
     // let cyclefold_params = MultilinearIpaParam::load_from_file("ipa_param.bin").unwrap();
     run_protostar_hyperplonk_ivc::<

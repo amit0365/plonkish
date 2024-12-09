@@ -182,7 +182,7 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
                 .collect_vec()
         })
         .collect_vec();
-    println!("queried_selectors before {:?}", queried_selectors.len());
+    //println!("queried_selectors before {:?}", queried_selectors.len());
     if !lookups.is_empty() {
         cs.lookups().iter().map(|lookup| {
             let selector_index = lookup.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
@@ -190,7 +190,7 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         }).collect_vec();
         queried_selectors.insert(queried_selectors.len(), (1, vec![2])); // g constraint
     } 
-    println!("queried_selectors after {:?}", queried_selectors.len());
+    //println!("queried_selectors after {:?}", queried_selectors.len());
     let num_instances = instances.iter().map(Vec::len).collect_vec();
     let preprocess_polys =
         vec![vec![F::ZERO; 1 << k]; cs.num_selectors() + cs.num_fixed_columns()];
@@ -349,9 +349,9 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     for (key, values) in &circuit_info.selector_map {
         num_betas += values.len() * queried_selectors.get(key).unwrap_or(&(0, vec![])).0;
     }
-    println!("num_betas: {}", num_betas);
+    //println!("num_betas: {}", num_betas);
     let log_num_betas = ((num_betas as f64).log2().ceil() as usize + 1) & !1;
-    println!("log_num_betas: {}", log_num_betas);
+    //println!("log_num_betas: {}", log_num_betas);
     circuit_info.log_num_betas = log_num_betas;
 
     let instances = self.instances.iter().map(Vec::as_slice).collect_vec();

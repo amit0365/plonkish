@@ -413,6 +413,142 @@ where
 }
 
 #[allow(clippy::type_complexity)]
+pub fn run_protostar_hyperplonk_ivc_hashchain_preprocess<C, P1, P2>(
+    num_elts_steps: usize,
+    primary_num_vars: usize,
+    primary_param: P1::Param,
+    cyclefold_num_vars: usize,
+    cyclefold_param: P2::Param,
+) -> (
+    Halo2Circuit<C::Scalar, PrimaryCircuit<C, HashChainCircuit<C>>>,
+    Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
+    ProtostarIvcProverParam<
+        C,
+        P1,
+        P2,
+        PoseidonNativeTranscript<C::Scalar, Cursor<Vec<u8>>>,
+        PoseidonTranscript<C::Scalar, Cursor<Vec<u8>>>,
+    >,
+    ProtostarIvcVerifierParam<
+        C,
+        P1,
+        P2,
+    >,
+)
+where
+    C: TwoChainCurve,
+    C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+    C::Scalar: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+    P1: PolynomialCommitmentScheme<
+    C::ScalarExt,
+    Polynomial = MultilinearPolynomial<C::Scalar>,
+    CommitmentChunk = C,
+    >,
+    P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
+    P2: PolynomialCommitmentScheme<
+    C::Base,
+    Polynomial = MultilinearPolynomial<C::Base>,
+    CommitmentChunk = C::Secondary,
+    >,
+    P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
+{
+    //let rng = OsRng;
+    let primary_atp = accumulation_transcript_param();
+    let secondary_atp = accumulation_transcript_param();
+    let hashchain_circuit = HashChainCircuit::<C>::new(num_elts_steps);   
+        
+    let preprocess_time = Instant::now();
+    let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
+        C,
+        P1,
+        P2,
+        HashChainCircuit<C>,
+        PoseidonNativeTranscript<C::Scalar, _>,
+        PoseidonTranscript<C::Scalar, _>,
+    >(  
+        primary_num_vars,
+        primary_param,
+        primary_atp,
+        hashchain_circuit,
+        cyclefold_num_vars,
+        cyclefold_param, 
+        secondary_atp,
+    )
+    .unwrap();
+    println!("Preprocess time: {:?}", preprocess_time.elapsed());
+
+    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp)
+}
+
+#[allow(clippy::type_complexity)]
+pub fn run_protostar_hyperplonk_ivc_smchain_preprocess<C, P1, P2>(
+    num_sm_per_step: usize,
+    primary_num_vars: usize,
+    primary_param: P1::Param,
+    cyclefold_num_vars: usize,
+    cyclefold_param: P2::Param,
+) -> (
+    Halo2Circuit<C::Scalar, PrimaryCircuit<C, ScalarMulChainCircuit<C>>>,
+    Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
+    ProtostarIvcProverParam<
+        C,
+        P1,
+        P2,
+        PoseidonNativeTranscript<C::Scalar, Cursor<Vec<u8>>>,
+        PoseidonTranscript<C::Scalar, Cursor<Vec<u8>>>,
+    >,
+    ProtostarIvcVerifierParam<
+        C,
+        P1,
+        P2,
+    >,
+)
+where
+    C: TwoChainCurve,
+    C::Base: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+    C::Scalar: BigPrimeField + PrimeFieldBits + Serialize + DeserializeOwned,
+    P1: PolynomialCommitmentScheme<
+    C::ScalarExt,
+    Polynomial = MultilinearPolynomial<C::Scalar>,
+    CommitmentChunk = C,
+    >,
+    P1::Commitment: AdditiveCommitment<C::Scalar> + AsRef<C> + From<C>,
+    P2: PolynomialCommitmentScheme<
+    C::Base,
+    Polynomial = MultilinearPolynomial<C::Base>,
+    CommitmentChunk = C::Secondary,
+    >,
+    P2::Commitment: AdditiveCommitment<C::Base> + AsRef<C::Secondary> + From<C::Secondary>,
+{
+    //let rng = OsRng;
+    let primary_atp = accumulation_transcript_param();
+    let secondary_atp = accumulation_transcript_param();
+    let smchain_circuit = ScalarMulChainCircuit::<C>::new(num_sm_per_step);   
+        
+    let preprocess_time = Instant::now();
+    let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
+        C,
+        P1,
+        P2,
+        ScalarMulChainCircuit<C>,
+        PoseidonNativeTranscript<C::Scalar, _>,
+        PoseidonTranscript<C::Scalar, _>,
+    >(  
+        primary_num_vars,
+        primary_param,
+        primary_atp,
+        smchain_circuit,
+        cyclefold_num_vars,
+        cyclefold_param, 
+        secondary_atp,
+    )
+    .unwrap();
+    println!("Preprocess time: {:?}", preprocess_time.elapsed());
+
+    (primary_circuit, secondary_circuit, ivc_pp, ivc_vp)
+}
+
+#[allow(clippy::type_complexity)]
 pub fn run_protostar_hyperplonk_ivc_prove<C, Sc1, P1, P2, AT1, AT2>(
     primary_circuit: &mut Halo2Circuit<C::Scalar, PrimaryCircuit<C, Sc1>>,
     secondary_circuit: &mut Halo2Circuit<C::Base, CycleFoldCircuit<C::Secondary>>,
@@ -487,9 +623,9 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc_minroot() {
     const NUM_STEPS: usize = 10;
 
-    let primary_num_vars = 15;
-    let cyclefold_num_vars = 10;
-    let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 65535);
+    let primary_num_vars = 16;
+    let cyclefold_num_vars = 10; //1k, 9k, 25k 58k 
+    let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 100000);
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_num_vars + 4), 0, &mut seeded_std_rng()).unwrap();
     println!("primary_params done: {:?}", time.elapsed());

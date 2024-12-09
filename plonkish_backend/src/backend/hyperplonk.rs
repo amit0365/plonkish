@@ -133,7 +133,7 @@ where
         let timer = start_timer(|| "reduce_bases");
         let reduced_bases = Pcs::reduce_bases(&pcs_pp, &circuit_info.advice_copies)?;
         end_timer(timer);
-        println!("reduced_bases: {:?}", reduced_bases.len());
+        //println!("reduced_bases: {:?}", reduced_bases.len());
         let vp = HyperPlonkVerifierParam {
             pcs: pcs_vp,
             num_instances: circuit_info.num_instances.clone(),

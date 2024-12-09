@@ -777,7 +777,7 @@ where
         let r_le_bits = r.le_bits.clone();
 
         // Witness count: 19996 - 14319 = 5677 (SM - 910 * 3 = 2730)
-        // Copy count: 4986 - 2780 = 2206 (SM - 130 * 2 = 260)
+        // Copy count: 4986 - 2780 = 2206 (SM - 130 * 6 = 780)
         let acc_prime = self.fold_accumulator_from_nark_ec(
             layouter,
             acc,
@@ -936,9 +936,18 @@ where
                         .try_collect::<_, Vec<_>, _>()
                 })
                 .try_collect::<_, Vec<_>, _>()?;
+            let mut rbits_vec = Vec::new();
             let witness_comms = izip_eq!(&nark.witness_comms, &acc.witness_comms)
-                .map(|(lhs, rhs)| {
-                    self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), lhs, rhs)
+                .enumerate()
+                .map(|(idx, (lhs, rhs))| {
+                    let witness_comm = if idx == 0 {
+                        let (witness_comm, rbits_vec_temp) = self.sm_chip.assign_first(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), lhs, rhs)?;
+                        rbits_vec = rbits_vec_temp;
+                        witness_comm
+                    } else {
+                        self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), lhs, rhs, rbits_vec.clone())?
+                    };
+                    Ok::<EcPointNative<C>, Error>(witness_comm)
                 })
                 .try_collect::<_, Vec<_>, _>()?;
             let challenges = izip_eq!(&acc.challenges, &nark.challenges)
@@ -957,7 +966,7 @@ where
             } else {
                 let mut e_comm = cross_term_comms.last().unwrap().clone();
                 for item in cross_term_comms.iter().rev().skip(1).chain([&acc.e_comm]) {
-                    e_comm = self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), &e_comm, item)?;
+                    e_comm = self.sm_chip.assign(layouter.namespace(|| "acc_prime_witness_comms"), r_le_bits.to_vec(), &e_comm, item, rbits_vec.clone())?;
                 }
                 e_comm
             };

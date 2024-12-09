@@ -739,8 +739,8 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             &acc_prime,
         )?;
 
-        // Witness count: 19996 - 10098 = 9898
-        // Copy count: 4986 - 2023 = 2963
+        // Witness count: 21325 - 10747 = 10578
+        // Copy count: 5309 - 2034 = 3275
         let acc_verifier_ec = ProtostarAccumulationVerifier::new(cyclefold_avp.clone(), main_chip.clone(), sm_chip.clone());
         let acc_ec = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_ec.as_ref())?;
         let acc_ec_prime_result = acc_verifier_ec.assign_accumulator_ec(&mut layouter, self.acc_prime_ec.as_ref())?;
@@ -755,7 +755,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
 
         let (acc_ec_prime, acc_ec_prime_result) = {
             // Witness count: 20398 - 19996 = 402
-            // Copy count: 5290 - 4986 = 304
+            // Copy count: 5290 - 4986 = 3042
             let acc_ec_default = acc_verifier_ec.assign_default_accumulator_ec(&mut layouter)?;
             // Witness count: 22605 - 22225 = 380
             // Copy count: 5898 - 5606 = 292
@@ -764,15 +764,9 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             (acc_ec_prime, acc_ec_prime_result)
         };
 
-        // Witness count: 20402 - 20398 = 4
-        // Copy count: 5311 - 5290 = 21
-        // self.check_folding_ec(
-        //     &mut layouter,
-        //     &main_chip,
-        //     &acc_ec_prime,
-        //     &acc_ec_prime_result,
-        // )?; 
 
+        // Witness count: 24697 - 21325 = 3372
+        // Copy count: 5903 - 5309 = 594
         self.check_state_hash_ec::<PRIMARY_HASH_LENGTH_EC>(
             &mut layouter,
             &main_chip,
@@ -793,8 +787,8 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             &acc_ec_prime,
         )?;
 
-        // Witness count: 20402
-        // Copy count: 5311
+        // Witness count: 24697
+        // Copy count: 5903
         // assign public instances
         main_chip.expose_public(layouter, &h_prime, 0)?;
 

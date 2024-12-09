@@ -232,10 +232,143 @@ where
         }
     }
 
+    pub fn assign_first(
+        &self,
+        mut layouter: impl Layouter<C::Scalar>,
+        inputs: ScalarMulConfigInputs<C>,
+        //copy_r: Option<bool>,
+    ) -> Result<([AssignedCell<C::Scalar, C::Scalar>; NUM_IO], Vec<AssignedCell<C::Scalar, C::Scalar>>), Error> {
+        layouter.assign_region(
+            || "ScalarMulChipConfig assign",
+            |mut region| {
+                //                   |   fixed   |
+                // | row |  r_bits   |    e2     |    lc     |    ptx    |   pty     |   acc.x   |   acc.y   |   acc.z   |  lambda   |
+                // | 0   |    -      |    -      |    -      |     -     |    -      |    0      |    1      |    0      |           |
+                // | 1   |    0      |    1      |    0      |     x     |    y      |    x      |    y      |    z      |    1      |
+                // | 2   |    1      |    2      |    2      |     x     |    y      |    2x     |    2y     |    2z     |    0      |
+                // | 3   |    1      |    4      |    4      |     x     |    y      |    4x     |    4y     |    4z     |    1      |
+                // | 4   |    0      |    8      |    6      |     x     |    y      |    16x    |    16y    |    16z    |    0      |
+                // ...
+                // | 128 |    1      |   2^127   |    1      |     x     |    y      |    sm.x   |    sm.y   |    sm.z   |    1      |
+                // | 129 |    -      |   2^128   |    r      |  comm_x   |  comm_y   |    sm.X   |    sm.Y   |     X3    |    Y3     |
+
+                let last_row = NUM_CHALLENGE_BITS + 1; // counting from 0
+                let ptx =
+                    region.assign_advice(|| "ptx_vec", self.witness[2], 1, || inputs.ptx_vec[0])?;
+                let pty =
+                    region.assign_advice(|| "pty_vec", self.witness[3], 1, || inputs.pty_vec[0])?;
+                let mut rbits_vec = Vec::new();
+                for row in 0..(last_row + 1) {
+                    if row != last_row {
+                        if row != 0 {
+                            self.selector[0].enable(&mut region, row)?;
+                            self.selector[3].enable(&mut region, row)?;
+                            rbits_vec.push(region.assign_advice(
+                                || "rbits",
+                                self.witness[0],
+                                row,
+                                || inputs.rbits_vec[row - 1],
+                            )?);
+                            region.assign_advice(
+                                || "rlc",
+                                self.witness[1],
+                                row,
+                                || inputs.rlc_vec[row - 1],
+                            )?;
+                            region.assign_advice(
+                                || "lambda",
+                                self.witness[7],
+                                row,
+                                || inputs.lambda_vec[row - 1],
+                            )?;
+                            region.assign_fixed(
+                                || "re2",
+                                self.fixed[0],
+                                row,
+                                || inputs.re2_vec[row - 1],
+                            )?;
+
+                            if row != 1 {
+                                ptx.copy_advice(|| "ptx_vec", &mut region, self.witness[2], row)?;
+                                pty.copy_advice(|| "pty_vec", &mut region, self.witness[3], row)?;
+                            }
+                        }
+
+                        region.assign_advice(
+                            || "acc_x",
+                            self.witness[4],
+                            row,
+                            || inputs.acc_x_vec[row],
+                        )?;
+                        region.assign_advice(
+                            || "acc_y",
+                            self.witness[5],
+                            row,
+                            || inputs.acc_y_vec[row],
+                        )?;
+                        region.assign_advice(
+                            || "acc_z",
+                            self.witness[6],
+                            row,
+                            || inputs.acc_z_vec[row],
+                        )?;
+                    }
+
+                    if row == last_row {
+                        self.selector[1].enable(&mut region, row)?;
+                        self.selector[2].enable(&mut region, row)?;
+                        region.assign_advice(
+                            || "comm_sel",
+                            self.witness[0],
+                            row,
+                            || inputs.rbits_vec[row - 1],
+                        )?;
+                        region.assign_fixed(
+                            || "re2_last",
+                            self.fixed[0],
+                            row,
+                            || inputs.re2_vec[row - 1],
+                        )?;
+                        region.assign_advice(|| "sm_X", self.witness[4], row, || inputs.sm_X)?;
+                        region.assign_advice(|| "sm_Y", self.witness[5], row, || inputs.sm_Y)?;
+                        region.assign_advice(|| "X3", self.witness[6], row, || inputs.X3)?;
+                        region.assign_advice(|| "Y3", self.witness[7], row, || inputs.Y3)?;
+                    }
+                }
+
+                let r = region.assign_advice(
+                    || "r",
+                    self.witness[1],
+                    last_row,
+                    || inputs.rlc_vec[last_row - 1],
+                )?;
+                let nark_x =
+                    region.assign_advice(|| "nark_X", self.witness[2], 1, || inputs.ptx_vec[0])?;
+                let nark_y =
+                    region.assign_advice(|| "nark_Y", self.witness[3], 1, || inputs.pty_vec[0])?;
+                let acc_x = region.assign_advice(
+                    || "comm_X",
+                    self.witness[2],
+                    last_row,
+                    || inputs.comm_X,
+                )?;
+                let acc_y = region.assign_advice(
+                    || "comm_Y",
+                    self.witness[3],
+                    last_row,
+                    || inputs.comm_Y,
+                )?;
+
+                Ok(([r, nark_x, nark_y, acc_x, acc_y], rbits_vec))
+            },
+        )
+    }
+
     pub fn assign(
         &self,
         mut layouter: impl Layouter<C::Scalar>,
         inputs: ScalarMulConfigInputs<C>,
+        rbits_vec: Vec<AssignedCell<C::Scalar, C::Scalar>>,
         //copy_r: Option<bool>,
     ) -> Result<[AssignedCell<C::Scalar, C::Scalar>; NUM_IO], Error> {
         layouter.assign_region(
@@ -263,12 +396,13 @@ where
                         if row != 0 {
                             self.selector[0].enable(&mut region, row)?;
                             self.selector[3].enable(&mut region, row)?;
-                            region.assign_advice(
-                                || "rbits",
-                                self.witness[0],
-                                row,
-                                || inputs.rbits_vec[row - 1],
-                            )?;
+                            // region.assign_advice(
+                            //     || "rbits",
+                            //     self.witness[0],
+                            //     row,
+                            //     || inputs.rbits_vec[row - 1],
+                            // )?;
+                            rbits_vec[row - 1].copy_advice(|| "rbits", &mut region, self.witness[0], row)?;
                             region.assign_advice(
                                 || "rlc",
                                 self.witness[1],
@@ -442,7 +576,7 @@ where
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
         for inputs in self.inputs.iter() {
-            config.assign(layouter.namespace(|| "ScalarMulChip"), inputs.clone())?;
+            config.assign_first(layouter.namespace(|| "ScalarMulChip"), inputs.clone())?;
         }
 
         Ok(())

@@ -1,5 +1,5 @@
 use halo2_proofs::{
-    circuit::{Layouter, Value},
+    circuit::{AssignedCell, Layouter, Value},
     plonk::{
         AccU, Advice, Column, ConstraintSystem, Constraints, Error, Expression, Selector
     },
@@ -681,12 +681,84 @@ where
         Ok(inputs)
     }
 
+    pub fn assign_first(
+        &self,
+        mut layouter: impl Layouter<C::Scalar>,
+        rbits_fe: Vec<Number<C::Scalar>>,
+        nark_comm: &EcPointNative<C>,
+        acc_comm: &EcPointNative<C>,
+    ) -> Result<(EcPointNative<C>, Vec<AssignedCell<C::Scalar, C::Scalar>>), Error> {
+
+        let inputs = self.preprocess_inputs(rbits_fe, nark_comm, acc_comm)?;
+
+        let mut acc_prime_x = Vec::new();
+        let mut acc_prime_y = Vec::new();
+
+        layouter.assign_region(
+            || "ScalarMulChipConfig assign",
+            |mut region| {
+
+            // | row |  r_bits   |    ptx    |   pty     |   acc.x   |   acc.y   |   acc.z   |  lambda   | 
+            // | 0   |    -      |     -     |    -      |    0      |    1      |    0      |    -      |
+            // | 1   |    0      |     x     |    y      |    x      |    y      |    z      |    1      | 
+            // | 2   |    1      |     x     |    y      |    2x     |    2y     |    2z     |    0      |
+            // | 3   |    1      |     x     |    y      |    4x     |    4y     |    4z     |    1      | 
+            // | 4   |    1      |     x     |    y      |    16x    |    16y    |    16z    |    0      |
+            // ...
+            // | 128 |    1      |     x     |    y      |   sm.x    |   sm.y    |    sm.z   |    1      | 
+            // | 129 |    -      |   acc.x   |   acc.y   |   r.x/z   |   r.y/z   |    -      |    -      |
+
+            let ptx = region.assign_advice(|| "ptx_vec",self.config.witness[1], 1, || inputs.ptx_vec[0])?;
+            let pty = region.assign_advice(|| "pty_vec",self.config.witness[2], 1, || inputs.pty_vec[0])?;
+            let mut rbits_vec = Vec::new();
+
+                for row in 0..NUM_CHALLENGE_BITS + 2 { 
+                    if row != NUM_CHALLENGE_BITS + 1 {
+                        if row != 0 {
+                            rbits_vec.push(region.assign_advice(|| "r_vec",self.config.witness[0], row, || inputs.rbits_vec[row - 1])?);
+                            region.assign_advice(|| "lambda_vec",self.config.witness[6], row, || inputs.lambda_vec[row - 1])?;
+
+                            if row != 1 {
+                                ptx.copy_advice(|| "ptx_vec", &mut region, self.config.witness[1], row)?;
+                                pty.copy_advice(|| "pty_vec", &mut region, self.config.witness[2], row)?;
+                            }
+                        }
+                        
+                        region.assign_advice(|| "acc_x_vec",self.config.witness[3], row, || inputs.acc_x_vec[row])?;
+                        region.assign_advice(|| "acc_y_vec",self.config.witness[4], row, || inputs.acc_y_vec[row])?;
+                        region.assign_advice(|| "acc_z_vec",self.config.witness[5], row, || inputs.acc_z_vec[row])?;
+                    }
+
+                    if row < NUM_CHALLENGE_BITS {
+                        self.config.selector[0].enable(&mut region, row)?;
+                    } 
+
+                    if row == NUM_CHALLENGE_BITS + 1 {
+                        self.config.selector[1].enable(&mut region, row)?;
+                        self.config.selector[2].enable(&mut region, row)?;
+                            region.assign_advice(|| "comm_is_zero",self.config.witness[0], row, || inputs.comm_is_zero)?;
+                            region.assign_advice(|| "comm_X",self.config.witness[1], row, || inputs.comm_X)?;
+                            region.assign_advice(|| "comm_Y",self.config.witness[2], row, || inputs.comm_Y)?;
+                            region.assign_advice(|| "sm_X",self.config.witness[3], row, || inputs.sm_X)?;
+                            region.assign_advice(|| "sm_Y",self.config.witness[4], row, || inputs.sm_Y)?;
+                            acc_prime_x.push(region.assign_advice(|| "X3",self.config.witness[5], row, || inputs.X3)?);
+                            acc_prime_y.push(region.assign_advice(|| "Y3",self.config.witness[6], row, || inputs.Y3)?);
+
+                    }
+                }         
+                // todo check this, giving none            
+                Ok((EcPointNative::new(Number(acc_prime_x.last().unwrap().clone()), Number(acc_prime_y.last().unwrap().clone())), rbits_vec.clone()))
+            },
+        )
+    }
+
     pub fn assign(
         &self,
         mut layouter: impl Layouter<C::Scalar>,
         rbits_fe: Vec<Number<C::Scalar>>,
         nark_comm: &EcPointNative<C>,
         acc_comm: &EcPointNative<C>,
+        rbits_vec: Vec<AssignedCell<C::Scalar, C::Scalar>>,
     ) -> Result<EcPointNative<C>, Error> {
 
         let inputs = self.preprocess_inputs(rbits_fe, nark_comm, acc_comm)?;
@@ -714,7 +786,7 @@ where
                 for row in 0..NUM_CHALLENGE_BITS + 2 { 
                     if row != NUM_CHALLENGE_BITS + 1 {
                         if row != 0 {
-                            region.assign_advice(|| "r_vec",self.config.witness[0], row, || inputs.rbits_vec[row - 1])?;
+                            rbits_vec[row - 1].copy_advice(|| "r_vec", &mut region, self.config.witness[0], row)?;
                             region.assign_advice(|| "lambda_vec",self.config.witness[6], row, || inputs.lambda_vec[row - 1])?;
 
                             if row != 1 {

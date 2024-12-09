@@ -446,11 +446,14 @@ where
         let config_inputs = self.config_inputs_ecc_deg6_full(&sm_chip_inputs)?;
         println!("config_input_time: {:?}", config_inputs_time.elapsed());
 
+        let mut rbits_vec = Vec::new();
         for (idx, config_input) in config_inputs.iter().enumerate() {
             if idx == 0 {
-                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_input.clone())?);
+                let (hash_input, rbits_vec_temp) = config.scalar_mul.assign_first(layouter.namespace(|| "ScalarMulChip"), config_input.clone())?;
+                hash_inputs.extend_from_slice(&hash_input);
+                rbits_vec = rbits_vec_temp;
             } else {
-                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_input.clone())?[1..]);
+                hash_inputs.extend_from_slice(&config.scalar_mul.assign(layouter.namespace(|| "ScalarMulChip"), config_input.clone(), rbits_vec.clone())?[1..]);
             }
         }
 

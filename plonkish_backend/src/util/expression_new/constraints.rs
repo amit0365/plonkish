@@ -124,8 +124,8 @@ impl<T: QueryType> Data<T> {
                 [input_constraint, table_constraint].into_iter()
             })
             .collect_vec();
-        println!("gate_constraints_len: {:?}", gate_constraints.len());
-        println!("lookup_constraints_len: {:?}", lookup_constraints.len());
+        // println!("gate_constraints_len: {:?}", gate_constraints.len());
+        // println!("lookup_constraints_len: {:?}", lookup_constraints.len());
         [&gate_constraints[..], &lookup_constraints[..]].concat()
     }
 

@@ -446,9 +446,9 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             floor_planner_data,
         )
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
-        println!("witness_count: {}", witness_collector.witness_count);
-        println!("copy_count: {}", witness_collector.copy_count);
-        println!("last_rows: {:?}", witness_collector.last_rows);
+        // println!("witness_count: {}", witness_collector.witness_count);
+        // println!("copy_count: {}", witness_collector.copy_count);
+        // println!("last_rows: {:?}", witness_collector.last_rows);
         Ok(batch_invert_assigned(witness_collector.advices))
     }
 }

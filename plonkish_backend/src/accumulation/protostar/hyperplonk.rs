@@ -226,23 +226,23 @@ where
             ))
         }).collect::<Vec<_>>();
         end_timer(timer);
-        println!("lookup_m_poly_num_vars {:?}", lookup_m_polys[0].evals().len());
+        //println!("lookup_m_poly_num_vars {:?}", lookup_m_polys[0].evals().len());
 
         let zero = F::ZERO;
         let lookup_m_padded = lookup_m_polys.iter().map(|poly| {
             MultilinearPolynomial::new(poly.evals().iter().chain(iter::repeat(&zero)).take(witness_len).cloned().collect_vec())
         }).collect_vec();
-        println!("lookup_m_padded_len {:?}", lookup_m_padded[0].evals().len());
+        //println!("lookup_m_padded_len {:?}", lookup_m_padded[0].evals().len());
 
         let mut phase1_poly = witness_polys.clone(); 
         phase1_poly.extend(lookup_m_polys.iter().cloned());
 
         let phase1_poly_concat = concat_polys(phase1_poly);
-        println!("witness_polys_len {:?}", witness_polys.len());
-        println!("lookup_m_polys_len {:?}", lookup_m_polys.len());
-        println!("phase1_poly_concat_num_vars {:?}", phase1_poly_concat.num_vars());
+        // println!("witness_polys_len {:?}", witness_polys.len());
+        // println!("lookup_m_polys_len {:?}", lookup_m_polys.len());
+        // println!("phase1_poly_concat_num_vars {:?}", phase1_poly_concat.num_vars());
+        
         // let phase1_comm = Pcs::commit_and_write(&pp.pcs, &phase1_poly_concat, transcript)?;
-
         // let timer = start_timer(|| "trimmed_phase1_poly_bits");
         // let trimmed_witness_bits: Vec<usize> = trimmed_witness_polys.par_iter().map(|poly| {
         //     poly.iter().fold(0, |sum, coeff| {
@@ -305,7 +305,7 @@ where
                 beta_prime,
             ))
         }).collect::<Vec<_>>();
-        println!("lookup_g_poly_num_vars {:?}", lookup_g_poly[0].evals().len());
+        //println!("lookup_g_poly_num_vars {:?}", lookup_g_poly[0].evals().len());
 
         let lookup_h_poly = lookup_expressions.iter().map(|lookup| {
             MultilinearPolynomial::new(build_h(
@@ -321,14 +321,14 @@ where
                 beta_prime,
             ))
         }).collect::<Vec<_>>();
-        println!("lookup_h_poly_num_vars {:?}", lookup_h_poly[0].evals().len());
+        //println!("lookup_h_poly_num_vars {:?}", lookup_h_poly[0].evals().len());
         assert_eq!(lookup_h_poly[0].evals().iter().sum::<F>(), lookup_g_poly[0].evals().iter().sum::<F>()); //todo fails check
         end_timer(timer);
 
         let lookup_h_padded = lookup_h_poly.iter().map(|poly| {
             MultilinearPolynomial::new(poly.evals().iter().chain(iter::repeat(&zero)).take(witness_len).cloned().collect_vec())
         }).collect_vec();
-        println!("lookup_h_padded_len {:?}", lookup_h_padded[0].evals().len());
+        //println!("lookup_h_padded_len {:?}", lookup_h_padded[0].evals().len());
 
 
         // let trimmed_lookup_bits0: Vec<usize> = vec![lookup_compressed_polys[0][0].clone()].par_iter().map(|poly| {
@@ -642,8 +642,9 @@ where
 
         let witness_poly_concat =  concat_polys(witness_polys.clone());
         //witness_comms.push(Pcs::commit_and_write(&pp.pcs, &witness_poly_concat, transcript)?);
-        println!("witness_polys_len {:?}", witness_polys.len());
-        println!("witness_poly_concat_num_vars {:?}", witness_poly_concat.num_vars());
+        
+        // println!("witness_polys_len {:?}", witness_polys.len());
+        // println!("witness_poly_concat_num_vars {:?}", witness_poly_concat.num_vars());
 
         // let timer = start_timer(|| "trimmed_phase1_poly_bits");
         // let trimmed_witness_bits: Vec<usize> = trimmed_witness_polys.par_iter().map(|poly| {

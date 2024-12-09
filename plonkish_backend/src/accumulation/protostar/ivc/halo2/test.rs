@@ -486,9 +486,9 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc_minroot() {
     const NUM_STEPS: usize = 10;
 
-    let primary_num_vars = 14;
+    let primary_num_vars = 15;
     let cyclefold_num_vars = 10;
-    let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 16384);
+    let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 65535);
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_num_vars + 4), 0, &mut seeded_std_rng()).unwrap();
     println!("primary_params done: {:?}", time.elapsed());

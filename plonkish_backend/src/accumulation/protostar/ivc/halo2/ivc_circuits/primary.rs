@@ -321,7 +321,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 .chain(acc.compressed_e_sum.as_ref())
                 .collect_vec();
             let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
-            println!("inputs: {:?}", input_cells.len());
+            //println!("inputs: {:?}", input_cells.len());
             let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
             // change to strict - Witness count: 29272
             // let hash_le_bits = main_chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?;

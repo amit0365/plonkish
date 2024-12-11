@@ -1298,7 +1298,7 @@ impl<'a, F: PrimeField> Single<'a, F> {
         // Convert the evaluations into the coefficients of the polynomial
         sum
     }
-
+    
 }
 
 impl<F: Field> CombinedQuadraticErrorFull<F> {

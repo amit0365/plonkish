@@ -14,9 +14,7 @@ use crate::{
     },
     backend::{
         hyperplonk::{
-            prover::{
-                instance_polys, lookup_compressed_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys
-            },
+            prover::instance_polys,
             HyperPlonk, HyperPlonkVerifierParam,
         },
         PlonkishBackend, PlonkishCircuit, PlonkishCircuitInfo,
@@ -24,12 +22,11 @@ use crate::{
     pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme},
     poly::multilinear::{concat_polys, concat_polys_raw, MultilinearPolynomial},
     util::{
-        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, repeat_elements, repeat_vector, PrimeField}, end_timer, expression_new::paired::{build_g, build_h, build_m, evaluate_betas_error_selectorwise, evaluate_betas_error_selectorwise_full, evaluate_betas_error_selectorwise_full_chunks, evaluate_betas_selectorwise, quotient_by_boolean_vanishing, CombinedQuadraticErrorFull, ErrorParams, Paired, Single, COMBINED_QUADRATIC_ERROR_FULL_LEN, QUOTIENT_ERROR_LEN}, start_timer, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
+        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, repeat_elements, repeat_vector, PrimeField}, end_timer, expression_new::paired::{build_g, build_h, build_m, evaluate_betas_error_selectorwise_full, evaluate_betas_selectorwise, CombinedQuadraticErrorFull, ErrorParams, Paired, Single, COMBINED_QUADRATIC_ERROR_FULL_LEN, QUOTIENT_ERROR_LEN}, start_timer, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
 
-use num_bigint::BigUint;
 use prover::{evaluate_zeta_sqrt_cross_term_poly, expand_beta_polys, powers_of_zeta_sqrt_poly, powers_of_zeta_sqrt_poly_ec};
 use rand::RngCore;
 use std::{borrow::BorrowMut, collections::HashMap, hash::Hash, iter::{self}};

@@ -8,9 +8,10 @@ use halo2_proofs::{
 use halo2_base::utils::BigPrimeField;
 use halo2_proofs::arithmetic::CurveAffine;
 use halo2_proofs::halo2curves::ff::BatchInvert;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use crate::{accumulation::protostar::{hyperplonk::NUM_CHALLENGE_BITS, ivc::halo2::chips::main_chip::{EcPointNative, Number}}, util::{arithmetic::{add_aff_unequal, add_proj_comp, double_proj_comp, fe_from_bits_le, fe_to_fe, into_coordinate_proj, into_coordinates, into_proj_coordinates, is_identity_proj, is_scaled_identity_proj, powers, sub_proj_comp, OverridenCurveAffine, ProjectivePoint}, end_timer, expression::pow_expr, start_timer}};
 use itertools::Itertools;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, time::Instant};
 
 use crate::util::arithmetic::{Field, PrimeFieldBits, TwoChainCurve};
 
@@ -563,8 +564,7 @@ where
         acc_comm: &[C::Scalar; 2],
     ) -> Result<ScalarMulConfigInputs<C>, Error> {
 
-        let scalar_bits = NUM_CHALLENGE_BITS;
-
+            let scalar_bits = NUM_CHALLENGE_BITS;
             let rbits_rev_fe = r_le_bits.iter().rev().cloned().collect_vec();
             let rbits_rev = rbits_rev_fe.iter().map( |fe| *fe == C::Scalar::ONE ).collect_vec();
 
@@ -645,7 +645,7 @@ where
                     rhs_zvec.push(rhs.z);
                 }
             }
-
+            
             lhs_zvec.batch_invert();            
             let lambda_vec = lhs_zvec.iter().zip(rhs_zvec).map(|(lhs, rhs)| Value::known(*lhs*rhs)).collect();        
             let scalar_mul_calc = ProjectivePoint::<C::Scalar>::new(*acc_prev_xvec.last().unwrap(), *acc_prev_yvec.last().unwrap(), *acc_prev_zvec.last().unwrap());

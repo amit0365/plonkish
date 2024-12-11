@@ -521,7 +521,55 @@ where F: PrimeField {
     //  x' = 2xy(y^2 - 9bz^2)
     //  y' = (y^2 - 9bz^2)(y^2 + 3bz^2) + 24*b*y^2*z^2 
     //  z' = 8y^3*z
-pub fn double_proj_comp<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> ProjectivePoint<F> {
+// pub fn double_proj_comp<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> ProjectivePoint<F> {
+//     let x = pt.x;
+//     let y = pt.y;
+//     let z = pt.z;
+
+//     if y.is_zero().into() {
+//         return ProjectivePoint::identity();
+//     }
+
+//     let y_sq = y.square();
+//     let z_sq = z.square();
+//     let nine_z_sq = z_sq.scale(9);
+
+//     let x2 = x*y.scale(2)*(y_sq - nine_z_sq.scale(3)); 
+//     let y2 = (y_sq - nine_z_sq.scale(3))*(y_sq + nine_z_sq) + y_sq.scale(8)*nine_z_sq;
+//     let z2 = y_sq*y*z.scale(8);
+
+//     // Step 1: Precompute squares
+//     // let y_sq = y.square();       // y^2
+//     // let z_sq = z.square();       // z^2
+
+//     // // Step 2: Compute scaled squares
+//     // let twenty_seven_z_sq = z_sq.scale(27);   // 27 * z^2
+//     // let nine_z_sq = z_sq.scale(9);            // 9 * z^2
+
+//     // // Step 3: Compute common expressions
+//     // let s1 = y_sq - twenty_seven_z_sq;        // s1 = y^2 - 27 * z^2
+//     // let s2 = y_sq + nine_z_sq;                // s2 = y^2 + 9 * z^2
+//     // let s3 = y_sq * z_sq;                     // s3 = y^2 * z^2
+//     // let y_cubed = y * y_sq;                   // y^3
+//     // let z_scaled = z.scale(8);                // 8 * z
+
+//     // // Step 4: Compute x2
+//     // let x2 = x * y.scale(2) * s1;             // x2 = x * 2y * (y^2 - 27z^2)
+
+//     // // Step 5: Compute y2
+//     // let y_sq_sq = y_sq * y_sq;                // y^4
+//     // let s4 = s3.scale(54);                    // 54 * y^2 * z^2
+//     // let s5 = z_sq.square().scale(243);        // 243 * z^4
+//     // let y2 = y_sq_sq + s4 - s5;               // y2 = y^4 + 54y^2z^2 - 243z^4
+
+//     // // Step 6: Compute z2
+//     // let z2 = y_cubed * z_scaled;              // z2 = 8 * y^3 * z
+
+
+//     ProjectivePoint::new(x2, y2, z2)
+// }
+
+pub fn double_proj_comp<F: PrimeField + FieldUtils>(pt: ProjectivePoint<F>) -> ProjectivePoint<F> {
     let x = pt.x;
     let y = pt.y;
     let z = pt.z;
@@ -530,44 +578,83 @@ pub fn double_proj_comp<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> Pro
         return ProjectivePoint::identity();
     }
 
-    let y_sq = y.square();
-    let z_sq = z.square();
-    let nine_z_sq = z_sq.scale(9);
+    // Precompute squares and cubes
+    let y_sq = y.square();        // y²
+    let z_sq = z.square();        // z²
+    let y_cubed = y * y_sq;       // y³
 
-    let x2 = x*y.scale(2)*(y_sq - nine_z_sq.scale(3)); 
-    let y2 = (y_sq - nine_z_sq.scale(3))*(y_sq + nine_z_sq) + y_sq.scale(8)*nine_z_sq;
-    let z2 = y_sq*y*z.scale(8);
+    // Compute scaled constants for b=3
+    let twenty_seven_z_sq = z_sq.scale(27); // 27z²
+    let nine_z_sq = z_sq.scale(9);          // 9z²
 
-    // Step 1: Precompute squares
-    // let y_sq = y.square();       // y^2
-    // let z_sq = z.square();       // z^2
+    // Common subexpressions
+    let s1 = y_sq - twenty_seven_z_sq; // (y² - 27z²)
+    let s2 = y_sq + nine_z_sq;         // (y² + 9z²)
+    let s3 = y_sq * z_sq;              // y²z²
 
-    // // Step 2: Compute scaled squares
-    // let twenty_seven_z_sq = z_sq.scale(27);   // 27 * z^2
-    // let nine_z_sq = z_sq.scale(9);            // 9 * z^2
+    // Final computations
+    let x2 = x * y.scale(2) * s1;       // x' = 2xy(y² - 27z²)
+    let y2 = s1 * s2 + s3.scale(72);    // y' = (y² - 27z²)(y² + 9z²) + 72y²z²
+    let z2 = y_cubed * z.scale(8);      // z' = 8y³z
 
-    // // Step 3: Compute common expressions
-    // let s1 = y_sq - twenty_seven_z_sq;        // s1 = y^2 - 27 * z^2
-    // let s2 = y_sq + nine_z_sq;                // s2 = y^2 + 9 * z^2
-    // let s3 = y_sq * z_sq;                     // s3 = y^2 * z^2
-    // let y_cubed = y * y_sq;                   // y^3
-    // let z_scaled = z.scale(8);                // 8 * z
-
-    // // Step 4: Compute x2
-    // let x2 = x * y.scale(2) * s1;             // x2 = x * 2y * (y^2 - 27z^2)
-
-    // // Step 5: Compute y2
-    // let y_sq_sq = y_sq * y_sq;                // y^4
-    // let s4 = s3.scale(54);                    // 54 * y^2 * z^2
-    // let s5 = z_sq.square().scale(243);        // 243 * z^4
-    // let y2 = y_sq_sq + s4 - s5;               // y2 = y^4 + 54y^2z^2 - 243z^4
-
-    // // Step 6: Compute z2
-    // let z2 = y_cubed * z_scaled;              // z2 = 8 * y^3 * z
-
-
-    ProjectivePoint::new(x2, y2, z2)
+    ProjectivePoint::<F>::new(x2, y2, z2)
 }
+
+// pub fn double_proj_comp<F: PrimeField + FieldUtils>(pt: ProjectivePoint<F>) -> ProjectivePoint<F> {
+//     let x = pt.x;
+//     let y = pt.y;
+//     let z = pt.z;
+
+//     if y.is_zero().into() {
+//         return ProjectivePoint::identity();
+//     }
+
+//     add_proj_comp(pt, pt)
+// }
+
+// pub fn double_proj_comp<F: PrimeField + FieldUtils>(pt: ProjectivePoint<F>) -> ProjectivePoint<F> {
+//     let x = pt.x;
+//     let y = pt.y;
+//     let z = pt.z;
+
+//     if y.is_zero().into() {
+//         return ProjectivePoint::identity();
+//     }
+
+//     let t0 = x.square();
+//     let t1 = y.square();
+//     let t2 = z.square();
+//     let t3 = x * y;
+//     let t3 = t3 + t3;
+//     let z3 = x * z;
+//     let z3 = z3 + z3;
+//     let x3 = F::ZERO;
+//     let y3 = t2.scale(9);
+//     let y3 = x3 + y3;
+//     let x3 = t1 - y3;
+//     let y3 = t1 + y3;
+//     let y3 = x3 * y3;
+//     let x3 = t3 * x3;
+//     let z3 = t2.scale(9);
+//     let t2 = F::ZERO;
+//     let t3 = t0 - t2;
+//     let t3 = F::ZERO * t3;
+//     let t3 = t3 + z3;
+//     let z3 = t0 + t0;
+//     let t0 = z3 + t0;
+//     let t0 = t0 + t2;
+//     let t0 = t0 * t3;
+//     let y3 = y3 + t0;
+//     let t2 = y * z;
+//     let t2 = t2 + t2;
+//     let t0 = t2 * t3;
+//     let x3 = x3 - t0;
+//     let z3 = t2 * t1;
+//     let z3 = z3 + z3;
+//     let z3 = z3 + z3;
+
+//     ProjectivePoint::<F>::new(x3, y3, z3)
+// }
 
 /// Complete Addition in projective coordinates.
     // X_3 &= (X_1(Y_2) + X_2Y_1)(Y_1(Y_2)) - 3bZ_1Z_2) \\
@@ -577,8 +664,59 @@ pub fn double_proj_comp<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> Pro
     // Z_3 &= (Y_1Z_2 + Y_2Z_1)(Y_1(Y_2) + 3bZ_1Z_2) \\
     //  + (X_1(Y_2) + X_2Y_1)(3X_1X_2).
 
-pub fn add_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
+// pub fn add_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
 
+//     let x1 = pt1.x;
+//     let y1 = pt1.y;
+//     let z1 = pt1.z;
+
+//     let x2 = pt2.x;
+//     let y2 = pt2.y;
+//     let z2 = pt2.z;
+
+//     // b = 3
+//     let x3 = (x1 * y2 + x2 * y1) * ((y1 * y2) - F::from(9) * z1 * z2) - (y1 * z2 + y2 * z1) * (F::from(9) * (x1 * z2 + x2 * z1));
+//     let y3 = (F::from(3) * x1 * x2) * (F::from(9) * (x1 * z2 + x2 * z1)) + (y1 * y2 + F::from(9) * z1 * z2) * (y1 * y2 - F::from(9) * z1 * z2);
+//     let z3 = (y1 * z2 + y2 * z1) * (y1 * y2 + F::from(9) * z1 * z2) + (x1 * y2 + x2 * y1) * (F::from(3) * x1 * x2);
+    
+//     ProjectivePoint::<F> {
+//         x: x3,
+//         y: y3,
+//         z: z3,
+//     }
+
+// }
+
+// pub fn add_proj_comp<F: PrimeField + FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
+//     let x1 = pt1.x;
+//     let y1 = pt1.y;
+//     let z1 = pt1.z;
+
+//     let x2 = pt2.x;
+//     let y2 = pt2.y;
+//     let z2 = pt2.z;
+
+//     // Precompute common subexpressions
+//     let s1 = x1 * y2 + x2 * y1;        // X1Y2 + X2Y1
+//     let s2 = (y1 * y2) - F::from(9) * z1 * z2; // (Y1Y2) - 9Z1Z2
+//     let s3 = y1 * z2 + y2 * z1;        // Y1Z2 + Y2Z1
+//     let s4 = x1 * z2 + x2 * z1;        // X1Z2 + X2Z1
+//     let s5 = (y1 * y2) + F::from(9) * z1 * z2; // (Y1Y2) + 9Z1Z2
+//     let s6 = F::from(3) * x1 * x2;     // 3X1X2
+
+//     // Now compute X3, Y3, Z3 using the precomputed values
+//     let x3 = s1 * s2 - s3 * (s4 * F::from(9));
+//     let y3 = s6 * (s4 * F::from(9)) + s5 * s2;
+//     let z3 = s3 * s5 + s1 * s6;
+
+//     ProjectivePoint::<F> {
+//         x: x3,
+//         y: y3,
+//         z: z3,
+//     }
+// }
+
+pub fn add_proj_comp<F: PrimeField + FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
     let x1 = pt1.x;
     let y1 = pt1.y;
     let z1 = pt1.z;
@@ -587,19 +725,49 @@ pub fn add_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: Pro
     let y2 = pt2.y;
     let z2 = pt2.z;
 
-    // b = 3
-    let x3 = (x1 * y2 + x2 * y1) * ((y1 * y2) - F::from(9) * z1 * z2) - (y1 * z2 + y2 * z1) * (F::from(9) * (x1 * z2 + x2 * z1));
-    let y3 = (F::from(3) * x1 * x2) * (F::from(9) * (x1 * z2 + x2 * z1)) + (y1 * y2 + F::from(9) * z1 * z2) * (y1 * y2 - F::from(9) * z1 * z2);
-    let z3 = (y1 * z2 + y2 * z1) * (y1 * y2 + F::from(9) * z1 * z2) + (x1 * y2 + x2 * y1) * (F::from(3) * x1 * x2);
-    
-    ProjectivePoint::<F> {
-        x: x3,
-        y: y3,
-        z: z3,
-    }
+    let t0 = x1 * x2;
+    let t1 = y1 * y2;
+    let t2 = z1 * z2;
+    let t3 = x1 + y1;
+    let t4 = x2 + y2;
+    let t3 = t3 * t4;
+    let t4 = t0 + t1;
+    let t3 = t3 - t4;
+    let t4 = x1 + z1;
+    let t5 = x2 + z2;
+    let t4 = t4 * t5;
+    let t5 = t0 + t2;
+    let t4 = t4 - t5;
+    let t5 = y1 + z1;
+    let x3 = y2 + z2;
+    let t5 = t5 * x3;
+    let x3 = t1 + t2;
+    let t5 = t5 - x3;
+    let z3 = F::ZERO * t4;
+    let x3 = t2.scale(9);
+    let z3 = x3 + z3;
+    let x3 = t1 - z3;
+    let z3 = t1 + z3;
+    let y3 = x3 * z3;
+    let t1 = t0 + t0;
+    let t1 = t1 + t0;
+    let t2 = F::ZERO * t2;
+    let t4 = t4.scale(9);
+    let t1 = t1 + t2;
+    let t2 = t0 - t2;
+    let t2 = F::ZERO * t2;
+    let t4 = t4 + t2;
+    let t0 = t1 * t4;
+    let y3 = y3 + t0;
+    let t0 = t5 * t4;
+    let x3 = t3 * x3;
+    let x3 = x3 - t0;
+    let t0 = t3 * t1;
+    let z3 = t5 * z3;
+    let z3 = z3 + t0;
 
+    ProjectivePoint::<F>::new(x3, y3, z3)
 }
-
 
 /// Complete Subtraction in projective coordinates.
     // X_3 &= (X_1(-Y_2) + X_2Y_1)(Y_1(-Y_2) - 3bZ_1Z_2) \\
@@ -609,41 +777,51 @@ pub fn add_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: Pro
     // Z_3 &= (Y_1Z_2 - Y_2Z_1)(Y_1(-Y_2) + 3bZ_1Z_2) \\
     //  + (X_1(-Y_2) + X_2Y_1)(3X_1X_2).
 
-pub fn sub_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
+// pub fn sub_proj_comp<F: PrimeField+FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
 
-    let x1 = pt1.x;
-    let y1 = pt1.y;
-    let z1 = pt1.z;
+//     let x1 = pt1.x;
+//     let y1 = pt1.y;
+//     let z1 = pt1.z;
 
-    let x2 = pt2.x;
-    let y2 = pt2.y;
-    let z2 = pt2.z;
+//     let x2 = pt2.x;
+//     let y2 = pt2.y;
+//     let z2 = pt2.z;
 
-    // b = 3
-    let x3 = (x1 * -y2 + x2 * y1) * (y1 * -y2 - F::from(9) * z1 * z2) - (y1 * z2 - y2 * z1) * (F::from(9) * (x1 * z2 + x2 * z1));   
-    let y3 = (F::from(3) * x1 * x2) * (F::from(9) * (x1 * z2 + x2 * z1)) + (y1 * -y2 + F::from(9) * z1 * z2) * (y1 * -y2 - F::from(9) * z1 * z2);   
-    let z3 = (y1 * z2 - y2 * z1) * (y1 * -y2 + F::from(9) * z1 * z2) + (x1 * -y2 + x2 * y1) * (F::from(3) * x1 * x2);
+//     // b = 3
+//     // let x3 = (x1 * -y2 + x2 * y1) * (y1 * -y2 - F::from(9) * z1 * z2) - (y1 * z2 - y2 * z1) * (F::from(9) * (x1 * z2 + x2 * z1));   
+//     // let y3 = (F::from(3) * x1 * x2) * (F::from(9) * (x1 * z2 + x2 * z1)) + (y1 * -y2 + F::from(9) * z1 * z2) * (y1 * -y2 - F::from(9) * z1 * z2);   
+//     // let z3 = (y1 * z2 - y2 * z1) * (y1 * -y2 + F::from(9) * z1 * z2) + (x1 * -y2 + x2 * y1) * (F::from(3) * x1 * x2);
 
-    // Precompute common subexpressions
-    // let s1 = x2 * y1 - x1 * y2;
-    // let s2 = (-y1 * y2) - (z1 * z2).scale(9);
-    // let s3 = y1 * z2 - y2 * z1;
-    // let s4 = x1 * z2 + x2 * z1;
-    // let s5 = (-y1 * y2) + (z1 * z2).scale(9);
-    // let s6 = x1 * x2.scale(3); // Alternatively, x1.scale(3) * x2
+//     //Precompute common subexpressions
+//     let s1 = x2 * y1 - x1 * y2;
+//     let s2 = (-y1 * y2) - (z1 * z2).scale(9);
+//     let s3 = y1 * z2 - y2 * z1;
+//     let s4 = x1 * z2 + x2 * z1;
+//     let s5 = (-y1 * y2) + (z1 * z2).scale(9);
+//     let s6 = x1 * x2.scale(3); // Alternatively, x1.scale(3) * x2
 
-    // // Compute x3, y3, and z3 using the precomputed subexpressions
-    // let x3 = s1 * s2 - s3 * s4.scale(9);
-    // let y3 = s6 * s4.scale(9) + s5 * s2;
-    // let z3 = s3 * s5 + s1 * s6;
+//     // Compute x3, y3, and z3 using the precomputed subexpressions
+//     let x3 = s1 * s2 - s3 * s4.scale(9);
+//     let y3 = s6 * s4.scale(9) + s5 * s2;
+//     let z3 = s3 * s5 + s1 * s6;
 
     
-    ProjectivePoint::<F> {
-        x: x3,
-        y: y3,
-        z: z3,
-    }
+//     ProjectivePoint::<F> {
+//         x: x3,
+//         y: y3,
+//         z: z3,
+//     }
 
+// }
+
+pub fn sub_proj_comp<F: PrimeField + FieldUtils>(pt1: ProjectivePoint<F>, pt2: ProjectivePoint<F>) -> ProjectivePoint<F> {
+    let x2 = pt2.x;
+    let y2 = -pt2.y;
+    let z2 = pt2.z;
+
+    let pt2_neg = ProjectivePoint::<F>::new(x2, y2, z2);
+
+    add_proj_comp(pt1, pt2_neg)
 }
 
 pub fn is_identity_proj<F: PrimeField+FieldUtils>(pt: ProjectivePoint<F>) -> bool {

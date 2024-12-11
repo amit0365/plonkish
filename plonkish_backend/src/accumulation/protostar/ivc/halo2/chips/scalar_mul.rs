@@ -255,6 +255,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for ScalarMulChainCircuit<C>
         Ok((inputs, outputs))
     }
 } 
+
 struct ScalarMulChainStepCircuit<C> 
 where
     C: TwoChainCurve,
@@ -263,7 +264,6 @@ where
 {
     marker: PhantomData<C>,
 }
-
 
 impl<C> Circuit<C::Scalar> for ScalarMulChainStepCircuit<C>
 where

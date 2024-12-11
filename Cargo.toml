@@ -7,3 +7,7 @@ inherits = "release"
 debug = true
 codegen-units = 1
 
+[profile.release]
+opt-level = 3
+
+

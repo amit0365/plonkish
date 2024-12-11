@@ -23,7 +23,7 @@ pub const T: usize = 4;
 pub const RATE: usize = 3;
 pub const NUM_RANGE_COLS: usize = 1; //(T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 27; //29 for smchain //27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
+pub const PRIMARY_HASH_LENGTH: usize = 29; //29 for smchain //27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
 pub const PRIMARY_HASH_LENGTH_EC: usize = 19;
 pub const CF_HASH_LENGTH: usize = 13;
 

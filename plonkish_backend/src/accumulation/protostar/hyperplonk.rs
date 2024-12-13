@@ -5,7 +5,7 @@ use crate::{
                 preprocessor::{batch_size, preprocess},
                 prover::lookup_h_polys,
             },
-            ivc::{halo2::chips::main_chip::LOOKUP_BITS, ProtostarAccumulationVerifierParam},
+            ivc::{halo2::chips::main_chip::{MAIN_LOOKUP_BITS, SHA256_LOOKUP_BITS}, ProtostarAccumulationVerifierParam},
             Protostar, ProtostarAccumulator, ProtostarAccumulatorInstance, ProtostarProverParam,
             ProtostarStrategy::{Compressing, NoCompressing},
             ProtostarVerifierParam,
@@ -22,7 +22,7 @@ use crate::{
     pcs::{AdditiveCommitment, CommitmentChunk, PolynomialCommitmentScheme},
     poly::multilinear::{concat_polys, concat_polys_raw, MultilinearPolynomial},
     util::{
-        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, repeat_elements, repeat_vector, PrimeField}, end_timer, expression_new::paired::{build_g, build_h, build_m, evaluate_betas_error_selectorwise_full, evaluate_betas_selectorwise, CombinedQuadraticErrorFull, ErrorParams, Paired, Single, COMBINED_QUADRATIC_ERROR_FULL_LEN, QUOTIENT_ERROR_LEN}, start_timer, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
+        arithmetic::{fe_from_bits_le, fe_to_bits_le, powers, repeat_elements, repeat_vector, PrimeField}, end_timer, expression_new::paired::{build_g, build_h, build_m, evaluate_betas_error_selectorwise_full, evaluate_betas_error_selectorwise_full_sha256, evaluate_betas_selectorwise, CombinedQuadraticErrorFull, CombinedQuadraticErrorFullSha256, ErrorParams, Paired, Single, COMBINED_QUADRATIC_ERROR_FULL_LEN, COMBINED_QUADRATIC_ERROR_FULL_LEN_SHA256, QUOTIENT_ERROR_LEN, QUOTIENT_ERROR_LEN_SHA256}, start_timer, transcript::{TranscriptRead, TranscriptWrite}, DeserializeOwned, Itertools, Serialize
     },
     Error,
 };
@@ -205,16 +205,15 @@ where
         let fixed = pp.preprocess_polys[..*num_fixed_columns].iter().map(|poly| poly.evals()).collect_vec();
         let selectors = pp.preprocess_polys[*num_fixed_columns..].iter().map(|poly| poly.evals()).collect_vec();
         let witness_len = witness_polys[0].evals().len();
-        let lookup_witness_len = last_rows.last().unwrap();
-        let tables_len = 1 << LOOKUP_BITS;
+        let lookup_witness_len = [&last_rows[last_rows.len() - 2], last_rows.last().unwrap()];
+        let tables_len = [1 << SHA256_LOOKUP_BITS, 1 << MAIN_LOOKUP_BITS];
 
         let timer = start_timer(|| format!("lookup_m_polys-{}", pp.lookups.len()));
-        //let lookup_m_polys = lookup_m_polys_uncompressed(&lookup_uncompressed_polys, *lookup_witness_length, tables_len)?;
-        let lookup_m_polys = lookup_expressions.iter().map(|lookup| {
+        let lookup_m_polys = lookup_expressions.iter().enumerate().map(|(i, lookup)| {
             MultilinearPolynomial::new(build_m(
                 lookup,
-                tables_len,
-                *lookup_witness_len,
+                tables_len[i],
+                *lookup_witness_len[i],
                 &selectors,
                 &fixed,
                 &instance,
@@ -265,7 +264,8 @@ where
         // end_timer(timer);
 
         let mut trimmed_phase1_poly = trimmed_witness_polys.clone();
-        trimmed_phase1_poly.push(MultilinearPolynomial::new(lookup_m_polys[0].iter().take(1<<LOOKUP_BITS).cloned().collect_vec()));
+        trimmed_phase1_poly.push(MultilinearPolynomial::new(lookup_m_polys[0].iter().take(1<<SHA256_LOOKUP_BITS).cloned().collect_vec()));
+        trimmed_phase1_poly.push(MultilinearPolynomial::new(lookup_m_polys[1].iter().take(1<<MAIN_LOOKUP_BITS).cloned().collect_vec()));
         let trimmed_phase1_poly_concat = concat_polys_raw(trimmed_phase1_poly);
         let phase1_comm = Pcs::commit_dedup_and_write(&trimmed_phase1_poly_concat, advice_copies, &pp.reduced_bases, transcript)?;
 
@@ -286,12 +286,12 @@ where
         let beta_prime = transcript.squeeze_challenge();
         let zeta = transcript.squeeze_challenge();
 
-        let timer = start_timer(|| format!("lookup_h_polys"));
+        let timer = start_timer(|| format!("lookup_polys"));
         let lookup_g_poly = lookup_expressions.iter().enumerate().map(|(i, lookup)| {
             MultilinearPolynomial::new(build_g(
                 lookup,
-                &(0..tables_len),
-                tables_len,
+                &(0..tables_len[i]),
+                tables_len[i],
                 &selectors,
                 &fixed,
                 &instance,
@@ -302,13 +302,13 @@ where
                 beta_prime,
             ))
         }).collect::<Vec<_>>();
-        //println!("lookup_g_poly_num_vars {:?}", lookup_g_poly[0].evals().len());
 
-        let lookup_h_poly = lookup_expressions.iter().map(|lookup| {
+
+        let lookup_h_poly = lookup_expressions.iter().enumerate().map(|(i, lookup)| {
             MultilinearPolynomial::new(build_h(
                 lookup,
-                &(0..*lookup_witness_len),
-                *lookup_witness_len,
+                &(0..*lookup_witness_len[i]),
+                *lookup_witness_len[i],
                 &selectors,
                 &fixed,
                 &instance,
@@ -424,8 +424,8 @@ where
 
         let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
         let num_challenges = pp.num_challenges.iter().sum::<usize>();
-        let lookups_empty = pp.lookups.is_empty();
-        let acc_u = accumulator.instance().u;
+        let lookups_empty = pp.lookups_empty; //pp.lookups.is_empty();
+        let acc_u = accumulator.instance().u; 
 
         let (r_le_bits, r, cross_term_comms) = match strategy {
             NoCompressing => {
@@ -504,8 +504,8 @@ where
                 }
 
                 let timer = start_timer(|| "split_beta_polys");
-                let betas_poly = evaluate_betas_error_selectorwise_full(beta_polys[0].0, beta_polys[1].0, beta_polys[0].1, beta_polys[1].1);
-                let mut beta_poly_selectorwise: Vec<Vec<Vec<CombinedQuadraticErrorFull<F>>>> = vec![
+                let betas_poly = evaluate_betas_error_selectorwise_full_sha256(beta_polys[0].0, beta_polys[1].0, beta_polys[0].1, beta_polys[1].1);
+                let mut beta_poly_selectorwise: Vec<Vec<Vec<CombinedQuadraticErrorFullSha256<F>>>> = vec![
                     vec![
                         Vec::new();
                         sorted_selectors.iter().map(|(_, (num_constraints, _))| *num_constraints).max().unwrap_or(0)
@@ -527,14 +527,14 @@ where
                 let error_poly_selectorwise: Vec<Vec<Vec<F>>> = total_constraints_vec.par_iter().map(|(selector_idx, selector_constraints)| {
                     selector_constraints.par_iter().enumerate().map(|(constraint_idx, constraint)| {
                         if let Some(rows) = selector_map.get(selector_idx) {
-                            Paired::<'_, F>::evaluate_compressed_polynomial_full_beta_selectorwise_parallel(
+                            Paired::<'_, F>::evaluate_compressed_polynomial_full_beta_selectorwise_sha256_parallel(
                                 constraint,
                                 rows,
                                 num_vars,
                                 &beta_poly_selectorwise[**selector_idx][constraint_idx]
                             )
                         } else {
-                            vec![F::ZERO; COMBINED_QUADRATIC_ERROR_FULL_LEN]
+                            vec![F::ZERO; COMBINED_QUADRATIC_ERROR_FULL_LEN_SHA256]
                         }
                     }).collect::<Vec<Vec<F>>>()
                 }).collect();
@@ -542,7 +542,7 @@ where
                 
                 let error_poly_flattened = error_poly_selectorwise.into_iter().flatten().collect_vec();
                 // Initialize the sum evaluations with zeros
-                let mut error_poly_sum = [F::ZERO; COMBINED_QUADRATIC_ERROR_FULL_LEN];
+                let mut error_poly_sum = [F::ZERO; COMBINED_QUADRATIC_ERROR_FULL_LEN_SHA256];
                 // Sum the evaluations pointwise
                 for evals in error_poly_flattened {
                     for (i, &val) in evals.iter().enumerate() {
@@ -555,9 +555,9 @@ where
                     // assert_eq!(error_poly_sum.last().unwrap(), &F::ZERO);
                     // assert_eq!(error_poly_sum.first(), accumulator.instance.compressed_e_sum.as_ref());
         
-                    let mut error_poly_vanish = Vec::with_capacity(QUOTIENT_ERROR_LEN);
-                    error_poly_vanish.extend_from_slice(&error_poly_sum[1..QUOTIENT_ERROR_LEN+1]);
-                    assert_eq!(error_poly_vanish.len(), QUOTIENT_ERROR_LEN);
+                    let mut error_poly_vanish = Vec::with_capacity(QUOTIENT_ERROR_LEN_SHA256);
+                    error_poly_vanish.extend_from_slice(&error_poly_sum[1..QUOTIENT_ERROR_LEN_SHA256+1]);
+                    assert_eq!(error_poly_vanish.len(), QUOTIENT_ERROR_LEN_SHA256);
                     error_poly_vanish
                 };
 
@@ -1027,7 +1027,7 @@ where
         let lsqrt = 1 << (log_num_betas/2);
         let num_witness_polys = pp.num_witness_polys.iter().sum::<usize>();
         let num_challenges = pp.num_challenges.iter().sum::<usize>();
-        let lookups_empty = pp.lookups.is_empty();
+        let lookups_empty = pp.lookups_empty; //pp.lookups.is_empty();
 
         let (betas, betas_prime, beta, beta_sqrt, u) =
         {
@@ -1684,6 +1684,45 @@ where
         }
     }
 }
+
+// impl<F, Pcs, N> From<ProtostarVerifierParam<F, HyperPlonk<Pcs>>>
+//     for ProtostarAccumulationVerifierParam<N>
+// where
+//     F: PrimeField,
+//     N: PrimeField,
+//     Pcs: PolynomialCommitmentScheme<F>,
+//     HyperPlonk<Pcs>: PlonkishBackend<F, VerifierParam = HyperPlonkVerifierParam<F, Pcs>>,
+// {
+//     fn from(vp: ProtostarVerifierParam<F, HyperPlonk<Pcs>>) -> Self {
+//         let num_witness_polys = iter::empty()
+//             .chain([1])
+//             .chain([1])
+//             .collect();
+//         let num_challenges = {
+//             let mut num_challenges = iter::empty()
+//                 .chain(vp.vp.num_challenges.iter().cloned())
+//                 .map(|num_challenge| vec![1; num_challenge])
+//                 .collect_vec();
+//             if vp.lookups {
+//                 num_challenges.last_mut().unwrap().push(vp.num_theta_primes + 2); // +1 for zeta, +1 for beta 
+//             } else {
+//                 num_challenges.last_mut().unwrap().push(vp.num_theta_primes + 1);
+//             }
+//             iter::empty()
+//                 .chain(num_challenges)
+//                 .collect()
+//         };
+
+//         Self {
+//             vp_digest: N::ZERO,
+//             strategy: vp.strategy,
+//             num_instances: vp.vp.num_instances.clone(),
+//             num_witness_polys,
+//             num_challenges,
+//             num_cross_terms: vp.num_cross_terms,
+//         }
+//     }
+// }
 
 // #[cfg(test)]
 // pub(crate) mod test {

@@ -1,5 +1,5 @@
 use crate::{
-    accumulation::protostar::ivc::halo2::chips::main_chip::LOOKUP_BITS, backend::{hyperplonk::prover::{instance_polys, lookup_compressed_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys}, PlonkishCircuit, PlonkishCircuitInfo, WitnessEncoding}, poly::multilinear::MultilinearPolynomial, util::{
+    accumulation::protostar::ivc::halo2::chips::main_chip::{MAIN_LOOKUP_BITS, SHA256_LOOKUP_BITS}, backend::{hyperplonk::prover::{instance_polys, lookup_compressed_polys, lookup_m_polys_uncompressed, lookup_uncompressed_polys}, PlonkishCircuit, PlonkishCircuitInfo, WitnessEncoding}, poly::multilinear::MultilinearPolynomial, util::{
         arithmetic::{BatchInvert, Field},
         expression::{Expression, Query, Rotation},
         Itertools,
@@ -183,12 +183,15 @@ impl<F: PrimeField, C: Circuit<F>> PlonkishCircuit<F> for Halo2Circuit<F, C> {
         })
         .collect_vec();
     //println!("queried_selectors before {:?}", queried_selectors.len());
+    //first add h constraint for all lookups then add g constraint for all lookups
     if !lookups.is_empty() {
         cs.lookups().iter().map(|lookup| {
-            let selector_index = lookup.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap();
+            let selector_index = lookup.queried_selectors().iter().map(|selector| selector.index()).collect_vec().last().cloned().unwrap(); // its of form [13] so we take the last one
             queried_selectors.insert(selector_index, (1, vec![3])); // h constraint
         }).collect_vec();
-        queried_selectors.insert(queried_selectors.len(), (1, vec![2])); // g constraint
+        cs.lookups().iter().map(|_| {
+            queried_selectors.insert(queried_selectors.len(), (1, vec![2])); // g constraint
+        }).collect_vec();
     } 
     //println!("queried_selectors after {:?}", queried_selectors.len());
     let num_instances = instances.iter().map(Vec::len).collect_vec();
@@ -341,8 +344,9 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
     circuit_info.permutations = preprocess_collector.permutation.into_cycles().clone();
     
     let mut selector_map = preprocess_collector.selector_map.clone();
-    if !circuit_info.lookups.is_empty() {
-        selector_map.insert(queried_selectors.len() - 1, (0..1<<LOOKUP_BITS).collect_vec()); //todo hardcoded to 0 for now
+    if !circuit_info.lookups.is_empty() { //sha256 is first and then range_check
+        selector_map.insert(queried_selectors.len() - 2, (0..1<<SHA256_LOOKUP_BITS).collect_vec()); 
+        selector_map.insert(queried_selectors.len() - 1, (0..1<<MAIN_LOOKUP_BITS).collect_vec()); 
     }
     circuit_info.selector_map = selector_map.clone();
     let mut num_betas = 0;
@@ -448,7 +452,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
         // println!("witness_count: {}", witness_collector.witness_count);
         // println!("copy_count: {}", witness_collector.copy_count);
-        // println!("last_rows: {:?}", witness_collector.last_rows);
+        println!("last_rows: {:?}", witness_collector.last_rows);
         Ok(batch_invert_assigned(witness_collector.advices))
     }
 }
@@ -513,9 +517,8 @@ impl<'a, F: Field> Assignment<F> for PreprocessCollector<'a, F> {
         AR: Into<String>,
     {   
         self.selector_map.entry(selector.index()).or_default().push(row);
-        //if selector.index() != 12 { //todo fix thishardcoded to 11 for now -- range_check constraint
-            self.row_map_selector.entry(row).or_default().push(selector.index());
-        //}
+        self.row_map_selector.entry(row).or_default().push(selector.index());
+
         // let Some(row) = self.row_mapping.get(row).copied() else {
         //     return Err(Error::NotEnoughRowsAvailable { current_k: self.k});
         // };

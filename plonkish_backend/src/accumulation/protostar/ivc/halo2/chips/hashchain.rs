@@ -160,7 +160,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for HashChainCircuit<C>
         Error,
     > {
 
-        let (main_chip, _, poseidon_chip, _) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
+        let (main_chip, _, poseidon_chip, _, _) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
         let mut sponge_chip = Poseidon2SpongeChip::<C::Scalar, {T}, {RATE}>::new(poseidon_chip, layouter.namespace(|| "sponge chip"));
         let mut witness_idx = 0;
 

@@ -2,7 +2,7 @@ use super::{util::*, AssignedBits};
 use crate::util::arithmetic::PrimeField;
 use halo2_proofs::{
     circuit::{Chip, Layouter, Region, Value},
-    plonk::{Advice, Column, ConstraintSystem, Error, TableColumn},
+    plonk::{Advice, Column, ConstraintSystem, Error, Selector, TableColumn},
     poly::Rotation,
 };
 use std::convert::TryInto;
@@ -180,8 +180,10 @@ impl<F: PrimeField> SpreadTableChip<F> {
         let table_tag = meta.lookup_table_column();
         let table_dense = meta.lookup_table_column();
         let table_spread = meta.lookup_table_column();
-
+        let lookup_enable_selector = meta.complex_selector();
+        
         meta.lookup("lookup", |meta| {
+            let lookup_enable_selector = meta.query_selector(lookup_enable_selector);
             let tag_cur = meta.query_advice(input_tag, Rotation::cur());
             let dense_cur = meta.query_advice(input_dense, Rotation::cur());
             let spread_cur = meta.query_advice(input_spread, Rotation::cur());

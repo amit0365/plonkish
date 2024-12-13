@@ -1,6 +1,6 @@
 use crate::{
     accumulation::protostar::{
-        ivc::halo2::{chips::{hashchain::HashChainCircuit, minroot::MinRootCircuit, scalar_mul::ScalarMulChainCircuit, sha256::Sha256Circuit, transcript::{accumulation_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
+        ivc::halo2::{chips::{hashchain::HashChainCircuit, minroot::MinRootCircuit, scalar_mul::ScalarMulChainCircuit, sha256::Sha256Circuit, sha256chain::Sha256ChainCircuit, transcript::{accumulation_transcript_param, PoseidonNativeTranscript, PoseidonTranscript}}, cyclefold::{self, CycleFoldCircuit}, preprocess, prove_steps, CircuitExt, StepCircuit},
         ProtostarAccumulatorInstance, ProtostarVerifierParam,
     },
     backend::{
@@ -694,27 +694,27 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_smchain() {
     >(NUM_STEPS, primary_circuit_k, primary_params, primary_step_circuit, cyclefold_num_vars, cyclefold_params);
 }
 
-// #[test]
-// fn gemini_kzg_ipa_protostar_hyperplonk_ivc_sha256() {
-//     const NUM_STEPS: usize = 10;
+#[test]
+fn gemini_kzg_ipa_protostar_hyperplonk_ivc_sha256chain() {
+    const NUM_STEPS: usize = 10;
 
-//     let primary_circuit_k = 18;
-//     let cyclefold_num_vars = 10;
-//     let primary_step_circuit = Sha256Circuit::new(65);
-//     let time = Instant::now();
-//     let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();
-//     println!("primary_params done: {:?}", time.elapsed());
-//     //primary_params.save_to_file(&format!("kzg_param_{}.bin", primary_circuit_k)).unwrap();
-//     //let primary_params = UnivariateKzgParam::load_from_file(&format!("kzg_param_{}.bin", primary_circuit_k)).unwrap();
-//     let time = Instant::now();
-//     let cyclefold_params = MultilinearIpa::setup(1 << (cyclefold_num_vars + 4), 0, &mut seeded_std_rng()).unwrap();
-//     println!("cyclefold_params done: {:?}", time.elapsed());
-//     //cyclefold_params.save_to_file(&format!("ipa_param_{}.bin", cyclefold_num_vars)).unwrap();
-//     //let cyclefold_params = MultilinearIpaParams::load_from_file(&format!("ipa_param_{}.bin", cyclefold_num_vars)).unwrap();
-//     run_protostar_hyperplonk_ivc::<
-//         bn256::G1Affine,
-//         Gemini<UnivariateKzg<Bn256>>,
-//         MultilinearIpa<grumpkin::G1Affine>,
-//         Sha256Circuit,
-//     >(NUM_STEPS, primary_circuit_k, primary_params, primary_step_circuit, cyclefold_num_vars, cyclefold_params);
-// }
+    let primary_circuit_k = 18;
+    let cyclefold_num_vars = 10;
+    let primary_step_circuit = Sha256ChainCircuit::<bn256::G1Affine>::new(65);
+    let time = Instant::now();
+    let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();
+    println!("primary_params done: {:?}", time.elapsed());
+    //primary_params.save_to_file(&format!("kzg_param_{}.bin", primary_circuit_k)).unwrap();
+    //let primary_params = UnivariateKzgParam::load_from_file(&format!("kzg_param_{}.bin", primary_circuit_k)).unwrap();
+    let time = Instant::now();
+    let cyclefold_params = MultilinearIpa::setup(1 << (cyclefold_num_vars + 4), 0, &mut seeded_std_rng()).unwrap();
+    println!("cyclefold_params done: {:?}", time.elapsed());
+    //cyclefold_params.save_to_file(&format!("ipa_param_{}.bin", cyclefold_num_vars)).unwrap();
+    //let cyclefold_params = MultilinearIpaParams::load_from_file(&format!("ipa_param_{}.bin", cyclefold_num_vars)).unwrap();
+    run_protostar_hyperplonk_ivc::<
+        bn256::G1Affine,
+        Gemini<UnivariateKzg<Bn256>>,
+        MultilinearIpa<grumpkin::G1Affine>,
+        Sha256ChainCircuit<bn256::G1Affine>,
+    >(NUM_STEPS, primary_circuit_k, primary_params, primary_step_circuit, cyclefold_num_vars, cyclefold_params);
+}

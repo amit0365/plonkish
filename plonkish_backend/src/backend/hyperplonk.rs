@@ -47,6 +47,7 @@ where
     pub(crate) num_witness_polys: Vec<usize>,
     pub(crate) num_challenges: Vec<usize>,
     pub(crate) lookups: Vec<Vec<(Expression<F>, Expression<F>)>>,
+    pub(crate) lookups_empty: bool,
     pub(crate) num_permutation_z_polys: usize,
     pub(crate) num_vars: usize,
     pub(crate) expression: Expression<F>,
@@ -82,8 +83,8 @@ where
     Pcs: PolynomialCommitmentScheme<F, Polynomial = MultilinearPolynomial<F>>,
 {
     type Pcs = Pcs;
-    type ProverParam = HyperPlonkProverParam<F, Pcs>;
-    type VerifierParam = HyperPlonkVerifierParam<F, Pcs>;
+    type ProverParam =  Box<HyperPlonkProverParam<F, Pcs>>;
+    type VerifierParam = Box<HyperPlonkVerifierParam<F, Pcs>>;
     type CommitmentChunk = Pcs::CommitmentChunk;
 
     fn setup(
@@ -127,13 +128,13 @@ where
         );
 
         let permutation_comms = Pcs::batch_commit(&pcs_pp, &permutation_polys)?;
-
+        let lookups_empty = circuit_info.lookups.is_empty();
         // Compose `VirtualPolynomialInfo`
         let (num_permutation_z_polys, expression) = compose(circuit_info);
         let timer = start_timer(|| "reduce_bases");
         let reduced_bases = Pcs::reduce_bases(&pcs_pp, &circuit_info.advice_copies)?;
         end_timer(timer);
-        //println!("reduced_bases: {:?}", reduced_bases.len());
+
         let vp = HyperPlonkVerifierParam {
             pcs: pcs_vp,
             num_instances: circuit_info.num_instances.clone(),
@@ -157,21 +158,24 @@ where
             fixed_permutation_idx_for_preprocess_poly: circuit_info.fixed_permutation_idx_for_preprocess_poly.clone(),
             num_witness_polys: circuit_info.num_witness_polys.clone(),
             num_challenges: circuit_info.num_challenges.clone(),
-            lookups: circuit_info.lookups.clone(),
+            lookups: vec![],
+            lookups_empty,
             num_permutation_z_polys,
             num_vars,
-            expression: Expression::zero(),//expression,
+            expression: Expression::zero(), //expression,
             preprocess_polys,
             preprocess_comms,
-            permutation_polys: circuit_info
-                .permutation_polys()
-                .into_iter()
-                .zip(permutation_polys)
-                .collect(),
+            permutation_polys: vec![],
+            // permutation_polys: circuit_info
+            //     .permutation_polys()
+            //     .into_iter()
+            //     .zip(permutation_polys)
+            //     .collect(),
             permutation_comms,
             reduced_bases,
         };
-        Ok((pp, vp))
+        println!("pp done");
+        Ok((Box::new(pp), Box::new(vp)))
     }
 }
     

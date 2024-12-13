@@ -310,6 +310,7 @@ where
 
     let (pp, vp) = {
         let (mut pp, mut vp) = HyperPlonk::preprocess(param, circuit_info)?;
+        println!("pp prepare");
         let batch_size = batch_size(circuit_info, strategy);
         let (pcs_pp, pcs_vp) = Pcs::trim(param, 1 << poly_setup, batch_size)?;
         pp.pcs = pcs_pp;
@@ -323,7 +324,7 @@ where
 
     let num_cross_terms = cross_term_expressions.len();
     let prover_param = ProtostarProverParam {
-        pp,
+        pp: Box::new(pp),
         strategy,
         num_theta_primes,
         num_alpha_primes,
@@ -341,7 +342,7 @@ where
         witness_count: circuit_info.witness_count,
         copy_count: circuit_info.copy_count,
     };
-
+    println!("prover_param done");
     let verifier_param = ProtostarVerifierParam {
         vp,
         strategy,

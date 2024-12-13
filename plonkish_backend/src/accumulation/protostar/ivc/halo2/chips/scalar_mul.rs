@@ -213,7 +213,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for ScalarMulChainCircuit<C>
         Error,
     > {
 
-        let (main_chip, _, _, scalar_mul_chip) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
+        let (main_chip, _, _, scalar_mul_chip, _) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
         let mut witness_idx = 0;
 
         // check for the non-trivial circuit with some input, the other cycle runs trivial circuit with no computation

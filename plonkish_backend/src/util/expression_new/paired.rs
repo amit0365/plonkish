@@ -1,21 +1,14 @@
-use core::num;
 use std::{
-    cell::RefCell, cmp::max, collections::HashMap, iter::zip, marker::PhantomData, ops::{AddAssign, Range}, time::Instant
+    collections::HashMap, iter::zip, marker::PhantomData, ops::{AddAssign, Range}, time::Instant
 };
 use crate::util::arithmetic::PrimeField;
-use crate::{accumulation::protostar::{hyperplonk::prover::{powers_of_zeta_poly, PolynomialsRefsHolder}, ivc::halo2::chips::main_chip::LOOKUP_BITS, ProtostarAccumulator}, backend::hyperplonk::prover::instance_polys, pcs::PolynomialCommitmentScheme, poly::{multilinear::MultilinearPolynomial, Polynomial}, util::{arithmetic::{div_ceil, field_integers, powers, BooleanHypercube, Field}, end_timer, expression::Rotation, expression_new::constraints::LookupData, izip, izip_eq, parallel::{num_threads, par_map_collect, parallelize_iter}, start_timer, Deserialize, Itertools, Serialize}};
-use ark_std::{end_timer, start_timer};
+use crate::{accumulation::protostar::{hyperplonk::prover::{powers_of_zeta_poly, PolynomialsRefsHolder}, ProtostarAccumulator}, backend::hyperplonk::prover::instance_polys, pcs::PolynomialCommitmentScheme, poly::{multilinear::MultilinearPolynomial, Polynomial}, util::{arithmetic::{div_ceil, field_integers, powers, BooleanHypercube, Field}, end_timer, expression::Rotation, expression_new::constraints::LookupData, izip, izip_eq, parallel::{num_threads, par_map_collect, parallelize_iter}, start_timer, Deserialize, Itertools, Serialize}};
 use halo2_proofs::{arithmetic::{lagrange_interpolate, parallelize}, halo2curves::ff::BatchInvert, plonk};
 pub use halo2_proofs::halo2curves::CurveAffine;
 use rayon::{iter::{IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelExtend}, slice::{ParallelSlice, ParallelSliceMut}};
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::ParallelIterator;
 use super::{constraints::Data, IndexedExpression, QueriedExpression, QueryType};
-//use halo2curves::CurveAffine;
-// use crate::{
-//     arithmetic::{field_integers, lagrange_interpolate},
-//     protostar::{accumulator::Accumulator, ProvingKey},
-// };
 
 pub fn split_polys<'a, F>(polys: [&'a MultilinearPolynomial<F>; 2]) -> [(&'a [F], &'a [F]); 2] {
     polys.map(|poly| poly.evals().split_at(poly.evals().len() / 2))
@@ -433,6 +426,98 @@ impl<'a, F: PrimeField> Paired<'a, F> {
         sum.to_coefficients()
     }
 
+    pub fn evaluate_compressed_polynomial_full_beta_selectorwise_sha256(
+        expr: &QueriedExpression<Self>,
+        rows: &[usize],
+        num_vars: usize,
+        betas_error_selectorwise: &[CombinedQuadraticErrorFullSha256<F>],
+    ) -> Vec<F> {
+        // Convert the expression into an indexed one, where all leaves are extracted into vectors,
+        // and replaced by the index in these vectors.
+        // This allows us to separate the evaluation of the variables from the evaluation of the expression,
+        // since the expression leaves will point to the indices in buffers where the evaluations are stored.
+        let indexed = IndexedExpression::<Paired<'a, F>>::new(expr);
+        let num_evals = indexed.expr.degree() + 1 + 2; // + 2 for the betas
+        if indexed.expr.degree() < 2 { // linear gate constraints don't contribute to the error polynomial i.e. 1 + 2(betas) = 3 degree free
+            return vec![F::ZERO; num_evals];
+        }
+        // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
+        // since the polynomial e(X) has d+1 coefficients.
+        // let num_evals = indexed.expr.degree() + 1;
+
+        // For two transcripts with respective u, 1, acc_u,
+        // compute the evaluations of the polynomial u(X) = (1−X)⋅1 + X⋅acc_u
+        let acc_u: Vec<_> = indexed
+            .acc_u
+            .iter()
+            .map(|queried_acc_u| {
+                EvaluatedError::new_from_boolean_evals(
+                    F::ONE, // u = 1 for nark
+                    queried_acc_u.value,
+                    num_evals,
+                )
+            })
+            .collect();
+
+        // For two transcripts with respective challenge, c₀, c₁,
+        // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
+        let challenges: Vec<_> = indexed
+            .challenges
+            .iter()
+            .map(|queried_challenge| {
+                EvaluatedError::new_from_boolean_evals(
+                    *queried_challenge.value[0],
+                    *queried_challenge.value[1],
+                    num_evals,
+                )
+            })
+            .collect();
+
+        // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
+        // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
+        //   and consider fᵢ(j) = fᵢ for all j
+        // - Witness variables are interpolated from the values at the two accumulators,
+        //   and the evaluations are stored in a buffer.
+        let mut fixed = vec![F::ZERO; indexed.fixed.len()];
+        let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
+
+        // Running sum for e(D) = ∑ᵢ eᵢ(D)
+        let mut sum = EvaluatedError::<F>::new(num_evals);
+        for (i, row_index) in rows.iter().enumerate() {
+            // Fetch fixed data
+            for (fixed, query) in fixed.iter_mut().zip(indexed.fixed.iter()) {
+                let row_idx = query.row_idx(*row_index, num_vars);
+                *fixed = query.column[row_idx];
+            }
+
+            // Fetch witness data and interpolate
+            for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
+                let row_idx = query.row_idx(*row_index, num_vars);
+                let eval0 = query.column[0][row_idx];
+                let eval1 = query.column[1][row_idx];
+                witness.evaluate(eval0, eval1);
+            }
+            
+            // Evaluate the expression in the current row and add it to e(D)
+            for (eval_idx, eval) in sum.evals.iter_mut().enumerate() {
+                // For each `eval_idx` j = 0, 1, ..., d, evaluate the expression eᵢ(j) = βᵢ(j) G(fᵢ, wᵢ(j), rᵢ(j))
+                let evaluation = indexed.expr.evaluate(
+                    &|&u| acc_u[u].evals[eval_idx],
+                    &|&constant| constant,
+                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
+                    &|&fixed_idx| fixed[fixed_idx],
+                    &|&witness_idx| witness[witness_idx].evals[eval_idx],
+                    &|&negated| -negated,
+                    &|a, b| a + b,
+                    &|a, b| a * b,
+                );
+                *eval += betas_error_selectorwise[i].evals[eval_idx] * evaluation; 
+            }
+        };
+        // Convert the evaluations into the coefficients of the polynomial
+        sum.to_coefficients()
+    }
+
     pub fn evaluate_compressed_polynomial_full_beta_selectorwise_combined_sequential(
         expr_vec: &[QueriedExpression<Self>],
         rows: &[usize],
@@ -614,6 +699,103 @@ impl<'a, F: PrimeField> Paired<'a, F> {
 
         // Convert the evaluations into the coefficients of the polynomial
         sum_vec.into_iter().map(|sum| sum.to_coefficients()).collect_vec()
+    }
+
+    pub fn evaluate_compressed_polynomial_full_beta_selectorwise_sha256_parallel(
+        expr: &QueriedExpression<Self>,
+        rows: &[usize],
+        num_vars: usize,
+        betas_error_selectorwise: &[CombinedQuadraticErrorFullSha256<F>],
+    ) -> Vec<F> {
+        // Convert the expression into an indexed one, where all leaves are extracted into vectors,
+        // and replaced by the index in these vectors.
+        // This allows us to separate the evaluation of the variables from the evaluation of the expression,
+        // since the expression leaves will point to the indices in buffers where the evaluations are stored.
+        let indexed = IndexedExpression::<Paired<'a, F>>::new(expr);
+        let num_evals = indexed.expr.degree() + 1 + 2; // + 2 for the betas
+        if indexed.expr.degree() < 2 { // linear gate constraints don't contribute to the error polynomial i.e. 1 + 2(betas) = 3 degree free
+            return vec![F::ZERO; num_evals];
+        }
+        // Evaluate the polynomial at the points 0,1,...,d, where d is the degree of expr,
+        // since the polynomial e(X) has d+1 coefficients.
+        // let num_evals = indexed.expr.degree() + 1;
+
+        // For two transcripts with respective u, 1, acc_u,
+        // compute the evaluations of the polynomial u(X) = (1−X)⋅1 + X⋅acc_u
+        let acc_u: Vec<_> = indexed
+            .acc_u
+            .iter()
+            .map(|queried_acc_u| {
+                EvaluatedError::new_from_boolean_evals(
+                    F::ONE, // u = 1 for nark
+                    queried_acc_u.value,
+                    num_evals,
+                )
+            })
+            .collect();
+
+        // For two transcripts with respective challenge, c₀, c₁,
+        // compute the evaluations of the polynomial c(X) = (1−X)⋅c₀ + X⋅c₁
+        let challenges: Vec<_> = indexed
+            .challenges
+            .iter()
+            .map(|queried_challenge| {
+                EvaluatedError::new_from_boolean_evals(
+                    *queried_challenge.value[0],
+                    *queried_challenge.value[1],
+                    num_evals,
+                )
+            })
+            .collect();
+
+        // For each variable of the expression, we allocate buffers for storing their evaluations at each row.
+        // - Fixed variables are considered as constants, so we only need to fetch the value from the proving key
+        //   and consider fᵢ(j) = fᵢ for all j
+        // - Witness variables are interpolated from the values at the two accumulators,
+        //   and the evaluations are stored in a buffer.
+        // let mut fixed = vec![F::ZERO; indexed.fixed.len()];
+        // let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
+
+        // Running sum for e(D) = ∑ᵢ eᵢ(D)
+        let sum: EvaluatedError<F> = rows.into_par_iter().enumerate().map(|(i, row_index)| {
+            let mut fixed = vec![F::ZERO; indexed.fixed.len()];
+            let mut witness = vec![EvaluatedError::<F>::new(num_evals); indexed.witness.len()];
+            for (i, (fixed, query)) in fixed.iter_mut().zip(indexed.fixed.iter()).enumerate() {
+                let row_idx = query.row_idx(*row_index, num_vars);
+                *fixed = query.column[row_idx];
+            }
+    
+            for (witness, query) in witness.iter_mut().zip(indexed.witness.iter()) {
+                let row_idx = query.row_idx(*row_index, num_vars);
+                let eval0 = query.column[0][row_idx];
+                let eval1 = query.column[1][row_idx];
+                witness.evaluate(eval0, eval1);
+            }
+    
+            let mut row_sum = EvaluatedError::<F>::new(num_evals);
+            for eval_idx in 0..num_evals {
+                let eval = indexed.expr.evaluate(
+                    &|&u| acc_u[u].evals[eval_idx],
+                    &|&constant| constant,
+                    &|&challenge_idx| challenges[challenge_idx].evals[eval_idx],
+                    &|&fixed_idx| fixed[fixed_idx],
+                    &|&witness_idx| witness[witness_idx].evals[eval_idx],
+                    &|&negated| -negated,
+                    &|a, b| a + b,
+                    &|a, b| a * b,
+                );
+                row_sum.evals[eval_idx] += betas_error_selectorwise[i].evals[eval_idx] * eval;
+            }
+            row_sum
+        }).reduce(|| EvaluatedError::<F>::new(num_evals), |a, b| {
+            let mut result = EvaluatedError::<F>::new(num_evals);
+            for i in 0..num_evals {
+                result.evals[i] = a.evals[i] + b.evals[i];
+            }
+            result
+        });
+        // Convert the evaluations into the coefficients of the polynomial
+        sum.to_coefficients()
     }
 
     pub fn evaluate_compressed_polynomial_full_beta_selectorwise_parallel(
@@ -1301,30 +1483,38 @@ impl<'a, F: PrimeField> Single<'a, F> {
     
 }
 
-impl<F: Field> CombinedQuadraticErrorFull<F> {
-    pub fn from_evals(evals: Vec<F>) -> Self {
-        assert_eq!(evals.len(), 7);
-        Self {
-            evals: [evals[0], evals[1], evals[2], evals[3], evals[4], evals[5], evals[6], evals[7], evals[8]],
-        }
-    }
+// impl<F: Field> CombinedQuadraticErrorFull<F> {
+//     pub fn from_evals(evals: Vec<F>) -> Self {
+//         assert_eq!(evals.len(), 7);
+//         Self {
+//             evals: [evals[0], evals[1], evals[2], evals[3], evals[4], evals[5], evals[6], evals[7], evals[8]],
+//         }
+//     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &F> {
-        self.evals.iter()
-    }
+//     pub fn iter(&self) -> impl Iterator<Item = &F> {
+//         self.evals.iter()
+//     }
+// }
+
+// impl<F: Field> IntoIterator for CombinedQuadraticErrorFull<F> {
+//     type Item = F;
+//     type IntoIter = std::array::IntoIter<F, 9>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.evals.into_iter()
+//     }
+// }
+
+pub const COMBINED_QUADRATIC_ERROR_FULL_LEN_SHA256: usize =11;
+pub const QUOTIENT_ERROR_LEN_SHA256: usize = 9;
+pub const COMBINED_QUADRATIC_ERROR_FULL_LEN: usize =9; //d+1 //9 for regular, 11 for sha256
+pub const QUOTIENT_ERROR_LEN: usize = 7; //d-1 //7 for regular, 9 for sha256
+
+
+#[derive(Clone, Debug, Default)]
+pub struct CombinedQuadraticErrorFullSha256<F> {
+    pub evals: [F; COMBINED_QUADRATIC_ERROR_FULL_LEN_SHA256],
 }
-
-impl<F: Field> IntoIterator for CombinedQuadraticErrorFull<F> {
-    type Item = F;
-    type IntoIter = std::array::IntoIter<F, 9>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.evals.into_iter()
-    }
-}
-
-pub const COMBINED_QUADRATIC_ERROR_FULL_LEN: usize = 9; //d+1
-pub const QUOTIENT_ERROR_LEN: usize = 7; //d-1
 
 #[derive(Clone, Debug, Default)]
 pub struct CombinedQuadraticErrorFull<F> {
@@ -1461,6 +1651,69 @@ pub fn evaluate_betas_error_selectorwise_full<F: PrimeField>(
                     b_eval[6] * bs_eval[6],
                     b_eval[7] * bs_eval[7],
                     b_eval[8] * bs_eval[8],
+                ],
+            }
+        })
+        .collect()
+}
+
+pub fn evaluate_betas_error_selectorwise_full_sha256<F: PrimeField>(
+    beta0: &[F],
+    beta1: &[F],
+    beta_sqrt0: &[F],
+    beta_sqrt1: &[F],
+) -> Vec<CombinedQuadraticErrorFullSha256<F>> {
+    assert_eq!(beta0.len(), beta1.len());
+    assert_eq!(beta_sqrt0.len(), beta_sqrt1.len());
+
+    let [two, three, four, five, six, seven, eight, nine, ten] = [F::from(2u64), F::from(3u64), F::from(4u64), F::from(5u64), F::from(6u64), F::from(7u64), F::from(8u64), F::from(9u64), F::from(10u64)];
+
+    // Pre-compute evaluations for beta and beta_sqrt
+    let beta_evals: Vec<[F; 11]> = beta0
+        .par_iter()
+        .zip(beta1)
+        .map(|(&b0, &b1)| {
+            let addend = b0;
+            [b1, b1 + addend, b1 + addend * two, b1 + addend * three, b1 + addend * four, b1 + addend * five, b1 + addend * six, b1 + addend * seven, b1 + addend * eight, b1 + addend * nine, b1 + addend * ten]
+        })
+        .collect();
+
+    let beta_sqrt_evals: Vec<[F; 11]> = beta_sqrt0
+        .par_iter()
+        .zip(beta_sqrt1)
+        .map(|(&bs0, &bs1)| {
+            let addend = bs0;
+            [bs1, bs1 + addend, bs1 + addend * two, bs1 + addend * three, bs1 + addend * four, bs1 + addend * five, bs1 + addend * six, bs1 + addend * seven, bs1 + addend * eight, bs1 + addend * nine, bs1 + addend * ten]
+        })
+        .collect();
+
+    let beta_evals_len = beta_evals.len();
+    let beta_sqrt_evals_len = beta_sqrt_evals.len();
+    let total_len = beta_evals_len * beta_sqrt_evals_len;
+
+    // Use a single parallel iterator over all combinations
+    (0..total_len)
+        .into_par_iter()
+        .map(|i| {
+            let b_eval_idx = i % beta_evals_len;
+            let bs_eval_idx = i / beta_evals_len;
+
+            let b_eval = &beta_evals[b_eval_idx];
+            let bs_eval = &beta_sqrt_evals[bs_eval_idx];
+
+            CombinedQuadraticErrorFullSha256 {
+                evals: [
+                    b_eval[0] * bs_eval[0],
+                    b_eval[1] * bs_eval[1],
+                    b_eval[2] * bs_eval[2],
+                    b_eval[3] * bs_eval[3],
+                    b_eval[4] * bs_eval[4],
+                    b_eval[5] * bs_eval[5],
+                    b_eval[6] * bs_eval[6],
+                    b_eval[7] * bs_eval[7],
+                    b_eval[8] * bs_eval[8],
+                    b_eval[9] * bs_eval[9],
+                    b_eval[10] * bs_eval[10],
                 ],
             }
         })

@@ -21,9 +21,9 @@ use crate::accumulation::protostar::ivc::halo2::chips::{T as T2, R as R2};
 
 pub const T: usize = 4;
 pub const RATE: usize = 3;
-pub const NUM_RANGE_COLS: usize = 1; //(T + 1) / 2;
+pub const NUM_RANGE_COLS: usize = 1; // (T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 29; //29 for smchain //27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
+pub const PRIMARY_HASH_LENGTH: usize = 28; // 29 for smchain // 27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
 pub const PRIMARY_HASH_LENGTH_EC: usize = 19;
 pub const CF_HASH_LENGTH: usize = 13;
 
@@ -44,7 +44,7 @@ pub struct PrimaryCircuitConfig<C>
     pub poseidon_config: Poseidon2Pow5Config<C::Scalar, T, RATE>,
     pub main_config: MainChipConfig,
     pub sm_chip_config: ScalarMulChipConfig<C>,
-    //sha256_config: Table16Config<C::Scalar>,
+    pub sha256_config: Table16Config<C::Scalar>,
     pub range_check_config: RangeCheckConfig,
 }
 
@@ -97,9 +97,11 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
             meta.enable_equality(*col);
         }
 
-        let sm_chip_config = ScalarMulChipConfig::configure(meta, sm_advice.try_into().unwrap());
-        //let sha256_config = Table16Chip::configure(meta, main_advice.clone().try_into().unwrap());
+        let sm_chip_config = ScalarMulChipConfig::configure(meta, sm_advice.try_into().unwrap()); // need 10 for sha256
+        println!("sm_chip_config done");
+        let sha256_config = Table16Chip::configure(meta, main_advice.iter().skip(4).cloned().collect_vec().try_into().unwrap());
 
+        println!("sha256_config done");
         let range_check_fixed = meta.fixed_column();
         let enable_lookup_selector = meta.complex_selector();
         let range_advice = meta.advice_column();
@@ -111,12 +113,12 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
             range_check_fixed,
             enable_lookup_selector,
         );
-
+        println!("range_check_config done");
         Self {
             poseidon_config,
             main_config,
             sm_chip_config,
-            //sha256_config,
+            sha256_config,
             range_check_config,
         }
     }
@@ -124,14 +126,45 @@ impl<C: TwoChainCurve> PrimaryCircuitConfig<C>
     pub fn initialize_chips(
         &self,
         layouter: &mut impl Layouter<C::Scalar>,
-    ) -> Result<(MainChip<C>, RangeCheckChip<C>, Poseidon2Pow5Chip<C::Scalar, T, RATE>, ScalarMulChip<C>), Error> {
+    ) -> Result<(MainChip<C>, RangeCheckChip<C>, Poseidon2Pow5Chip<C::Scalar, T, RATE>, ScalarMulChip<C>, Table16Chip<C::Scalar>), Error> {
+        let range_chip = RangeCheckChip::<C>::construct(self.range_check_config);
+        let main_chip = MainChip::<C>::new(self.main_config.clone(), range_chip.clone());
+        // dont need to initialize pow2 and range check table as we dont need them in step circuit computation, init if you do!
+        // main_chip.initialize_pow2(layouter)?;
+        // main_chip.load_range_check_table(layouter, self.range_check_config.lookup_u8_table)?;
+        let pow5_chip = Poseidon2Pow5Chip::construct(self.poseidon_config.clone());
+        let sm_chip = ScalarMulChip::<C>::new(self.sm_chip_config.clone());
+        Table16Chip::load(self.sha256_config.clone(), layouter)?;
+        let sha256_chip = Table16Chip::construct(self.sha256_config.clone());
+        Ok((main_chip, range_chip, pow5_chip, sm_chip, sha256_chip))
+    }
+
+    pub fn get_chips(
+        &self,
+        layouter: &mut impl Layouter<C::Scalar>,
+    ) -> Result<(MainChip<C>, RangeCheckChip<C>, Poseidon2Pow5Chip<C::Scalar, T, RATE>, ScalarMulChip<C>, Table16Chip<C::Scalar>), Error> {
         let range_chip = RangeCheckChip::<C>::construct(self.range_check_config);
         let mut main_chip = MainChip::<C>::new(self.main_config.clone(), range_chip.clone());
         main_chip.initialize_pow2(layouter)?;
-        main_chip.load_range_check_table(layouter.namespace(||"load range check table"), self.range_check_config.lookup_u8_table)?;
+        main_chip.load_range_check_table(layouter, self.range_check_config.lookup_u8_table)?;
         let pow5_chip = Poseidon2Pow5Chip::construct(self.poseidon_config.clone());
         let sm_chip = ScalarMulChip::<C>::new(self.sm_chip_config.clone());
-        Ok((main_chip, range_chip, pow5_chip, sm_chip))
+        let sha256_chip = Table16Chip::construct(self.sha256_config.clone());
+        Ok((main_chip, range_chip, pow5_chip, sm_chip, sha256_chip))
+    }
+
+    pub fn initialize_step_circuit(
+        &self,
+        layouter: &mut impl Layouter<C::Scalar>,
+    ) -> Result<(MainChip<C>, RangeCheckChip<C>, Poseidon2Pow5Chip<C::Scalar, T, RATE>, ScalarMulChip<C>, Table16Chip<C::Scalar>), Error> {
+        let range_chip = RangeCheckChip::<C>::construct(self.range_check_config);
+        let mut main_chip = MainChip::<C>::new(self.main_config.clone(), range_chip.clone());
+        main_chip.initialize_pow2(layouter)?;
+        //main_chip.load_range_check_table(layouter, self.range_check_config.lookup_u8_table)?;
+        let pow5_chip = Poseidon2Pow5Chip::construct(self.poseidon_config.clone());
+        let sm_chip = ScalarMulChip::<C>::new(self.sm_chip_config.clone());
+        let sha256_chip = Table16Chip::construct(self.sha256_config.clone());
+        Ok((main_chip, range_chip, pow5_chip, sm_chip, sha256_chip))
     }
 
     // pub fn initialize_pow2(
@@ -321,7 +354,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
                 .chain(acc.compressed_e_sum.as_ref())
                 .collect_vec();
             let input_cells = inputs.iter().map(|x| x.0.clone()).collect_vec();
-            //println!("inputs: {:?}", input_cells.len());
+            
             let hash = poseidon_chip.hash(layouter.namespace(|| "hash"), input_cells.try_into().unwrap())?;
             // change to strict - Witness count: 29272
             // let hash_le_bits = main_chip.num_to_bits(layouter, RANGE_BITS, &Number(hash))?;
@@ -633,7 +666,7 @@ impl<C, Sc> PrimaryCircuit<C, Sc>
             ..
         } = &self;
 
-        let (main_chip, range_chip, pow5_chip, sm_chip) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
+        let (main_chip, range_chip, pow5_chip, sm_chip, _) = PrimaryCircuitConfig::get_chips(&config, &mut layouter)?;
         let mut hash_chip_primary = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, PRIMARY_HASH_LENGTH>::construct(Poseidon2Config { pow5_config: config.poseidon_config.clone()});
         let mut hash_chip_primary_ec = Poseidon2Chip::<C, Poseidon2ChipSpec, T, RATE, PRIMARY_HASH_LENGTH_EC>::construct(Poseidon2Config { pow5_config: config.poseidon_config.clone()});
         

@@ -1,5 +1,5 @@
 use halo2_proofs::plonk;
-use ivc::halo2::chips::main_chip::LOOKUP_BITS;
+use ivc::halo2::chips::main_chip::{MAIN_LOOKUP_BITS, SHA256_LOOKUP_BITS};
 
 use crate::{
     accumulation::{
@@ -47,7 +47,7 @@ where
     F: Field,
     Pb: PlonkishBackend<F>,
 {
-    pp: Pb::ProverParam,
+    pp: Box<Pb::ProverParam>,
     strategy: ProtostarStrategy,
     num_theta_primes: usize,
     num_alpha_primes: usize,
@@ -124,8 +124,10 @@ where
     ) -> Self {
         let zero_poly = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << k]);
         let zero_poly_sqrt = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << (log_num_betas/2 + 1)]);
-        let zero_poly_lookup_h = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << last_rows.last().unwrap()]);
-        let zero_poly_lookup_table = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << LOOKUP_BITS]);
+        let zero_poly_main_lookup_h = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << last_rows.last().unwrap()]);
+        let zero_poly_sha256_lookup_h = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << last_rows[last_rows.len() - 2]]);
+        let zero_poly_main_lookup_table = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << MAIN_LOOKUP_BITS]);
+        let zero_poly_sha256_lookup_table = Pcs::Polynomial::from_evals(vec![F::ZERO; 1 << SHA256_LOOKUP_BITS]);
         Self {
             instance: ProtostarAccumulatorInstance::init(
                 strategy,
@@ -136,8 +138,10 @@ where
             witness_polys: iter::repeat_with(|| zero_poly.clone()) // all witness polys
                 .take(num_witness_polys - 3)
                 //.chain(iter::once(zero_poly_lookup_table.clone())) // lookup_m, somethings fails here so check lookup_m
-                .chain(iter::once(zero_poly.clone())) // lookup_h
-                .chain(iter::once(zero_poly_lookup_table.clone()))// lookup_g
+                // .chain(iter::once(zero_poly.clone())) // lookup_h_sha256
+                // .chain(iter::once(zero_poly.clone())) // lookup_h_main
+                .chain(iter::once(zero_poly_sha256_lookup_table.clone()))// lookup_g_sha256
+                .chain(iter::once(zero_poly_main_lookup_table.clone()))// lookup_g_main
                 .chain(iter::once(zero_poly_sqrt.clone()))
                 .collect_vec(),
             // witness_polys: iter::repeat_with(|| zero_poly.clone())
@@ -261,7 +265,7 @@ where
             compressed_cross_term_sums,
             r,
         );
- 
+
         izip_eq!(&mut self.witness_polys, &rhs.witness_polys)
         .for_each(|(lhs, rhs)| *lhs += (r, rhs));
         izip!(powers(*r).skip(1), [zeta_cross_term_poly, &rhs.e_poly])

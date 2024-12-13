@@ -23,7 +23,8 @@ use super::transcript::{NUM_CHALLENGE_BITS, NUM_HASH_BITS, RANGE_BITS};
 use crate::util::expression::pow_expr;
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
-pub const LOOKUP_BITS: usize = 8;
+pub const MAIN_LOOKUP_BITS: usize = 8;
+pub const SHA256_LOOKUP_BITS: usize = 16;
 pub const NUM_MAIN_ADVICE: usize = 2*T + 3;
 pub const NUM_MAIN_FIXED: usize = 2*T + NUM_PARTIAL_SBOX;
 pub const NUM_MAIN_SELECTORS: usize = 7;
@@ -324,11 +325,11 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         }
 
         /// Loads the lookup table with values from `0` to `2^LOOKUP_BITS - 1`
-        pub fn load_range_check_table(&self, mut layouter: impl Layouter<C::Scalar>, column: Column<Fixed>) -> Result<(), Error> {
-            let range = 1 << LOOKUP_BITS;
+        pub fn load_range_check_table(&self, layouter: &mut impl Layouter<C::Scalar>, column: Column<Fixed>) -> Result<(), Error> {
+            let range = 1 << MAIN_LOOKUP_BITS;
 
             layouter.assign_region(
-                || format!("load range check table of {} bits", LOOKUP_BITS),
+                || format!("load range check table of {} bits", MAIN_LOOKUP_BITS),
                 |mut region| {
                     for i in 0..range {
                         region.assign_fixed(
@@ -1696,7 +1697,7 @@ pub const NUM_LIMBS_NON_NATIVE: usize = 3;
         // round `max_limb_bits - limb_bits + EPSILON + 1` up to the next multiple of range.lookup_bits
         const EPSILON: usize = 1;
         let range_bits = max_limb_bits - limb_bits + EPSILON;
-        let lookup_bits = LOOKUP_BITS;
+        let lookup_bits = MAIN_LOOKUP_BITS;
         let range_bits =
             ((range_bits + lookup_bits) / lookup_bits) * lookup_bits - 1;
         // `window = w + 1` valid as long as `range_bits + n * (w+1) < native_modulus::<F>().bits() - 1`
@@ -1966,7 +1967,7 @@ where
         let range_chip = RangeCheckChip::<C>::construct(config.range_check_config);
         let mut main_chip = MainChip::<C>::new(config.main_config.clone(), range_chip);
         let one = main_chip.assign_fixed(&mut layouter, &C::Scalar::from(164), 1)?;
-        main_chip.load_range_check_table(layouter.namespace(|| "load range check table"), config.range_check_config.lookup_u8_table)?;
+        main_chip.load_range_check_table(&mut layouter, config.range_check_config.lookup_u8_table)?;
         main_chip.range_check_chip.assign(&mut layouter, &one, C::Scalar::NUM_BITS as usize)?;
         //main_chip.initialize_pow2(&mut layouter)?;
         //main_chip.load_range_check_table(layouter.namespace(|| "load range check table"), config.range_check_config.lookup_u8_table)?;

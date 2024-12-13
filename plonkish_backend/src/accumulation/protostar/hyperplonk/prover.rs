@@ -4,7 +4,7 @@ use crossbeam::{scope, thread};
 use std::{borrow::Cow, hash::Hash, iter, sync::{Arc, Mutex}};
 
 use crate::{
-    accumulation::protostar::{ivc::halo2::chips::main_chip::LOOKUP_BITS, ProtostarAccumulator}, backend::hyperplonk::prover::instance_polys, frontend::halo2::convert_expression, pcs::PolynomialCommitmentScheme, poly::{multilinear::MultilinearPolynomial, Polynomial}, util::{
+    accumulation::protostar::ProtostarAccumulator, backend::hyperplonk::prover::instance_polys, frontend::halo2::convert_expression, pcs::PolynomialCommitmentScheme, poly::{multilinear::MultilinearPolynomial, Polynomial}, util::{
         arithmetic::{div_ceil, powers, repeat_elements, repeat_vector, sum, BatchInvert, BooleanHypercube, PrimeField}, expression::{Expression, Rotation}, expression_new::paired::eval_polynomial, izip, izip_eq, parallel::{num_threads, par_map_collect, parallelize, parallelize_iter}, Itertools
     }
 };

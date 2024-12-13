@@ -289,7 +289,7 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
         Error,
     > {
 
-        let (main_chip, _, _, _) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
+        let (main_chip, _, _, _, _) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
         let mut witness_idx = 0;
         // let mut assign_witness_auto = |value: &C::Scalar| -> Result<Number<C::Scalar>, Error> {
         //     let res = main_chip.assign_witness(&mut layouter, value, witness_idx)?;

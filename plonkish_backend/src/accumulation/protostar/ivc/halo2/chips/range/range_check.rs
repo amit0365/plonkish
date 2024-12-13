@@ -13,7 +13,7 @@ use std::marker::PhantomData;
 use crate::accumulation::protostar::ivc::halo2::ivc_circuits::primary::NUM_RANGE_COLS;
 use crate::{accumulation::protostar::ivc::halo2::ivc_circuits::primary::T, util::arithmetic::{fe_from_limbs, fe_to_limbs, into_coordinates, TwoChainCurve}};
 
-use super::super::main_chip::{Number, LOOKUP_BITS};
+use super::super::main_chip::{Number, MAIN_LOOKUP_BITS};
 
 /// Converts a BigUint to a Field Element
 pub fn big_uint_to_fp<F: BigPrimeField>(big_uint: &BigUint) -> F {
@@ -135,7 +135,7 @@ where
                 let lookup_enable_selector = meta.query_selector(lookup_enable_selector);
                 let u8_range = meta.query_fixed(lookup_u8_table, Rotation::cur());
 
-                let diff = z_cur - z_next * Expression::Constant(C::Scalar::from(1 << LOOKUP_BITS));
+                let diff = z_cur - z_next * Expression::Constant(C::Scalar::from(1 << MAIN_LOOKUP_BITS));
 
                 vec![(lookup_enable_selector * diff, u8_range)]
             },
@@ -155,7 +155,7 @@ where
         value: &Self::Num,
         range_bits: usize,
     ) -> Result<(), Error> {
-        let word_size: usize = range_bits.div_ceil(LOOKUP_BITS);
+        let word_size: usize = range_bits.div_ceil(MAIN_LOOKUP_BITS);
         layouter.assign_region(
             || "range check value",
             |mut region| {
@@ -184,7 +184,7 @@ where
                     .copied()
                     .map(|x| {
                         let mut word_vec = x.to_le_bits()
-                            .chunks_exact(LOOKUP_BITS)
+                            .chunks_exact(MAIN_LOOKUP_BITS)
                             .map(|word_bool| {
                                 let word: Vec<bool> = word_bool.iter().map(|b| *b).collect();
                                 C::Scalar::from(lebs2ip_variable(&word))
@@ -211,7 +211,7 @@ where
                 let mut z = z_0;
 
                 // Assign running sum `z_{i+1}` = (z_i - k_i) / (2^LOOKUP_BITS) for i = 0..= N_BYTES - 1.
-                let two_pow_k_inv = Value::known(C::Scalar::from(1 << LOOKUP_BITS).invert().unwrap());
+                let two_pow_k_inv = Value::known(C::Scalar::from(1 << MAIN_LOOKUP_BITS).invert().unwrap());
 
                 for (i, word) in words.iter().enumerate() {
                     // z_next = (z_cur - byte) / (2^K)
@@ -242,10 +242,10 @@ where
 
     /// Loads the lookup table with values from `0` to `2^LOOKUP_BITS - 1`
     pub fn load_range_check_table(&self, layouter: &mut impl Layouter<C::Scalar>, column: Column<Fixed>) -> Result<(), Error> {
-        let range = 1 << LOOKUP_BITS;
+        let range = 1 << MAIN_LOOKUP_BITS;
     
         layouter.assign_region(
-            || format!("load range check table of {} bits", LOOKUP_BITS),
+            || format!("load range check table of {} bits", MAIN_LOOKUP_BITS),
             |mut region| {
                 for i in 0..range {
                     region.assign_fixed(

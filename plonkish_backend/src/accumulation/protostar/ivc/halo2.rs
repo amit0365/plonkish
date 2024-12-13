@@ -495,7 +495,6 @@ where
         let ProtostarAccumulationVerifierParam {
             strategy,
             num_cross_terms,
-            //num_alpha_primes,
             ..
         } = &self.avp;
         // Witness count: 5752 - 920 = 4832
@@ -515,10 +514,13 @@ where
         }
 
         let mut witness_comms = Vec::with_capacity(2);
-        let mut challenges = Vec::with_capacity(3);
+        let mut challenges = Vec::with_capacity(4);
 
         witness_comms.push(transcript_chip.read_commitment(layouter)?);
-        //challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
+        let theta = transcript_chip.squeeze_challenge(layouter)?.challenge;
+        let theta_primes = main_chip.powers(layouter, &theta, 3)?.iter().skip(1).cloned().collect_vec();
+        challenges.push(theta_primes[0].clone());
+        challenges.push(theta_primes[1].clone());
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         challenges.push(transcript_chip.squeeze_challenge(layouter)?.challenge);
         witness_comms.push(transcript_chip.read_commitment(layouter)?);
@@ -855,7 +857,7 @@ where
             let challenges = izip_eq!(&acc.challenges, &r_nark_challenges)
                 .map(|(lhs, rhs)| main_chip.add(layouter, lhs, rhs))
                 .try_collect::<_, Vec<_>, _>()?;
-
+            
             let u = main_chip.add(layouter, &acc.u, r)?;
             let e_comm = if cross_term_comms.is_empty() {
                 acc.e_comm.clone()
@@ -1253,11 +1255,12 @@ where
 
     let ( _, primary_vp_without_preprocess) = {
         let primary_circuit_info = primary_circuit.circuit_info_without_preprocess().unwrap();
-            Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap()
+            let (primary_pp, primary_vp) = Protostar::<HyperPlonk<P1>>::preprocess(&primary_param, &primary_circuit_info).unwrap();
+            (*primary_pp, *primary_vp)
         };
 
     let cyclefold_circuit = CycleFoldCircuit::new(
-        Some(ProtostarAccumulationVerifierParam::from(&*primary_vp_without_preprocess)));
+        Some(ProtostarAccumulationVerifierParam::from(&primary_vp_without_preprocess)));
     let mut cyclefold_circuit =
             Halo2Circuit::new::<HyperPlonk<P2>>(cyclefold_num_vars, cyclefold_circuit, ());
         

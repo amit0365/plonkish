@@ -6,6 +6,7 @@ pub mod range;
 pub mod sha256;
 pub mod minroot;
 pub mod hashchain;
+pub mod sha256chain;
 
 use halo2_gadgets::poseidon::{primitives::{ConstantLength, Spec, Hash as inlineHash}, Hash, Pow5Chip, Pow5Config};
 use halo2_base::utils::{CurveAffineExt, ScalarField, BigPrimeField};

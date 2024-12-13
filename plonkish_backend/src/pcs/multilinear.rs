@@ -305,7 +305,7 @@ mod test {
             + TranscriptWrite<Pcs::CommitmentChunk, F>
             + InMemoryTranscript<Param = ()>,
     {
-        for num_vars in 6..15 {
+        for num_vars in 15..22 {
             let batch_size = 8;
             let num_points = batch_size >> 1;
             let mut rng = OsRng;

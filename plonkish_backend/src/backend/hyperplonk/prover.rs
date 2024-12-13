@@ -1,5 +1,5 @@
 use crate::{
-    accumulation::protostar::ivc::halo2::chips::main_chip::LOOKUP_BITS, backend::{
+    backend::{
         hyperplonk::{
             // verifier::{pcs_query, point_offset, points},
             HyperPlonk,

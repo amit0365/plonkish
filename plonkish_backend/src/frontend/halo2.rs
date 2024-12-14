@@ -231,6 +231,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
         circuit,
         config.clone(),
         constants.clone(),
+        None,
     )
     .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 
@@ -270,6 +271,7 @@ fn circuit_info(&self) -> Result<PlonkishCircuitInfo<F>, crate::Error> {
             &self.circuit,
             self.config.clone(),
             self.constants.clone(),
+            None,
         )
         .map_err(|err| crate::Error::InvalidSnark(format!("Synthesize failure: {err:?}")))?;
 

@@ -1,10 +1,10 @@
 use itertools::Itertools;
-use rand::{rngs::OsRng, RngCore};
-use std::{cell::RefCell, fs::write, iter::{self, once}};
-use halo2_proofs::{circuit::{floor_planner::V1, AssignedCell, Layouter, SimpleFloorPlanner, Value}, dev::{circuit_dot_graph, MockProver}, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}};
-use halo2_base::utils::{BigPrimeField, FromUniformBytes, PrimeField};
-use halo2_gadgets::poseidon::{primitives::{ConstantLength, Hash, Spec}, spec::PoseidonSpec, PoseidonSpongeChip, Pow5Chip, Pow5Config}; 
-use halo2_proofs::{circuit::floor_planner::Folding, plonk::Error};
+use rand::RngCore;
+use std::{cell::RefCell, iter::{self, once}};
+use halo2_proofs::{circuit::{Layouter, SimpleFloorPlanner, Value}, dev::{circuit_dot_graph, MockProver}, halo2curves::bn256, plonk::{Circuit, ConstraintSystem}};
+use halo2_base::utils::{BigPrimeField, FromUniformBytes};
+use halo2_gadgets::poseidon::primitives::{ConstantLength, Hash}; 
+use halo2_proofs::plonk::Error;
 use halo2_proofs::halo2curves::ff::PrimeFieldBits;
 use halo2_proofs::arithmetic::Field;
 use crate::{accumulation::protostar::ivc::{halo2::{chips::{main_chip::{EcPointNative, NonNativeNumber, NUM_LIMBS_NON_NATIVE, NUM_LIMBS_PRIMARY_NON_NATIVE, NUM_LIMB_BITS_NON_NATIVE, NUM_LIMB_BITS_PRIMARY_NON_NATIVE, NUM_MAIN_ADVICE}, minroot::MinRootCircuit, poseidon::hash_chip::PoseidonConfig, sha256::{Sha256, Table16Chip, Table16Config, INPUT_2}, transcript::{NUM_HASH_BITS, RANGE_BITS}}, cyclefold::CF_IO_LEN, test::TrivialCircuit, ProtostarAccumulationVerifier, StepCircuit}, ProtostarAccumulationVerifierParam}, frontend::halo2::CircuitExt, util::{arithmetic::{fe_from_bits_le, fe_to_fe, fe_to_limbs, fe_truncated, into_coordinates}, izip_eq}};
@@ -21,9 +21,9 @@ use crate::accumulation::protostar::ivc::halo2::chips::{T as T2, R as R2};
 
 pub const T: usize = 4;
 pub const RATE: usize = 3;
-pub const NUM_RANGE_COLS: usize = 1; //(T + 1) / 2;
+pub const NUM_RANGE_COLS: usize = 1; // (T + 1) / 2;
 
-pub const PRIMARY_HASH_LENGTH: usize = 29; //29 for smchain //27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
+pub const PRIMARY_HASH_LENGTH: usize = 31; // 29 for smchain // 27 for hashchain //31 for minroot // + 2*3 for step circuit input and output
 pub const PRIMARY_HASH_LENGTH_EC: usize = 19;
 pub const CF_HASH_LENGTH: usize = 13;
 
@@ -902,7 +902,7 @@ fn primary_chip() {
     // assert_eq!(prover.verify(), Ok(()));
 
     let circuit_dot = circuit_dot_graph(&circuit);
-    write("primary_circuit_dot", circuit_dot).unwrap();
+    //write("primary_circuit_dot", circuit_dot).unwrap();
 
 }
 
@@ -936,9 +936,9 @@ fn primary_chip_layout() {
         5,
     );
 
-    let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 1024);
-    let circuit = PrimaryCircuit::<bn256::G1Affine, MinRootCircuit<bn256::G1Affine>>::new(true, primary_step_circuit, Some(primary_avp), Some(cyclefold_avp));
-    // let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
+    //let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 1024);
+    //let circuit = PrimaryCircuit::<bn256::G1Affine, MinRootCircuit<bn256::G1Affine>>::new(true, primary_step_circuit, Some(primary_avp), Some(cyclefold_avp));
+    let circuit = PrimaryCircuit::<bn256::G1Affine, TrivialCircuit<bn256::G1Affine>>::new(true, TrivialCircuit::default(), Some(primary_avp), Some(cyclefold_avp));
     let prover = MockProver::run(k, &circuit, vec![vec![]]).unwrap();
     println!("Witness count: {}", prover.witness_count);
     println!("Copy count: {}", prover.copy_count);

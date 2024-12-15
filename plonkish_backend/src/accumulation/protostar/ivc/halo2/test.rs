@@ -347,6 +347,7 @@ where
 #[allow(clippy::type_complexity)]
 pub fn run_protostar_hyperplonk_ivc_minroot_preprocess<C, P1, P2>(
     num_iters_steps: usize,
+    num_folds: usize,
     primary_num_vars: usize,
     primary_param: P1::Param,
     cyclefold_num_vars: usize,
@@ -387,7 +388,7 @@ where
     //let rng = OsRng;
     let primary_atp = accumulation_transcript_param();
     let secondary_atp = accumulation_transcript_param();
-    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO; 3], num_iters_steps);   
+    let minroot_circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO; 3], num_folds, num_iters_steps);   
         
     let preprocess_time = Instant::now();
     let (primary_circuit, secondary_circuit, ivc_pp, ivc_vp) = preprocess::<
@@ -623,9 +624,11 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc() {
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc_minroot() {
     const NUM_STEPS: usize = 10;
 
-    let primary_num_vars = 16;
+    let primary_num_vars = 15;
     let cyclefold_num_vars = 10; //1k, 9k, 25k 58k 
-    let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], 100000);
+    let time = Instant::now();
+    let primary_step_circuit = MinRootCircuit::<bn256::G1Affine>::new(vec![bn256::Fr::ZERO; 3], NUM_STEPS, 25000);
+    println!("minroot_step_circuit witness generation done: {:?}", time.elapsed());
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_num_vars + 4), 0, &mut seeded_std_rng()).unwrap();
     println!("primary_params done: {:?}", time.elapsed());
@@ -648,9 +651,9 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_minroot() {
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc_hashchain() {
     const NUM_STEPS: usize = 10;
 
-    let primary_circuit_k = 18; // 14, 15, 16, 17, 18
+    let primary_circuit_k = 16; // 14, 15, 16, 17, 18
     let cyclefold_num_vars = 10;
-    let primary_step_circuit = HashChainCircuit::<bn256::G1Affine>::new(28000); // 1400, 3200, 6600, 14000, 28000
+    let primary_step_circuit = HashChainCircuit::<bn256::G1Affine>::new(6600); // 1400, 3200, 6600, 14000, 28000
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();
     println!("primary_params done: {:?}", time.elapsed());
@@ -673,9 +676,9 @@ fn gemini_kzg_ipa_protostar_hyperplonk_ivc_hashchain() {
 fn gemini_kzg_ipa_protostar_hyperplonk_ivc_smchain() {
     const NUM_STEPS: usize = 10;
 
-    let primary_circuit_k = 18; //14, 15, 16, 17, 18
+    let primary_circuit_k = 16; //14, 15, 16, 17, 18
     let cyclefold_num_vars = 10;
-    let primary_step_circuit = ScalarMulChainCircuit::<bn256::G1Affine>::new(1975); // 95, 225, 475, 975, 1975
+    let primary_step_circuit = ScalarMulChainCircuit::<bn256::G1Affine>::new(475); // 95, 225, 475, 975, 1975
     let time = Instant::now();
     let primary_params = UnivariateKzg::setup(1 << (primary_circuit_k + 4), 0, &mut seeded_std_rng()).unwrap();
     println!("primary_params done: {:?}", time.elapsed());

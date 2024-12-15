@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, time::Instant};
 
 use halo2_base::{
     utils::{BigPrimeField}
@@ -50,7 +50,7 @@ struct MinRootIteration<F: PrimeField> {
 
 impl<F: PrimeField> MinRootIteration<F> {
   // produces a sample non-deterministic advice, executing one invocation of MinRoot per step
-  fn new(num_iters: usize, i_0: &F, x_0: &F, y_0: &F) -> (Vec<F>, Vec<Self>) {
+  fn new(num_folds: usize, num_iters_per_step: usize, i_0: &F, x_0: &F, y_0: &F) -> (Vec<F>, Vec<Self>) {
     // although this code is written generically, it is tailored to Bn254' scalar field
     let bn256_order = BigInt::from_str_radix(
         "30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001",
@@ -72,7 +72,8 @@ impl<F: PrimeField> MinRootIteration<F> {
     let mut i = *i_0;
     let mut x_i = *x_0;
     let mut y_i = *y_0;
-    for _i1 in 0..num_iters {
+    let total_iters = num_folds * num_iters_per_step;
+    for _i1 in 0..total_iters {
       let x_i_plus_1 = (x_i + y_i).pow_vartime(exp.to_u64_digits()); // computes the fifth root of x_i + y_i
 
       // sanity check
@@ -112,6 +113,7 @@ pub struct MinRootCircuit<C>
 {
     step_idx: usize,
     pub num_iters_per_step: usize,
+    pub num_folds: usize,
     setup_done: C::Scalar,
     initial_input: Vec<C::Scalar>,
     input: Vec<C::Scalar>,
@@ -125,13 +127,14 @@ impl<C> MinRootCircuit<C>
         C: CurveAffine,
         C::Scalar: BigPrimeField + FromUniformBytes<64>,
 {
-    pub fn new(initial_input: Vec<C::Scalar>, num_iters_per_step: usize) -> Self {
+    pub fn new(initial_input: Vec<C::Scalar>, num_folds: usize, num_iters_per_step: usize) -> Self {
         let (output, seq) = 
-            MinRootIteration::new(num_iters_per_step, &initial_input[0], &initial_input[1], &initial_input[2]);
+            MinRootIteration::new(num_folds, num_iters_per_step, &initial_input[0], &initial_input[1], &initial_input[2]);
 
         Self { 
             step_idx: 0,
             num_iters_per_step,
+            num_folds,
             setup_done: C::Scalar::ZERO,
             initial_input: initial_input.clone(), 
             input: initial_input.clone(),
@@ -217,48 +220,57 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
     // Used in recursive_circuit.update to cal hash of the next iteration 
     // And checked with the hash synthesize_accumulation_verifier.check_hash_state
     fn next_output(&mut self) -> Vec<C::Scalar> {
-
-        // produces a sample non-deterministic advice, executing one invocation of MinRoot per step
-        let (output, seq) = 
-            MinRootIteration::new(self.num_iters_per_step, &self.input[0], &self.input[1], &self.input[2]);
-
-        self.seq = seq;
-
-        // use the provided inputs
-        let i_0 = self.input()[0];
-        let x_0 = self.input()[1];
-        let y_0 = self.input()[2];
-        let mut z_out: Vec<C::Scalar> = Vec::new();
-
-        // variables to hold running x_i and y_i
-        let mut i = i_0;
-        let mut x_i = x_0;
-        let mut y_i = y_0;
-
-        for _i in 0..self.seq.len() {
-            // non deterministic advice
-            let i_plus_1 = self.seq[_i].i_plus_1;
-            let x_i_plus_1 = self.seq[_i].x_i_plus_1;
-
-            // check the following conditions hold:
-            // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
-            // (ii) y_i_plus_1 = x_i + i
-            let x_i_plus_1_sq = x_i_plus_1 * x_i_plus_1;
-            let x_i_plus_1_quad = x_i_plus_1_sq * x_i_plus_1_sq;
-            assert_eq!(x_i_plus_1_quad * x_i_plus_1, x_i + y_i);
-
-            if _i == self.seq.len() - 1 {
-                z_out = vec![i_plus_1, x_i_plus_1, x_i + i_plus_1];
-            }
-
-            // update i, x_i and y_i for the next iteration
-            i = i_plus_1;
-            y_i = x_i + i_plus_1;
-            x_i = x_i_plus_1;
+        let idx = self.step_idx;
+        let num_iters_per_step = self.num_iters_per_step; 
+        let mut z_out = Vec::new();
+        if idx == self.num_folds {
+            z_out = vec![self.seq[(idx - 1) * num_iters_per_step].i_plus_1, self.seq[(idx - 1) * num_iters_per_step].x_i_plus_1, self.seq[(idx - 1) * num_iters_per_step].y_i_plus_1];
+        } else {
+            z_out = vec![self.seq[idx * num_iters_per_step].i_plus_1, self.seq[idx * num_iters_per_step].x_i_plus_1, self.seq[idx * num_iters_per_step].y_i_plus_1];
         }
 
+        //let time = Instant::now();
+        // produces a sample non-deterministic advice, executing one invocation of MinRoot per step
+        // let (output, seq) = 
+        //     MinRootIteration::new(self.num_iters_per_step, &self.input[0], &self.input[1], &self.input[2]);
+
+        // self.seq = seq;
+
+        // // use the provided inputs
+        // let i_0 = self.input()[0];
+        // let x_0 = self.input()[1];
+        // let y_0 = self.input()[2];
+        // let mut z_out: Vec<C::Scalar> = Vec::new();
+
+        // // variables to hold running x_i and y_i
+        // let mut i = i_0;
+        // let mut x_i = x_0;
+        // let mut y_i = y_0;
+
+        // for _i in 0..self.seq.len() {
+        //     // non deterministic advice
+        //     let i_plus_1 = self.seq[_i].i_plus_1;
+        //     let x_i_plus_1 = self.seq[_i].x_i_plus_1;
+
+        //     // check the following conditions hold:
+        //     // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
+        //     // (ii) y_i_plus_1 = x_i + i
+        //     let x_i_plus_1_sq = x_i_plus_1 * x_i_plus_1;
+        //     let x_i_plus_1_quad = x_i_plus_1_sq * x_i_plus_1_sq;
+        //     assert_eq!(x_i_plus_1_quad * x_i_plus_1, x_i + y_i);
+
+        //     if _i == self.seq.len() - 1 {
+        //         z_out = vec![i_plus_1, x_i_plus_1, x_i + i_plus_1];
+        //     }
+
+        //     // update i, x_i and y_i for the next iteration
+        //     i = i_plus_1;
+        //     y_i = x_i + i_plus_1;
+        //     x_i = x_i_plus_1;
+        // }
+        // println!("minroot_step_circuit next outputwitness generation done: {:?}", time.elapsed());
+
         z_out
-    
     }
 
     fn set_output(&mut self, output: &[C::Scalar]) {
@@ -291,11 +303,6 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
 
         let (main_chip, _, _, _) = PrimaryCircuitConfig::initialize_chips(&config, &mut layouter)?;
         let mut witness_idx = 0;
-        // let mut assign_witness_auto = |value: &C::Scalar| -> Result<Number<C::Scalar>, Error> {
-        //     let res = main_chip.assign_witness(&mut layouter, value, witness_idx)?;
-        //     witness_idx += 1;
-        //     Ok(res)
-        // };
 
         // check for the non-trivial circuit with some input, the other cycle runs trivial circuit with no computation
         let first_input = self.input().first(); 
@@ -327,16 +334,28 @@ impl<C: TwoChainCurve> StepCircuit<C> for MinRootCircuit<C>
                 let mut x_i = x_0;
                 let mut y_i = y_0;
 
-                for _i in (0..self.seq.len()).step_by(2) {
+                let step_idx = self.step_idx;
+                println!("step_idx: {}", step_idx);
+                let num_iters_per_step = self.num_iters_per_step;
+                println!("num_iters_per_step: {}", num_iters_per_step);
+                for _i in (0..num_iters_per_step).step_by(2) {
                     // non deterministic advice
-                    let inputs = MinrootGateInputs { i, x_i, y_i, i_plus_1: self.seq[_i].i_plus_1, x_i_plus_1: self.seq[_i].x_i_plus_1, y_i_plus_1: self.seq[_i].y_i_plus_1, i_plus_2: self.seq[_i+1].i_plus_1, x_i_plus_2: self.seq[_i+1].x_i_plus_1, y_i_plus_2: self.seq[_i+1].y_i_plus_1 };
+                    let inputs = MinrootGateInputs { 
+                        i, x_i, y_i, 
+                        i_plus_1: self.seq[step_idx * num_iters_per_step + _i].i_plus_1, 
+                        x_i_plus_1: self.seq[step_idx * num_iters_per_step + _i].x_i_plus_1, 
+                        y_i_plus_1: self.seq[step_idx * num_iters_per_step + _i].y_i_plus_1, 
+                        i_plus_2: self.seq[step_idx * num_iters_per_step + _i + 1].i_plus_1, 
+                        x_i_plus_2: self.seq[step_idx * num_iters_per_step + _i + 1].x_i_plus_1, 
+                        y_i_plus_2: self.seq[step_idx * num_iters_per_step + _i + 1].y_i_plus_1 
+                    };
                     
                     // check the following conditions hold:
                     // (i) x_i_plus_1 = (x_i + y_i)^{1/5}, which can be more easily checked with x_i_plus_1^5 = x_i + y_i
                     // (ii) y_i_plus_1 = x_i + i 
                     // (iii) i_plus_1 = i + 1
                     let outputs = main_chip.minroot_gate_double(&mut layouter, inputs)?;
-                    if _i == self.seq.len() - 2 {
+                    if _i == num_iters_per_step - 2 {
                         z_out = vec![outputs.i_plus_2.clone(), outputs.x_i_plus_2.clone(), outputs.y_i_plus_2.clone()]; // todo check this
                     }
 
@@ -402,7 +421,7 @@ where
         config: Self::Config,
         mut layouter: impl Layouter<C::Scalar>,
     ) -> Result<(), Error> {
-        let mut circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO; 3], 1024);
+        let mut circuit = MinRootCircuit::<C>::new(vec![C::Scalar::ZERO; 3], 10, 1024);
         StepCircuit::<C>::synthesize(&mut circuit, config, layouter)?;
         Ok(())
     }
